@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>أكاديمية لغتي</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #eaf7ff, #fff8df);
+      color: #17324d;
+      min-height: 100vh;
+    }
+
+    header {
+      background: white;
+      padding: 18px 7%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .logo {
+      font-size: 26px;
+      font-weight: bold;
+      color: #1479bd;
+    }
+
+    nav a {
+      color: #17324d;
+      text-decoration: none;
+      margin: 0 10px;
+      font-weight: bold;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 70px 20px 45px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      color: #126da6;
+      margin-bottom: 15px;
+    }
+
+    .hero p {
+      font-size: 22px;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+
+    .main-button {
+      display: inline-block;
+      background: #f5b82e;
+      color: #17324d;
+      text-decoration: none;
+      padding: 15px 35px;
+      border-radius: 30px;
+      font-size: 20px;
+      font-weight: bold;
+      box-shadow: 0 7px 15px rgba(245, 184, 46, 0.3);
+    }
+
+    .sections {
+      width: 90%;
+      max-width: 1050px;
+      margin: 20px auto 60px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 22px;
+      padding: 28px 20px;
+      text-align: center;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-7px);
+    }
+
+    .icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .card h2 {
+      color: #1479bd;
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      line-height: 1.7;
+    }
+
+    footer {
+      text-align: center;
+      background: #1479bd;
+      color: white;
+      padding: 20px;
+    }
+
+    @media (max-width: 700px) {
+      header {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .hero h1 {
+        font-size: 36px;
+      }
+
+      .hero p {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">أكاديمية لغتي</div>
+
+    <nav>
+      <a href="#">الرئيسية</a>
+      <a href="#sections">أقسام الأكاديمية</a>
+      <a href="#">عن الأكاديمية</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>مرحبًا بكم في أكاديمية لغتي</h1>
+
+      <p>
+        رحلة تعليمية ممتعة لطلاب الصف الثاني الابتدائي<br>
+        نتعلّم… نقرأ… نبدع
+      </p>
+
+      <a class="main-button" href="#sections">
+        ابدأ رحلتك التعليمية
+      </a>
+    </section>
+
+    <section class="sections" id="sections">
+
+      <article class="card">
+        <div class="icon">📚</div>
+        <h2>دروس لغتي</h2>
+        <p>دروس مبسطة وأنشطة تعليمية ممتعة.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon">📖</div>
+        <h2>ركن القراءة</h2>
+        <p>تدريبات على الحروف والكلمات والقراءة.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon">🎮</div>
+        <h2>الألعاب التعليمية</h2>
+        <p>تعلم ومنافسة وتحديات شيقة.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon">🏆</div>
+        <h2>لوحة الشرف</h2>
+        <p>نحتفي بإنجازات طلابنا المبدعين.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon">📝</div>
+        <h2>الاختبارات</h2>
+        <p>اختبارات قصيرة لقياس التقدم.</p>
+      </article>
+
+      <article class="card">
+        <div class="icon">👨‍👩‍👦</div>
+        <h2>أولياء الأمور</h2>
+        <p>متابعة تعليمية وإرشادات داعمة للأسرة.</p>
+      </article>
+
+    </section>
+  </main>
+
+  <footer>
+    أكاديمية لغتي © 2026 — نتعلّم… نقرأ… نبدع
+  </footer>
+
+</body>
+</html>
