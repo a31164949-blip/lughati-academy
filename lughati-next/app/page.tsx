@@ -24,6 +24,13 @@ const sections: AcademySection[] = [
     className: "green-card",
   },
   {
+  icon: "📤",
+  title: "ارفع عملك",
+  description: "أرسل صورة أو تسجيلًا صوتيًا أو مقطع فيديو لمعلمك",
+  href: "/upload",
+  className: "teal-card",
+},
+  {
     icon: "📖",
     title: "الفهم القرائي",
     description: "نصوص وقصص وأسئلة لتنمية الفهم",
