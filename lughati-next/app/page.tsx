@@ -1,43 +1,69 @@
-const sections = [
+import Link from "next/link";
+
+type AcademySection = {
+  icon: string;
+  title: string;
+  description: string;
+  href: string;
+  className: string;
+};
+
+const sections: AcademySection[] = [
   {
     icon: "📚",
     title: "دروسي",
     description: "الدروس والأنشطة التعليمية الممتعة",
+    href: "/lessons",
+    className: "blue-card",
+  },
+  {
+    icon: "🌱",
+    title: "رحلة الدعم",
+    description: "تدريبات متدرجة لتقوية القراءة والكتابة",
+    href: "/support",
+    className: "green-card",
   },
   {
     icon: "📖",
-    title: "رحلة القارئ",
-    description: "الحروف والمقاطع والكلمات والقراءة",
+    title: "الفهم القرائي",
+    description: "نصوص وقصص وأسئلة لتنمية الفهم",
+    href: "/reading",
+    className: "purple-card",
   },
   {
     icon: "🎮",
     title: "الألعاب التعليمية",
-    description: "العب وتعلّم مع فارس",
-  },
-  {
-    icon: "📝",
-    title: "الاختبارات",
-    description: "اختبر مهاراتك وتابع تقدمك",
-  },
-  {
-    icon: "📅",
-    title: "الخطة الأسبوعية",
-    description: "اطّلع على خطة هذا الأسبوع",
+    description: "تعلّم والعب واكسب النجوم",
+    href: "/games",
+    className: "orange-card",
   },
   {
     icon: "✏️",
     title: "الواجبات",
-    description: "شاهد واجبات اليوم ومواعيدها",
+    description: "شاهد واجباتك اليومية وأنجزها",
+    href: "/homework",
+    className: "yellow-card",
+  },
+  {
+    icon: "🗓️",
+    title: "الخطة الأسبوعية",
+    description: "اطّلع على خطة التعلم لهذا الأسبوع",
+    href: "/weekly-plan",
+    className: "pink-card",
   },
   {
     icon: "🏆",
     title: "لوحة الشرف",
     description: "نحتفي بإنجازات أبطال الأكاديمية",
+    href: "/honor-board",
+    className: "gold-card",
   },
   {
-    icon: "🌱",
-    title: "رحلة الدعم",
-    description: "تدريبات مخصصة لتطوير القراءة",
+    icon: "🎨",
+    title: "معرض الطلاب",
+    description: "شاهد إبداعات وأعمال زملائك",
+    href: "/gallery",
+    className: "teal-card",
   },
 ];
 
@@ -50,121 +76,145 @@ export default function Home() {
   }).format(new Date());
 
   return (
-    <main
-      dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-emerald-50 via-sky-50 to-amber-50 text-slate-800"
-    >
-      <header className="border-b border-white bg-white/90 px-5 py-4 shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-emerald-700">
-              أكاديمية لغتي
-            </h1>
-            <p className="text-sm font-semibold text-slate-500">
-              نتعلّم… نقرأ… نبدع
-            </p>
-          </div>
+    <main className="academy-page" dir="rtl">
+      <header className="academy-header">
+        <div className="brand">
+          <div className="brand-icon">📚</div>
 
-          <div className="rounded-full bg-amber-100 px-4 py-2 font-bold text-amber-800">
-            ⭐ نقاطي: 0
+          <div>
+            <p className="brand-label">مرحبًا بك في</p>
+            <h1>أكاديمية لغتي الرقمية</h1>
+            <p className="slogan">نتعلّم… نقرأ… نبدع</p>
+          </div>
+        </div>
+
+        <div className="student-points">
+          <span>⭐</span>
+          <div>
+            <small>نجومك</small>
+            <strong>0</strong>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-8 px-5 py-10 md:grid-cols-2 md:items-center">
-        <div>
-          <p className="mb-3 font-bold text-emerald-700">📅 {today}</p>
+      <section className="welcome-section">
+        <div className="welcome-content">
+          <span className="welcome-badge">رحلة تعليمية ممتعة 🚀</span>
 
-          <h2 className="mb-4 text-4xl font-black leading-tight text-slate-900 md:text-6xl">
-            السلام عليكم يا بطل 🌟
+          <h2>
+            السلام عليكم يا بطل
+            <span> 👋</span>
           </h2>
 
-          <p className="mb-3 text-xl font-bold text-emerald-700">
-            أنا فارس، وسأرافقك في رحلتك التعليمية.
+          <p>
+            أنا فارس، سأرافقك في رحلة مليئة بالقراءة والتعلّم والألعاب
+            والتحديات.
           </p>
 
-          <p className="mb-7 text-lg leading-8 text-slate-600">
-            استعد ليوم ممتع من القراءة والتعلّم والألعاب والتحديات.
-          </p>
+          <div className="welcome-actions">
+            <Link href="/lessons" className="primary-button">
+              ابدأ رحلتي التعليمية
+              <span> ←</span>
+            </Link>
 
-          <button className="rounded-2xl bg-emerald-600 px-8 py-4 text-lg font-black text-white shadow-lg transition hover:bg-emerald-700">
-            🚀 ابدأ رحلتي التعليمية
-          </button>
+            <span className="today-date">🗓️ {today}</span>
+          </div>
         </div>
 
-        <div className="flex justify-center">
-          <div className="relative flex h-80 w-72 items-center justify-center rounded-[3rem] border-4 border-white bg-white shadow-xl">
-            <div className="text-center">
-              <div className="text-8xl">👦🏻</div>
+        <div className="mascot-card">
+          <div className="mascot-circle">🧒🏻</div>
+          <strong>فارس</strong>
+          <span>مرشد أكاديمية لغتي</span>
+          <div className="mascot-message">أنت قادر على التقدم كل يوم ⭐</div>
+        </div>
+      </section>
 
-              <div className="mx-auto -mt-2 w-32 rounded-2xl bg-emerald-600 px-4 py-3 font-black text-white">
-                فارس
-              </div>
+      <section className="quick-plan">
+        <div>
+          <span className="section-label">خطتي اليوم</span>
+          <h2>خطوات صغيرة… وإنجاز كبير</h2>
+        </div>
 
-              <p className="mt-4 px-5 text-sm font-bold text-slate-500">
-                مرشد أكاديمية لغتي بالسترة الخضراء
-              </p>
-            </div>
+        <div className="plan-items">
+          <div className="plan-item">
+            <span>1</span>
+            <p>أقرأ درسي</p>
+          </div>
 
-            <div className="absolute -left-4 top-5 rounded-2xl bg-amber-300 px-4 py-2 font-black shadow">
-              أحسنت! ⭐
-            </div>
+          <div className="plan-line" />
+
+          <div className="plan-item">
+            <span>2</span>
+            <p>أتدرّب</p>
+          </div>
+
+          <div className="plan-line" />
+
+          <div className="plan-item">
+            <span>3</span>
+            <p>ألعب وأتحدى</p>
+          </div>
+
+          <div className="plan-line" />
+
+          <div className="plan-item">
+            <span>4</span>
+            <p>أكسب النجوم</p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 pb-12">
-        <h2 className="mb-6 text-3xl font-black text-slate-900">
-          أقسام الأكاديمية
-        </h2>
+      <section className="sections-area">
+        <div className="section-heading">
+          <div>
+            <span className="section-label">أقسام الأكاديمية</span>
+            <h2>اختر رحلتك التعليمية</h2>
+          </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <p>اضغط على القسم الذي ترغب في البدء به</p>
+        </div>
+
+        <div className="sections-grid">
           {sections.map((section) => (
-            <button
+            <Link
+              href={section.href}
+              className={`academy-card ${section.className}`}
               key={section.title}
-              className="rounded-3xl border border-white bg-white p-6 text-right shadow-md transition hover:-translate-y-1 hover:shadow-xl"
             >
-              <div className="mb-4 text-5xl">{section.icon}</div>
+              <div className="card-icon">{section.icon}</div>
 
-              <h3 className="mb-2 text-xl font-black text-emerald-700">
-                {section.title}
-              </h3>
+              <div className="card-content">
+                <h3>{section.title}</h3>
+                <p>{section.description}</p>
+              </div>
 
-              <p className="leading-7 text-slate-500">
-                {section.description}
-              </p>
-            </button>
+              <span className="card-arrow">←</span>
+            </Link>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-5 px-5 pb-12 md:grid-cols-2">
-        <article className="rounded-3xl bg-white p-7 shadow-md">
-          <h2 className="mb-4 text-2xl font-black text-sky-700">
-            📅 خطة اليوم
-          </h2>
+      <section className="support-banner">
+        <div className="support-icon">🌱</div>
 
-          <ul className="space-y-3 text-lg">
-            <li>✅ قراءة الدرس الحالي</li>
-            <li>✏️ إكمال النشاط الكتابي</li>
-            <li>📖 القراءة لمدة عشر دقائق</li>
-          </ul>
-        </article>
-
-        <article className="rounded-3xl bg-white p-7 shadow-md">
-          <h2 className="mb-4 text-2xl font-black text-amber-700">
-            📝 واجب اليوم
-          </h2>
-
-          <p className="text-lg leading-8 text-slate-600">
-            لا توجد واجبات مضافة حاليًا. سيظهر الواجب هنا بعد نشره من
-            المعلم.
+        <div className="support-text">
+          <span>زاوية مخصصة للتأسيس</span>
+          <h2>هل تحتاج إلى مساعدة في القراءة؟</h2>
+          <p>
+            ابدأ رحلة الدعم من الحروف والأصوات، ثم انتقل إلى المقاطع والكلمات
+            والجمل.
           </p>
-        </article>
+        </div>
+
+        <Link href="/support" className="support-button">
+          ابدأ رحلة الدعم
+          <span> ←</span>
+        </Link>
       </section>
 
-      <footer className="bg-emerald-700 px-5 py-7 text-center font-bold text-white">
-        أكاديمية لغتي © 2026 — معًا نتعلّم… ونقرأ… ونبدع
+      <footer className="academy-footer">
+        <p>بإشراف الأستاذ / إبراهيم أحمد</p>
+        <span>أكاديمية لغتي الرقمية © 2026</span>
       </footer>
     </main>
   );
