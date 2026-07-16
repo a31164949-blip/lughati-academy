@@ -1,5 +1,7 @@
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 const submissions = [
   {
@@ -8,12 +10,75 @@ const submissions = [
     classroom: "الثاني أ",
     title: "عمل تجريبي",
     type: "صورة",
-    status: "بانتظار المراجعة",
     fileUrl:
       "https://drive.google.com/open?id=1hiv9qTQP62ZgiV_bfRs3K309z7dt00SS",
   },
 ];
+
 export default function SubmissionsPage() {
+  const [status, setStatus] = useState("بانتظار المراجعة");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    const savedStatus = localStorage.getItem("submission-status-1");
+    const savedNote = localStorage.getItem("submission-note-1");
+
+    if (savedStatus) {
+      setStatus(savedStatus);
+    }
+
+    if (savedNote) {
+      setNote(savedNote);
+    }
+  }, []);
+
+  async function updateStatus(newStatus: string) {
+  try {
+    const response = await fetch("/api/submissions/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        row: 2,
+        status: newStatus,
+        note,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      alert(result.message || "تعذر تحديث حالة العمل");
+      return;
+    }
+
+    setStatus(newStatus);
+    localStorage.setItem("submission-status-1", newStatus);
+
+    alert("تم تحديث حالة العمل في جدول Google Sheets بنجاح");
+  } catch {
+    alert("تعذر الاتصال بخدمة تحديث الأعمال");
+  }
+}
+
+  function updateNote(value: string) {
+    setNote(value);
+    localStorage.setItem("submission-note-1", value);
+  }
+
+  function getStatusStyle(): React.CSSProperties {
+    if (status === "معتمد") {
+      return styles.approvedBadge;
+    }
+
+    if (status === "مرفوض") {
+      return styles.rejectedBadge;
+    }
+
+    return styles.pendingBadge;
+  }
+
   return (
     <main dir="rtl" style={styles.page}>
       <section style={styles.header}>
@@ -26,7 +91,9 @@ export default function SubmissionsPage() {
 
           <div>
             <span style={styles.eyebrow}>لوحة المعلم</span>
+
             <h1 style={styles.title}>مراجعة أعمال الطلاب</h1>
+
             <p style={styles.description}>
               راجع الصور والتسجيلات ومقاطع الفيديو، ثم حدّد حالة كل عمل قبل
               نشره في معرض الطلاب.
@@ -38,19 +105,31 @@ export default function SubmissionsPage() {
       <section style={styles.statistics}>
         <article style={styles.statCard}>
           <span style={styles.statIcon}>⏳</span>
-          <strong style={styles.statNumber}>1</strong>
+
+          <strong style={styles.statNumber}>
+            {status === "بانتظار المراجعة" ? 1 : 0}
+          </strong>
+
           <span style={styles.statLabel}>بانتظار المراجعة</span>
         </article>
 
         <article style={styles.statCard}>
           <span style={styles.statIcon}>✅</span>
-          <strong style={styles.statNumber}>0</strong>
+
+          <strong style={styles.statNumber}>
+            {status === "معتمد" ? 1 : 0}
+          </strong>
+
           <span style={styles.statLabel}>أعمال معتمدة</span>
         </article>
 
         <article style={styles.statCard}>
           <span style={styles.statIcon}>🚫</span>
-          <strong style={styles.statNumber}>0</strong>
+
+          <strong style={styles.statNumber}>
+            {status === "مرفوض" ? 1 : 0}
+          </strong>
+
           <span style={styles.statLabel}>أعمال مرفوضة</span>
         </article>
       </section>
@@ -90,9 +169,7 @@ export default function SubmissionsPage() {
                   </h3>
                 </div>
 
-                <span style={styles.pendingBadge}>
-                  {submission.status}
-                </span>
+                <span style={getStatusStyle()}>{status}</span>
               </div>
 
               <div style={styles.infoGrid}>
@@ -117,18 +194,36 @@ export default function SubmissionsPage() {
                   مشاهدة العمل
                 </a>
 
-                <button type="button" style={styles.approveButton}>
+                <button
+                  type="button"
+                  style={styles.approveButton}
+                  onClick={() => updateStatus("معتمد")}
+                >
                   موافقة ونشر
                 </button>
 
-                <button type="button" style={styles.rejectButton}>
+                <button
+                  type="button"
+                  style={styles.rejectButton}
+                  onClick={() => updateStatus("مرفوض")}
+                >
                   رفض
+                </button>
+
+                <button
+                  type="button"
+                  style={styles.pendingButton}
+                  onClick={() => updateStatus("بانتظار المراجعة")}
+                >
+                  إعادة للمراجعة
                 </button>
               </div>
 
               <textarea
                 placeholder="اكتب ملاحظة للطالب عند الحاجة..."
                 style={styles.notes}
+                value={note}
+                onChange={(event) => updateNote(event.target.value)}
               />
             </div>
           </article>
@@ -140,6 +235,7 @@ export default function SubmissionsPage() {
 
         <div>
           <strong>خصوصية الطلاب محفوظة</strong>
+
           <p style={styles.privacyText}>
             لا يظهر أي عمل في معرض الطلاب إلا بعد مراجعته واعتماده من المعلم،
             ولن تُعرض بيانات الطالب الخاصة للزوار.
@@ -334,6 +430,22 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
   },
 
+  approvedBadge: {
+    padding: "9px 14px",
+    background: "#e5f7ed",
+    color: "#19784f",
+    borderRadius: "999px",
+    fontWeight: 700,
+  },
+
+  rejectedBadge: {
+    padding: "9px 14px",
+    background: "#fff0f0",
+    color: "#b44343",
+    borderRadius: "999px",
+    fontWeight: 700,
+  },
+
   infoGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
@@ -387,6 +499,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "13px",
     background: "#fff0f0",
     color: "#b44343",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  pendingButton: {
+    padding: "12px 18px",
+    border: "none",
+    borderRadius: "13px",
+    background: "#fff5d9",
+    color: "#986d00",
     fontWeight: 700,
     cursor: "pointer",
   },
