@@ -1,3 +1,4 @@
+import HomeworkReminder from "./components/HomeworkReminder";
 import Link from "next/link";
 
 type AcademySection = {
@@ -84,6 +85,7 @@ export default function Home() {
 
   return (
     <main className="academy-page" dir="rtl">
+      <HomeworkReminder />
       <header className="academy-header">
         <div className="brand">
           <div className="brand-icon">📚</div>
