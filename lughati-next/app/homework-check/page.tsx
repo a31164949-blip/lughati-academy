@@ -3,23 +3,53 @@
 import { useEffect, useState } from "react";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+
 type HomeworkMethod = "الدفتر" | "الكتاب" | "إلكترونيًا" | "";
 
 export default function HomeworkCheckPage() {
+  const [studentId, setStudentId] = useState("");
+  const [studentName, setStudentName] = useState("يا بطل");
+  const [classroom, setClassroom] = useState("");
+
   const [method, setMethod] = useState<HomeworkMethod>("");
   const [completed, setCompleted] = useState(false);
   const [completedAt, setCompletedAt] = useState("");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const homeworkTitle = "قراءة الدرس وحل التدريبات";
 
   useEffect(() => {
+    const savedStudentId =
+      localStorage.getItem("student-id") || "student-demo";
+
+    const savedStudentName =
+      localStorage.getItem("student-name") || "يا بطل";
+
+    const savedClassroom =
+      localStorage.getItem("student-classroom") || "الثاني أ";
+
+    setStudentId(savedStudentId);
+    setStudentName(savedStudentName);
+    setClassroom(savedClassroom);
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const storageKey = `${savedStudentId}-${todayKey}`;
+
     const savedCompleted =
-      localStorage.getItem("lughati-homework-completed") === "true";
+      localStorage.getItem(
+        `lughati-homework-completed-${storageKey}`
+      ) === "true";
+
     const savedMethod =
       (localStorage.getItem(
-        "lughati-homework-method"
+        `lughati-homework-method-${storageKey}`
       ) as HomeworkMethod) || "";
+
     const savedTime =
-      localStorage.getItem("lughati-homework-completed-at") || "";
+      localStorage.getItem(
+        `lughati-homework-completed-at-${storageKey}`
+      ) || "";
 
     setCompleted(savedCompleted);
     setMethod(savedMethod);
@@ -28,7 +58,7 @@ export default function HomeworkCheckPage() {
     if (!savedCompleted) {
       const reminderTimer = window.setTimeout(() => {
         setMessage(
-          "مرحبًا يا بطل 🌟 ما زال واجب اليوم بانتظارك. أنجزه ثم أكّد لفارس حتى تحصل على نجمتك!"
+          `مرحبًا ${savedStudentName} 🌟 ما زال واجب اليوم بانتظارك. أنجزه ثم أخبر فارس حتى تحصل على نجمتك!`
         );
       }, 1500);
 
@@ -42,52 +72,92 @@ export default function HomeworkCheckPage() {
       return;
     }
 
+    if (!studentId || studentId === "student-demo") {
+      setMessage("سجّل دخولك أولًا حتى يصل تأكيدك إلى المعلم.");
+      return;
+    }
+
     const time = new Date().toLocaleString("ar-SA", {
       dateStyle: "medium",
       timeStyle: "short",
     });
-try {
-  const studentName =
-    localStorage.getItem("student-name") || "طالب تجريبي";
 
-  const classroom =
-    localStorage.getItem("student-classroom") || "الثاني أ";
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const storageKey = `${studentId}-${todayKey}`;
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+    try {
+      setSaving(true);
+      setMessage("جاري إرسال تأكيدك إلى المعلم...");
 
-  await setDoc(
-    doc(db, "homeworkCompletions", `${studentName}-${todayKey}`),
-    {
-      studentName,
-      classroom,
-      homeworkTitle: "قراءة الدرس وحل التدريبات",
-      method,
-      completed: true,
-      completedAtText: time,
-      completedAt: serverTimestamp(),
-      teacherReviewed: false,
+      await setDoc(
+        doc(
+          db,
+          "homeworkCompletions",
+          `${studentId}-${todayKey}`
+        ),
+        {
+          studentId,
+          studentName,
+          classroom,
+          homeworkTitle,
+          method,
+          completed: true,
+          completedDate: todayKey,
+          completedAtText: time,
+          completedAt: serverTimestamp(),
+          teacherReviewed: false,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      localStorage.setItem(
+        `lughati-homework-completed-${storageKey}`,
+        "true"
+      );
+
+      localStorage.setItem(
+        `lughati-homework-method-${storageKey}`,
+        method
+      );
+
+      localStorage.setItem(
+        `lughati-homework-completed-at-${storageKey}`,
+        time
+      );
+
+      setCompleted(true);
+      setCompletedAt(time);
+
+      setMessage(
+        `أحسنت يا ${studentName}! أكّدت إنجاز واجبك، والتزامك يقودك إلى التميز ⭐`
+      );
+    } catch (error) {
+      console.error(error);
+
+      setMessage(
+        "تعذر إرسال التأكيد إلى المعلم. تحقق من الاتصال ثم حاول مرة أخرى."
+      );
+    } finally {
+      setSaving(false);
     }
-  );
-} catch (error) {
-  console.error(error);
-  setMessage("تعذر إرسال التأكيد إلى المعلم. حاول مرة أخرى.");
-  return;
-}
-    localStorage.setItem("lughati-homework-completed", "true");
-    localStorage.setItem("lughati-homework-method", method);
-    localStorage.setItem("lughati-homework-completed-at", time);
-
-    setCompleted(true);
-    setCompletedAt(time);
-    setMessage(
-      "أحسنت يا بطل! أكّدت إنجاز واجبك، والتزامك يقودك إلى التميز ⭐"
-    );
   }
 
   function resetHomework() {
-    localStorage.removeItem("lughati-homework-completed");
-    localStorage.removeItem("lughati-homework-method");
-    localStorage.removeItem("lughati-homework-completed-at");
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const storageKey = `${studentId}-${todayKey}`;
+
+    localStorage.removeItem(
+      `lughati-homework-completed-${storageKey}`
+    );
+
+    localStorage.removeItem(
+      `lughati-homework-method-${storageKey}`
+    );
+
+    localStorage.removeItem(
+      `lughati-homework-completed-at-${storageKey}`
+    );
 
     setCompleted(false);
     setCompletedAt("");
@@ -95,18 +165,50 @@ try {
     setMessage("عاد الواجب إلى حالة: بانتظار الإنجاز.");
   }
 
+  function goToLogin() {
+    window.location.href = "/login";
+  }
+
   return (
     <main style={styles.page} dir="rtl">
       <section style={styles.header}>
         <div style={styles.logo}>📚</div>
 
-        <div>
+        <div style={styles.headerContent}>
           <p style={styles.smallTitle}>أكاديمية لغتي الرقمية</p>
-          <h1 style={styles.title}>متابعة إنجاز الواجبات مع فارس</h1>
+
+          <h1 style={styles.title}>
+            متابعة إنجاز الواجبات مع فارس
+          </h1>
+
           <p style={styles.subtitle}>
             أنجز واجبك في الدفتر أو الكتاب أو المنصة، ثم أخبر فارس.
           </p>
         </div>
+      </section>
+
+      <section style={styles.studentCard}>
+        <div>
+          <p style={styles.studentLabel}>الطالب المسجل</p>
+
+          <h2 style={styles.studentName}>
+            {studentName} 🌟
+          </h2>
+
+          {classroom && (
+            <p style={styles.classroom}>
+              الفصل: {classroom}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={goToLogin}
+          style={styles.changeStudentButton}
+        >
+          تغيير الطالب
+        </button>
       </section>
 
       <section style={styles.farisCard}>
@@ -116,6 +218,9 @@ try {
           <h2 style={styles.farisName}>فارس يقول لك:</h2>
 
           <p style={styles.farisText}>
+            مرحبًا {studentName} 🌟
+            <br />
+
             {completed
               ? "رائع يا بطل! لقد أكدت إنجاز واجبك اليوم."
               : "هل أنجزت واجب اليوم؟ اختر طريقة الإنجاز ثم اضغط زر التأكيد."}
@@ -127,7 +232,10 @@ try {
         <div style={styles.statusRow}>
           <div>
             <p style={styles.cardLabel}>واجب اليوم</p>
-            <h2 style={styles.homeworkTitle}>قراءة الدرس وحل التدريبات</h2>
+
+            <h2 style={styles.homeworkTitle}>
+              {homeworkTitle}
+            </h2>
           </div>
 
           <span
@@ -144,56 +252,80 @@ try {
         <p style={styles.question}>أين أنجزت واجبك؟</p>
 
         <div style={styles.methodGrid}>
-          {(["الدفتر", "الكتاب", "إلكترونيًا"] as HomeworkMethod[]).map(
-            (item) => (
-              <button
-                key={item}
-                type="button"
-                disabled={completed}
-                onClick={() => setMethod(item)}
-                style={{
-                  ...styles.methodButton,
-                  border:
-                    method === item
-                      ? "3px solid #16845f"
-                      : "2px solid #d8ebe3",
-                  background: method === item ? "#e6f7ef" : "#ffffff",
-                  opacity: completed ? 0.75 : 1,
-                }}
-              >
-                <span style={styles.methodIcon}>
-                  {item === "الدفتر"
-                    ? "📒"
-                    : item === "الكتاب"
-                    ? "📘"
-                    : "💻"}
-                </span>
+          {(
+            [
+              "الدفتر",
+              "الكتاب",
+              "إلكترونيًا",
+            ] as HomeworkMethod[]
+          ).map((item) => (
+            <button
+              key={item}
+              type="button"
+              disabled={completed || saving}
+              onClick={() => {
+                setMethod(item);
+                setMessage("");
+              }}
+              style={{
+                ...styles.methodButton,
+                border:
+                  method === item
+                    ? "3px solid #16845f"
+                    : "2px solid #d8ebe3",
+                background:
+                  method === item ? "#e6f7ef" : "#ffffff",
+                opacity: completed || saving ? 0.75 : 1,
+              }}
+            >
+              <span style={styles.methodIcon}>
+                {item === "الدفتر"
+                  ? "📒"
+                  : item === "الكتاب"
+                  ? "📘"
+                  : "💻"}
+              </span>
 
-                {item}
-              </button>
-            )
-          )}
+              {item}
+            </button>
+          ))}
         </div>
 
         {!completed ? (
           <button
             type="button"
+            disabled={saving}
             onClick={confirmHomework}
-            style={styles.confirmButton}
+            style={{
+              ...styles.confirmButton,
+              opacity: saving ? 0.65 : 1,
+            }}
           >
-            ✅ أتممت حل الواجب
+            {saving
+              ? "جاري إرسال التأكيد..."
+              : "✅ أتممت حل الواجب"}
           </button>
         ) : (
           <div style={styles.completedBox}>
-            <strong>أحسنت! حصلت على نجمة ⭐</strong>
+            <strong>
+              أحسنت يا {studentName}! حصلت على نجمة ⭐
+            </strong>
 
             <span>طريقة الإنجاز: {method}</span>
 
-            {completedAt && <span>وقت التأكيد: {completedAt}</span>}
+            {completedAt && (
+              <span>وقت التأكيد: {completedAt}</span>
+            )}
+
+            <span>
+              تم إرسال التأكيد إلى لوحة المعلم ✅
+            </span>
           </div>
         )}
 
-        {message && <div style={styles.messageBox}>{message}</div>}
+        {message && (
+          <div style={styles.messageBox}>{message}</div>
+        )}
 
         {completed && (
           <button
@@ -210,11 +342,13 @@ try {
         <span style={styles.noteIcon}>🛡️</span>
 
         <div>
-          <h3 style={styles.noteTitle}>متابعة آمنة ومحفزة</h3>
+          <h3 style={styles.noteTitle}>
+            متابعة آمنة ومحفزة
+          </h3>
 
           <p style={styles.noteText}>
-            تأكيد الطالب يساعد المعلم على متابعة الالتزام، ولا يعني اعتماد
-            صحة الحل إلا بعد مراجعة المعلم.
+            تأكيد الطالب يساعد المعلم على متابعة الالتزام، ولا يعني
+            اعتماد صحة الحل إلا بعد مراجعة المعلم.
           </p>
         </div>
       </section>
@@ -234,7 +368,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   header: {
     maxWidth: "950px",
-    margin: "0 auto 24px",
+    margin: "0 auto 20px",
     padding: "25px",
     display: "flex",
     alignItems: "center",
@@ -243,6 +377,10 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #dceee5",
     borderRadius: "26px",
     boxShadow: "0 12px 35px rgba(28, 114, 82, 0.08)",
+  },
+
+  headerContent: {
+    flex: 1,
   },
 
   logo: {
@@ -272,6 +410,46 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     color: "#5c786f",
     lineHeight: 1.8,
+  },
+
+  studentCard: {
+    maxWidth: "950px",
+    margin: "0 auto 20px",
+    padding: "20px 24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "16px",
+    flexWrap: "wrap",
+    background: "#ffffff",
+    border: "1px solid #d8ebe2",
+    borderRadius: "22px",
+  },
+
+  studentLabel: {
+    margin: "0 0 5px",
+    color: "#16845f",
+    fontWeight: 800,
+  },
+
+  studentName: {
+    margin: "0 0 5px",
+    fontSize: "26px",
+  },
+
+  classroom: {
+    margin: 0,
+    color: "#607a70",
+  },
+
+  changeStudentButton: {
+    padding: "12px 17px",
+    borderRadius: "14px",
+    border: "1px solid #bfdccf",
+    background: "#ffffff",
+    color: "#23634d",
+    fontWeight: 800,
+    cursor: "pointer",
   },
 
   farisCard: {
@@ -354,7 +532,8 @@ const styles: Record<string, React.CSSProperties> = {
 
   methodGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(150px, 1fr))",
     gap: "14px",
   },
 
