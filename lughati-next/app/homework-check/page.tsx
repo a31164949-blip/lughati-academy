@@ -1,23 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import {
+  collection,
+  doc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 
 type HomeworkMethod = "الدفتر" | "الكتاب" | "إلكترونيًا" | "";
+
+type Homework = {
+  id: string;
+  title: string;
+  instructions: string;
+  targetClass: "الثاني أ" | "الثاني ب" | "الفصلان";
+  dueDate: string;
+  published: boolean;
+  createdAt?: Timestamp | null;
+};
 
 export default function HomeworkCheckPage() {
   const [studentId, setStudentId] = useState("");
   const [studentName, setStudentName] = useState("يا بطل");
   const [classroom, setClassroom] = useState("");
 
+  const [homework, setHomework] = useState<Homework | null>(null);
+  const [loadingHomework, setLoadingHomework] = useState(true);
+  const [homeworkError, setHomeworkError] = useState("");
+
   const [method, setMethod] = useState<HomeworkMethod>("");
   const [completed, setCompleted] = useState(false);
   const [completedAt, setCompletedAt] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const homeworkTitle = "قراءة الدرس وحل التدريبات";
 
   useEffect(() => {
     const savedStudentId =
@@ -27,14 +46,87 @@ export default function HomeworkCheckPage() {
       localStorage.getItem("student-name") || "يا بطل";
 
     const savedClassroom =
-      localStorage.getItem("student-classroom") || "الثاني أ";
+      localStorage.getItem("student-classroom") || "";
 
     setStudentId(savedStudentId);
     setStudentName(savedStudentName);
     setClassroom(savedClassroom);
 
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const storageKey = `${savedStudentId}-${todayKey}`;
+    loadLatestHomework(savedClassroom, savedStudentId, savedStudentName);
+  }, []);
+
+  async function loadLatestHomework(
+    studentClassroom: string,
+    savedStudentId: string,
+    savedStudentName: string
+  ) {
+    try {
+      setLoadingHomework(true);
+      setHomeworkError("");
+
+      const snapshot = await getDocs(collection(db, "homeworks"));
+
+      const suitableHomeworks: Homework[] = snapshot.docs
+        .map((homeworkDocument) => {
+          const data = homeworkDocument.data();
+
+          return {
+            id: homeworkDocument.id,
+            title: data.title || "واجب دون عنوان",
+            instructions: data.instructions || "",
+            targetClass: data.targetClass || "الفصلان",
+            dueDate: data.dueDate || "",
+            published: data.published === true,
+            createdAt: data.createdAt || null,
+          };
+        })
+        .filter((item) => {
+          const suitableClass =
+            item.targetClass === "الفصلان" ||
+            item.targetClass === studentClassroom;
+
+          return item.published && suitableClass;
+        })
+        .sort((first, second) => {
+          const firstTime = first.createdAt?.toMillis?.() || 0;
+          const secondTime = second.createdAt?.toMillis?.() || 0;
+
+          return secondTime - firstTime;
+        });
+
+      const latestHomework = suitableHomeworks[0] || null;
+
+      setHomework(latestHomework);
+
+      if (!latestHomework) {
+        setHomeworkError(
+          "لا يوجد واجب منشور لفصلك حاليًا. استمتع بوقتك يا بطل 🌟"
+        );
+        return;
+      }
+
+      restoreCompletion(
+        latestHomework.id,
+        savedStudentId,
+        savedStudentName
+      );
+    } catch (error) {
+      console.error(error);
+
+      setHomeworkError(
+        "تعذر تحميل الواجب الحالي. تحقق من الاتصال ثم حاول مرة أخرى."
+      );
+    } finally {
+      setLoadingHomework(false);
+    }
+  }
+
+  function restoreCompletion(
+    homeworkId: string,
+    savedStudentId: string,
+    savedStudentName: string
+  ) {
+    const storageKey = `${savedStudentId}-${homeworkId}`;
 
     const savedCompleted =
       localStorage.getItem(
@@ -56,17 +148,20 @@ export default function HomeworkCheckPage() {
     setCompletedAt(savedTime);
 
     if (!savedCompleted) {
-      const reminderTimer = window.setTimeout(() => {
+      window.setTimeout(() => {
         setMessage(
-          `مرحبًا ${savedStudentName} 🌟 ما زال واجب اليوم بانتظارك. أنجزه ثم أخبر فارس حتى تحصل على نجمتك!`
+          `مرحبًا ${savedStudentName} 🌟 ما زال واجبك بانتظارك. أنجزه ثم أخبر فارس حتى تحصل على نجمتك!`
         );
       }, 1500);
-
-      return () => window.clearTimeout(reminderTimer);
     }
-  }, []);
+  }
 
   async function confirmHomework() {
+    if (!homework) {
+      setMessage("لا يوجد واجب منشور حاليًا.");
+      return;
+    }
+
     if (!method) {
       setMessage("اختر أولًا أين أنجزت واجبك يا بطل 📚");
       return;
@@ -82,30 +177,34 @@ export default function HomeworkCheckPage() {
       timeStyle: "short",
     });
 
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const storageKey = `${studentId}-${todayKey}`;
+    const completionId = `${studentId}-${homework.id}`;
+    const storageKey = `${studentId}-${homework.id}`;
 
     try {
       setSaving(true);
       setMessage("جاري إرسال تأكيدك إلى المعلم...");
 
       await setDoc(
-        doc(
-          db,
-          "homeworkCompletions",
-          `${studentId}-${todayKey}`
-        ),
+        doc(db, "homeworkCompletions", completionId),
         {
+          completionId,
+          homeworkId: homework.id,
+          homeworkTitle: homework.title,
+          homeworkInstructions: homework.instructions,
+          homeworkDueDate: homework.dueDate,
+          targetClass: homework.targetClass,
+
           studentId,
           studentName,
           classroom,
-          homeworkTitle,
+
           method,
           completed: true,
-          completedDate: todayKey,
           completedAtText: time,
           completedAt: serverTimestamp(),
+
           teacherReviewed: false,
+          teacherReviewedAt: null,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -130,7 +229,7 @@ export default function HomeworkCheckPage() {
       setCompletedAt(time);
 
       setMessage(
-        `أحسنت يا ${studentName}! أكّدت إنجاز واجبك، والتزامك يقودك إلى التميز ⭐`
+        `أحسنت يا ${studentName}! أكدت إنجاز واجبك، والتزامك يقودك إلى التميز ⭐`
       );
     } catch (error) {
       console.error(error);
@@ -144,8 +243,9 @@ export default function HomeworkCheckPage() {
   }
 
   function resetHomework() {
-    const todayKey = new Date().toISOString().slice(0, 10);
-    const storageKey = `${studentId}-${todayKey}`;
+    if (!homework) return;
+
+    const storageKey = `${studentId}-${homework.id}`;
 
     localStorage.removeItem(
       `lughati-homework-completed-${storageKey}`
@@ -168,6 +268,25 @@ export default function HomeworkCheckPage() {
   function goToLogin() {
     window.location.href = "/login";
   }
+
+  function formatDueDate(dateValue: string) {
+    if (!dateValue) return "غير محدد";
+
+    const date = new Date(`${dateValue}T12:00:00`);
+
+    return date.toLocaleDateString("ar-SA", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  const isOverdue = useMemo(() => {
+    if (!homework?.dueDate) return false;
+
+    const dueDate = new Date(`${homework.dueDate}T23:59:59`);
+    return dueDate.getTime() < Date.now() && !completed;
+  }, [homework, completed]);
 
   return (
     <main style={styles.page} dir="rtl">
@@ -222,121 +341,196 @@ export default function HomeworkCheckPage() {
             <br />
 
             {completed
-              ? "رائع يا بطل! لقد أكدت إنجاز واجبك اليوم."
-              : "هل أنجزت واجب اليوم؟ اختر طريقة الإنجاز ثم اضغط زر التأكيد."}
+              ? "رائع يا بطل! لقد أكدت إنجاز واجبك."
+              : homework
+              ? "اقرأ تعليمات الواجب، ثم اختر طريقة الإنجاز واضغط زر التأكيد."
+              : "لا يوجد واجب جديد حاليًا، استمر في القراءة والمراجعة."}
           </p>
         </div>
       </section>
 
-      <section style={styles.homeworkCard}>
-        <div style={styles.statusRow}>
-          <div>
-            <p style={styles.cardLabel}>واجب اليوم</p>
+      {loadingHomework && (
+        <section style={styles.loadingCard}>
+          <div style={styles.loadingIcon}>⏳</div>
+          <h2 style={styles.loadingTitle}>جاري تحميل واجبك...</h2>
+          <p style={styles.loadingText}>
+            انتظر لحظات يا بطل.
+          </p>
+        </section>
+      )}
 
-            <h2 style={styles.homeworkTitle}>
-              {homeworkTitle}
-            </h2>
-          </div>
+      {!loadingHomework && homeworkError && !homework && (
+        <section style={styles.emptyCard}>
+          <div style={styles.emptyIcon}>🌟</div>
+          <h2 style={styles.emptyTitle}>لا يوجد واجب حاليًا</h2>
+          <p style={styles.emptyText}>{homeworkError}</p>
 
-          <span
-            style={{
-              ...styles.statusBadge,
-              background: completed ? "#dcfce7" : "#fff3cd",
-              color: completed ? "#166534" : "#8a6100",
-            }}
+          <button
+            type="button"
+            onClick={() =>
+              loadLatestHomework(classroom, studentId, studentName)
+            }
+            style={styles.reloadButton}
           >
-            {completed ? "تم الإنجاز ✅" : "بانتظار الإنجاز ⏳"}
-          </span>
-        </div>
+            تحديث الواجبات
+          </button>
+        </section>
+      )}
 
-        <p style={styles.question}>أين أنجزت واجبك؟</p>
+      {!loadingHomework && homework && (
+        <section style={styles.homeworkCard}>
+          <div style={styles.statusRow}>
+            <div>
+              <p style={styles.cardLabel}>واجبك الحالي</p>
 
-        <div style={styles.methodGrid}>
-          {(
-            [
-              "الدفتر",
-              "الكتاب",
-              "إلكترونيًا",
-            ] as HomeworkMethod[]
-          ).map((item) => (
-            <button
-              key={item}
-              type="button"
-              disabled={completed || saving}
-              onClick={() => {
-                setMethod(item);
-                setMessage("");
-              }}
+              <h2 style={styles.homeworkTitle}>
+                {homework.title}
+              </h2>
+            </div>
+
+            <span
               style={{
-                ...styles.methodButton,
-                border:
-                  method === item
-                    ? "3px solid #16845f"
-                    : "2px solid #d8ebe3",
-                background:
-                  method === item ? "#e6f7ef" : "#ffffff",
-                opacity: completed || saving ? 0.75 : 1,
+                ...styles.statusBadge,
+                background: completed
+                  ? "#dcfce7"
+                  : isOverdue
+                  ? "#feecec"
+                  : "#fff3cd",
+                color: completed
+                  ? "#166534"
+                  : isOverdue
+                  ? "#9a3232"
+                  : "#8a6100",
               }}
             >
-              <span style={styles.methodIcon}>
-                {item === "الدفتر"
-                  ? "📒"
-                  : item === "الكتاب"
-                  ? "📘"
-                  : "💻"}
-              </span>
-
-              {item}
-            </button>
-          ))}
-        </div>
-
-        {!completed ? (
-          <button
-            type="button"
-            disabled={saving}
-            onClick={confirmHomework}
-            style={{
-              ...styles.confirmButton,
-              opacity: saving ? 0.65 : 1,
-            }}
-          >
-            {saving
-              ? "جاري إرسال التأكيد..."
-              : "✅ أتممت حل الواجب"}
-          </button>
-        ) : (
-          <div style={styles.completedBox}>
-            <strong>
-              أحسنت يا {studentName}! حصلت على نجمة ⭐
-            </strong>
-
-            <span>طريقة الإنجاز: {method}</span>
-
-            {completedAt && (
-              <span>وقت التأكيد: {completedAt}</span>
-            )}
-
-            <span>
-              تم إرسال التأكيد إلى لوحة المعلم ✅
+              {completed
+                ? "تم الإنجاز ✅"
+                : isOverdue
+                ? "متأخر عن الموعد"
+                : "بانتظار الإنجاز ⏳"}
             </span>
           </div>
-        )}
 
-        {message && (
-          <div style={styles.messageBox}>{message}</div>
-        )}
+          <div style={styles.homeworkDetails}>
+            <div style={styles.detailItem}>
+              <span style={styles.detailIcon}>📋</span>
 
-        {completed && (
-          <button
-            type="button"
-            onClick={resetHomework}
-            style={styles.resetButton}
-          >
-            إعادة التجربة
-          </button>
-        )}
-      </section>
+              <div>
+                <strong style={styles.detailTitle}>
+                  تعليمات الواجب
+                </strong>
+
+                <p style={styles.instructions}>
+                  {homework.instructions}
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.detailItem}>
+              <span style={styles.detailIcon}>📅</span>
+
+              <div>
+                <strong style={styles.detailTitle}>
+                  تاريخ الاستحقاق
+                </strong>
+
+                <p style={styles.detailText}>
+                  {formatDueDate(homework.dueDate)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p style={styles.question}>أين أنجزت واجبك؟</p>
+
+          <div style={styles.methodGrid}>
+            {(
+              [
+                "الدفتر",
+                "الكتاب",
+                "إلكترونيًا",
+              ] as HomeworkMethod[]
+            ).map((item) => (
+              <button
+                key={item}
+                type="button"
+                disabled={completed || saving}
+                onClick={() => {
+                  setMethod(item);
+                  setMessage("");
+                }}
+                style={{
+                  ...styles.methodButton,
+                  border:
+                    method === item
+                      ? "3px solid #16845f"
+                      : "2px solid #d8ebe3",
+                  background:
+                    method === item ? "#e6f7ef" : "#ffffff",
+                  opacity: completed || saving ? 0.75 : 1,
+                }}
+              >
+                <span style={styles.methodIcon}>
+                  {item === "الدفتر"
+                    ? "📒"
+                    : item === "الكتاب"
+                    ? "📘"
+                    : "💻"}
+                </span>
+
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {!completed ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={confirmHomework}
+              style={{
+                ...styles.confirmButton,
+                opacity: saving ? 0.65 : 1,
+              }}
+            >
+              {saving
+                ? "جاري إرسال التأكيد..."
+                : "✅ أتممت حل الواجب"}
+            </button>
+          ) : (
+            <div style={styles.completedBox}>
+              <strong>
+                أحسنت يا {studentName}! حصلت على نجمة ⭐
+              </strong>
+
+              <span>الواجب: {homework.title}</span>
+              <span>طريقة الإنجاز: {method}</span>
+
+              {completedAt && (
+                <span>وقت التأكيد: {completedAt}</span>
+              )}
+
+              <span>
+                تم إرسال التأكيد إلى لوحة المعلم ✅
+              </span>
+            </div>
+          )}
+
+          {message && (
+            <div style={styles.messageBox}>{message}</div>
+          )}
+
+          {completed && (
+            <button
+              type="button"
+              onClick={resetHomework}
+              style={styles.resetButton}
+            >
+              إعادة التجربة
+            </button>
+          )}
+        </section>
+      )}
 
       <section style={styles.noteCard}>
         <span style={styles.noteIcon}>🛡️</span>
@@ -488,6 +682,65 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "18px",
   },
 
+  loadingCard: {
+    maxWidth: "950px",
+    margin: "0 auto 24px",
+    padding: "44px 24px",
+    textAlign: "center",
+    background: "#ffffff",
+    border: "1px solid #d8ebe2",
+    borderRadius: "28px",
+  },
+
+  loadingIcon: {
+    marginBottom: "12px",
+    fontSize: "48px",
+  },
+
+  loadingTitle: {
+    margin: "0 0 8px",
+  },
+
+  loadingText: {
+    margin: 0,
+    color: "#607a70",
+  },
+
+  emptyCard: {
+    maxWidth: "950px",
+    margin: "0 auto 24px",
+    padding: "44px 24px",
+    textAlign: "center",
+    background: "#ffffff",
+    border: "1px solid #d8ebe2",
+    borderRadius: "28px",
+  },
+
+  emptyIcon: {
+    marginBottom: "12px",
+    fontSize: "52px",
+  },
+
+  emptyTitle: {
+    margin: "0 0 10px",
+  },
+
+  emptyText: {
+    margin: "0 0 20px",
+    color: "#607a70",
+    lineHeight: 1.8,
+  },
+
+  reloadButton: {
+    padding: "13px 20px",
+    border: "none",
+    borderRadius: "15px",
+    background: "#16845f",
+    color: "#ffffff",
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+
   homeworkCard: {
     maxWidth: "950px",
     margin: "0 auto 24px",
@@ -522,6 +775,42 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "999px",
     fontWeight: 800,
     whiteSpace: "nowrap",
+  },
+
+  homeworkDetails: {
+    marginTop: "22px",
+    display: "grid",
+    gap: "13px",
+  },
+
+  detailItem: {
+    padding: "17px",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "13px",
+    borderRadius: "18px",
+    background: "#f1f8f5",
+    border: "1px solid #d8eae1",
+  },
+
+  detailIcon: {
+    fontSize: "29px",
+  },
+
+  detailTitle: {
+    color: "#185b42",
+  },
+
+  instructions: {
+    margin: "7px 0 0",
+    color: "#506f63",
+    lineHeight: 1.9,
+    whiteSpace: "pre-wrap",
+  },
+
+  detailText: {
+    margin: "7px 0 0",
+    color: "#506f63",
   },
 
   question: {
