@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import HomeworkReminder from "./components/HomeworkReminder";
 import Link from "next/link";
 
@@ -76,6 +81,50 @@ const sections: AcademySection[] = [
 ];
 
 export default function Home() {
+    const [points, setPoints] = useState(0);
+  const [stars, setStars] = useState(0);
+
+  useEffect(() => {
+    async function loadStudentRewards() {
+      try {
+        const studentId = localStorage.getItem("student-id");
+
+        if (!studentId || studentId === "student-demo") {
+          setPoints(0);
+          setStars(0);
+          return;
+        }
+
+        const studentSnapshot = await getDoc(
+          doc(db, "students", studentId)
+        );
+
+        if (!studentSnapshot.exists()) {
+          setPoints(0);
+          setStars(0);
+          return;
+        }
+
+        const studentData = studentSnapshot.data();
+
+        setPoints(
+          typeof studentData.points === "number"
+            ? studentData.points
+            : 0
+        );
+
+        setStars(
+          typeof studentData.stars === "number"
+            ? studentData.stars
+            : 0
+        );
+      } catch (error) {
+        console.error("تعذر تحميل مكافآت الطالب:", error);
+      }
+    }
+
+    loadStudentRewards();
+  }, []);
   const today = new Intl.DateTimeFormat("ar-SA", {
     weekday: "long",
     day: "numeric",
@@ -101,7 +150,8 @@ export default function Home() {
           <span>⭐</span>
           <div>
             <small>نجومك</small>
-            <strong>0</strong>
+            <strong>{stars}</strong>
+<small>{points} نقطة</small>
           </div>
         </div>
       </header>

@@ -5,6 +5,7 @@ import {
   collection,
   doc,
   getDocs,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -156,36 +157,91 @@ export default function HomeworkCheckPage() {
     }
   }
 
-  async function confirmHomework() {
-    if (!homework) {
-      setMessage("لا يوجد واجب منشور حاليًا.");
-      return;
-    }
+  
+async function confirmHomework() {
+  if (!homework) {
+    setMessage("لا يوجد واجب منشور حاليًا.");
+    return;
+  }
 
-    if (!method) {
-      setMessage("اختر أولًا أين أنجزت واجبك يا بطل 📚");
-      return;
-    }
+  if (!method) {
+    setMessage("اختر أولًا أين أنجزت واجبك يا بطل 📚");
+    return;
+  }
 
-    if (!studentId || studentId === "student-demo") {
-      setMessage("سجّل دخولك أولًا حتى يصل تأكيدك إلى المعلم.");
-      return;
-    }
+  if (!studentId || studentId === "student-demo") {
+    setMessage("سجّل دخولك أولًا حتى يصل تأكيدك إلى المعلم.");
+    return;
+  }
 
-    const time = new Date().toLocaleString("ar-SA", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+  const time = new Date().toLocaleString("ar-SA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
-    const completionId = `${studentId}-${homework.id}`;
-    const storageKey = `${studentId}-${homework.id}`;
+  const completionId = `${studentId}-${homework.id}`;
+  const storageKey = `${studentId}-${homework.id}`;
 
-    try {
-      setSaving(true);
-      setMessage("جاري إرسال تأكيدك إلى المعلم...");
+  try {
+    setSaving(true);
+    setMessage("جارٍ إرسال تأكيدك وإضافة مكافأتك...");
 
-      await setDoc(
-        doc(db, "homeworkCompletions", completionId),
+    let receivedReward = false;
+
+    await runTransaction(db, async (transaction) => {
+      const completionReference = doc(
+        db,
+        "homeworkCompletions",
+        completionId
+      );
+
+      const studentReference = doc(db, "students", studentId);
+
+      const completionSnapshot = await transaction.get(
+        completionReference
+      );
+
+      const studentSnapshot = await transaction.get(
+        studentReference
+      );
+
+      const alreadyCompleted =
+        completionSnapshot.exists() &&
+        completionSnapshot.data().completed === true;
+
+      const studentData = studentSnapshot.exists()
+        ? studentSnapshot.data()
+        : {};
+
+      const currentPoints =
+        typeof studentData.points === "number"
+          ? studentData.points
+          : 0;
+
+      const currentStars =
+        typeof studentData.stars === "number"
+          ? studentData.stars
+          : 0;
+
+      if (!alreadyCompleted) {
+        receivedReward = true;
+
+        transaction.set(
+          studentReference,
+          {
+            studentId,
+            studentName,
+            classroom,
+            points: currentPoints + 10,
+            stars: currentStars + 1,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      transaction.set(
+        completionReference,
         {
           completionId,
           homeworkId: homework.id,
@@ -203,45 +259,60 @@ export default function HomeworkCheckPage() {
           completedAtText: time,
           completedAt: serverTimestamp(),
 
-          teacherReviewed: false,
-          teacherReviewedAt: null,
+          teacherReviewed: completionSnapshot.exists()
+            ? completionSnapshot.data().teacherReviewed === true
+            : false,
+
+          rewardGranted:
+            alreadyCompleted ||
+            completionSnapshot.data()?.rewardGranted === true ||
+            receivedReward,
+
+          awardedPoints: receivedReward ? 10 : 0,
+          awardedStars: receivedReward ? 1 : 0,
+
           updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
+    });
 
-      localStorage.setItem(
-        `lughati-homework-completed-${storageKey}`,
-        "true"
-      );
+    localStorage.setItem(
+      `lughati-homework-completed-${storageKey}`,
+      "true"
+    );
 
-      localStorage.setItem(
-        `lughati-homework-method-${storageKey}`,
-        method
-      );
+    localStorage.setItem(
+      `lughati-homework-method-${storageKey}`,
+      method
+    );
 
-      localStorage.setItem(
-        `lughati-homework-completed-at-${storageKey}`,
-        time
-      );
+    localStorage.setItem(
+      `lughati-homework-completed-at-${storageKey}`,
+      time
+    );
 
-      setCompleted(true);
-      setCompletedAt(time);
+    setCompleted(true);
+    setCompletedAt(time);
 
+    if (receivedReward) {
       setMessage(
-        `أحسنت يا ${studentName}! أكدت إنجاز واجبك، والتزامك يقودك إلى التميز ⭐`
+        `أحسنت يا ${studentName}! حصلت على نجمة ⭐ و10 نقاط، وتم إرسال إنجازك إلى المعلم ✅`
       );
-    } catch (error) {
-      console.error(error);
-
+    } else {
       setMessage(
-        "تعذر إرسال التأكيد إلى المعلم. تحقق من الاتصال ثم حاول مرة أخرى."
+        `تم تحديث تأكيد واجبك يا ${studentName}، وقد حصلت على مكافأة هذا الواجب سابقًا ✅`
       );
-    } finally {
-      setSaving(false);
     }
+  } catch (error) {
+    console.error(error);
+    setMessage(
+      "تعذر إرسال التأكيد أو إضافة المكافأة. تحقق من الاتصال ثم حاول مرة أخرى."
+    );
+  } finally {
+    setSaving(false);
   }
-
+}
   function resetHomework() {
     if (!homework) return;
 
