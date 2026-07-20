@@ -1,168 +1,230 @@
-"use client";
+import Link from "next/link";
 
-import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+const sections = [
+  {
+    title: "📢 إدارة الإعلانات",
+    description: "إنشاء الإعلانات وتعديلها ونشرها للطلاب.",
+    href: "/teacher/announcements",
+  },
+  {
+    title: "🗓️ الخطة الأسبوعية",
+    description: "إعداد خطة الأسبوع والدروس والأهداف والواجبات.",
+    href: "/teacher/weekly-plan",
+  },
+  {
+    title: "📝 إدارة الواجبات",
+    description: "إنشاء الواجبات اليومية ونشرها للفصول.",
+    href: "/teacher/homeworks",
+  },
+  {
+    title: "📋 متابعة إنجاز الواجبات",
+    description: "معرفة الطلاب الذين أكدوا الإنجاز ومراجعة حالاتهم.",
+    href: "/teacher/homework-tracking",
+  },
+  {
+    title: "👨‍🎓 إدارة الطلاب",
+    description: "إضافة الطلاب وتنظيمهم حسب الفصل.",
+    href: "/teacher/students",
+  },
+  {
+    title: "📤 مراجعة أعمال الطلاب",
+    description: "مراجعة الملفات والصور والمقاطع المرفوعة.",
+    href: "/teacher/submissions",
+  },
+];
 
-type DayPlan = {
-  day: string;
-  lesson: string;
-  objective: string;
-  homework: string;
-};
-
-type WeeklyPlan = {
-  weekTitle: string;
-  days: DayPlan[];
-  published: boolean;
-};
-
-export default function StudentWeeklyPlanPage() {
-  const [plan, setPlan] = useState<WeeklyPlan | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    async function loadPlan() {
-      try {
-        const planReference = doc(db, "weeklyPlans", "current");
-        const planSnapshot = await getDoc(planReference);
-
-        if (!planSnapshot.exists()) {
-          setErrorMessage("لم تُنشر خطة أسبوعية حتى الآن.");
-          return;
-        }
-
-        const data = planSnapshot.data();
-
-        if (data.published !== true) {
-          setErrorMessage("الخطة الأسبوعية غير متاحة حاليًا.");
-          return;
-        }
-
-        setPlan({
-          weekTitle:
-            typeof data.weekTitle === "string"
-              ? data.weekTitle
-              : "الخطة الأسبوعية",
-          days: Array.isArray(data.days) ? data.days : [],
-          published: true,
-        });
-      } catch (error) {
-        console.error(error);
-        setErrorMessage("تعذر تحميل الخطة الأسبوعية. حاول مرة أخرى لاحقًا.");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadPlan();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <main
-        dir="rtl"
-        className="flex min-h-screen items-center justify-center bg-slate-50 p-6"
-      >
-        <div className="rounded-3xl bg-white px-8 py-6 text-xl font-bold text-emerald-700 shadow-sm">
-          جارٍ تحميل الخطة الأسبوعية...
-        </div>
-      </main>
-    );
-  }
-
-  if (!plan) {
-    return (
-      <main
-        dir="rtl"
-        className="flex min-h-screen items-center justify-center bg-slate-50 p-6"
-      >
-        <div className="max-w-xl rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-sm">
-          <div className="mb-4 text-5xl">📅</div>
-
-          <h1 className="text-2xl font-black text-slate-800">
-            الخطة الأسبوعية
-          </h1>
-
-          <p className="mt-4 text-lg leading-8 text-slate-600">
-            {errorMessage}
-          </p>
-        </div>
-      </main>
-    );
-  }
-
+export default function TeacherDashboardPage() {
   return (
-    <main dir="rtl" className="min-h-screen bg-slate-50 p-4 sm:p-6">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8 rounded-3xl bg-gradient-to-l from-emerald-600 to-emerald-500 p-7 text-white shadow-lg">
-          <p className="font-bold text-emerald-50">
-            أكاديمية لغتي الرقمية
+    <main dir="rtl" style={styles.page}>
+      <section style={styles.hero}>
+        <div style={styles.icon}>👨‍🏫</div>
+
+        <div>
+          <p style={styles.label}>أكاديمية لغتي الرقمية</p>
+          <h1 style={styles.title}>لوحة المعلم</h1>
+          <p style={styles.subtitle}>
+            أهلاً أستاذ إبراهيم، اختر القسم الذي ترغب في إدارته.
           </p>
+        </div>
+      </section>
 
-          <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-            📅 الخطة الأسبوعية
-          </h1>
+      <section style={styles.stats}>
+        <article style={styles.statCard}>
+          <strong style={styles.statNumber}>60</strong>
+          <span>طالبًا</span>
+        </article>
 
-          <p className="mt-3 text-xl font-bold text-emerald-50">
-            {plan.weekTitle}
-          </p>
+        <article style={styles.statCard}>
+          <strong style={styles.statNumber}>2</strong>
+          <span>فصلان</span>
+        </article>
 
-          <p className="mt-3 leading-8 text-emerald-50">
-            اطّلع على دروس هذا الأسبوع وأهدافها وواجباتها اليومية.
-          </p>
-        </header>
+        <article style={styles.statCard}>
+          <strong style={styles.statNumber}>6</strong>
+          <span>أقسام إدارية</span>
+        </article>
+      </section>
 
-        <div className="space-y-5">
-          {plan.days.map((item) => (
-            <section
-              key={item.day}
-              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      <section>
+        <div style={styles.heading}>
+          <p style={styles.label}>الإدارة اليومية</p>
+          <h2 style={styles.sectionTitle}>أقسام لوحة المعلم</h2>
+        </div>
+
+        <div style={styles.grid}>
+          {sections.map((section) => (
+            <Link
+              key={section.href}
+              href={section.href}
+              style={styles.card}
             >
-              <h2 className="mb-5 text-2xl font-black text-emerald-700">
-                {item.day}
-              </h2>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <article className="rounded-2xl bg-sky-50 p-5">
-                  <p className="font-black text-sky-800">📘 الدرس</p>
-
-                  <p className="mt-3 text-lg font-bold leading-8 text-slate-800">
-                    {item.lesson.trim() || "لم يُحدد بعد"}
-                  </p>
-                </article>
-
-                <article className="rounded-2xl bg-emerald-50 p-5">
-                  <p className="font-black text-emerald-800">🎯 الهدف</p>
-
-                  <p className="mt-3 text-lg font-bold leading-8 text-slate-800">
-                    {item.objective.trim() || "لم يُحدد بعد"}
-                  </p>
-                </article>
-
-                <article className="rounded-2xl bg-amber-50 p-5">
-                  <p className="font-black text-amber-800">📝 الواجب</p>
-
-                  <p className="mt-3 text-lg font-bold leading-8 text-slate-800">
-                    {item.homework.trim() || "لا يوجد واجب"}
-                  </p>
-                </article>
-              </div>
-            </section>
+              <h3 style={styles.cardTitle}>{section.title}</h3>
+              <p style={styles.cardText}>{section.description}</p>
+              <span style={styles.open}>فتح القسم ←</span>
+            </Link>
           ))}
         </div>
+      </section>
 
-        <footer className="mt-8 rounded-3xl bg-white p-6 text-center shadow-sm">
-          <p className="font-black text-emerald-700">
-            نتعلّم… نقرأ… نبدع
+      <section style={styles.note}>
+        <span style={styles.noteIcon}>💡</span>
+        <div>
+          <strong>لوحة سهلة وسريعة</strong>
+          <p style={styles.noteText}>
+            يمكنك الآن الوصول مباشرة إلى متابعة إنجاز الواجبات دون كتابة الرابط.
           </p>
-
-          <p className="mt-2 text-sm text-slate-500">
-            بإشراف الأستاذ / إبراهيم أحمد
-          </p>
-        </footer>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    padding: "24px",
+    background:
+      "linear-gradient(180deg, #f2fbf7 0%, #ffffff 100%)",
+    color: "#174d3b",
+    fontFamily: "Arial, sans-serif",
+  },
+  hero: {
+    maxWidth: "1100px",
+    margin: "0 auto 28px",
+    padding: "28px",
+    display: "flex",
+    alignItems: "center",
+    gap: "20px",
+    borderRadius: "28px",
+    background: "#ffffff",
+    border: "1px solid #d6ebe2",
+    boxShadow: "0 12px 35px rgba(23, 77, 59, 0.08)",
+  },
+  icon: {
+    width: "90px",
+    height: "90px",
+    display: "grid",
+    placeItems: "center",
+    borderRadius: "24px",
+    background: "#168c65",
+    fontSize: "45px",
+  },
+  label: {
+    margin: "0 0 8px",
+    color: "#168c65",
+    fontWeight: 800,
+  },
+  title: {
+    margin: 0,
+    fontSize: "42px",
+    lineHeight: 1.3,
+  },
+  subtitle: {
+    margin: "10px 0 0",
+    color: "#668379",
+    fontSize: "18px",
+    lineHeight: 1.8,
+  },
+  stats: {
+    maxWidth: "1100px",
+    margin: "0 auto 30px",
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: "16px",
+  },
+  statCard: {
+    padding: "22px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "8px",
+    borderRadius: "22px",
+    background: "#ffffff",
+    border: "1px solid #d6ebe2",
+  },
+  statNumber: {
+    color: "#168c65",
+    fontSize: "38px",
+  },
+  heading: {
+    maxWidth: "1100px",
+    margin: "0 auto 18px",
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: "32px",
+  },
+  grid: {
+    maxWidth: "1100px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "18px",
+  },
+  card: {
+    padding: "24px",
+    minHeight: "170px",
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: "24px",
+    background: "#ffffff",
+    border: "1px solid #d6ebe2",
+    boxShadow: "0 10px 28px rgba(23, 77, 59, 0.06)",
+    color: "#174d3b",
+    textDecoration: "none",
+  },
+  cardTitle: {
+    margin: "0 0 12px",
+    fontSize: "24px",
+  },
+  cardText: {
+    margin: 0,
+    color: "#668379",
+    lineHeight: 1.8,
+    flex: 1,
+  },
+  open: {
+    marginTop: "20px",
+    color: "#168c65",
+    fontWeight: 800,
+  },
+  note: {
+    maxWidth: "1100px",
+    margin: "28px auto 0",
+    padding: "22px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    borderRadius: "22px",
+    background: "#e8f7f0",
+    border: "1px solid #cde9dc",
+  },
+  noteIcon: {
+    fontSize: "34px",
+  },
+  noteText: {
+    margin: "6px 0 0",
+    color: "#668379",
+    lineHeight: 1.7,
+  },
+};
