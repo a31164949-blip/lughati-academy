@@ -24,7 +24,7 @@ const sections = [
   {
     title: "👨‍🎓 إدارة الطلاب",
     description: "إضافة الطلاب وتنظيمهم حسب الفصل.",
-    href: "/teacher/students",
+    href: "/teacher/students/setup",
   },
   {
     title: "📤 مراجعة أعمال الطلاب",
