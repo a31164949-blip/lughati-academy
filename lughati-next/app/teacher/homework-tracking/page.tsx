@@ -447,12 +447,13 @@ export default function HomeworkTrackingPage() {
         </div>
 
         <button
-          type="button"
-          onClick={loadData}
-          style={styles.refreshButton}
-        >
-          تحديث البيانات
-        </button>
+  type="button"
+  onClick={loadData}
+  disabled={loading}
+  style={styles.refreshButton}
+>
+  {loading ? "جارٍ تحديث البيانات…" : "تحديث البيانات"}
+</button>
       </section>
 
       {selectedHomework && (
