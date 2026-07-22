@@ -79,6 +79,7 @@ export default function JourneyPage() {
   const [completedTasks, setCompletedTasks] = useState<number[]>([1]);
 
   const completedCount = completedTasks.length;
+  const allTasksCompleted = completedCount === dailyTasks.length;
 
   const progress = useMemo(() => {
     return Math.round((completedCount / dailyTasks.length) * 100);
@@ -235,6 +236,101 @@ export default function JourneyPage() {
           </div>
         </section>
 
+        {allTasksCompleted && (
+  <section
+    style={{
+      background:
+        "linear-gradient(135deg, #fff4bd, #fffdf2)",
+      border: "3px solid #f3c94f",
+      borderRadius: "26px",
+      padding: "26px 20px",
+      marginBottom: "22px",
+      textAlign: "center",
+      boxShadow:
+        "0 12px 30px rgba(165, 125, 15, 0.18)",
+    }}
+  >
+    <div
+      style={{
+        fontSize: "46px",
+        marginBottom: "10px",
+      }}
+    >
+      🎉 ⭐ 🏅 ⭐ 🎉
+    </div>
+
+    <h2
+      style={{
+        margin: "0 0 10px",
+        color: "#8a6500",
+        fontSize: "27px",
+      }}
+    >
+      أحسنت يا بطل!
+    </h2>
+
+    <p
+      style={{
+        margin: "0 0 16px",
+        color: "#6f5a1c",
+        lineHeight: 1.8,
+        fontSize: "17px",
+      }}
+    >
+      أكملت جميع مهام اليوم وحصلت على
+      <strong> وسام النشاط اليومي</strong>.
+    </p>
+
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        gap: "12px",
+        flexWrap: "wrap",
+      }}
+    >
+      <span
+        style={{
+          background: "white",
+          borderRadius: "16px",
+          padding: "10px 16px",
+          color: "#157347",
+          fontWeight: "bold",
+          boxShadow: "0 5px 12px rgba(0,0,0,0.08)",
+        }}
+      >
+        ⭐ +3 نجوم
+      </span>
+
+      <span
+        style={{
+          background: "white",
+          borderRadius: "16px",
+          padding: "10px 16px",
+          color: "#157347",
+          fontWeight: "bold",
+          boxShadow: "0 5px 12px rgba(0,0,0,0.08)",
+        }}
+      >
+        💎 +10 نقاط
+      </span>
+
+      <span
+        style={{
+          background: "white",
+          borderRadius: "16px",
+          padding: "10px 16px",
+          color: "#8a6500",
+          fontWeight: "bold",
+          boxShadow: "0 5px 12px rgba(0,0,0,0.08)",
+        }}
+      >
+        🏅 وسام جديد
+      </span>
+    </div>
+  </section>
+)}
+        
         <section
           style={{
             display: "grid",
