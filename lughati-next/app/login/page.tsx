@@ -1,23 +1,40 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase";
+import {
+  type CSSProperties,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { signInWithCustomToken } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { auth } from "../../firebase";
 
 type Student = {
   id: string;
   studentId: string;
   studentName: string;
   classroom: string;
-  loginCode: string;
   active: boolean;
 };
 
+type LoginResponse = {
+  success?: boolean;
+  token?: string;
+  student?: Student;
+  message?: string;
+  error?: string;
+};
+
 export default function LoginPage() {
+  const router = useRouter();
+
   const [students, setStudents] = useState<Student[]>([]);
   const [studentClass, setStudentClass] = useState("");
   const [studentId, setStudentId] = useState("");
   const [studentCode, setStudentCode] = useState("");
+
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -28,30 +45,38 @@ export default function LoginPage() {
         setLoading(true);
         setMessage("");
 
-        const snapshot = await getDocs(collection(db, "students"));
+        const response = await fetch("/api/students", {
+          method: "GET",
+          cache: "no-store",
+        });
 
-        const loadedStudents = snapshot.docs
-          .map((studentDocument) => {
-            const data = studentDocument.data();
+        const data = await response.json();
 
-            return {
-              id: studentDocument.id,
-              studentId: data.studentId || studentDocument.id,
-              studentName: data.studentName || "طالب",
-              classroom: data.classroom || "",
-              loginCode: data.loginCode || "",
-              active: data.active !== false,
-            };
-          })
-          .filter((student) => student.active)
-          .sort((first, second) =>
-            first.studentId.localeCompare(second.studentId)
+        if (!response.ok) {
+          throw new Error(
+            data?.message || data?.error || "تعذر تحميل قائمة الطلاب."
           );
+        }
 
-        setStudents(loadedStudents);
+        const receivedStudents = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.students)
+            ? data.students
+            : [];
+
+        const activeStudents = receivedStudents.filter(
+          (student: Student) => student.active !== false
+        );
+
+        setStudents(activeStudents);
       } catch (error) {
-        console.error(error);
-        setMessage("تعذر تحميل سجل الطلاب. أعد المحاولة بعد قليل.");
+        console.error("خطأ في تحميل الطلاب:", error);
+
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "تعذر تحميل قائمة الطلاب، حاول مرة أخرى."
+        );
       } finally {
         setLoading(false);
       }
@@ -60,300 +85,474 @@ export default function LoginPage() {
     loadStudents();
   }, []);
 
-  const filteredStudents = useMemo(
-    () =>
-      students.filter(
-        (student) => student.classroom === studentClass
-      ),
-    [students, studentClass]
-  );
+  const classrooms = useMemo(() => {
+    return Array.from(
+      new Set(
+        students
+          .map((student) => student.classroom?.trim())
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [students]);
 
-  function changeClass(classroom: string) {
+  const filteredStudents = useMemo(() => {
+    if (!studentClass) {
+      return [];
+    }
+
+    return students
+      .filter((student) => student.classroom === studentClass)
+      .sort((firstStudent, secondStudent) =>
+        firstStudent.studentName.localeCompare(
+          secondStudent.studentName,
+          "ar"
+        )
+      );
+  }, [students, studentClass]);
+
+  function handleClassChange(classroom: string) {
     setStudentClass(classroom);
     setStudentId("");
     setStudentCode("");
     setMessage("");
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleStudentChange(selectedStudentId: string) {
+    setStudentId(selectedStudentId);
+    setStudentCode("");
     setMessage("");
+  }
+
+  function handleCodeChange(value: string) {
+    const numbersOnly = value.replace(/\D/g, "").slice(0, 4);
+    setStudentCode(numbersOnly);
+    setMessage("");
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
     if (!studentClass) {
-      setMessage("اختر فصلك أولًا.");
+      setMessage("اختر الفصل أولًا.");
       return;
     }
 
     if (!studentId) {
-      setMessage("اختر اسمك من القائمة.");
+      setMessage("اختر اسم الطالب.");
       return;
     }
 
-    if (!/^\d{4}$/.test(studentCode)) {
-      setMessage("أدخل رمز الدخول المكوّن من أربعة أرقام.");
+    if (studentCode.length !== 4) {
+      setMessage("أدخل رمز الدخول المكوّن من 4 أرقام.");
       return;
     }
 
-    const selectedStudent = students.find(
-      (student) => student.studentId === studentId
-    );
+    try {
+      setSubmitting(true);
+      setMessage("");
 
-    if (!selectedStudent) {
-      setMessage("لم يتم العثور على بيانات الطالب.");
-      return;
+      const response = await fetch("/api/student-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studentId,
+          studentCode,
+          classroom: studentClass,
+        }),
+      });
+
+      const data: LoginResponse = await response.json();
+
+      if (!response.ok || !data.token) {
+        throw new Error(
+          data.message || data.error || "بيانات الدخول غير صحيحة."
+        );
+      }
+
+      await signInWithCustomToken(auth, data.token);
+
+      const selectedStudent =
+        data.student ||
+        students.find((student) => student.studentId === studentId);
+
+      if (selectedStudent) {
+        localStorage.setItem(
+          "lughatiStudent",
+          JSON.stringify(selectedStudent)
+        );
+      }
+
+      setMessage("تم تسجيل الدخول بنجاح، أهلًا بك في أكاديمية لغتي 🌟");
+
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("خطأ تسجيل الدخول:", error);
+
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "حدث خطأ أثناء تسجيل الدخول."
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    if (selectedStudent.loginCode !== studentCode) {
-      setMessage("رمز الدخول غير صحيح. حاول مرة أخرى.");
-      return;
-    }
-
-    setSubmitting(true);
-
-    localStorage.setItem("student-id", selectedStudent.studentId);
-    localStorage.setItem("student-name", selectedStudent.studentName);
-    localStorage.setItem(
-      "student-classroom",
-      selectedStudent.classroom
-    );
-    localStorage.setItem("student-logged-in", "true");
-
-    setMessage(
-      `مرحبًا ${selectedStudent.studentName} 🌟 تم تسجيل دخولك بنجاح.`
-    );
-
-    window.setTimeout(() => {
-      window.location.href = "/homework-check";
-    }, 700);
   }
 
   return (
-    <main dir="rtl" style={styles.page}>
+    <main style={styles.page}>
+      <div style={styles.decorativeCircleOne} />
+      <div style={styles.decorativeCircleTwo} />
+
       <section style={styles.card}>
+        <div style={styles.logoCircle}>ف</div>
+
+        <p style={styles.smallTitle}>مرحبًا بك في</p>
+
+        <h1 style={styles.title}>أكاديمية لغتي الرقمية</h1>
+
+        <p style={styles.slogan}>نتعلّم… نقرأ… نبدع</p>
+
         <div style={styles.farisBox}>
-          <div style={styles.avatar}>👦🏻</div>
+          <div style={styles.farisEmoji}>👦🏻</div>
+
           <div>
-            <p style={styles.academy}>أكاديمية لغتي الرقمية</p>
-            <h1 style={styles.title}>تسجيل دخول الطالب</h1>
-            <p style={styles.subtitle}>
-              اختر فصلك واسمك، ثم أدخل رمز الدخول الخاص بك.
+            <strong style={styles.farisTitle}>أهلًا بك، أنا فارس!</strong>
+
+            <p style={styles.farisText}>
+              اختر فصلك واسمك، ثم أدخل رمز الدخول.
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          <label style={styles.label}>
+          <label style={styles.label} htmlFor="student-class">
             الفصل
-            <select
-              value={studentClass}
-              onChange={(event) => changeClass(event.target.value)}
-              style={styles.input}
-              disabled={loading}
-            >
-              <option value="">اختر الفصل</option>
-              <option value="الثاني أ">الثاني أ</option>
-              <option value="الثاني ب">الثاني ب</option>
-            </select>
           </label>
 
-          <label style={styles.label}>
-            اسم الطالب
-            <select
-              value={studentId}
-              onChange={(event) => {
-                setStudentId(event.target.value);
-                setStudentCode("");
-                setMessage("");
-              }}
-              style={styles.input}
-              disabled={!studentClass || loading}
-            >
-              <option value="">
-                {loading
-                  ? "جاري تحميل الطلاب..."
-                  : studentClass
-                  ? "اختر اسمك"
-                  : "اختر الفصل أولًا"}
+          <select
+            id="student-class"
+            value={studentClass}
+            onChange={(event) => handleClassChange(event.target.value)}
+            disabled={loading || submitting}
+            style={styles.select}
+          >
+            <option value="">
+              {loading ? "جاري تحميل الفصول..." : "اختر الفصل"}
+            </option>
+
+            {classrooms.map((classroom) => (
+              <option key={classroom} value={classroom}>
+                {classroom}
               </option>
+            ))}
+          </select>
 
-              {filteredStudents.map((student) => (
-                <option
-                  key={student.studentId}
-                  value={student.studentId}
-                >
-                  {student.studentName}
-                </option>
-              ))}
-            </select>
+          <label style={styles.label} htmlFor="student-name">
+            اسم الطالب
           </label>
 
-          <label style={styles.label}>
+          <select
+            id="student-name"
+            value={studentId}
+            onChange={(event) => handleStudentChange(event.target.value)}
+            disabled={!studentClass || loading || submitting}
+            style={styles.select}
+          >
+            <option value="">
+              {!studentClass ? "اختر الفصل أولًا" : "اختر اسم الطالب"}
+            </option>
+
+            {filteredStudents.map((student) => (
+              <option key={student.id} value={student.studentId}>
+                {student.studentName}
+              </option>
+            ))}
+          </select>
+
+          <label style={styles.label} htmlFor="student-code">
             رمز الدخول
-            <input
-              value={studentCode}
-              onChange={(event) =>
-                setStudentCode(
-                  event.target.value.replace(/\D/g, "").slice(0, 4)
-                )
-              }
-              inputMode="numeric"
-              placeholder="أدخل 4 أرقام"
-              style={styles.input}
-              disabled={!studentId}
-            />
           </label>
+
+          <input
+            id="student-code"
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            value={studentCode}
+            onChange={(event) => handleCodeChange(event.target.value)}
+            disabled={!studentId || submitting}
+            placeholder="أدخل 4 أرقام"
+            maxLength={4}
+            style={styles.input}
+          />
+
+          <p style={styles.codeHint}>
+            رمز الدخول خاص بالطالب ولا ينبغي مشاركته مع الآخرين.
+          </p>
+
+          {message && (
+            <div
+              style={{
+                ...styles.message,
+                ...(message.includes("بنجاح")
+                  ? styles.successMessage
+                  : styles.errorMessage),
+              }}
+            >
+              {message}
+            </div>
+          )}
 
           <button
             type="submit"
-            disabled={loading || submitting}
+            disabled={
+              loading ||
+              submitting ||
+              !studentClass ||
+              !studentId ||
+              studentCode.length !== 4
+            }
             style={{
               ...styles.button,
-              opacity: loading || submitting ? 0.65 : 1,
+              ...((loading ||
+                submitting ||
+                !studentClass ||
+                !studentId ||
+                studentCode.length !== 4) &&
+                styles.disabledButton),
             }}
           >
-            {submitting ? "جاري الدخول..." : "دخول إلى الأكاديمية"}
+            {submitting ? "جاري تسجيل الدخول..." : "دخول إلى الأكاديمية 🚀"}
           </button>
-
-          {message && <div style={styles.message}>{message}</div>}
         </form>
 
-        <div style={styles.tip}>
-          <strong>💡 بيانات التجربة:</strong>
-          <p style={styles.tipText}>
-            طالب 01 رمزه 0001، وطالب 31 رمزه 0031.
-          </p>
-        </div>
-
-        <p style={styles.privacy}>
-          🛡️ لكل طالب رمز خاص، ولا تُعرض بياناته للزوار.
+        <p style={styles.teacher}>
+          بإشراف الأستاذ / إبراهيم أحمد
         </p>
       </section>
     </main>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    padding: "28px 18px",
+    direction: "rtl",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+    padding: "24px 16px",
     background:
-      "linear-gradient(180deg, #f2faf6 0%, #eaf6f0 55%, #ffffff 100%)",
-    fontFamily: "Arial, sans-serif",
-    color: "#143f32",
+      "linear-gradient(145deg, #ecfdf5 0%, #f0fdf4 45%, #fff7ed 100%)",
+    fontFamily:
+      '"Tajawal", "Arial", "Tahoma", sans-serif',
+  },
+
+  decorativeCircleOne: {
+    position: "absolute",
+    width: "280px",
+    height: "280px",
+    borderRadius: "50%",
+    background: "rgba(34, 197, 94, 0.10)",
+    top: "-100px",
+    right: "-90px",
+  },
+
+  decorativeCircleTwo: {
+    position: "absolute",
+    width: "240px",
+    height: "240px",
+    borderRadius: "50%",
+    background: "rgba(251, 146, 60, 0.10)",
+    bottom: "-90px",
+    left: "-70px",
   },
 
   card: {
     width: "100%",
-    maxWidth: "720px",
-    padding: "30px",
-    background: "#ffffff",
-    borderRadius: "30px",
-    border: "1px solid #d5e9df",
-    boxShadow: "0 18px 48px rgba(24, 105, 76, 0.12)",
+    maxWidth: "520px",
+    position: "relative",
+    zIndex: 1,
+    background: "rgba(255, 255, 255, 0.97)",
+    borderRadius: "28px",
+    padding: "30px 24px",
+    boxShadow: "0 22px 65px rgba(22, 101, 52, 0.15)",
+    border: "1px solid rgba(34, 197, 94, 0.17)",
+  },
+
+  logoCircle: {
+    width: "76px",
+    height: "76px",
+    borderRadius: "24px",
+    margin: "0 auto 14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "linear-gradient(135deg, #16a34a, #15803d)",
+    color: "#ffffff",
+    fontWeight: 900,
+    fontSize: "38px",
+    boxShadow: "0 12px 28px rgba(22, 163, 74, 0.28)",
+  },
+
+  smallTitle: {
+    margin: 0,
+    textAlign: "center",
+    color: "#64748b",
+    fontSize: "15px",
+  },
+
+  title: {
+    margin: "6px 0 4px",
+    textAlign: "center",
+    color: "#166534",
+    fontSize: "30px",
+    lineHeight: 1.4,
+  },
+
+  slogan: {
+    margin: "0 0 22px",
+    textAlign: "center",
+    color: "#ea580c",
+    fontSize: "17px",
+    fontWeight: 800,
   },
 
   farisBox: {
     display: "flex",
     alignItems: "center",
-    gap: "18px",
-    padding: "22px",
-    marginBottom: "25px",
-    borderRadius: "24px",
-    background: "linear-gradient(135deg, #16845f, #20a174)",
-    color: "#ffffff",
+    gap: "14px",
+    padding: "15px",
+    marginBottom: "22px",
+    borderRadius: "20px",
+    background: "#f0fdf4",
+    border: "1px solid #bbf7d0",
   },
 
-  avatar: {
-    width: "88px",
-    height: "88px",
+  farisEmoji: {
+    width: "56px",
+    height: "56px",
     flexShrink: 0,
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "50%",
+    borderRadius: "18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     background: "#ffffff",
-    fontSize: "52px",
-    border: "5px solid rgba(255,255,255,0.35)",
+    fontSize: "33px",
+    boxShadow: "0 6px 16px rgba(22, 101, 52, 0.10)",
   },
 
-  academy: {
-    margin: "0 0 5px",
-    fontWeight: 800,
+  farisTitle: {
+    display: "block",
+    marginBottom: "4px",
+    color: "#166534",
+    fontSize: "16px",
   },
 
-  title: {
-    margin: "0 0 8px",
-    fontSize: "clamp(27px, 5vw, 40px)",
-  },
-
-  subtitle: {
+  farisText: {
     margin: 0,
-    lineHeight: 1.8,
+    color: "#475569",
+    fontSize: "14px",
+    lineHeight: 1.7,
   },
 
   form: {
-    display: "grid",
-    gap: "18px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
   },
 
   label: {
-    display: "grid",
-    gap: "8px",
-    fontWeight: 900,
-    fontSize: "18px",
+    color: "#14532d",
+    fontWeight: 800,
+    fontSize: "15px",
+    marginTop: "3px",
+  },
+
+  select: {
+    width: "100%",
+    minHeight: "52px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "14px",
+    background: "#ffffff",
+    color: "#0f172a",
+    padding: "0 14px",
+    fontSize: "16px",
+    outline: "none",
   },
 
   input: {
     width: "100%",
-    padding: "16px",
-    borderRadius: "16px",
-    border: "2px solid #d4e8de",
-    background: "#fbfefc",
-    color: "#143f32",
-    fontSize: "17px",
+    boxSizing: "border-box",
+    minHeight: "52px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "14px",
+    background: "#ffffff",
+    color: "#0f172a",
+    padding: "0 14px",
+    fontSize: "21px",
+    textAlign: "center",
+    letterSpacing: "8px",
     outline: "none",
+  },
+
+  codeHint: {
+    margin: "-2px 0 4px",
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: 1.6,
+  },
+
+  message: {
+    padding: "12px 14px",
+    borderRadius: "13px",
+    textAlign: "center",
+    fontSize: "14px",
+    fontWeight: 700,
+    lineHeight: 1.6,
+  },
+
+  successMessage: {
+    color: "#166534",
+    background: "#dcfce7",
+    border: "1px solid #86efac",
+  },
+
+  errorMessage: {
+    color: "#b91c1c",
+    background: "#fef2f2",
+    border: "1px solid #fecaca",
   },
 
   button: {
     width: "100%",
-    padding: "17px",
+    minHeight: "55px",
+    marginTop: "7px",
     border: "none",
-    borderRadius: "17px",
-    background: "#16845f",
-    color: "#ffffff",
-    fontSize: "20px",
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-
-  message: {
-    padding: "16px",
     borderRadius: "16px",
-    background: "#fff6d5",
-    color: "#705400",
-    lineHeight: 1.8,
-    fontWeight: 800,
+    background: "linear-gradient(135deg, #16a34a, #15803d)",
+    color: "#ffffff",
+    fontWeight: 900,
+    fontSize: "17px",
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(22, 163, 74, 0.25)",
+  },
+
+  disabledButton: {
+    opacity: 0.55,
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
+
+  teacher: {
+    margin: "23px 0 0",
     textAlign: "center",
-  },
-
-  tip: {
-    marginTop: "22px",
-    padding: "17px",
-    borderRadius: "17px",
-    background: "#eef8f3",
-    color: "#285e4b",
-  },
-
-  tipText: {
-    margin: "7px 0 0",
-    lineHeight: 1.8,
-  },
-
-  privacy: {
-    margin: "20px 0 0",
-    color: "#607a70",
-    textAlign: "center",
-    lineHeight: 1.8,
+    color: "#64748b",
+    fontSize: "13px",
   },
 };
