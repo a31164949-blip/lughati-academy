@@ -538,7 +538,7 @@ export default function JourneyPage() {
                 fontSize: "21px",
               }}
             >
-              المكافأة القادمة
+              {allTasksCompleted ? "تم فتح المكافأة 🎉" : "المكافأة القادمة"}
             </h3>
 
             <p
@@ -548,9 +548,18 @@ export default function JourneyPage() {
                 color: "#6e623a",
               }}
             >
-              بقيت لك{" "}
-              <strong>{dailyTasks.length - completedCount} مهام</strong>{" "}
-              لتحصل على وسام النشاط اليومي.
+              {allTasksCompleted ? (
+  <>
+    أحسنت يا بطل! حصلت على{" "}
+    <strong>وسام النشاط اليومي</strong> و3 نجوم و10 نقاط.
+  </>
+) : (
+  <>
+    بقيت لك{" "}
+    <strong>{dailyTasks.length - completedCount} مهام</strong>{" "}
+    لتحصل على وسام النشاط اليومي.
+  </>
+)}
             </p>
           </div>
 
