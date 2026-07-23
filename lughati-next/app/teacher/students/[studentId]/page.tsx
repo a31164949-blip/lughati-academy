@@ -10,6 +10,7 @@ type Student = {
   className?: string;
   points?: number;
   level?: number;
+  goldenIndex?: number;
   attendanceDays?: number;
   absenceDays?: number;
   lateDays?: number;
@@ -55,7 +56,7 @@ export default function StudentProfilePage() {
   const points = student.points ?? 0;
   const level = student.level ?? 1;
   const attendanceRate = student.attendanceRate ?? 100;
-
+const goldenIndex = student.goldenIndex ?? 0;
   return (
     <main style={styles.page} dir="rtl">
       <a href="/teacher/students" style={styles.backButton}>
@@ -77,7 +78,7 @@ export default function StudentProfilePage() {
 
         <div style={styles.goldenIndex}>
           <span style={styles.goldenTitle}>🟢 المؤشر الذهبي</span>
-          <strong style={styles.goldenNumber}>94 / 100</strong>
+          <strong style={styles.goldenNumber}>{goldenIndex} / 100</strong>
         </div>
       </section>
 
