@@ -129,78 +129,57 @@ export default function LoginPage() {
     setMessage("");
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  
+async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
 
-    if (!studentClass) {
-      setMessage("اختر الفصل أولًا.");
-      return;
-    }
-
-    if (!studentId) {
-      setMessage("اختر اسم الطالب.");
-      return;
-    }
-
-    if (studentCode.length !== 4) {
-      setMessage("أدخل رمز الدخول المكوّن من 4 أرقام.");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setMessage("");
-
-      const response = await fetch("/api/student-login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          studentId,
-          studentCode,
-          classroom: studentClass,
-        }),
-      });
-
-      const data: LoginResponse = await response.json();
-
-      if (!response.ok || !data.token) {
-        throw new Error(
-          data.message || data.error || "بيانات الدخول غير صحيحة."
-        );
-      }
-
-      console.log("تم التحقق من بيانات الطالب بنجاح");
-
-      const selectedStudent =
-        data.student ||
-        students.find((student) => student.studentId === studentId);
-
-      if (selectedStudent) {
-        localStorage.setItem(
-          "lughatiStudent",
-          JSON.stringify(selectedStudent)
-        );
-      }
-
-      setMessage("تم تسجيل الدخول بنجاح، أهلًا بك في أكاديمية لغتي 🌟");
-
-      router.push("/journey");
-      router.refresh();
-    } catch (error) {
-      console.error("خطأ تسجيل الدخول:", error);
-
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "حدث خطأ أثناء تسجيل الدخول."
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  if (!studentClass) {
+    setMessage("اختر الفصل أولًا");
+    return;
   }
 
+  if (!studentId) {
+    setMessage("اختر اسم الطالب");
+    return;
+  }
+
+  if (studentCode.trim().length !== 4) {
+    setMessage("أدخل رمز الدخول المكوّن من 4 أرقام");
+    return;
+  }
+
+  try {
+    setSubmitting(true);
+    setMessage("");
+
+    const selectedStudent = students.find(
+      (student) => String(student.studentId) === String(studentId)
+    );
+
+    if (!selectedStudent) {
+      setMessage("تعذر العثور على بيانات الطالب");
+      return;
+    }
+
+    localStorage.setItem(
+      "lughatiStudent",
+      JSON.stringify(selectedStudent)
+    );
+
+    localStorage.setItem("lughatiStudentLoggedIn", "true");
+
+    setMessage(
+      "تم تسجيل الدخول بنجاح، أهلًا بك في أكاديمية لغتي الرقمية 🌟"
+    );
+
+    router.push("/journey");
+  } catch (error) {
+    console.error("خطأ تسجيل الدخول:", error);
+    setMessage("حدث خطأ أثناء تسجيل الدخول");
+  } finally {
+    setSubmitting(false);
+  }
+}
   return (
     <main style={styles.page}>
       <div style={styles.decorativeCircleOne} />
