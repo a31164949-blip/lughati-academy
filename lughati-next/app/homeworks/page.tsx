@@ -122,22 +122,47 @@ export default function HomeworksPage() {
     Record<string, string>
   >({});
 
-  useEffect(() => {
-    const studentId = localStorage.getItem("student-id") || "";
-    const studentName = localStorage.getItem("student-name") || "";
-    const studentClassroom =
-      localStorage.getItem("student-classroom") || "";
-    const loggedIn =
-      localStorage.getItem("student-logged-in") === "true";
+  
+useEffect(() => {
+  const savedStudent = localStorage.getItem("lughatiStudent");
+  const savedLogin =
+    localStorage.getItem("lughatiStudentLoggedIn") === "true";
+
+  if (!savedStudent) {
+    setStudent({
+      id: "",
+      name: "",
+      classroom: "",
+      loggedIn: false,
+    });
+    return;
+  }
+
+  try {
+    const parsedStudent = JSON.parse(savedStudent);
 
     setStudent({
-      id: studentId,
-      name: studentName,
-      classroom: studentClassroom,
-      loggedIn,
+      id: String(
+        parsedStudent.id ?? parsedStudent.studentId ?? ""
+      ),
+      name: String(
+        parsedStudent.name ?? parsedStudent.studentName ?? ""
+      ),
+      classroom: String(parsedStudent.classroom ?? ""),
+      loggedIn:
+        savedLogin || parsedStudent.loggedIn === true,
     });
-  }, []);
+  } catch (error) {
+    console.error("تعذر قراءة بيانات الطالب:", error);
 
+    setStudent({
+      id: "",
+      name: "",
+      classroom: "",
+      loggedIn: false,
+    });
+  }
+}, []);
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "homeworks"),
