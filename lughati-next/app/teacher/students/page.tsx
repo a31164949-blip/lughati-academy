@@ -158,27 +158,30 @@ export default function StudentsPage() {
           <div style={styles.list}>
             {visibleStudents.map((student) => (
               <article key={student.id} style={styles.studentCard}>
-                <div style={styles.studentMain}>
-                  <div style={styles.avatar}>
-                    {student.studentName.charAt(0)}
-                  </div>
+  <div style={styles.studentMain}>
+    <div style={styles.avatar}>
+      {student.studentName.charAt(0)}
+    </div>
 
-                  <div>
-                    <h3 style={styles.studentName}>
-                      {student.studentName}
-                    </h3>
+    <div>
+      <a
+        href={`/teacher/students/${student.id}`}
+        style={styles.studentLink}
+      >
+        {student.studentName}
+      </a>
 
-                    <p style={styles.studentMeta}>
-                      {student.classroom} • {student.studentId}
-                    </p>
-                  </div>
-                </div>
+      <p style={styles.studentMeta}>
+        {student.classroom} • {student.studentId}
+      </p>
+    </div>
+  </div>
 
-                <div style={styles.details}>
-                  <span>🔥 {student.streakDays} أيام</span>
-                  <span>⭐ {student.points} نقطة</span>
-                </div>
-              </article>
+  <div style={styles.details}>
+    <span>🔥 {student.streakDays} أيام</span>
+    <span>⭐ {student.points} نقطة</span>
+  </div>
+</article>
             ))}
           </div>
         )}
@@ -382,7 +385,12 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#163b32",
     fontSize: "17px",
   },
-
+studentLink: {
+  color: "#163b32",
+  fontSize: "17px",
+  fontWeight: 800,
+  textDecoration: "none",
+},
   studentMeta: {
     margin: "5px 0 0",
     color: "#64748b",
