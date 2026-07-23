@@ -171,7 +171,7 @@ export default function LoginPage() {
         );
       }
 
-      await signInWithCustomToken(auth, data.token);
+      console.log("تم التحقق من بيانات الطالب بنجاح");
 
       const selectedStudent =
         data.student ||
@@ -186,7 +186,7 @@ export default function LoginPage() {
 
       setMessage("تم تسجيل الدخول بنجاح، أهلًا بك في أكاديمية لغتي 🌟");
 
-      router.push("/");
+      router.push("/journey");
       router.refresh();
     } catch (error) {
       console.error("خطأ تسجيل الدخول:", error);
