@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
+import { db } from "../../../../firebase";
 type Student = {
   studentName?: string;
   className?: string;
