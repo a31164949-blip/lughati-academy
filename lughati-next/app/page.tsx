@@ -125,12 +125,18 @@ export default function Home() {
 
     loadStudentRewards();
   }, []);
-  const today = new Intl.DateTimeFormat("ar-SA", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
+  const [today, setToday] = useState("");
+
+useEffect(() => {
+  setToday(
+    new Intl.DateTimeFormat("ar-SA", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date())
+  );
+}, []);
 
   return (
     <main className="academy-page" dir="rtl">
