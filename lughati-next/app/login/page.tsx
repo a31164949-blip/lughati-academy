@@ -162,9 +162,12 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     }
 
     localStorage.setItem(
-      "lughatiStudent",
-      JSON.stringify(selectedStudent)
-    );
+  "lughatiStudent",
+  JSON.stringify({
+    ...selectedStudent,
+    loggedIn: true,
+  })
+);
 
     localStorage.setItem("lughatiStudentLoggedIn", "true");
 
