@@ -267,6 +267,29 @@ async function handleAddPoints() {
       </div>
 
       <label style={styles.fieldLabel}>سبب منح النقاط</label>
+      <div style={styles.reasonChoices}>
+  {[
+    "📖 قراءة متميزة",
+    "✍️ إملاء ممتاز",
+    "📚 حل الواجب",
+    "🌟 مشاركة فعالة",
+    "🤝 تعاون",
+    "🏅 سلوك حسن",
+    "🧠 تميّز في استخراج المهارة",
+  ].map((reason) => (
+    <button
+      key={reason}
+      type="button"
+      onClick={() => setPointsReason(reason)}
+      style={{
+        ...styles.reasonChoice,
+        ...(pointsReason === reason ? styles.reasonChoiceActive : {}),
+      }}
+    >
+      {reason}
+    </button>
+  ))}
+</div>
 
       <input
         value={pointsReason}
@@ -959,5 +982,17 @@ pointsMessage: {
   color: "#166534",
   fontWeight: 800,
   fontSize: "14px",
+},
+reasonChoices: {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px",
+  marginBottom: "12px",
+},
+
+reasonChoiceActive: {
+  background: "#166534",
+  color: "#ffffff",
+  borderColor: "#166534",
 },
 };
