@@ -107,7 +107,50 @@ const goldenIndex = student.goldenIndex ?? 0;
           <strong style={styles.summaryValue}>7 أيام</strong>
         </div>
       </section>
+<section style={styles.quickActionsSection}>
+  <div style={styles.quickActionsHeader}>
+    <div>
+      <p style={styles.quickActionsLabel}>إدارة ملف الطالب</p>
+      <h2 style={styles.quickActionsTitle}>⚡ إجراءات سريعة</h2>
+    </div>
 
+    <span style={styles.quickActionsHint}>
+      اختر الإجراء الذي تريد تسجيله للطالب
+    </span>
+  </div>
+
+  <div style={styles.quickActionsGrid}>
+    <button style={styles.actionButton}>
+      <span style={styles.actionIcon}>⭐</span>
+      <strong>منح نقاط</strong>
+      <span style={styles.actionDescription}>إضافة نقاط تحفيزية</span>
+    </button>
+
+    <button style={styles.actionButton}>
+      <span style={styles.actionIcon}>📖</span>
+      <strong>تسجيل قراءة</strong>
+      <span style={styles.actionDescription}>تقييم قراءة الطالب</span>
+    </button>
+
+    <button style={styles.actionButton}>
+      <span style={styles.actionIcon}>✍️</span>
+      <strong>تسجيل إملاء</strong>
+      <span style={styles.actionDescription}>إدخال عدد الأخطاء</span>
+    </button>
+
+    <button style={styles.actionButton}>
+      <span style={styles.actionIcon}>📅</span>
+      <strong>تسجيل حضور</strong>
+      <span style={styles.actionDescription}>حضور أو غياب أو تأخر</span>
+    </button>
+
+    <button style={styles.actionButton}>
+      <span style={styles.actionIcon}>🏅</span>
+      <strong>منح وسام</strong>
+      <span style={styles.actionDescription}>اختيار وسام جديد</span>
+    </button>
+  </div>
+</section>
       <section style={styles.cardsGrid}>
         <article style={styles.card}>
           <h2 style={styles.cardTitle}>📖 القراءة</h2>
@@ -607,4 +650,69 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     fontSize: "13px",
   },
+  quickActionsSection: {
+  maxWidth: "1100px",
+  margin: "18px auto",
+  padding: "22px",
+borderRadius: "24px",
+background: "linear-gradient(135deg, #173f35, #24735e)",
+boxShadow: "0 14px 35px rgba(15, 61, 50, 0.16)",
+color: "#ffffff",
+},
+quickActionsHeader: {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "16px",
+  flexWrap: "wrap",
+  marginBottom: "18px",
+},
+
+quickActionsLabel: {
+  margin: "0 0 5px",
+  color: "#c9f3df",
+  fontSize: "13px",
+  fontWeight: 700,
+},
+
+quickActionsTitle: {
+  margin: 0,
+  fontSize: "23px",
+},
+
+quickActionsHint: {
+  color: "#d9eee6",
+  fontSize: "13px",
+},
+quickActionsGrid: {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))",
+  gap: "12px",
+},
+
+actionButton: {
+  minHeight: "135px",
+  border: "1px solid rgba(255,255,255,0.18)",
+  borderRadius: "18px",
+  padding: "16px 12px",
+  background: "rgba(255,255,255,0.1)",
+  color: "#ffffff",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "7px",
+  fontSize: "16px",
+  cursor: "pointer",
+},
+
+actionIcon: {
+  fontSize: "34px",
+},
+
+actionDescription: {
+  color: "#d9eee6",
+  fontSize: "12px",
+  fontWeight: 400,
+},
 };
