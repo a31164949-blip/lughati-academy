@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
 
 import { db } from "../../../../firebase";
 type Student = {
@@ -26,7 +26,8 @@ export default function StudentProfilePage() {
   const [showPointsBox, setShowPointsBox] = useState(false);
 const [pointsToAdd, setPointsToAdd] = useState(5);
 const [pointsReason, setPointsReason] = useState("");
-
+const [savingPoints, setSavingPoints] = useState(false);
+const [pointsMessage, setPointsMessage] = useState("");
   useEffect(() => {
     async function loadStudent() {
       try {
@@ -49,6 +50,43 @@ const [pointsReason, setPointsReason] = useState("");
   }, [studentId]);
 
   if (loading) {
+    async function handleAddPoints() {
+  if (!studentId || !student) return;
+
+  if (!pointsReason.trim()) {
+    setPointsMessage("اكتب سبب منح النقاط أولًا.");
+    return;
+  }
+
+  try {
+    setSavingPoints(true);
+    setPointsMessage("");
+
+    const studentRef = doc(db, "students", studentId);
+
+    await updateDoc(studentRef, {
+      points: increment(pointsToAdd),
+    });
+
+    setStudent({
+      ...student,
+      points: (student.points ?? 0) + pointsToAdd,
+    });
+
+    setPointsMessage(`تمت إضافة ${pointsToAdd} نقاط بنجاح ⭐`);
+
+    setTimeout(() => {
+      setShowPointsBox(false);
+      setPointsReason("");
+      setPointsMessage("");
+    }, 1200);
+  } catch (error) {
+    console.error("حدث خطأ أثناء إضافة النقاط:", error);
+    setPointsMessage("تعذر حفظ النقاط، حاول مرة أخرى.");
+  } finally {
+    setSavingPoints(false);
+  }
+}
     return <main style={styles.message}>جاري تحميل ملف الطالب...</main>;
   }
 
@@ -60,6 +98,43 @@ const [pointsReason, setPointsReason] = useState("");
   const level = student.level ?? 1;
   const attendanceRate = student.attendanceRate ?? 100;
 const goldenIndex = student.goldenIndex ?? 0;
+async function handleAddPoints() {
+  if (!studentId || !student) return;
+
+  if (!pointsReason.trim()) {
+    setPointsMessage("اكتب سبب منح النقاط أولًا.");
+    return;
+  }
+
+  try {
+    setSavingPoints(true);
+    setPointsMessage("");
+
+    const studentRef = doc(db, "students", studentId);
+
+    await updateDoc(studentRef, {
+      points: increment(pointsToAdd),
+    });
+
+    setStudent({
+      ...student,
+      points: (student.points ?? 0) + pointsToAdd,
+    });
+
+    setPointsMessage(`تمت إضافة ${pointsToAdd} نقاط بنجاح ⭐`);
+
+    setTimeout(() => {
+      setShowPointsBox(false);
+      setPointsReason("");
+      setPointsMessage("");
+    }, 1200);
+  } catch (error) {
+    console.error("حدث خطأ أثناء إضافة النقاط:", error);
+    setPointsMessage("تعذر حفظ النقاط، حاول مرة أخرى.");
+  } finally {
+    setSavingPoints(false);
+  }
+}
   return (
     <main style={styles.page} dir="rtl">
       <a href="/teacher/students" style={styles.backButton}>
@@ -199,10 +274,18 @@ const goldenIndex = student.goldenIndex ?? 0;
         placeholder="مثال: قراءة متميزة"
         style={styles.reasonInput}
       />
-
-      <button style={styles.savePointsButton}>
-        حفظ وإضافة {pointsToAdd} نقاط
-      </button>
+{pointsMessage && (
+  <p style={styles.pointsMessage}>{pointsMessage}</p>
+)}
+      <button
+  style={styles.savePointsButton}
+  onClick={handleAddPoints}
+  disabled={savingPoints}
+>
+  {savingPoints
+    ? "جاري الحفظ..."
+    : `حفظ وإضافة ${pointsToAdd} نقاط`}
+</button>
     </div>
   </div>
 )}
@@ -870,5 +953,11 @@ savePointsButton: {
   color: "#453200",
   fontSize: "16px",
   fontWeight: 900,
+},
+pointsMessage: {
+  margin: "14px 0 0",
+  color: "#166534",
+  fontWeight: 800,
+  fontSize: "14px",
 },
 };
