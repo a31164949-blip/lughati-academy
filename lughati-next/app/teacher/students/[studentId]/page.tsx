@@ -23,6 +23,9 @@ export default function StudentProfilePage() {
 
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showPointsBox, setShowPointsBox] = useState(false);
+const [pointsToAdd, setPointsToAdd] = useState(5);
+const [pointsReason, setPointsReason] = useState("");
 
   useEffect(() => {
     async function loadStudent() {
@@ -120,11 +123,14 @@ const goldenIndex = student.goldenIndex ?? 0;
   </div>
 
   <div style={styles.quickActionsGrid}>
-    <button style={styles.actionButton}>
-      <span style={styles.actionIcon}>⭐</span>
-      <strong>منح نقاط</strong>
-      <span style={styles.actionDescription}>إضافة نقاط تحفيزية</span>
-    </button>
+    <button
+  style={styles.actionButton}
+  onClick={() => setShowPointsBox(true)}
+>
+  <span style={styles.actionIcon}>⭐</span>
+  <strong>منح نقاط</strong>
+  <span style={styles.actionDescription}>إضافة نقاط تحفيزية</span>
+</button>
 
     <button style={styles.actionButton}>
       <span style={styles.actionIcon}>📖</span>
@@ -151,6 +157,55 @@ const goldenIndex = student.goldenIndex ?? 0;
     </button>
   </div>
 </section>
+{showPointsBox && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modalCard}>
+      <button
+        style={styles.closeButton}
+        onClick={() => setShowPointsBox(false)}
+      >
+        ✕
+      </button>
+
+      <div style={styles.modalIcon}>⭐</div>
+      <h2 style={styles.modalTitle}>منح نقاط للطالب</h2>
+
+      <p style={styles.modalStudentName}>
+        {student.studentName || "طالب الأكاديمية"}
+      </p>
+
+      <label style={styles.fieldLabel}>عدد النقاط</label>
+
+      <div style={styles.pointsChoices}>
+        {[1, 5, 10].map((value) => (
+          <button
+            key={value}
+            onClick={() => setPointsToAdd(value)}
+            style={{
+              ...styles.pointsChoice,
+              ...(pointsToAdd === value ? styles.pointsChoiceActive : {}),
+            }}
+          >
+            +{value}
+          </button>
+        ))}
+      </div>
+
+      <label style={styles.fieldLabel}>سبب منح النقاط</label>
+
+      <input
+        value={pointsReason}
+        onChange={(event) => setPointsReason(event.target.value)}
+        placeholder="مثال: قراءة متميزة"
+        style={styles.reasonInput}
+      />
+
+      <button style={styles.savePointsButton}>
+        حفظ وإضافة {pointsToAdd} نقاط
+      </button>
+    </div>
+  </div>
+)}
       <section style={styles.cardsGrid}>
         <article style={styles.card}>
           <h2 style={styles.cardTitle}>📖 القراءة</h2>
@@ -714,5 +769,106 @@ actionDescription: {
   color: "#d9eee6",
   fontSize: "12px",
   fontWeight: 400,
+},
+modalOverlay: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(6, 31, 25, 0.58)",
+  display: "grid",
+  placeItems: "center",
+  padding: "18px",
+  zIndex: 1000,
+},
+
+modalCard: {
+  width: "100%",
+  maxWidth: "420px",
+  background: "#ffffff",
+  borderRadius: "24px",
+  padding: "24px",
+  position: "relative",
+  textAlign: "center",
+  boxShadow: "0 24px 70px rgba(0,0,0,0.24)",
+},
+
+closeButton: {
+  position: "absolute",
+  top: "14px",
+  left: "14px",
+  width: "36px",
+  height: "36px",
+  border: 0,
+  borderRadius: "50%",
+  background: "#eef5f2",
+  color: "#163b32",
+  fontWeight: 800,
+},
+
+modalIcon: {
+  fontSize: "52px",
+},
+
+modalTitle: {
+  margin: "8px 0 5px",
+  color: "#163b32",
+  fontSize: "23px",
+},
+
+modalStudentName: {
+  margin: "0 0 20px",
+  color: "#64748b",
+  fontWeight: 700,
+},
+
+fieldLabel: {
+  display: "block",
+  margin: "14px 0 8px",
+  textAlign: "right",
+  color: "#244a40",
+  fontWeight: 800,
+},
+
+pointsChoices: {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: "10px",
+},
+
+pointsChoice: {
+  border: "1px solid #d9e8e1",
+  borderRadius: "14px",
+  padding: "13px",
+  background: "#f6faf8",
+  color: "#166534",
+  fontSize: "18px",
+  fontWeight: 900,
+},
+
+pointsChoiceActive: {
+  background: "#166534",
+  color: "#ffffff",
+  borderColor: "#166534",
+},
+
+reasonInput: {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid #cbd5e1",
+  borderRadius: "13px",
+  padding: "13px 14px",
+  fontSize: "15px",
+  textAlign: "right",
+},
+
+savePointsButton: {
+  width: "100%",
+  marginTop: "18px",
+  border: 0,
+  borderRadius: "14px",
+  padding: "14px",
+  background: "#f4b400",
+  color: "#453200",
+  fontSize: "16px",
+  fontWeight: 900,
 },
 };
