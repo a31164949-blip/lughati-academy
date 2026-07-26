@@ -245,6 +245,24 @@ const handleSaveBadge = async () => {
     setIsSavingBadge(false);
   }
 };
+const formatBadgeDate = (
+  value:
+    | Date
+    | {
+        seconds?: number;
+        nanoseconds?: number;
+      }
+) => {
+  if (value instanceof Date) {
+    return value.toLocaleDateString("ar-SA");
+  }
+
+  if (value?.seconds) {
+    return new Date(value.seconds * 1000).toLocaleDateString("ar-SA");
+  }
+
+  return "تاريخ غير متوفر";
+};
   const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
 const [attendanceStatus, setAttendanceStatus] = useState<
   "حاضر" | "غائب" | "متأخر"
@@ -838,6 +856,192 @@ alert(
 </strong>
         </div>
       </section>
+      {/* 🏅 أوسمة الطالب */}
+<section
+  style={{
+    marginTop: "24px",
+    background: "#ffffff",
+    borderRadius: "22px",
+    padding: "22px",
+    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+    border: "1px solid #e2e8f0",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: "12px",
+      marginBottom: "18px",
+      flexWrap: "wrap",
+    }}
+  >
+    <div>
+      <h2
+        style={{
+          margin: 0,
+          color: "#14532d",
+          fontSize: "24px",
+        }}
+      >
+        🏅 أوسمة الطالب
+      </h2>
+
+      <p
+        style={{
+          margin: "6px 0 0",
+          color: "#64748b",
+          fontSize: "14px",
+        }}
+      >
+        سجل الأوسمة التي حصل عليها الطالب خلال رحلته
+      </p>
+    </div>
+
+    <div
+      style={{
+        background: "#fef9c3",
+        color: "#854d0e",
+        padding: "8px 14px",
+        borderRadius: "999px",
+        fontWeight: 800,
+      }}
+    >
+      {student?.badges?.length ?? 0} وسام
+    </div>
+  </div>
+
+  {!student?.badges || student.badges.length === 0 ? (
+    <div
+      style={{
+        padding: "30px 15px",
+        textAlign: "center",
+        background: "#f8fafc",
+        borderRadius: "18px",
+        border: "1px dashed #cbd5e1",
+      }}
+    >
+      <div style={{ fontSize: "46px", marginBottom: "10px" }}>🏅</div>
+
+      <strong
+        style={{
+          display: "block",
+          color: "#475569",
+          marginBottom: "6px",
+        }}
+      >
+        لم يحصل الطالب على أوسمة بعد
+      </strong>
+
+      <span
+        style={{
+          color: "#94a3b8",
+          fontSize: "14px",
+        }}
+      >
+        ستظهر الأوسمة هنا بعد منحها من لوحة المعلم
+      </span>
+    </div>
+  ) : (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+        gap: "14px",
+      }}
+    >
+      {[...student.badges].reverse().map((badge, index) => (
+        <article
+          key={`${badge.id}-${index}`}
+          style={{
+            padding: "18px",
+            borderRadius: "18px",
+            border: "1px solid #fde68a",
+            background:
+              "linear-gradient(145deg, #fffbeb 0%, #ffffff 75%)",
+            boxShadow: "0 6px 18px rgba(146, 64, 14, 0.08)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "46px",
+              marginBottom: "8px",
+            }}
+          >
+            {badge.icon}
+          </div>
+
+          <h3
+            style={{
+              margin: "0 0 6px",
+              color: "#14532d",
+              fontSize: "18px",
+            }}
+          >
+            {badge.title}
+          </h3>
+
+          <div
+            style={{
+              display: "inline-block",
+              padding: "4px 10px",
+              marginBottom: "10px",
+              borderRadius: "999px",
+              background: "#dcfce7",
+              color: "#166534",
+              fontSize: "12px",
+              fontWeight: 800,
+            }}
+          >
+            {badge.category}
+          </div>
+
+          <p
+            style={{
+              margin: "0 0 10px",
+              color: "#64748b",
+              fontSize: "13px",
+              lineHeight: 1.7,
+            }}
+          >
+            {badge.description}
+          </p>
+
+          {badge.reason && (
+            <div
+              style={{
+                marginBottom: "10px",
+                padding: "10px",
+                borderRadius: "12px",
+                background: "#f8fafc",
+                color: "#334155",
+                fontSize: "13px",
+                lineHeight: 1.7,
+              }}
+            >
+              <strong>سبب المنح:</strong>
+              <br />
+              {badge.reason}
+            </div>
+          )}
+
+          <div
+            style={{
+              color: "#94a3b8",
+              fontSize: "12px",
+              borderTop: "1px solid #e2e8f0",
+              paddingTop: "10px",
+            }}
+          >
+            📅 {formatBadgeDate(badge.awardedAt)}
+          </div>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
 <section style={styles.quickActionsSection}>
   <div style={styles.quickActionsHeader}>
     <div>
