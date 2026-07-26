@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import DailyPulseCard from "./components/DailyPulseCard";
 
 const dailyTasks = [
   { icon: "📖", title: "قراءة الدرس", completed: true },
@@ -82,6 +83,10 @@ export default function ParentPage() {
           </p>
         </header>
 
+<DailyPulseCard
+  completedCount={completedCount}
+  totalCount={dailyTasks.length}
+/>
         {/* بطاقة الطالب */}
         <section style={cardStyle}>
           <div
