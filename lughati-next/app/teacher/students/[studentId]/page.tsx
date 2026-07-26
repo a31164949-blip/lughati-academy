@@ -1401,7 +1401,96 @@ alert(
     </div>
   )}
 </section>
+<section
+  style={{
+    background: "#ffffff",
+    border: "1px solid #dbeafe",
+    borderRadius: "20px",
+    padding: "20px",
+    marginBottom: "22px",
+    boxShadow: "0 8px 24px rgba(59,130,246,.08)",
+  }}
+>
+  <h2
+    style={{
+      margin: "0 0 18px",
+      color: "#1d4ed8",
+      fontSize: "22px",
+    }}
+  >
+    💡 توصية اليوم
+  </h2>
 
+  {student.journey?.currentPath === "rescue" ? (
+    <>
+      <h3>📖 جلسة قراءة قصيرة</h3>
+
+      <p>
+        ينصح بالبدء بقراءة موجهة لمدة خمس دقائق لتعزيز الطلاقة والثقة.
+      </p>
+
+      <button
+  type="button"
+  style={styles.primaryButton}
+  onClick={() => setShowReadingBox(true)}
+>
+  📖 ابدأ القراءة
+</button>
+    </>
+  ) : student.journey?.currentPath === "creative" ? (
+    <>
+      <h3>🏆 تحدٍ متقدم</h3>
+
+      <p>
+        الطالب جاهز لنشاط إثرائي أو تحدٍ في الفهم القرائي.
+      </p>
+
+      <button
+  type="button"
+  style={{
+    background: "#166534",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "12px",
+    padding: "11px 18px",
+    fontSize: "16px",
+    fontWeight: 700,
+    cursor: "pointer",
+    marginTop: "10px",
+  }}
+  onClick={() => setShowPointsBox(true)}
+>
+  ⭐ امنح تحديًا
+</button>
+    </>
+  ) : (
+    <>
+      <h3>✍️ تدريب الإملاء</h3>
+
+      <p>
+        أكمل تدريب الإملاء للوحدة الحالية للمحافظة على مستوى الإتقان.
+      </p>
+
+      <button
+  type="button"
+  style={{
+    background: "#166534",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "12px",
+    padding: "11px 18px",
+    fontSize: "16px",
+    fontWeight: 700,
+    cursor: "pointer",
+    marginTop: "10px",
+  }}
+  onClick={() => setShowSpellingBox(true)}
+>
+  ✍️ ابدأ التدريب
+</button>
+    </>
+  )}
+</section>
 <section style={styles.quickActionsSection}>
   <div style={styles.quickActionsHeader}>
     <div>
