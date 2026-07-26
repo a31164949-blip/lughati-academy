@@ -65,7 +65,100 @@ attendanceHistory?: {
   createdAt?: Date;
 }[];
 };
-
+const BADGE_OPTIONS = [
+  {
+    category: "القراءة",
+    badges: [
+      {
+        id: "reading-star",
+        icon: "📖",
+        title: "نجم القراءة",
+        description: "للتقدم والتميز في القراءة",
+      },
+      {
+        id: "fluent-reader",
+        icon: "🌟",
+        title: "القارئ الطليق",
+        description: "للقراءة بطلاقة ووضوح",
+      },
+      {
+        id: "reading-king",
+        icon: "👑",
+        title: "ملك القراءة",
+        description: "لإنجاز متميز في مسابقة القراءة",
+      },
+    ],
+  },
+  {
+    category: "الإملاء والكتابة",
+    badges: [
+      {
+        id: "spelling-star",
+        icon: "✍️",
+        title: "نجم الإملاء",
+        description: "للتقدم والتميز في الإملاء",
+      },
+      {
+        id: "beautiful-handwriting",
+        icon: "🖋️",
+        title: "الخط الجميل",
+        description: "لجمال الخط والالتزام بالسطر",
+      },
+      {
+        id: "spelling-king",
+        icon: "👑",
+        title: "ملك الإملاء",
+        description: "لإنجاز متميز في مسابقة الإملاء",
+      },
+    ],
+  },
+  {
+    category: "الالتزام والتطور",
+    badges: [
+      {
+        id: "commitment-hero",
+        icon: "✅",
+        title: "بطل الالتزام",
+        description: "للمحافظة على أداء الواجبات",
+      },
+      {
+        id: "most-improved",
+        icon: "🚀",
+        title: "الأكثر تطورًا",
+        description: "للتقدم الملحوظ والمستمر",
+      },
+      {
+        id: "effort-medal",
+        icon: "💪",
+        title: "وسام الاجتهاد",
+        description: "لبذل الجهد وعدم الاستسلام",
+      },
+    ],
+  },
+  {
+    category: "السلوك والتعاون",
+    badges: [
+      {
+        id: "good-manners",
+        icon: "🌷",
+        title: "حسن الخلق",
+        description: "للأخلاق الحسنة والتعامل الجميل",
+      },
+      {
+        id: "cooperation-star",
+        icon: "🤝",
+        title: "نجم التعاون",
+        description: "لمساعدة الزملاء والعمل بروح الفريق",
+      },
+      {
+        id: "class-role-model",
+        icon: "🏆",
+        title: "قدوة الفصل",
+        description: "للتميز في السلوك والالتزام",
+      },
+    ],
+  },
+];
 export default function StudentProfilePage() {
   const params = useParams();
   const studentId = params.studentId as string;
@@ -80,6 +173,9 @@ export default function StudentProfilePage() {
   const [showPointsHistory, setShowPointsHistory] = useState(false);
   const [showAttendanceBox, setShowAttendanceBox] = useState(false);
   const [showBadgeBox, setShowBadgeBox] = useState(false);
+  const [selectedBadgeId, setSelectedBadgeId] = useState("");
+const [badgeReason, setBadgeReason] = useState("");
+const [isSavingBadge, setIsSavingBadge] = useState(false);
   const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
 const [attendanceStatus, setAttendanceStatus] = useState<
   "حاضر" | "غائب" | "متأخر"
@@ -856,21 +952,215 @@ alert(
     >
       <button
         type="button"
-        onClick={() => setShowBadgeBox(false)}
+        onClick={() => {
+  setShowBadgeBox(false);
+  setSelectedBadgeId("");
+  setBadgeReason("");
+}}
         style={styles.closeModalButton}
       >
         ✕
       </button>
 
-      <div style={{ fontSize: "55px", marginBottom: "10px" }}>🏅</div>
+      <div style={{ fontSize: "52px", marginBottom: "8px" }}>🏅</div>
 
-      <h2 style={{ margin: "0 0 8px", color: "#14532d" }}>
-        منح وسام جديد
-      </h2>
+<h2
+  style={{
+    margin: "0 0 6px",
+    color: "#14532d",
+    fontSize: "25px",
+  }}
+>
+  منح وسام جديد
+</h2>
 
-      <p style={{ margin: 0, color: "#64748b" }}>
-        اختر الوسام المناسب للطالب
-      </p>
+<p
+  style={{
+    margin: "0 0 22px",
+    color: "#64748b",
+    fontSize: "15px",
+  }}
+>
+  اختر الوسام الذي يستحقه الطالب
+</p>
+
+<div
+  style={{
+    maxHeight: "55vh",
+    overflowY: "auto",
+    padding: "2px 5px 10px",
+    textAlign: "right",
+  }}
+>
+  {BADGE_OPTIONS.map((group) => (
+    <div key={group.category} style={{ marginBottom: "22px" }}>
+      <h3
+        style={{
+          margin: "0 0 10px",
+          color: "#334155",
+          fontSize: "17px",
+        }}
+      >
+        {group.category}
+      </h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
+          gap: "10px",
+        }}
+      >
+        {group.badges.map((badge) => {
+          const isSelected = selectedBadgeId === badge.id;
+
+          return (
+            <button
+              key={badge.id}
+              type="button"
+              onClick={() => setSelectedBadgeId(badge.id)}
+              style={{
+                padding: "14px 10px",
+                borderRadius: "16px",
+                border: isSelected
+                  ? "3px solid #16a34a"
+                  : "1px solid #dbe4ee",
+                background: isSelected ? "#f0fdf4" : "#ffffff",
+                cursor: "pointer",
+                textAlign: "center",
+                boxShadow: isSelected
+                  ? "0 6px 16px rgba(22, 163, 74, 0.18)"
+                  : "0 3px 10px rgba(15, 23, 42, 0.06)",
+                transform: isSelected ? "translateY(-2px)" : "none",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <div style={{ fontSize: "34px", marginBottom: "6px" }}>
+                {badge.icon}
+              </div>
+
+              <strong
+                style={{
+                  display: "block",
+                  color: "#14532d",
+                  fontSize: "15px",
+                  marginBottom: "5px",
+                }}
+              >
+                {badge.title}
+              </strong>
+
+              <span
+                style={{
+                  display: "block",
+                  color: "#64748b",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {badge.description}
+              </span>
+
+              {isSelected && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    color: "#15803d",
+                    fontWeight: 800,
+                    fontSize: "13px",
+                  }}
+                >
+                  ✓ تم الاختيار
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+
+  <div style={{ marginTop: "8px" }}>
+    <label
+      htmlFor="badgeReason"
+      style={{
+        display: "block",
+        marginBottom: "7px",
+        color: "#334155",
+        fontWeight: 800,
+      }}
+    >
+      سبب منح الوسام
+      <span
+        style={{
+          color: "#94a3b8",
+          fontWeight: 500,
+          marginRight: "5px",
+        }}
+      >
+        (اختياري)
+      </span>
+    </label>
+
+    <textarea
+      id="badgeReason"
+      value={badgeReason}
+      onChange={(event) => setBadgeReason(event.target.value)}
+      placeholder="مثال: لتقدمه الملحوظ في القراءة هذا الأسبوع"
+      rows={3}
+      maxLength={160}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        padding: "12px",
+        borderRadius: "13px",
+        border: "1px solid #cbd5e1",
+        resize: "vertical",
+        fontFamily: "inherit",
+        fontSize: "14px",
+        outline: "none",
+      }}
+    />
+
+    <div
+      style={{
+        marginTop: "5px",
+        color: "#94a3b8",
+        fontSize: "12px",
+        textAlign: "left",
+      }}
+    >
+      {badgeReason.length} / 160
+    </div>
+  </div>
+</div>
+
+<button
+  type="button"
+  disabled={!selectedBadgeId || isSavingBadge}
+  onClick={() => {
+    console.log({
+      selectedBadgeId,
+      badgeReason,
+    });
+  }}
+  style={{
+    width: "100%",
+    marginTop: "14px",
+    padding: "13px",
+    border: "none",
+    borderRadius: "14px",
+    background:
+      !selectedBadgeId || isSavingBadge ? "#cbd5e1" : "#16a34a",
+    color: "#ffffff",
+    fontSize: "16px",
+    fontWeight: 900,
+    cursor:
+      !selectedBadgeId || isSavingBadge ? "not-allowed" : "pointer",
+  }}
+>
+  {isSavingBadge ? "جارٍ حفظ الوسام..." : "🏅 منح الوسام"}
+</button>
     </div>
   </div>
 )}
