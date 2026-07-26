@@ -15,6 +15,20 @@ type Student = {
   badge: string;
   category: "قراءة" | "إملاء" | "يدوي";
   createdAt?: Date;
+
+}[];badges?: {
+  id: string;
+  title: string;
+  icon: string;
+  category: string;
+  description: string;
+  reason: string;
+  awardedAt:
+    | Date
+    | {
+        seconds?: number;
+        nanoseconds?: number;
+      };
 }[];
   level?: number;
   goldenIndex?: number;
@@ -176,6 +190,61 @@ export default function StudentProfilePage() {
   const [selectedBadgeId, setSelectedBadgeId] = useState("");
 const [badgeReason, setBadgeReason] = useState("");
 const [isSavingBadge, setIsSavingBadge] = useState(false);
+const handleSaveBadge = async () => {
+  if (!selectedBadgeId || !student) return;
+
+  const selectedBadge = BADGE_OPTIONS.flatMap((group) =>
+    group.badges.map((badge) => ({
+      ...badge,
+      category: group.category,
+    }))
+  ).find((badge) => badge.id === selectedBadgeId);
+
+  if (!selectedBadge) {
+    alert("تعذر العثور على الوسام المختار.");
+    return;
+  }
+
+  setIsSavingBadge(true);
+
+  try {
+    const newBadge = {
+      id: selectedBadge.id,
+      title: selectedBadge.title,
+      icon: selectedBadge.icon,
+      category: selectedBadge.category,
+      description: selectedBadge.description,
+      reason: badgeReason.trim(),
+      awardedAt: new Date(),
+    };
+
+    const studentRef = doc(db, "students", studentId);
+
+    await updateDoc(studentRef, {
+      badges: arrayUnion(newBadge),
+    });
+
+    setStudent((previousStudent) =>
+      previousStudent
+        ? {
+            ...previousStudent,
+            badges: [...(previousStudent.badges ?? []), newBadge],
+          }
+        : previousStudent
+    );
+
+    setShowBadgeBox(false);
+    setSelectedBadgeId("");
+    setBadgeReason("");
+
+    alert(`🏅 تم منح وسام "${selectedBadge.title}" بنجاح`);
+  } catch (error) {
+    console.error("تعذر حفظ الوسام:", error);
+    alert("حدث خطأ أثناء حفظ الوسام، حاول مرة أخرى.");
+  } finally {
+    setIsSavingBadge(false);
+  }
+};
   const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
 const [attendanceStatus, setAttendanceStatus] = useState<
   "حاضر" | "غائب" | "متأخر"
@@ -1138,12 +1207,7 @@ alert(
 <button
   type="button"
   disabled={!selectedBadgeId || isSavingBadge}
-  onClick={() => {
-    console.log({
-      selectedBadgeId,
-      badgeReason,
-    });
-  }}
+  onClick={handleSaveBadge}
   style={{
     width: "100%",
     marginTop: "14px",
