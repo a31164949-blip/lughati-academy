@@ -78,6 +78,13 @@ attendanceHistory?: {
   note: string;
   createdAt?: Date;
 }[];
+journey?: {
+  currentPath?: "rescue" | "mastery" | "creative";
+  currentLevel?: number;
+  xp?: number;
+  streak?: number;
+  lastActivityAt?: Date;
+};
 };
 const BADGE_OPTIONS = [
   {
@@ -190,6 +197,13 @@ export default function StudentProfilePage() {
   const [selectedBadgeId, setSelectedBadgeId] = useState("");
 const [badgeReason, setBadgeReason] = useState("");
 const [isSavingBadge, setIsSavingBadge] = useState(false);
+const [showJourneyPathBox, setShowJourneyPathBox] = useState(false);
+
+const [selectedJourneyPath, setSelectedJourneyPath] = useState<
+  "rescue" | "mastery" | "creative"
+>("mastery");
+
+const [isSavingJourneyPath, setIsSavingJourneyPath] = useState(false);
 const handleSaveBadge = async () => {
   if (!selectedBadgeId || !student) return;
 
@@ -243,6 +257,48 @@ const handleSaveBadge = async () => {
     alert("حدث خطأ أثناء حفظ الوسام، حاول مرة أخرى.");
   } finally {
     setIsSavingBadge(false);
+  }
+};
+const handleSaveJourneyPath = async () => {
+  if (!student) return;
+
+  setIsSavingJourneyPath(true);
+
+  try {
+    const studentRef = doc(db, "students", studentId);
+
+    const currentJourney = student.journey ?? {};
+
+    const updatedJourney = {
+      ...currentJourney,
+      currentPath: selectedJourneyPath,
+      currentLevel: currentJourney.currentLevel ?? 1,
+      xp: currentJourney.xp ?? 0,
+      streak: currentJourney.streak ?? 0,
+      lastActivityAt: new Date(),
+    };
+
+    await updateDoc(studentRef, {
+      journey: updatedJourney,
+    });
+
+    setStudent((previousStudent) =>
+      previousStudent
+        ? {
+            ...previousStudent,
+            journey: updatedJourney,
+          }
+        : previousStudent
+    );
+
+    setShowJourneyPathBox(false);
+
+    alert("تم حفظ مسار الطالب بنجاح ✅");
+  } catch (error) {
+    console.error("تعذر حفظ مسار الطالب:", error);
+    alert("حدث خطأ أثناء حفظ المسار، حاول مرة أخرى.");
+  } finally {
+    setIsSavingJourneyPath(false);
   }
 };
 const formatBadgeDate = (
@@ -1042,6 +1098,310 @@ alert(
     </div>
   )}
 </section>
+<section
+  style={{
+    background: "#ffffff",
+    border: "1px solid #dbeafe",
+    borderRadius: "20px",
+    padding: "20px",
+    marginTop: "18px",
+    marginBottom: "22px",
+    boxShadow: "0 8px 24px rgba(37, 99, 235, 0.08)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "12px",
+      flexWrap: "wrap",
+      marginBottom: "18px",
+    }}
+  >
+    <div>
+      <p
+        style={{
+          margin: "0 0 5px",
+          fontSize: "14px",
+          color: "#64748b",
+          fontWeight: 700,
+        }}
+      >
+        رحلة التعلم الشخصية
+      </p>
+
+      <h2
+        style={{
+          margin: 0,
+          fontSize: "22px",
+          color: "#1e3a8a",
+        }}
+      >
+        🧭 مسار الطالب
+      </h2>
+    </div>
+
+    <span
+      style={{
+        background:
+          student.journey?.currentPath === "rescue"
+            ? "#fee2e2"
+            : student.journey?.currentPath === "creative"
+              ? "#fef3c7"
+              : "#dcfce7",
+        color:
+          student.journey?.currentPath === "rescue"
+            ? "#b91c1c"
+            : student.journey?.currentPath === "creative"
+              ? "#92400e"
+              : "#166534",
+        borderRadius: "999px",
+        padding: "8px 14px",
+        fontSize: "14px",
+        fontWeight: 800,
+      }}
+    >
+      {student.journey?.currentPath === "rescue"
+        ? "🛟 مسار الإنقاذ"
+        : student.journey?.currentPath === "creative"
+          ? "👑 مسار الإبداع"
+          : "🎯 مسار الإتقان"}
+    </span>
+    <button
+  type="button"
+  onClick={() => {
+    setSelectedJourneyPath(
+      student.journey?.currentPath ?? "mastery"
+    );
+    setShowJourneyPathBox(true);
+  }}
+  style={{
+    border: "none",
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    borderRadius: "12px",
+    padding: "9px 13px",
+    fontSize: "14px",
+    fontWeight: 800,
+    cursor: "pointer",
+  }}
+>
+  ✏️ تغيير المسار
+</button> 
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+      gap: "12px",
+    }}
+  >
+    <div
+      style={{
+        background: "#eff6ff",
+        borderRadius: "16px",
+        padding: "16px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "26px", marginBottom: "6px" }}>🏆</div>
+      <div
+        style={{
+          fontSize: "13px",
+          color: "#64748b",
+          marginBottom: "4px",
+        }}
+      >
+        المستوى
+      </div>
+      <strong style={{ fontSize: "22px", color: "#1d4ed8" }}>
+        {student.journey?.currentLevel ?? 1}
+      </strong>
+    </div>
+
+    <div
+      style={{
+        background: "#f0fdf4",
+        borderRadius: "16px",
+        padding: "16px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "26px", marginBottom: "6px" }}>✨</div>
+      <div
+        style={{
+          fontSize: "13px",
+          color: "#64748b",
+          marginBottom: "4px",
+        }}
+      >
+        نقاط الخبرة
+      </div>
+      <strong style={{ fontSize: "22px", color: "#15803d" }}>
+        {student.journey?.xp ?? 0}
+      </strong>
+    </div>
+
+    <div
+      style={{
+        background: "#fff7ed",
+        borderRadius: "16px",
+        padding: "16px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "26px", marginBottom: "6px" }}>🔥</div>
+      <div
+        style={{
+          fontSize: "13px",
+          color: "#64748b",
+          marginBottom: "4px",
+        }}
+      >
+        أيام الاستمرار
+      </div>
+      <strong style={{ fontSize: "22px", color: "#c2410c" }}>
+        {student.journey?.streak ?? 0}
+      </strong>
+    </div>
+  </div>
+
+  <div
+    style={{
+      marginTop: "16px",
+      padding: "13px 15px",
+      background: "#f8fafc",
+      borderRadius: "14px",
+      color: "#475569",
+      fontSize: "14px",
+      lineHeight: 1.8,
+    }}
+  >
+    {student.journey?.currentPath === "rescue"
+      ? "يحتاج الطالب إلى مهام قصيرة ومتدرجة لبناء المهارات الأساسية والثقة."
+      : student.journey?.currentPath === "creative"
+        ? "الطالب مستعد لتحديات الإبداع والقيادة وإنتاج المحتوى."
+        : "يعمل الطالب على تثبيت المهارات والوصول إلى الإتقان الكامل."}
+  </div>
+</section><section
+  style={{
+    background: "#ffffff",
+    border: "1px solid #f5e6a8",
+    borderRadius: "20px",
+    padding: "20px",
+    marginBottom: "22px",
+    boxShadow: "0 8px 24px rgba(234,179,8,.08)",
+  }}
+>
+  <h2
+    style={{
+      margin: "0 0 16px",
+      fontSize: "22px",
+      color: "#92400e",
+    }}
+  >
+    🏅 آخر إنجاز
+  </h2>
+
+  {student.badges && student.badges.length > 0 ? (
+    (() => {
+      const lastBadge = student.badges[student.badges.length - 1];
+
+      return (
+        <div
+          style={{
+            display: "flex",
+            gap: "16px",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ fontSize: "48px" }}>
+            {lastBadge.icon}
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <h3
+              style={{
+                margin: "0 0 6px",
+                color: "#0f172a",
+              }}
+            >
+              {lastBadge.title}
+            </h3>
+
+            <p
+              style={{
+                margin: "0 0 8px",
+                color: "#64748b",
+                lineHeight: 1.8,
+              }}
+            >
+              {lastBadge.description}
+            </p>
+
+            <span
+              style={{
+                background: "#fef3c7",
+                color: "#92400e",
+                padding: "6px 12px",
+                borderRadius: "999px",
+                fontSize: "13px",
+                fontWeight: 700,
+              }}
+            >
+              
+            <div
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "#FEF3C7",
+    color: "#92400E",
+    padding: "8px 14px",
+    borderRadius: "999px",
+    fontWeight: 700,
+    fontSize: "13px",
+    marginTop: "8px",
+  }}
+>
+  🏅 آخر إنجاز
+</div>
+<div
+  style={{
+    marginTop: "12px",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    color: "#64748B",
+    fontSize: "13px",
+    flexWrap: "wrap",
+  }}
+>
+  <span>📅</span>
+  <span>سيتم عرض تاريخ الحصول على الوسام هنا</span>
+</div>
+</span>
+          </div>
+        </div>
+      );
+    })()
+  ) : (
+    <div
+      style={{
+        textAlign: "center",
+        padding: "20px",
+        color: "#64748b",
+      }}
+    >
+      🌱 لم يحصل الطالب على أي وسام بعد...
+      <br />
+      ستكون هذه البطاقة أول محطة في سجل إنجازاته.
+    </div>
+  )}
+</section>
+
 <section style={styles.quickActionsSection}>
   <div style={styles.quickActionsHeader}>
     <div>
@@ -1211,6 +1571,213 @@ alert(
   <strong>منح وسام</strong>
   <span style={styles.actionDescription}>اختيار وسام جديد</span>
 </button>
+{showJourneyPathBox && (
+  <div style={styles.modalOverlay}>
+    <div
+      style={{
+        ...styles.modalContent,
+        background: "#ffffff",
+        position: "relative",
+        zIndex: 10000,
+        width: "min(92%, 560px)",
+        textAlign: "center",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setShowJourneyPathBox(false)}
+        style={{
+          position: "absolute",
+          top: "14px",
+          left: "14px",
+          border: "none",
+          background: "#f1f5f9",
+          color: "#334155",
+          width: "36px",
+          height: "36px",
+          borderRadius: "50%",
+          fontSize: "20px",
+          cursor: "pointer",
+          fontWeight: 900,
+        }}
+        aria-label="إغلاق"
+      >
+        ×
+      </button>
+
+      <div style={{ fontSize: "42px", marginBottom: "8px" }}>🧭</div>
+
+      <h2
+        style={{
+          margin: "0 0 8px",
+          color: "#0f172a",
+          fontSize: "24px",
+        }}
+      >
+        تغيير مسار الطالب
+      </h2>
+
+      <p
+        style={{
+          margin: "0 0 20px",
+          color: "#64748b",
+          lineHeight: 1.8,
+        }}
+      >
+        اختر المسار الأنسب لاحتياج الطالب في المرحلة الحالية.
+      </p>
+
+      <div
+        style={{
+          display: "grid",
+          gap: "12px",
+          marginBottom: "20px",
+        }}
+      >
+        {[
+          {
+            value: "rescue" as const,
+            icon: "🛟",
+            title: "مسار الإنقاذ",
+            description:
+              "مهام قصيرة ومتدرجة لعلاج المهارات الأساسية وبناء الثقة.",
+            background: "#fef2f2",
+            border: "#fecaca",
+            color: "#b91c1c",
+          },
+          {
+            value: "mastery" as const,
+            icon: "🎯",
+            title: "مسار الإتقان",
+            description:
+              "تثبيت المهارات والتدريب المستمر للوصول إلى الإتقان الكامل.",
+            background: "#f0fdf4",
+            border: "#bbf7d0",
+            color: "#166534",
+          },
+          {
+            value: "creative" as const,
+            icon: "👑",
+            title: "مسار الإبداع",
+            description:
+              "تحديات متقدمة في التفكير والإنتاج والقيادة للطالب المتميز.",
+            background: "#fffbeb",
+            border: "#fde68a",
+            color: "#92400e",
+          },
+        ].map((path) => {
+          const isSelected = selectedJourneyPath === path.value;
+
+          return (
+            <button
+              key={path.value}
+              type="button"
+              onClick={() => setSelectedJourneyPath(path.value)}
+              style={{
+                width: "100%",
+                border: isSelected
+                  ? `3px solid ${path.color}`
+                  : `1px solid ${path.border}`,
+                background: path.background,
+                borderRadius: "16px",
+                padding: "16px",
+                cursor: "pointer",
+                textAlign: "right",
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                boxShadow: isSelected
+                  ? "0 8px 20px rgba(15, 23, 42, 0.1)"
+                  : "none",
+              }}
+            >
+              <span style={{ fontSize: "32px" }}>{path.icon}</span>
+
+              <span style={{ flex: 1 }}>
+                <strong
+                  style={{
+                    display: "block",
+                    color: path.color,
+                    fontSize: "17px",
+                    marginBottom: "5px",
+                  }}
+                >
+                  {path.title}
+                </strong>
+
+                <span
+                  style={{
+                    display: "block",
+                    color: "#64748b",
+                    fontSize: "13px",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {path.description}
+                </span>
+              </span>
+
+              <span
+                style={{
+                  fontSize: "22px",
+                  color: path.color,
+                  fontWeight: 900,
+                }}
+              >
+                {isSelected ? "✓" : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          justifyContent: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          type="button"
+          onClick={handleSaveJourneyPath}
+          disabled={isSavingJourneyPath}
+          style={{
+            border: "none",
+            background: isSavingJourneyPath ? "#94a3b8" : "#166534",
+            color: "#ffffff",
+            borderRadius: "12px",
+            padding: "12px 22px",
+            fontSize: "15px",
+            fontWeight: 800,
+            cursor: isSavingJourneyPath ? "not-allowed" : "pointer",
+          }}
+        >
+          {isSavingJourneyPath ? "جارٍ الحفظ..." : "✅ حفظ المسار"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowJourneyPathBox(false)}
+          disabled={isSavingJourneyPath}
+          style={{
+            border: "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#475569",
+            borderRadius: "12px",
+            padding: "12px 22px",
+            fontSize: "15px",
+            fontWeight: 800,
+            cursor: isSavingJourneyPath ? "not-allowed" : "pointer",
+          }}
+        >
+          إلغاء
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 {showBadgeBox && (
   <div style={styles.modalOverlay}>
     <div
