@@ -201,7 +201,22 @@ export default function ParentPage() {
           <h2 style={sectionTitleStyle}>
             ✅ ماذا أنجز ابني اليوم؟
           </h2>
-
+<p
+  style={{
+    margin: "0 0 18px",
+    color: "#475569",
+    fontSize: "17px",
+    lineHeight: 1.8,
+    fontWeight: 600,
+  }}
+>
+  أنجز ابنكم {completedCount} من {dailyTasks.length} مهام اليوم.
+  {completedCount === dailyTasks.length
+    ? " اكتملت جميع المهام، أحسنتم في دعمه وتشجيعه. 🎉"
+    : ` بقي ${
+        dailyTasks.length - completedCount
+      } فقط لإكمال رحلته اليومية.`}
+</p>
           <div
             style={{
               display: "grid",
