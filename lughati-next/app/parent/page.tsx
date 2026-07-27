@@ -28,6 +28,7 @@ const [student, setStudent] = useState(demoStudent);
 const [points, setPoints] = useState(0);
 const [stars, setStars] = useState(0);
 const [absenceDays, setAbsenceDays] = useState(0);
+const [teacherMessage, setTeacherMessage] = useState("");
 
 useEffect(() => {
   async function loadStudentRewards() {
@@ -37,6 +38,7 @@ useEffect(() => {
     setPoints(0);
     setStars(0);
     setAbsenceDays(0);
+    setTeacherMessage("");
     return;
   }
 
@@ -49,10 +51,16 @@ useEffect(() => {
       setPoints(0);
       setStars(0);
       setAbsenceDays(0);
+setTeacherMessage("");
       return;
     }
 
     const studentData = studentSnapshot.data();
+    setTeacherMessage(
+  typeof studentData.teacherMessage === "string"
+    ? studentData.teacherMessage
+    : ""
+);
 const attendanceHistory = Array.isArray(studentData.attendanceHistory)
   ? studentData.attendanceHistory
   : [];
@@ -495,7 +503,7 @@ setAbsenceDays(totalAbsenceDays);
           </h2>
 
           <p style={messageStyle}>
-             {teacher.message}
+             {teacherMessage || teacher.message}
           </p>
         </section>
 

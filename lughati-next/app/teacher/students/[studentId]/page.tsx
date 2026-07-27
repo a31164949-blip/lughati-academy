@@ -85,6 +85,7 @@ journey?: {
   streak?: number;
   lastActivityAt?: Date;
 };
+teacherMessage?: string;
 };
 const BADGE_OPTIONS = [
   {
@@ -198,12 +199,38 @@ export default function StudentProfilePage() {
 const [badgeReason, setBadgeReason] = useState("");
 const [isSavingBadge, setIsSavingBadge] = useState(false);
 const [showJourneyPathBox, setShowJourneyPathBox] = useState(false);
+const [teacherMessage, setTeacherMessage] = useState("");
 
 const [selectedJourneyPath, setSelectedJourneyPath] = useState<
   "rescue" | "mastery" | "creative"
 >("mastery");
 
 const [isSavingJourneyPath, setIsSavingJourneyPath] = useState(false);
+const handleSaveTeacherMessage = async (message: string) => {
+  if (!studentId || !student) return;
+
+  try {
+    const studentRef = doc(db, "students", studentId);
+
+    await updateDoc(studentRef, {
+      teacherMessage: message.trim(),
+    });
+
+    setStudent((previousStudent) =>
+      previousStudent
+        ? {
+            ...previousStudent,
+            teacherMessage: message.trim(),
+          }
+        : previousStudent
+    );
+
+    alert("تم حفظ رسالة ولي الأمر بنجاح ✅");
+  } catch (error) {
+    console.error("خطأ أثناء حفظ رسالة ولي الأمر:", error);
+    alert("حدث خطأ أثناء حفظ الرسالة");
+  }
+};
 const handleSaveBadge = async () => {
   if (!selectedBadgeId || !student) return;
 
@@ -344,7 +371,10 @@ const [pointsMessage, setPointsMessage] = useState("");
         const studentSnap = await getDoc(studentRef);
 
         if (studentSnap.exists()) {
-          setStudent(studentSnap.data() as Student);
+          const studentData = studentSnap.data() as Student;
+
+setStudent(studentData);
+setTeacherMessage(studentData.teacherMessage ?? "");
         }
       } catch (error) {
         console.error("حدث خطأ أثناء تحميل بيانات الطالب:", error);
@@ -1603,6 +1633,29 @@ alert(
   style={styles.actionButton}
   onClick={() => setShowPointsHistory(true)}
 >
+  <button
+  type="button"
+  style={styles.actionButton}
+  onClick={() => {
+    const message = window.prompt(
+      "اكتب رسالة إلى ولي الأمر:",
+      teacherMessage
+    );
+
+    if (message === null) return;
+
+    setTeacherMessage(message);
+    setTimeout(() => {
+      void handleSaveTeacherMessage(message);
+    }, 0);
+  }}
+>
+  <span style={styles.actionIcon}>💌</span>
+  <strong>رسالة لولي الأمر</strong>
+  <span style={styles.actionDescription}>
+    كتابة رسالة مختصرة تظهر في صفحة ولي الأمر
+  </span>
+</button>
   <span style={styles.actionIcon}>📜</span>
   <strong>سجل النقاط</strong>
   <span style={styles.actionDescription}>
