@@ -27,6 +27,7 @@ export default function ParentPage() {
 const [student, setStudent] = useState(demoStudent);
 const [points, setPoints] = useState(0);
 const [stars, setStars] = useState(0);
+const [absenceDays, setAbsenceDays] = useState(0);
 
 useEffect(() => {
   async function loadStudentRewards() {
@@ -35,6 +36,7 @@ useEffect(() => {
   if (!studentId || studentId === "student-demo") {
     setPoints(0);
     setStars(0);
+    setAbsenceDays(0);
     return;
   }
 
@@ -46,11 +48,20 @@ useEffect(() => {
     if (!studentSnapshot.exists()) {
       setPoints(0);
       setStars(0);
+      setAbsenceDays(0);
       return;
     }
 
     const studentData = studentSnapshot.data();
+const attendanceHistory = Array.isArray(studentData.attendanceHistory)
+  ? studentData.attendanceHistory
+  : [];
 
+const totalAbsenceDays = attendanceHistory.filter(
+  (attendance) => attendance.status === "غائب"
+).length;
+
+setAbsenceDays(totalAbsenceDays);
     setPoints(
       typeof studentData.points === "number"
         ? studentData.points
@@ -243,6 +254,16 @@ useEffect(() => {
   >
     🏅 {points} نقطة
   </span>
+  <span
+  style={{
+    padding: "8px 12px",
+    borderRadius: "12px",
+    background: "#fff1f2",
+    fontWeight: 700,
+  }}
+>
+  📅 {absenceDays} أيام غياب
+</span>
 </div>
           </div>
 
