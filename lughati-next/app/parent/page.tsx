@@ -5,6 +5,7 @@ import DailyPulseCard from "./components/DailyPulseCard";
 import FamilyRecommendationCard from "./components/FamilyRecommendationCard";
 import FamilyImpactCard from "./components/FamilyImpactCard";
 import WeeklyStarsCard from "./components/WeeklyStarsCard";
+import WeeklyReportCard from "./components/WeeklyReportCard";
 const dailyTasks = [
   { icon: "📖", title: "قراءة الدرس", completed: true },
   { icon: "✍️", title: "التدريب على الإملاء", completed: true },
@@ -354,6 +355,13 @@ export default function ParentPage() {
   comprehensionStars={3}
   badgesCount={2}
   streakDays={5}
+/>
+<WeeklyReportCard
+  completedTasks={8}
+  totalTasks={10}
+  strongestSkill="الإملاء"
+  supportSkill="الفهم القرائي"
+  familyStep="اقرؤوا معه فقرة قصيرة، ثم اطرحوا عليه سؤالين بسيطين."
 />
 <FamilyRecommendationCard
   completedCount={completedCount}
