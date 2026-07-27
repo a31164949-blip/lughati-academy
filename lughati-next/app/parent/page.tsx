@@ -9,6 +9,8 @@ import WeeklyStarsCard from "./components/WeeklyStarsCard";
 import WeeklyReportCard from "./components/WeeklyReportCard";
 import CelebrationCard from "./components/CelebrationCard";
 import { parentDemoData } from "./data/parentDemoData";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 export default function ParentPage() {
     const {
     student: demoStudent,
@@ -23,8 +25,47 @@ export default function ParentPage() {
   } = parentDemoData;
   const router = useRouter();
 const [student, setStudent] = useState(demoStudent);
+const [points, setPoints] = useState(0);
+const [stars, setStars] = useState(0);
 
 useEffect(() => {
+  async function loadStudentRewards() {
+  const studentId = localStorage.getItem("student-id");
+
+  if (!studentId || studentId === "student-demo") {
+    setPoints(0);
+    setStars(0);
+    return;
+  }
+
+  try {
+    const studentSnapshot = await getDoc(
+      doc(db, "students", studentId)
+    );
+
+    if (!studentSnapshot.exists()) {
+      setPoints(0);
+      setStars(0);
+      return;
+    }
+
+    const studentData = studentSnapshot.data();
+
+    setPoints(
+      typeof studentData.points === "number"
+        ? studentData.points
+        : 0
+    );
+
+    setStars(
+      typeof studentData.stars === "number"
+        ? studentData.stars
+        : 0
+    );
+  } catch (error) {
+    console.error("تعذر تحميل مكافآت الطالب:", error);
+  }
+}
   const savedStudent = localStorage.getItem("lughatiStudent");
 
   if (!savedStudent) return;
@@ -39,6 +80,7 @@ useEffect(() => {
   } catch (error) {
     console.error("تعذر قراءة بيانات الطالب:", error);
   }
+  loadStudentRewards();
 }, [demoStudent]);
   const completedCount = dailyTasks.filter(
     (task) => task.completed
@@ -172,6 +214,36 @@ useEffect(() => {
             >
               👀 عرض كما يراه ابني
             </button>
+            <div
+  style={{
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+    marginTop: "14px",
+  }}
+>
+  <span
+    style={{
+      padding: "8px 12px",
+      borderRadius: "12px",
+      background: "#fff7d6",
+      fontWeight: 700,
+    }}
+  >
+    ⭐ {stars} نجوم
+  </span>
+
+  <span
+    style={{
+      padding: "8px 12px",
+      borderRadius: "12px",
+      background: "#eef7ff",
+      fontWeight: 700,
+    }}
+  >
+    🏅 {points} نقطة
+  </span>
+</div>
           </div>
 
           <div style={{ marginTop: "22px" }}>
