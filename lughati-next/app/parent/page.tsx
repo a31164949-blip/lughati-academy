@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DailyPulseCard from "./components/DailyPulseCard";
 import FamilyRecommendationCard from "./components/FamilyRecommendationCard";
@@ -10,7 +11,7 @@ import CelebrationCard from "./components/CelebrationCard";
 import { parentDemoData } from "./data/parentDemoData";
 export default function ParentPage() {
     const {
-    student,
+    student: demoStudent,
     dailyTasks,
     weeklyProgress,
     skills,
@@ -21,7 +22,24 @@ export default function ParentPage() {
     fares,
   } = parentDemoData;
   const router = useRouter();
+const [student, setStudent] = useState(demoStudent);
 
+useEffect(() => {
+  const savedStudent = localStorage.getItem("lughatiStudent");
+
+  if (!savedStudent) return;
+
+  try {
+    const loggedInStudent = JSON.parse(savedStudent);
+
+    setStudent({
+      ...demoStudent,
+      ...loggedInStudent,
+    });
+  } catch (error) {
+    console.error("تعذر قراءة بيانات الطالب:", error);
+  }
+}, [demoStudent]);
   const completedCount = dailyTasks.filter(
     (task) => task.completed
   ).length;
