@@ -1636,6 +1636,9 @@ alert(
   <button
   type="button"
   style={styles.actionButton}
+  <button
+  type="button"
+  style={styles.actionButton}
   onClick={() => {
     const message = window.prompt(
       "اكتب رسالة إلى ولي الأمر:",
@@ -1644,10 +1647,7 @@ alert(
 
     if (message === null) return;
 
-    setTeacherMessage(message);
-    setTimeout(() => {
-      void handleSaveTeacherMessage(message);
-    }, 0);
+    void handleSaveTeacherMessage(message);
   }}
 >
   <span style={styles.actionIcon}>💌</span>
@@ -1656,6 +1656,12 @@ alert(
     كتابة رسالة مختصرة تظهر في صفحة ولي الأمر
   </span>
 </button>
+
+<button
+  type="button"
+  style={styles.actionButton}
+  onClick={() => setShowPointsHistory(true)}
+>
   <span style={styles.actionIcon}>📜</span>
   <strong>سجل النقاط</strong>
   <span style={styles.actionDescription}>
