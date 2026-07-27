@@ -170,7 +170,7 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 );
 
     localStorage.setItem("lughatiStudentLoggedIn", "true");
-
+localStorage.setItem("student-id", selectedStudent.id);
     setMessage(
       "تم تسجيل الدخول بنجاح، أهلًا بك في أكاديمية لغتي الرقمية 🌟"
     );
