@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import DailyPulseCard from "./components/DailyPulseCard";
 import FamilyRecommendationCard from "./components/FamilyRecommendationCard";
 import FamilyImpactCard from "./components/FamilyImpactCard";
+import WeeklyStarsCard from "./components/WeeklyStarsCard";
 const dailyTasks = [
   { icon: "📖", title: "قراءة الدرس", completed: true },
   { icon: "✍️", title: "التدريب على الإملاء", completed: true },
@@ -347,6 +348,13 @@ export default function ParentPage() {
             </p>
           </div>
         </section>
+        <WeeklyStarsCard
+  readingStars={4}
+  spellingStars={5}
+  comprehensionStars={3}
+  badgesCount={2}
+  streakDays={5}
+/>
 <FamilyRecommendationCard
   completedCount={completedCount}
   totalCount={dailyTasks.length}
