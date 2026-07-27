@@ -1620,23 +1620,32 @@ alert(
   </div>
 </section>
   <div style={styles.quickActionsGrid}>
+
     <button
+  type="button"
   style={styles.actionButton}
   onClick={() => setShowPointsBox(true)}
 >
   <span style={styles.actionIcon}>⭐</span>
   <strong>منح نقاط</strong>
-  <span style={styles.actionDescription}>إضافة نقاط تحفيزية</span>
+  <span style={styles.actionDescription}>
+    إضافة نقاط تحفيزية
+  </span>
 </button>
+
 <button
   type="button"
   style={styles.actionButton}
   onClick={() => setShowPointsHistory(true)}
 >
-  <button
-  type="button"
-  style={styles.actionButton}
-  <button
+  <span style={styles.actionIcon}>📜</span>
+  <strong>سجل النقاط</strong>
+  <span style={styles.actionDescription}>
+    عرض جميع النقاط والأوسمة
+  </span>
+</button>
+
+<button
   type="button"
   style={styles.actionButton}
   onClick={() => {
@@ -1653,41 +1662,35 @@ alert(
   <span style={styles.actionIcon}>💌</span>
   <strong>رسالة لولي الأمر</strong>
   <span style={styles.actionDescription}>
-    كتابة رسالة مختصرة تظهر في صفحة ولي الأمر
+    رسالة مختصرة تظهر في صفحة ولي الأمر
   </span>
 </button>
 
 <button
   type="button"
   style={styles.actionButton}
-  onClick={() => setShowPointsHistory(true)}
+  onClick={() => setShowReadingBox(true)}
 >
-  <span style={styles.actionIcon}>📜</span>
-  <strong>سجل النقاط</strong>
+  <span style={styles.actionIcon}>📖</span>
+  <strong>تسجيل قراءة</strong>
   <span style={styles.actionDescription}>
-    عرض جميع النقاط والأوسمة
+    تقييم قراءة الطالب
   </span>
 </button>
 
-    <button
-  style={styles.actionButton}
-  onClick={() => setShowReadingBox(true)}
->
-      <span style={styles.actionIcon}>📖</span>
-      <strong>تسجيل قراءة</strong>
-      <span style={styles.actionDescription}>تقييم قراءة الطالب</span>
-    </button>
-
-    <button
+<button
   type="button"
   style={styles.actionButton}
   onClick={() => setShowSpellingBox(true)}
 >
-      <span style={styles.actionIcon}>✍️</span>
-      <strong>تسجيل إملاء</strong>
-      <span style={styles.actionDescription}>إدخال عدد الأخطاء</span>
-    </button>
-    <button
+  <span style={styles.actionIcon}>✍️</span>
+  <strong>تسجيل إملاء</strong>
+  <span style={styles.actionDescription}>
+    إدخال عدد الأخطاء
+  </span>
+</button>
+
+<button
   type="button"
   style={styles.actionButton}
   onClick={() => setShowAttendanceBox(true)}
@@ -1698,6 +1701,7 @@ alert(
     حضور أو غياب أو تأخر
   </span>
 </button>
+
 <button
   type="button"
   style={styles.actionButton}
@@ -1710,16 +1714,21 @@ alert(
   </span>
 </button>
 
-    <button
+<button
   type="button"
   style={styles.actionButton}
   onClick={() => setShowBadgeBox(true)}
 >
   <span style={styles.actionIcon}>🏅</span>
   <strong>منح وسام</strong>
-  <span style={styles.actionDescription}>اختيار وسام جديد</span>
+  <span style={styles.actionDescription}>
+    اختيار وسام جديد
+  </span>
 </button>
-{showJourneyPathBox && (
+
+</div>
+</section>
+  {showJourneyPathBox && (
   <div style={styles.modalOverlay}>
     <div
       style={{
@@ -2147,8 +2156,7 @@ alert(
     </div>
   </div>
 )}
-  </div>
-</section>
+  
 {showAttendanceBox && (
   <div style={styles.modalOverlay}>
     <div
