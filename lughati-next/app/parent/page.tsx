@@ -7,17 +7,19 @@ import FamilyImpactCard from "./components/FamilyImpactCard";
 import WeeklyStarsCard from "./components/WeeklyStarsCard";
 import WeeklyReportCard from "./components/WeeklyReportCard";
 import CelebrationCard from "./components/CelebrationCard";
-const dailyTasks = [
-  { icon: "📖", title: "قراءة الدرس", completed: true },
-  { icon: "✍️", title: "التدريب على الإملاء", completed: true },
-  { icon: "📝", title: "حل الواجب", completed: true },
-  { icon: "🎤", title: "تسجيل القراءة", completed: false },
-  { icon: "📚", title: "الفهم القرائي", completed: true },
-];
-
-const spellingWords = ["المدرسة", "الكتاب", "المعلم", "التعاون"];
-
+import { parentDemoData } from "./data/parentDemoData";
 export default function ParentPage() {
+    const {
+    student,
+    dailyTasks,
+    weeklyProgress,
+    skills,
+    spelling,
+    achievement,
+    family,
+    teacher,
+    fares,
+  } = parentDemoData;
   const router = useRouter();
 
   const completedCount = dailyTasks.filter(
@@ -275,7 +277,7 @@ export default function ParentPage() {
         {/* كلمات إملاء الغد */}
         <section style={cardStyle}>
           <h2 style={sectionTitleStyle}>
-            ✍️ كلمات إملاء الغد
+            ✍️ {spelling.title}
           </h2>
 
           <p
@@ -296,7 +298,7 @@ export default function ParentPage() {
               marginBottom: "16px",
             }}
           >
-            {spellingWords.map((word) => (
+            {spelling.words.map((word: string) => (
               <span
                 key={word}
                 style={{
@@ -335,8 +337,8 @@ export default function ParentPage() {
             }}
           >
             <strong style={{ fontSize: "18px" }}>
-              🏅 وسام المثابرة
-            </strong>
+  {achievement.icon} {achievement.title}
+</strong>
 
             <p
               style={{
@@ -345,28 +347,27 @@ export default function ParentPage() {
                 lineHeight: 1.7,
               }}
             >
-              حصل ابنكم على هذا الوسام بسبب التزامه بإنجاز مهامه
-              خلال هذا الأسبوع.
+              {achievement.description}
             </p>
           </div>
         </section>
         <WeeklyStarsCard
-  readingStars={4}
-  spellingStars={5}
-  comprehensionStars={3}
-  badgesCount={2}
-  streakDays={5}
-/>
-<WeeklyReportCard
-  completedTasks={8}
-  totalTasks={10}
-  strongestSkill="الإملاء"
-  supportSkill="الفهم القرائي"
-  familyStep="اقرؤوا معه فقرة قصيرة، ثم اطرحوا عليه سؤالين بسيطين."
-/>
+  readingStars={weeklyProgress.readingStars}
+  spellingStars={weeklyProgress.spellingStars}
+  comprehensionStars={weeklyProgress.comprehensionStars}
+  badgesCount={weeklyProgress.badgesCount}
+  streakDays={weeklyProgress.streakDays}
+     />
+  <WeeklyReportCard
+  completedTasks={weeklyProgress.completedTasks}
+  totalTasks={weeklyProgress.totalTasks}
+  strongestSkill={skills.strongestSkill}
+  supportSkill={skills.supportSkill}
+  familyStep={family.nextWeekStep}
+/> 
 <CelebrationCard
-  completedTasks={8}
-  totalTasks={10}
+  completedTasks={weeklyProgress.completedTasks}
+  totalTasks={weeklyProgress.totalTasks}
 />
 <FamilyRecommendationCard
   completedCount={completedCount}
@@ -383,15 +384,14 @@ export default function ParentPage() {
           </h2>
 
           <p style={messageStyle}>
-            أشكر ولي أمر أحمد على المتابعة والاهتمام المستمر.
-            لقد ظهر أثر ذلك في تحسن أدائه والتزامه. 🌟
+             {teacher.message}
           </p>
         </section>
 
         {/* رسالة فارس */}
         <section style={cardStyle}>
           <h2 style={sectionTitleStyle}>
-            🤖 رسالة فارس
+            🤖 {fares.message}
           </h2>
 
           <div
