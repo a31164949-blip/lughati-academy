@@ -167,7 +167,7 @@ export default function JourneyPage() {
               boxShadow: "0 5px 12px rgba(0,0,0,0.12)",
             }}
           >
-            👤 ملفي
+             🚪 تسجيل الخروج 
           </Link>
         </div>
       </header>
