@@ -5,6 +5,13 @@ import { useMemo, useState } from "react";
 
 const journeyCards = [
   {
+    icon: "🏡",
+    title: "مدينة الإنجاز",
+    description: "ابنِ مدينتك مع كل تقدم جديد",
+    href: "/journey/city",
+    background: "#fff7d6",
+  },
+  {
     icon: "📚",
     title: "الدروس",
     description: "تعلّم واقرأ واستمتع",
