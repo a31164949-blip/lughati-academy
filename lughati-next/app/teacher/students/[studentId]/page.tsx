@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { doc, getDoc, updateDoc, increment, arrayUnion} from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  increment,
+  arrayUnion,
+  serverTimestamp,
+} from "firebase/firestore";
 
 import { db } from "../../../../firebase";
 type Student = {
@@ -213,7 +220,8 @@ const handleSaveTeacherMessage = async (message: string) => {
     const studentRef = doc(db, "students", studentId);
 
     await updateDoc(studentRef, {
-      teacherMessage: message.trim(),
+  teacherMessage: message.trim(),
+  teacherMessageUpdatedAt: serverTimestamp(),
     });
 
     setStudent((previousStudent) =>

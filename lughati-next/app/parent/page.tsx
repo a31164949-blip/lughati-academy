@@ -29,7 +29,8 @@ const [points, setPoints] = useState(0);
 const [stars, setStars] = useState(0);
 const [absenceDays, setAbsenceDays] = useState(0);
 const [teacherMessage, setTeacherMessage] = useState("");
-
+const [teacherMessageUpdatedAt, setTeacherMessageUpdatedAt] =
+  useState<Date | null>(null);
 useEffect(() => {
   async function loadStudentRewards() {
   const studentId = localStorage.getItem("student-id");
@@ -39,6 +40,7 @@ useEffect(() => {
     setStars(0);
     setAbsenceDays(0);
     setTeacherMessage("");
+    setTeacherMessageUpdatedAt(null);
     return;
   }
 
@@ -52,6 +54,7 @@ useEffect(() => {
       setStars(0);
       setAbsenceDays(0);
 setTeacherMessage("");
+setTeacherMessageUpdatedAt(null);
       return;
     }
 
@@ -60,6 +63,15 @@ setTeacherMessage("");
   typeof studentData.teacherMessage === "string"
     ? studentData.teacherMessage
     : ""
+);
+const messageDate = studentData.teacherMessageUpdatedAt;
+
+setTeacherMessageUpdatedAt(
+  messageDate?.toDate
+    ? messageDate.toDate()
+    : messageDate instanceof Date
+      ? messageDate
+      : null
 );
 const attendanceHistory = Array.isArray(studentData.attendanceHistory)
   ? studentData.attendanceHistory
@@ -505,7 +517,25 @@ setAbsenceDays(totalAbsenceDays);
           <p style={messageStyle}>
              {teacherMessage || teacher.message}
           </p>
+{teacherMessageUpdatedAt && (
+  <p
+    style={{
+      marginTop: "10px",
+      marginBottom: 0,
+      fontSize: "13px",
+      color: "#64748b",
+      textAlign: "left",
+    }}
+  >
+    آخر تحديث:{" "}
+    {teacherMessageUpdatedAt.toLocaleString("ar-SA", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    })}
+  </p>
+)}
         </section>
+  
 
         {/* رسالة فارس */}
         <section style={cardStyle}>
