@@ -79,6 +79,89 @@ const sections: AcademySection[] = [
     className: "teal-card",
   },
 ];
+type AcademicJourneyEvent = {
+  id: string;
+  title: string;
+  icon: string;
+  semester: 1 | 2;
+  date: string | null;
+  category: "study" | "holiday" | "national" | "exam";
+};
+
+const academicJourneyEvents: AcademicJourneyEvent[] = [
+  {
+    id: "school-start",
+    title: "بداية العام الدراسي",
+    icon: "🏫",
+    semester: 1,
+    date: null,
+    category: "study",
+  },
+  {
+    id: "national-day",
+    title: "إجازة اليوم الوطني",
+    icon: "🇸🇦",
+    semester: 1,
+    date: null,
+    category: "national",
+  },
+  {
+    id: "autumn-break",
+    title: "إجازة الخريف",
+    icon: "🍂",
+    semester: 1,
+    date: null,
+    category: "holiday",
+  },
+  {
+    id: "midyear-break",
+    title: "إجازة منتصف العام",
+    icon: "❄️",
+    semester: 1,
+    date: null,
+    category: "holiday",
+  },
+  {
+    id: "semester-two-start",
+    title: "بداية الفصل الدراسي الثاني",
+    icon: "🚀",
+    semester: 2,
+    date: null,
+    category: "study",
+  },
+  {
+    id: "foundation-day",
+    title: "إجازة يوم التأسيس",
+    icon: "🐪",
+    semester: 2,
+    date: null,
+    category: "national",
+  },
+  {
+    id: "eid-al-fitr",
+    title: "إجازة عيد الفطر",
+    icon: "🌙",
+    semester: 2,
+    date: null,
+    category: "holiday",
+  },
+  {
+    id: "eid-al-adha",
+    title: "إجازة عيد الأضحى",
+    icon: "🕋",
+    semester: 2,
+    date: null,
+    category: "holiday",
+  },
+  {
+    id: "school-year-end",
+    title: "نهاية العام الدراسي",
+    icon: "🎓",
+    semester: 2,
+    date: null,
+    category: "study",
+  },
+];
 
 export default function Home() {
     const [points, setPoints] = useState(0);
@@ -218,29 +301,32 @@ useEffect(() => {
     </p>
 
     <div className="academic-calendar-events">
-      <div className="academic-calendar-event active-event">
-        <span className="calendar-event-icon">🏫</span>
-        <div>
-          <strong>بداية العام الدراسي</strong>
-          <small>التاريخ الرسمي قيد التحديث</small>
-        </div>
-      </div>
+      {academicJourneyEvents
+  .filter((event) => event.semester === 1)
+  .slice(0, 3)
+  .map((event, index) => (
+    <div
+      key={event.id}
+      className={`academic-calendar-event ${
+        index === 0 ? "active-event" : ""
+      }`}
+    >
+      <span className="calendar-event-icon">{event.icon}</span>
 
-      <div className="academic-calendar-event">
-        <span className="calendar-event-icon">🇸🇦</span>
-        <div>
-          <strong>إجازة اليوم الوطني</strong>
-          <small>التاريخ الرسمي قيد التحديث</small>
-        </div>
+      <div>
+        <strong>{event.title}</strong>
+        <small>
+          {event.date
+            ? new Intl.DateTimeFormat("ar-SA", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              }).format(new Date(event.date))
+            : "التاريخ الرسمي قيد التحديث"}
+        </small>
       </div>
-
-      <div className="academic-calendar-event">
-        <span className="calendar-event-icon">🍂</span>
-        <div>
-          <strong>إجازة الخريف</strong>
-          <small>التاريخ الرسمي قيد التحديث</small>
-        </div>
-      </div>
+    </div>
+  ))}
     </div>
 
     <span className="calendar-official-note">
