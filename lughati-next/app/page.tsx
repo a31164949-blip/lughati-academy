@@ -193,6 +193,54 @@ useEffect(() => {
           <div className="mascot-message">أنت قادر على التقدم كل يوم ⭐</div>
         </div>
       </section>
+      
+<section className="visitor-dashboard">
+  <div className="visitor-dashboard-header">
+    <span className="section-label">واجهة الزائر</span>
+    <h2>كل ما تحتاجه في مكان واحد</h2>
+    <p>
+      تابع التقويم الدراسي، الفصل الحالي، والمناسبة القادمة في أكاديمية لغتي.
+    </p>
+  </div>
+
+  <div className="visitor-dashboard-grid">
+    <article className="visitor-info-card calendar-card">
+      <div className="visitor-card-icon">📅</div>
+      <div>
+        <span className="visitor-card-label">التقويم الدراسي</span>
+        <h3>العام الدراسي الجديد</h3>
+        <p>المواعيد الدراسية والإجازات والمناسبات المهمة.</p>
+        <Link href="/academic-calendar" className="visitor-card-link">
+          عرض التقويم
+          <span>←</span>
+        </Link>
+      </div>
+    </article>
+
+    <article className="visitor-info-card season-card">
+      <div className="visitor-card-icon">☀️</div>
+      <div>
+        <span className="visitor-card-label">الفصل الحالي</span>
+        <h3>فصل الصيف</h3>
+        <p>واجهة موسمية تتغير مع فصول السنة والمناسبات.</p>
+        <Link href="/seasons" className="visitor-card-link">
+          استكشاف الفصول
+          <span>←</span>
+        </Link>
+      </div>
+    </article>
+
+    <article className="visitor-info-card event-card">
+      <div className="visitor-card-icon">⏳</div>
+      <div>
+        <span className="visitor-card-label">المناسبة القادمة</span>
+        <h3>العودة إلى المدرسة</h3>
+        <p>استعد لبداية عام مليء بالتعلم والإنجاز.</p>
+        <span className="visitor-countdown">قريبًا بإذن الله</span>
+      </div>
+    </article>
+  </div>
+</section>
 
       <section className="quick-plan">
         <div>
