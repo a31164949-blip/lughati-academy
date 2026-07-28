@@ -155,20 +155,29 @@ export default function JourneyPage() {
             </p>
           </div>
 
-          <Link
-            href="/login"
-            style={{
-              textDecoration: "none",
-              background: "white",
-              color: "#157347",
-              padding: "12px 18px",
-              borderRadius: "16px",
-              fontWeight: "bold",
-              boxShadow: "0 5px 12px rgba(0,0,0,0.12)",
-            }}
-          >
-             🚪 تسجيل الخروج 
-          </Link>
+          <button
+  type="button"
+  onClick={() => {
+    const confirmed = window.confirm("هل تريد تسجيل الخروج؟");
+
+    if (confirmed) {
+      window.location.href = "/login";
+    }
+  }}
+  style={{
+    textDecoration: "none",
+    background: "white",
+    color: "#157347",
+    padding: "12px 18px",
+    borderRadius: "16px",
+    fontWeight: "bold",
+    boxShadow: "0 5px 12px rgba(0,0,0,0.12)",
+    border: "none",
+    cursor: "pointer",
+  }}
+>
+  🚪 تسجيل الخروج
+</button>
         </div>
       </header>
 
