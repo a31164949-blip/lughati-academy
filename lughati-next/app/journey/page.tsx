@@ -156,7 +156,7 @@ export default function JourneyPage() {
           </div>
 
           <Link
-            href="/student/profile"
+            href="/login"
             style={{
               textDecoration: "none",
               background: "white",
