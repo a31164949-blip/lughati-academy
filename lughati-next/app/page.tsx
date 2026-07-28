@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import HomeworkReminder from "./components/HomeworkReminder";
+import AcademicJourney from "./components/AcademicJourney";
 import Link from "next/link";
 
 type AcademySection = {
@@ -94,7 +95,7 @@ const academicJourneyEvents: AcademicJourneyEvent[] = [
     title: "بداية العام الدراسي",
     icon: "🏫",
     semester: 1,
-    date: null,
+    date: "2026-08-23",
     category: "study",
   },
   {
@@ -102,7 +103,7 @@ const academicJourneyEvents: AcademicJourneyEvent[] = [
     title: "إجازة اليوم الوطني",
     icon: "🇸🇦",
     semester: 1,
-    date: null,
+    date: "2026-09-23",
     category: "national",
   },
   {
@@ -110,7 +111,7 @@ const academicJourneyEvents: AcademicJourneyEvent[] = [
     title: "إجازة الخريف",
     icon: "🍂",
     semester: 1,
-    date: null,
+    date: "2026-11-20",
     category: "holiday",
   },
   {
@@ -275,7 +276,10 @@ useEffect(() => {
           <span>مرشد أكاديمية لغتي</span>
           <div className="mascot-message">أنت قادر على التقدم كل يوم ⭐</div>
         </div>
+
+    
       </section>
+      <AcademicJourney events={academicJourneyEvents} />
       <section className="academy-gates">
   <div className="academy-gates-header">
     <span className="section-label">بوابات الأكاديمية</span>

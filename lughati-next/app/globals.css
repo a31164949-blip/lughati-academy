@@ -2797,3 +2797,517 @@ a {
     font-size: 21px;
   }
 }
+/* ================================
+   رحلة العام الدراسي التفاعلية
+================================ */
+
+.academic-journey-section {
+  width: min(1180px, calc(100% - 32px));
+  margin: 42px auto;
+  padding: 38px 28px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top right, rgba(250, 204, 21, 0.18), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(52, 211, 153, 0.2), transparent 38%),
+    linear-gradient(145deg, #ffffff 0%, #f0fdf4 55%, #ecfeff 100%);
+  box-shadow: 0 24px 60px rgba(15, 118, 110, 0.12);
+}
+
+.academic-journey-section::before {
+  content: "";
+  position: absolute;
+  top: -80px;
+  left: -70px;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: rgba(250, 204, 21, 0.14);
+  filter: blur(4px);
+}
+
+.academic-journey-heading {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto 34px;
+  text-align: center;
+}
+
+.academic-journey-heading .section-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.academic-journey-heading h2 {
+  margin: 0;
+  color: #14532d;
+  font-size: clamp(1.65rem, 4vw, 2.4rem);
+  line-height: 1.4;
+}
+
+.academic-journey-heading p {
+  margin: 12px auto 0;
+  color: #475569;
+  font-size: 1.02rem;
+  line-height: 1.9;
+}
+
+.academic-journey-track {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(210px, 1fr));
+  gap: 22px;
+  overflow-x: auto;
+  padding: 14px 6px 22px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.academic-journey-item {
+  min-width: 220px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  scroll-snap-align: center;
+}
+
+.academic-journey-icon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 2;
+  margin-bottom: -20px;
+  border: 6px solid #ffffff;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fef3c7, #fde68a);
+  box-shadow: 0 12px 26px rgba(161, 98, 7, 0.2);
+  font-size: 2.1rem;
+  transition: transform 0.25s ease;
+}
+
+.academic-journey-item:hover .academic-journey-icon {
+  transform: translateY(-6px) rotate(-4deg) scale(1.06);
+}
+
+.academic-journey-card {
+  width: 100%;
+  min-height: 205px;
+  padding: 38px 18px 20px;
+  text-align: center;
+  border: 1px solid rgba(20, 83, 45, 0.11);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.academic-journey-item:hover .academic-journey-card {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 42px rgba(15, 118, 110, 0.15);
+}
+
+.academic-journey-number {
+  display: inline-block;
+  margin-bottom: 9px;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.academic-journey-card h3 {
+  margin: 0 0 10px;
+  color: #1e293b;
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.academic-journey-card p {
+  min-height: 46px;
+  margin: 0 0 14px;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.academic-journey-category {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.academic-journey-category.study {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.academic-journey-category.holiday {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.academic-journey-category.national {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.academic-journey-category.exam {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.academic-journey-line {
+  width: calc(100% - 42px);
+  height: 4px;
+  position: absolute;
+  top: 36px;
+  right: calc(50% + 38px);
+  z-index: 0;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    90deg,
+    #34d399 0 13px,
+    #fde68a 13px 26px
+  );
+  opacity: 0.8;
+}
+
+@media (max-width: 1000px) {
+  .academic-journey-track {
+    grid-template-columns: repeat(4, 250px);
+  }
+}
+
+@media (max-width: 640px) {
+  .academic-journey-section {
+    width: min(100% - 20px, 1180px);
+    margin: 28px auto;
+    padding: 28px 14px;
+    border-radius: 24px;
+  }
+
+  .academic-journey-heading {
+    margin-bottom: 24px;
+  }
+
+  .academic-journey-heading p {
+    font-size: 0.94rem;
+  }
+
+  .academic-journey-track {
+    grid-template-columns: repeat(4, 235px);
+    gap: 16px;
+  }
+
+  .academic-journey-card {
+    min-height: 195px;
+  }
+}
+/* ==================================
+   Academic Journey - isolated styles
+================================== */
+
+.academicJourney {
+  width: min(1180px, calc(100% - 32px));
+  margin: 42px auto;
+  padding: 38px 28px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color:#1e293b;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(250, 204, 21, 0.2), transparent 32%),
+    radial-gradient(circle at 5% 100%, rgba(52, 211, 153, 0.2), transparent 36%),
+    linear-gradient(145deg, #ffffff 0%, #f0fdf4 55%, #ecfeff 100%);
+  box-shadow: 0 24px 60px rgba(15, 118, 110, 0.14);
+}
+
+.academicJourney,
+.academicJourney * {
+  box-sizing: border-box;
+}
+
+.academicJourney::before {
+  content: "";
+  width: 190px;
+  height: 190px;
+  position: absolute;
+  top: -85px;
+  left: -75px;
+  z-index: -1;
+  border-radius: 50%;
+  background: rgba(250, 204, 21, 0.16);
+}
+
+.academicJourney__header {
+  max-width: 720px;
+  margin: 0 auto 34px;
+  text-align: center;
+}
+
+.academicJourney__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  margin-bottom: 12px;
+  color: #166534;
+  border-radius: 999px;
+  background: #dcfce7;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.academicJourney__header h2 {
+  margin: 0;
+  color: #14532d;
+  font-size: clamp(1.65rem, 4vw, 2.4rem);
+  line-height: 1.4;
+}
+
+.academicJourney__header p {
+  max-width: 650px;
+  margin: 12px auto 0;
+  color: #475569;
+  font-size: 1.02rem;
+  line-height: 1.9;
+}
+
+.academicJourney__scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 14px 4px 22px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.academicJourney__track {
+  width: max-content;
+  min-width: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 22px;
+}
+
+.academicJourney__item {
+  width: 250px;
+  min-width: 250px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  scroll-snap-align: center;
+}
+
+.academicJourney__icon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  margin-bottom: -20px;
+  border: 6px solid #ffffff;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fef3c7, #fde68a);
+  box-shadow: 0 12px 26px rgba(161, 98, 7, 0.2);
+  font-size: 2.1rem;
+  transition: transform 0.25s ease;
+}
+
+.academicJourney__item:hover .academicJourney__icon {
+  transform: translateY(-6px) rotate(-4deg) scale(1.06);
+}
+
+.academicJourney__card {
+  width: 100%;
+  min-height: 210px;
+  padding: 40px 18px 20px;
+  text-align: center;
+  color: #1e293b;
+  border: 1px solid rgba(20, 83, 45, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.09);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.academicJourney__item:hover .academicJourney__card {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 42px rgba(15, 118, 110, 0.16);
+}
+
+.academicJourney__number {
+  display: inline-block;
+  margin-bottom: 9px;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.academicJourney__card h3 {
+  margin: 0 0 10px;
+  color: #1e293b;
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.academicJourney__card p {
+  min-height: 48px;
+  margin: 0 0 14px;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.academicJourney__category {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.academicJourney__category--study {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.academicJourney__category--holiday {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.academicJourney__category--national {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.academicJourney__category--exam {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.academicJourney__line {
+  width: 190px;
+  height: 4px;
+  position: absolute;
+  top: 36px;
+  right: calc(50% + 38px);
+  z-index: 1;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    90deg,
+    #34d399 0 13px,
+    #fde68a 13px 26px
+  );
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .academicJourney {
+    width: min(100% - 20px, 1180px);
+    margin: 28px auto;
+    padding: 28px 14px;
+    border-radius: 24px;
+  }
+
+  .academicJourney__header {
+    margin-bottom: 24px;
+  }
+
+  .academicJourney__header p {
+    font-size: 0.94rem;
+  }
+
+  .academicJourney__track {
+    gap: 16px;
+  }
+
+  .academicJourney__item {
+    width: 235px;
+    min-width: 235px;
+  }
+
+  .academicJourney__card {
+    min-height: 200px;
+  }
+
+  .academicJourney__line {
+    width: 175px;
+  }
+}
+
+.academicJourney__item--current .academicJourney__icon {
+  background: linear-gradient(145deg, #fff7cc, #facc15);
+  border-color: #fff8dc;
+  box-shadow:
+    0 0 0 6px rgba(250, 204, 21, 0.18),
+    0 14px 32px rgba(161, 98, 7, 0.32);
+  animation: currentJourneyPulse 2s ease-in-out infinite;
+}
+
+.academicJourney__item--current .academicJourney__card {
+  border: 2px solid #facc15;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(254, 249, 195, 0.72)
+    );
+  box-shadow:
+    0 20px 44px rgba(161, 98, 7, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.academicJourney__item--current .academicJourney__number {
+  padding: 6px 11px;
+  color: #854d0e;
+  border-radius: 999px;
+  background: #fef08a;
+}
+
+@keyframes currentJourneyPulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-5px) scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .academicJourney__item--current .academicJourney__icon {
+    animation: none;
+  }
+}
