@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import HomeworkReminder from "./components/HomeworkReminder";
 import AcademicJourney from "./components/AcademicJourney";
+import ClassDiary from "./components/ClassDiary";
 import Link from "next/link";
 
 type AcademySection = {
@@ -280,6 +281,7 @@ useEffect(() => {
     
       </section>
       <AcademicJourney events={academicJourneyEvents} />
+      <ClassDiary />
       <section className="academy-gates">
   <div className="academy-gates-header">
     <span className="section-label">بوابات الأكاديمية</span>
@@ -359,21 +361,25 @@ useEffect(() => {
       <span className="calendar-event-icon">{event.icon}</span>
 
       <div>
-        <strong>{event.title}</strong>
-        <small>
-          {event.date
-            ? new Intl.DateTimeFormat("ar-SA", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              }).format(new Date(event.date))
-            : "التاريخ الرسمي قيد التحديث"}
-        </small>
-      </div>
-    </div>
+  <strong>{event.title}</strong>
+
+  <small>
+    {!today
+      ? "جارٍ تحميل التاريخ..."
+      : event.date
+        ? new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            timeZone: "Asia/Riyadh",
+          }).format(new Date(`${event.date}T12:00:00+03:00`))
+        : "سيُضاف التاريخ الرسمي قريبًا"}
+  </small>
+</div>
+  
+   </div>
   ))}
     </div>
-
     <span className="calendar-official-note">
       المصدر: وزارة التعليم السعودية
     </span>

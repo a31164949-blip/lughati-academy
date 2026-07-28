@@ -96,10 +96,12 @@ export default function AcademicJourney({
   events,
 }: AcademicJourneyProps) {
   const [today, setToday] = useState<Date | null>(null);
+const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setToday(new Date());
-  }, []);
+  setToday(new Date());
+  setIsMounted(true);
+}, []);
 
   const currentIndex = useMemo(() => {
     if (!today) return 0;
@@ -171,7 +173,11 @@ export default function AcademicJourney({
 
                   <h3>{event.title}</h3>
 
-                  <p>{getCountdownText(event.date, today)}</p>
+                  <p>
+  {isMounted
+    ? getCountdownText(event.date, today)
+    : "جارٍ تحميل موعد المحطة..."}
+</p>
 
                   <span
                     className={`academicJourney__category academicJourney__category--${event.category}`}
