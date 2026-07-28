@@ -204,19 +204,50 @@ useEffect(() => {
   </div>
 
   <div className="visitor-dashboard-grid">
-    <article className="visitor-info-card calendar-card">
-      <div className="visitor-card-icon">📅</div>
-      <div>
-        <span className="visitor-card-label">التقويم الدراسي</span>
-        <h3>العام الدراسي الجديد</h3>
-        <p>المواعيد الدراسية والإجازات والمناسبات المهمة.</p>
-        <Link href="/academic-calendar" className="visitor-card-link">
-          عرض التقويم
-          <span>←</span>
-        </Link>
-      </div>
-    </article>
+    
+<article className="visitor-info-card calendar-card academic-calendar-card">
+  <div className="visitor-card-icon">📅</div>
 
+  <div className="academic-calendar-content">
+    <span className="visitor-card-label">التقويم الدراسي الرسمي</span>
+
+    <h3>العام الدراسي 1448–1449هـ</h3>
+
+    <p>
+      أهم المواعيد والإجازات المعتمدة من وزارة التعليم ستظهر هنا مباشرة.
+    </p>
+
+    <div className="academic-calendar-events">
+      <div className="academic-calendar-event active-event">
+        <span className="calendar-event-icon">🏫</span>
+        <div>
+          <strong>بداية العام الدراسي</strong>
+          <small>التاريخ الرسمي قيد التحديث</small>
+        </div>
+      </div>
+
+      <div className="academic-calendar-event">
+        <span className="calendar-event-icon">🇸🇦</span>
+        <div>
+          <strong>إجازة اليوم الوطني</strong>
+          <small>التاريخ الرسمي قيد التحديث</small>
+        </div>
+      </div>
+
+      <div className="academic-calendar-event">
+        <span className="calendar-event-icon">🍂</span>
+        <div>
+          <strong>إجازة الخريف</strong>
+          <small>التاريخ الرسمي قيد التحديث</small>
+        </div>
+      </div>
+    </div>
+
+    <span className="calendar-official-note">
+      المصدر: وزارة التعليم السعودية
+    </span>
+  </div>
+</article>
     <article className="visitor-info-card season-card">
       <div className="visitor-card-icon">☀️</div>
       <div>

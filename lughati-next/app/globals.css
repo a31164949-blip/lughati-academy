@@ -2504,3 +2504,87 @@ a {
     font-size: 20px;
   }
 }
+/* =========================
+   Academic Calendar Card
+========================= */
+
+.academic-calendar-card {
+  align-items: flex-start;
+}
+
+.academic-calendar-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.academic-calendar-events {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.academic-calendar-event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(23, 105, 170, 0.1);
+}
+
+.academic-calendar-event.active-event {
+  background: #ffffff;
+  border-color: rgba(23, 105, 170, 0.25);
+  box-shadow: 0 8px 20px rgba(23, 105, 170, 0.08);
+}
+
+.calendar-event-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #eef7ff;
+  font-size: 21px;
+}
+
+.academic-calendar-event div {
+  display: grid;
+  gap: 3px;
+}
+
+.academic-calendar-event strong {
+  color: #17324d;
+  font-size: 15px;
+}
+
+.academic-calendar-event small {
+  color: #718096;
+  font-size: 12px;
+}
+
+.calendar-official-note {
+  display: inline-flex;
+  margin-top: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(23, 105, 170, 0.08);
+  color: #1769aa;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .academic-calendar-event {
+    padding: 11px;
+  }
+
+  .calendar-event-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 19px;
+  }
+}
