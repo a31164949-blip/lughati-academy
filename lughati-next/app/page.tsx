@@ -276,6 +276,47 @@ useEffect(() => {
           <div className="mascot-message">أنت قادر على التقدم كل يوم ⭐</div>
         </div>
       </section>
+      <section className="academy-gates">
+  <div className="academy-gates-header">
+    <span className="section-label">بوابات الأكاديمية</span>
+    <h2>اختر بوابتك إلى أكاديمية لغتي</h2>
+    <p>
+      وصول سريع وواضح لكل طالب وولي أمر ومعلم.
+    </p>
+  </div>
+
+  <div className="academy-gates-grid">
+    <Link href="/login" className="academy-gate student-gate">
+      <span className="academy-gate-icon">🎒</span>
+      <div>
+        <span className="academy-gate-label">بوابة الطالب</span>
+        <h3>دخول الطالب</h3>
+        <p>ابدأ رحلتك، تابع واجباتك، وابنِ مدينة إنجازك.</p>
+      </div>
+      <span className="academy-gate-arrow">←</span>
+    </Link>
+
+    <Link href="/parent" className="academy-gate parent-gate">
+      <span className="academy-gate-icon">🤝</span>
+      <div>
+        <span className="academy-gate-label">شريك النجاح</span>
+        <h3>دخول ولي الأمر</h3>
+        <p>تابع تقدم ابنك واحتفِ بإنجازاته خطوةً بخطوة.</p>
+      </div>
+      <span className="academy-gate-arrow">←</span>
+    </Link>
+
+    <Link href="/teacher-login" className="academy-gate teacher-gate">
+      <span className="academy-gate-icon">👨‍🏫</span>
+      <div>
+        <span className="academy-gate-label">بوابة المعلم</span>
+        <h3>دخول المعلم</h3>
+        <p>إدارة الطلاب، الدروس، الواجبات، والأوسمة.</p>
+      </div>
+      <span className="academy-gate-arrow">←</span>
+    </Link>
+  </div>
+</section>
       
 <section className="visitor-dashboard">
   <div className="visitor-dashboard-header">

@@ -2588,3 +2588,212 @@ a {
     font-size: 19px;
   }
 }
+/* =========================
+   Academy Gates
+========================= */
+
+.academy-gates {
+  position: relative;
+  overflow: hidden;
+  margin: 32px auto;
+  padding: 30px;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(72, 187, 120, 0.14), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.12), transparent 36%),
+    linear-gradient(135deg, #ffffff, #f4fbf8);
+  border: 1px solid rgba(22, 101, 52, 0.1);
+  box-shadow: 0 20px 50px rgba(15, 76, 55, 0.1);
+}
+
+.academy-gates::before {
+  content: "✦";
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  font-size: 30px;
+  color: rgba(245, 158, 11, 0.28);
+  animation: academySparkle 2.8s ease-in-out infinite;
+}
+
+.academy-gates-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.academy-gates-header h2 {
+  margin: 8px 0 10px;
+  color: #17324d;
+  font-size: clamp(27px, 4vw, 39px);
+}
+
+.academy-gates-header p {
+  margin: 0;
+  color: #61758a;
+  line-height: 1.8;
+}
+
+.academy-gates-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.academy-gate {
+  position: relative;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: 25px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid rgba(23, 50, 77, 0.08);
+  box-shadow: 0 13px 30px rgba(23, 50, 77, 0.09);
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
+}
+
+.academy-gate::after {
+  content: "";
+  position: absolute;
+  width: 105px;
+  height: 105px;
+  left: -35px;
+  bottom: -42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transition: transform 0.35s ease;
+}
+
+.academy-gate:hover {
+  transform: translateY(-6px);
+  border-color: rgba(16, 135, 91, 0.24);
+  box-shadow: 0 22px 42px rgba(23, 50, 77, 0.15);
+}
+
+.academy-gate:hover::after {
+  transform: scale(1.25);
+}
+
+.student-gate {
+  background: linear-gradient(145deg, #eaf8ff, #ffffff);
+}
+
+.parent-gate {
+  background: linear-gradient(145deg, #edfff5, #ffffff);
+}
+
+.teacher-gate {
+  background: linear-gradient(145deg, #fff7df, #ffffff);
+}
+
+.academy-gate-icon {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 19px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 10px 22px rgba(23, 50, 77, 0.08),
+    inset 0 0 0 1px rgba(23, 50, 77, 0.06);
+  font-size: 32px;
+}
+
+.academy-gate-label {
+  display: inline-block;
+  margin-bottom: 5px;
+  color: #16805e;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.academy-gate h3 {
+  margin: 0 0 8px;
+  color: #17324d;
+  font-size: 23px;
+}
+
+.academy-gate p {
+  margin: 0;
+  color: #66788a;
+  line-height: 1.8;
+}
+
+.academy-gate-arrow {
+  position: absolute;
+  left: 22px;
+  bottom: 20px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1769aa;
+  font-size: 20px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(23, 50, 77, 0.1);
+  transition: transform 0.25s ease;
+}
+
+.academy-gate:hover .academy-gate-arrow {
+  transform: translateX(-4px);
+}
+
+@keyframes academySparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9) rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(18deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .academy-gates-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .academy-gate {
+    min-height: 190px;
+  }
+}
+
+@media (max-width: 600px) {
+  .academy-gates {
+    margin: 22px 12px;
+    padding: 22px 14px;
+    border-radius: 23px;
+  }
+
+  .academy-gate {
+    min-height: 185px;
+    padding: 20px;
+    border-radius: 21px;
+  }
+
+  .academy-gate-icon {
+    width: 54px;
+    height: 54px;
+    font-size: 28px;
+  }
+
+  .academy-gate h3 {
+    font-size: 21px;
+  }
+}
