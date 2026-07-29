@@ -12,6 +12,7 @@ import { db } from "../../../firebase";
 
 type ClassroomFilter = "الكل" | "الثاني أ" | "الثاني ب";
 type StatusFilter = "الكل" | "لم يؤكد" | "بانتظار المراجعة" | "تمت المراجعة";
+type DailyCompletionFilter = "الكل" | "المنجزون" | "لم ينجزوا";
 
 type Student = {
   id: string;
@@ -42,7 +43,15 @@ type Completion = {
   completedAtText: string;
   teacherReviewed: boolean;
 };
-
+type DailyCompletion = {
+  id: string;
+  studentId: string;
+  day: string;
+  date: string;
+  weekTitle: string;
+  completed: boolean;
+  completedAtText: string;
+};
 type StudentHomeworkRow = {
   studentId: string;
   studentName: string;
@@ -59,10 +68,14 @@ export default function HomeworkTrackingPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
-
+const [dailyCompletions, setDailyCompletions] =
+  useState<DailyCompletion[]>([]);
+  const [dailyCompletionFilter, setDailyCompletionFilter] =
+  useState<DailyCompletionFilter>("الكل");
   const [selectedHomeworkId, setSelectedHomeworkId] = useState("");
   const [classroomFilter, setClassroomFilter] =
     useState<ClassroomFilter>("الكل");
+    const [dailyClassroomFilter, setDailyClassroomFilter] = useState("الكل");
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("الكل");
   const [searchText, setSearchText] = useState("");
@@ -78,12 +91,17 @@ export default function HomeworkTrackingPage() {
       setError("");
       setMessage("");
 
-      const [studentsSnapshot, homeworksSnapshot, completionsSnapshot] =
-        await Promise.all([
-          getDocs(collection(db, "students")),
-          getDocs(collection(db, "homeworks")),
-          getDocs(collection(db, "homeworkCompletions")),
-        ]);
+      const [
+  studentsSnapshot,
+  homeworksSnapshot,
+  completionsSnapshot,
+  dailyCompletionsSnapshot,
+] = await Promise.all([
+  getDocs(collection(db, "students")),
+  getDocs(collection(db, "homeworks")),
+  getDocs(collection(db, "homeworkCompletions")),
+  getDocs(collection(db, "dailyCompletions")),
+]);
 
       const loadedStudents: Student[] = studentsSnapshot.docs
         .map((studentDocument) => {
@@ -141,10 +159,32 @@ export default function HomeworkTrackingPage() {
             teacherReviewed: data.teacherReviewed === true,
           };
         });
+const loadedDailyCompletions: DailyCompletion[] =
+  dailyCompletionsSnapshot.docs.map((completionDocument) => {
+    const data = completionDocument.data();
 
+    const completedAtText =
+      data.completedAt &&
+      typeof data.completedAt.toDate === "function"
+        ? data.completedAt.toDate().toLocaleString("ar-SA")
+        : "";
+
+    return {
+      id: completionDocument.id,
+      studentId:
+        typeof data.studentId === "string" ? data.studentId : "",
+      day: typeof data.day === "string" ? data.day : "",
+      date: typeof data.date === "string" ? data.date : "",
+      weekTitle:
+        typeof data.weekTitle === "string" ? data.weekTitle : "",
+      completed: data.completed === true,
+      completedAtText,
+    };
+  });
       setStudents(loadedStudents);
       setHomeworks(loadedHomeworks);
       setCompletions(loadedCompletions);
+      setDailyCompletions(loadedDailyCompletions);
 
       setSelectedHomeworkId((currentId) => {
         const currentStillExists = loadedHomeworks.some(
@@ -351,7 +391,58 @@ export default function HomeworkTrackingPage() {
       day: "numeric",
     });
   }
+const today = new Date();
 
+const todayDateKey = [
+  today.getFullYear(),
+  String(today.getMonth() + 1).padStart(2, "0"),
+  String(today.getDate()).padStart(2, "0"),
+].join("-");
+
+const todayCompletionRows = students.map((student) => {
+  const completion = dailyCompletions.find(
+    (item) =>
+      item.studentId === student.studentId &&
+      item.date === todayDateKey
+  );
+
+  return {
+    studentId: student.studentId,
+    studentName: student.studentName,
+    classroom: student.classroom,
+    completed: completion?.completed === true,
+    day: completion?.day ?? "",
+    completedAtText: completion?.completedAtText ?? "",
+  };
+});
+
+const completedTodayCount = todayCompletionRows.filter(
+  (item) => item.completed
+).length;
+const filteredTodayCompletionRows = todayCompletionRows.filter((student) => {
+  const matchesStatus =
+    dailyCompletionFilter === "المنجزون"
+      ? student.completed
+      : dailyCompletionFilter === "لم ينجزوا"
+        ? !student.completed
+        : true;
+ const matchesClassroom =
+    dailyClassroomFilter === "الكل"
+      ? true
+      : student.classroom === dailyClassroomFilter;
+
+  return matchesStatus && matchesClassroom;
+});
+const dailyClassroomOptions = [
+  "الكل",
+  ...Array.from(
+    new Set(
+      todayCompletionRows
+        .map((student) => student.classroom)
+        .filter((classroom) => classroom.trim() !== "")
+    )
+  ),
+];
   return (
     <main dir="rtl" style={styles.page}>
       <section style={styles.header}>
@@ -367,6 +458,242 @@ export default function HomeworkTrackingPage() {
           </p>
         </div>
       </section>
+      <section
+  style={{
+    marginBottom: "24px",
+    border: "1px solid #bbf7d0",
+    borderRadius: "24px",
+    background: "#ffffff",
+    padding: "24px",
+    boxShadow: "0 10px 30px rgba(15, 118, 110, 0.08)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: "16px",
+      marginBottom: "20px",
+    }}
+  >
+    <div>
+      <h2
+        style={{
+          margin: 0,
+          color: "#047857",
+          fontSize: "26px",
+          fontWeight: 900,
+        }}
+      >
+        ✅ متابعة مهام اليوم
+      </h2>
+
+      <p
+        style={{
+          margin: "8px 0 0",
+          color: "#64748b",
+          fontWeight: 700,
+        }}
+      >
+        متابعة الطلاب الذين أكدوا إنجاز مهامهم اليومية
+      </p>
+    </div>
+
+    <div
+      style={{
+        borderRadius: "18px",
+        background: "#ecfdf5",
+        padding: "14px 20px",
+        color: "#047857",
+        fontWeight: 900,
+      }}
+    >
+      أنجز اليوم: {completedTodayCount} من {todayCompletionRows.length}
+    </div>
+  </div>
+  <div
+  style={{
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginBottom: "20px",
+  }}
+>
+  {(["الكل", "المنجزون", "لم ينجزوا"] as DailyCompletionFilter[]).map(
+    (filterOption) => {
+      const isActive = dailyCompletionFilter === filterOption;
+
+      return (
+        <button
+          key={filterOption}
+          type="button"
+          onClick={() => setDailyCompletionFilter(filterOption)}
+          style={{
+            cursor: "pointer",
+            border: isActive
+              ? "2px solid #059669"
+              : "1px solid #cbd5e1",
+            borderRadius: "999px",
+            background: isActive ? "#059669" : "#ffffff",
+            padding: "10px 18px",
+            color: isActive ? "#ffffff" : "#475569",
+            fontWeight: 900,
+          }}
+        >
+          {filterOption === "الكل"
+            ? `الكل (${todayCompletionRows.length})`
+            : filterOption === "المنجزون"
+              ? `✅ المنجزون (${completedTodayCount})`
+              : `⏳ لم ينجزوا (${
+                  todayCompletionRows.length - completedTodayCount
+                })`}
+        </button>
+      );
+    }
+  )}
+  <div
+  style={{
+    marginBottom: "20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  }}
+>
+  <label
+    htmlFor="daily-classroom-filter"
+    style={{
+      color: "#334155",
+      fontWeight: 900,
+    }}
+  >
+    الفصل:
+  </label>
+
+  <select
+    id="daily-classroom-filter"
+    value={dailyClassroomFilter}
+    onChange={(event) => setDailyClassroomFilter(event.target.value)}
+    style={{
+      minWidth: "180px",
+      border: "1px solid #cbd5e1",
+      borderRadius: "14px",
+      background: "#ffffff",
+      padding: "10px 14px",
+      color: "#0f172a",
+      fontWeight: 800,
+    }}
+  >
+    {dailyClassroomOptions.map((classroom) => (
+      <option key={classroom} value={classroom}>
+        {classroom === "الكل" ? "جميع الفصول" : classroom}
+      </option>
+    ))}
+  </select>
+</div>
+</div>
+
+  {filteredTodayCompletionRows.length === 0 ? (
+    <p
+      style={{
+        margin: 0,
+        borderRadius: "16px",
+        background: "#f8fafc",
+        padding: "18px",
+        textAlign: "center",
+        color: "#64748b",
+        fontWeight: 800,
+      }}
+    >
+      <p
+  style={{
+    margin: 0,
+    borderRadius: "16px",
+    background: "#f8fafc",
+    padding: "18px",
+    textAlign: "center",
+    color: "#64748b",
+    fontWeight: 800,
+  }}
+>
+  لا يوجد طلاب ضمن هذا التصنيف حاليًا.
+</p>
+    </p>
+  ) : (
+    <div
+      style={{
+        display: "grid",
+        gap: "12px",
+      }}
+    >
+      {filteredTodayCompletionRows.map((student) => (
+        <article
+          key={student.studentId}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(150px, 1fr) minmax(90px, auto) minmax(130px, auto)",
+            alignItems: "center",
+            gap: "12px",
+            border: student.completed
+              ? "1px solid #86efac"
+              : "1px solid #e2e8f0",
+            borderRadius: "18px",
+            background: student.completed ? "#f0fdf4" : "#f8fafc",
+            padding: "16px",
+          }}
+        >
+          <div>
+            <strong
+              style={{
+                display: "block",
+                color: "#0f172a",
+                fontSize: "17px",
+              }}
+            >
+              {student.studentName}
+            </strong>
+
+            <span
+              style={{
+                color: "#64748b",
+                fontSize: "14px",
+                fontWeight: 700,
+              }}
+            >
+              {student.classroom || "لم يُحدد الفصل"}
+            </span>
+          </div>
+
+          <span
+            style={{
+              borderRadius: "999px",
+              background: student.completed ? "#16a34a" : "#e2e8f0",
+              padding: "8px 14px",
+              textAlign: "center",
+              color: student.completed ? "#ffffff" : "#475569",
+              fontWeight: 900,
+            }}
+          >
+            {student.completed ? "تم الإنجاز ✅" : "لم يُنجز بعد"}
+          </span>
+
+          <span
+            style={{
+              color: "#64748b",
+              fontSize: "14px",
+              fontWeight: 700,
+              textAlign: "center",
+            }}
+          >
+            {student.completedAtText || "—"}
+          </span>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
 
       <section style={styles.controlsCard}>
         <div style={styles.controlsGrid}>
