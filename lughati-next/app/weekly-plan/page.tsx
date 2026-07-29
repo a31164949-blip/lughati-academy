@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 
 type DayPlan = {
@@ -9,6 +14,9 @@ type DayPlan = {
   lesson: string;
   objective: string;
   homework: string;
+  readingTask: string;
+  spellingWords: string;
+  teacherNote: string;
 };
 
 type WeeklyPlan = {
@@ -21,7 +29,67 @@ export default function StudentWeeklyPlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const dayNames = [
+  "الأحد",
+  "الاثنين",
+  "الثلاثاء",
+  "الأربعاء",
+  "الخميس",
+  "الجمعة",
+  "السبت",
+];
 
+const todayName = dayNames[new Date().getDay()];
+
+const [openDay, setOpenDay] = useState<string | null>(todayName);
+const [completedDays, setCompletedDays] = useState<string[]>([]);
+const [studentId, setStudentId] = useState("");
+const [isSavingCompletion, setIsSavingCompletion] = useState(false);
+const [completionMessage, setCompletionMessage] = useState("");
+useEffect(() => {
+  const savedStudentId = window.localStorage.getItem("student-id");
+
+  if (savedStudentId) {
+    setStudentId(savedStudentId);
+  }
+}, []);
+useEffect(() => {
+  async function loadTodayCompletion() {
+    if (!studentId) {
+      return;
+    }
+
+    const today = new Date();
+    const dateKey = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    try {
+      const completionReference = doc(
+        db,
+        "dailyCompletions",
+        `${studentId}_${dateKey}_${todayName}`
+      );
+
+      const completionSnapshot = await getDoc(completionReference);
+
+      if (
+        completionSnapshot.exists() &&
+        completionSnapshot.data().completed === true
+      ) {
+        setCompletedDays([todayName]);
+      } else {
+        setCompletedDays([]);
+      }
+    } catch (error) {
+      console.error("تعذر تحميل إنجاز اليوم:", error);
+    }
+  }
+
+  loadTodayCompletion();
+}, [studentId, todayName]);
   useEffect(() => {
     async function loadPlan() {
       try {
@@ -39,17 +107,23 @@ export default function StudentWeeklyPlanPage() {
           setErrorMessage("الخطة الأسبوعية غير متاحة حاليًا.");
           return;
         }
-
-        const savedDays: DayPlan[] = Array.isArray(data.days)
-          ? data.days.map((item: Partial<DayPlan>) => ({
-              day: typeof item.day === "string" ? item.day : "",
-              lesson: typeof item.lesson === "string" ? item.lesson : "",
-              objective:
-                typeof item.objective === "string" ? item.objective : "",
-              homework:
-                typeof item.homework === "string" ? item.homework : "",
-            }))
-          : [];
+const savedDays: DayPlan[] = Array.isArray(data.days)
+  ? data.days.map((item: Partial<DayPlan>) => ({
+      day: typeof item.day === "string" ? item.day : "",
+      lesson: typeof item.lesson === "string" ? item.lesson : "",
+      objective:
+        typeof item.objective === "string" ? item.objective : "",
+      homework:
+        typeof item.homework === "string" ? item.homework : "",
+      readingTask:
+        typeof item.readingTask === "string" ? item.readingTask : "",
+      spellingWords:
+        typeof item.spellingWords === "string" ? item.spellingWords : "",
+      teacherNote:
+        typeof item.teacherNote === "string" ? item.teacherNote : "",
+    }))
+  : [];
+        
 
         setPlan({
           weekTitle:
@@ -71,6 +145,66 @@ export default function StudentWeeklyPlanPage() {
 
     loadPlan();
   }, []);
+  async function handleToggleDayCompletion(day: string) {
+  if (!studentId) {
+    setCompletionMessage("يرجى تسجيل الدخول أولًا لحفظ الإنجاز.");
+    return;
+  }
+
+  const isAlreadyCompleted = completedDays.includes(day);
+  const newCompletedStatus = !isAlreadyCompleted;
+
+  const today = new Date();
+  const dateKey = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  try {
+    setIsSavingCompletion(true);
+    setCompletionMessage("");
+
+    const completionReference = doc(
+      db,
+      "dailyCompletions",
+      `${studentId}_${dateKey}_${day}`
+    );
+
+    await setDoc(
+      completionReference,
+      {
+        studentId,
+        day,
+        date: dateKey,
+        weekTitle: plan?.weekTitle ?? "",
+        completed: newCompletedStatus,
+        completedAt: newCompletedStatus ? serverTimestamp() : null,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    setCompletedDays((currentDays) =>
+      newCompletedStatus
+        ? [...currentDays.filter((savedDay) => savedDay !== day), day]
+        : currentDays.filter((savedDay) => savedDay !== day)
+    );
+
+    setCompletionMessage(
+      newCompletedStatus
+        ? "🎉 أحسنت! تم حفظ إنجاز مهام اليوم."
+        : "تم إلغاء تسجيل إنجاز هذا اليوم."
+    );
+  } catch (error) {
+    console.error("تعذر حفظ إنجاز اليوم:", error);
+    setCompletionMessage(
+      "تعذر حفظ الإنجاز الآن. تحقق من الاتصال وحاول مرة أخرى."
+    );
+  } finally {
+    setIsSavingCompletion(false);
+  }
+}
 
   if (isLoading) {
     return (
@@ -133,11 +267,33 @@ export default function StudentWeeklyPlanPage() {
               key={item.day}
               className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
             >
-              <h2 className="mb-5 text-2xl font-black text-emerald-700">
-                {item.day}
-              </h2>
+              <button
+  type="button"
+  onClick={() =>
+    setOpenDay((currentDay) =>
+      currentDay === item.day ? null : item.day
+    )
+  }
+  className="mb-5 flex w-full items-center justify-between rounded-2xl bg-emerald-50 px-5 py-4 text-right"
+  aria-expanded={openDay === item.day}
+>
+  <span className="flex items-center gap-3 text-2xl font-black text-emerald-700">
+  {item.day}
 
-              <div className="grid gap-4 md:grid-cols-3">
+  {item.day === todayName && (
+    <span className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white">
+      اليوم 🌟
+    </span>
+  )}
+</span>
+
+  <span className="text-xl font-black text-emerald-700">
+    {openDay === item.day ? "▲" : "▼"}
+  </span>
+</button>
+
+              {openDay === item.day && (
+  <div className="grid gap-4 md:grid-cols-3">
                 <article className="rounded-2xl bg-sky-50 p-5">
                   <p className="font-black text-sky-800">📘 الدرس</p>
 
@@ -161,7 +317,52 @@ export default function StudentWeeklyPlanPage() {
                     {item.homework.trim() || "لا يوجد واجب"}
                   </p>
                 </article>
+                <article className="rounded-2xl bg-violet-50 p-5">
+  <p className="font-black text-violet-800">📖 مهمة القراءة</p>
+
+  <p className="mt-3 text-lg font-bold leading-8 text-slate-800">
+    {item.readingTask.trim() || "لا توجد مهمة قراءة"}
+  </p>
+</article>
+
+<article className="rounded-2xl bg-rose-50 p-5">
+  <p className="font-black text-rose-800">✍️ كلمات الإملاء</p>
+
+  <p className="mt-3 whitespace-pre-line text-lg font-bold leading-8 text-slate-800">
+    {item.spellingWords.trim() || "لا توجد كلمات إملاء"}
+  </p>
+</article>
+
+<article className="rounded-2xl bg-teal-50 p-5 md:col-span-3">
+  <p className="font-black text-teal-800">💬 ملاحظة المعلم</p>
+
+  <p className="mt-3 whitespace-pre-line text-lg font-bold leading-8 text-slate-800">
+    {item.teacherNote.trim() || "لا توجد ملاحظة من المعلم"}
+  </p>
+</article>
+<button
+  type="button"
+  onClick={() => handleToggleDayCompletion(item.day)}
+disabled={isSavingCompletion}
+  className={`rounded-2xl px-5 py-4 text-lg font-black md:col-span-3 ${
+    completedDays.includes(item.day)
+      ? "bg-emerald-600 text-white"
+      : "border-2 border-emerald-600 bg-white text-emerald-700"
+  }`}
+>
+  {isSavingCompletion
+  ? "جارٍ حفظ الإنجاز... ⏳"
+  : completedDays.includes(item.day)
+    ? "✅ تم إنجاز مهام اليوم"
+    : "أتممت مهام اليوم"}
+</button>
+{completionMessage && (
+  <p className="text-center font-bold text-emerald-700 md:col-span-3">
+    {completionMessage}
+  </p>
+)}
               </div>
+              )}
             </section>
           ))}
         </div>

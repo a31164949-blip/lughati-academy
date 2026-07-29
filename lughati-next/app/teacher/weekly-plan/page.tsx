@@ -14,14 +14,57 @@ type DayPlan = {
   lesson: string;
   objective: string;
   homework: string;
+  readingTask: string;
+  spellingWords: string;
+  teacherNote: string;
 };
 
 const initialDays: DayPlan[] = [
-  { day: "الأحد", lesson: "", objective: "", homework: "" },
-  { day: "الاثنين", lesson: "", objective: "", homework: "" },
-  { day: "الثلاثاء", lesson: "", objective: "", homework: "" },
-  { day: "الأربعاء", lesson: "", objective: "", homework: "" },
-  { day: "الخميس", lesson: "", objective: "", homework: "" },
+  {
+    day: "الأحد",
+    lesson: "",
+    objective: "",
+    homework: "",
+    readingTask: "",
+    spellingWords: "",
+    teacherNote: "",
+  },
+  {
+    day: "الاثنين",
+    lesson: "",
+    objective: "",
+    homework: "",
+    readingTask: "",
+    spellingWords: "",
+    teacherNote: "",
+  },
+  {
+    day: "الثلاثاء",
+    lesson: "",
+    objective: "",
+    homework: "",
+    readingTask: "",
+    spellingWords: "",
+    teacherNote: "",
+  },
+  {
+    day: "الأربعاء",
+    lesson: "",
+    objective: "",
+    homework: "",
+    readingTask: "",
+    spellingWords: "",
+    teacherNote: "",
+  },
+  {
+    day: "الخميس",
+    lesson: "",
+    objective: "",
+    homework: "",
+    readingTask: "",
+    spellingWords: "",
+    teacherNote: "",
+  },
 ];
 
 export default function WeeklyPlanPage() {
@@ -70,6 +113,20 @@ export default function WeeklyPlanPage() {
                       typeof matchingDay.homework === "string"
                         ? matchingDay.homework
                         : "",
+                        readingTask:
+  typeof matchingDay.readingTask === "string"
+    ? matchingDay.readingTask
+    : "",
+
+spellingWords:
+  typeof matchingDay.spellingWords === "string"
+    ? matchingDay.spellingWords
+    : "",
+
+teacherNote:
+  typeof matchingDay.teacherNote === "string"
+    ? matchingDay.teacherNote
+    : "",
                   }
                 : defaultDay;
             });
@@ -92,7 +149,13 @@ export default function WeeklyPlanPage() {
 
   function updateDay(
     index: number,
-    field: "lesson" | "objective" | "homework",
+    field:
+  | "lesson"
+  | "objective"
+  | "homework"
+  | "readingTask"
+  | "spellingWords"
+  | "teacherNote",
     value: string
   ) {
     setDays((currentDays) =>
@@ -258,6 +321,64 @@ export default function WeeklyPlanPage() {
                   />
                 </div>
               </div>
+              <div>
+  <label
+    htmlFor={`readingTask-${index}`}
+    className="mb-2 block font-bold text-slate-700"
+  >
+    مهمة القراءة
+  </label>
+
+  <input
+    id={`readingTask-${index}`}
+    value={item.readingTask}
+    onChange={(event) =>
+      updateDay(index, "readingTask", event.target.value)
+    }
+    placeholder="اكتب مهمة القراءة"
+    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+  />
+</div>
+
+<div>
+  <label
+    htmlFor={`spellingWords-${index}`}
+    className="mb-2 block font-bold text-slate-700"
+  >
+    كلمات الإملاء
+  </label>
+
+  <textarea
+    id={`spellingWords-${index}`}
+    value={item.spellingWords}
+    onChange={(event) =>
+      updateDay(index, "spellingWords", event.target.value)
+    }
+    placeholder="اكتب كلمات الإملاء وافصل بينها بفاصلة"
+    rows={3}
+    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+  />
+</div>
+
+<div>
+  <label
+    htmlFor={`teacherNote-${index}`}
+    className="mb-2 block font-bold text-slate-700"
+  >
+    ملاحظة المعلم
+  </label>
+
+  <textarea
+    id={`teacherNote-${index}`}
+    value={item.teacherNote}
+    onChange={(event) =>
+      updateDay(index, "teacherNote", event.target.value)
+    }
+    placeholder="اكتب رسالة أو توجيهًا للطلاب"
+    rows={3}
+    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+  />
+</div>
             </section>
           ))}
         </div>
