@@ -280,6 +280,57 @@ useEffect(() => {
 
     
       </section>
+      <section className="academy-pulse" aria-label="نبض الأكاديمية">
+  <div className="academy-pulse__badge">
+    <span aria-hidden="true">📣</span>
+    <strong>نبض الأكاديمية</strong>
+  </div>
+
+  <div className="academy-pulse__viewport">
+    <div className="academy-pulse__track">
+      <span className="academy-pulse__item">
+        🏙️ منافسة مدينة الإنجاز: أي فصل سيبني الحي الأكثر تقدمًا هذا الأسبوع؟
+      </span>
+
+      <span className="academy-pulse__separator" aria-hidden="true">
+        ✦
+      </span>
+
+      <span className="academy-pulse__item">
+        👑 انطلق تحدي ملك القراءة… اقرأ، تقدّم، واصنع إنجازك.
+      </span>
+
+      <span className="academy-pulse__separator" aria-hidden="true">
+        ✦
+      </span>
+
+      <span className="academy-pulse__item">
+        ⭐ كل واجب تنجزه يضيف خطوة جديدة إلى مدينة الإنجاز.
+      </span>
+
+      <span className="academy-pulse__separator" aria-hidden="true">
+        ✦
+      </span>
+
+      <span className="academy-pulse__item">
+        🤝 الأسرة شريك أساسي في رحلة الطالب نحو التميز.
+      </span>
+
+      <span className="academy-pulse__separator" aria-hidden="true">
+        ✦
+      </span>
+
+      <span className="academy-pulse__item" aria-hidden="true">
+        🏙️ منافسة مدينة الإنجاز: أي فصل سيبني الحي الأكثر تقدمًا هذا الأسبوع؟
+      </span>
+    </div>
+  </div>
+
+  <span className="academy-pulse__live">
+    <span aria-hidden="true"></span>
+    مباشر
+  </span>
+</section>
       <AcademicJourney events={academicJourneyEvents} />
       <ClassDiary />
       <section className="academy-gates academy-gates--compact">
