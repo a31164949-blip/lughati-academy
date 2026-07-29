@@ -18,6 +18,8 @@ type Homework = {
   dueDate: string;
    published: boolean;
   createdAt?: Timestamp | null;
+  resourceUrl?: string;
+attachmentName?: string;
 };
 
 export default function HomeworkReminder() {
@@ -64,6 +66,10 @@ export default function HomeworkReminder() {
               dueDate: data.dueDate || "",
               createdAt: data.createdAt || null,
               published: data.published === true,
+              resourceUrl:
+  typeof data.resourceUrl === "string" ? data.resourceUrl : "",
+attachmentName:
+  typeof data.attachmentName === "string" ? data.attachmentName : "",
             };
           })
           .filter((item) => {
@@ -143,7 +149,30 @@ export default function HomeworkReminder() {
           </p>
         )}
       </div>
-
+{homework.resourceUrl && (
+  <a
+    href={homework.resourceUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: "block",
+      marginTop: "14px",
+      padding: "12px 16px",
+      borderRadius: "14px",
+      background: "#eff6ff",
+      border: "1px solid #bfdbfe",
+      color: "#1d4ed8",
+      fontWeight: 800,
+      textAlign: "center",
+      textDecoration: "none",
+    }}
+  >
+    📎 فتح المرفق
+    {homework.attachmentName
+      ? ` — ${homework.attachmentName}`
+      : ""}
+  </a>
+)}
       <button
         type="button"
         onClick={openHomework}
