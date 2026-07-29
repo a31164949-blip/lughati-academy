@@ -3710,3 +3710,312 @@ a {
     animation: none;
   }
 }
+/* بوابات الأكاديمية — التصميم المختصر */
+.academy-gates--compact {
+  position: relative;
+  overflow: hidden;
+  padding: 42px 36px;
+  border: 1px solid rgba(16, 185, 129, 0.14);
+  border-radius: 36px;
+  background:
+    radial-gradient(
+      circle at 92% 8%,
+      rgba(167, 243, 208, 0.38),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 8% 92%,
+      rgba(254, 240, 138, 0.25),
+      transparent 26%
+    ),
+    rgba(255, 255, 255, 0.82);
+  box-shadow: 0 24px 55px rgba(15, 118, 110, 0.09);
+}
+
+.academy-gates--compact::before,
+.academy-gates--compact::after {
+  content: "✦";
+  position: absolute;
+  color: rgba(245, 158, 11, 0.34);
+  font-size: 34px;
+  pointer-events: none;
+  animation: academyGateSparkle 3.4s ease-in-out infinite;
+}
+
+.academy-gates--compact::before {
+  top: 24px;
+  left: 28px;
+}
+
+.academy-gates--compact::after {
+  right: 32px;
+  bottom: 24px;
+  animation-delay: 1.2s;
+}
+
+.academy-gates-header {
+  max-width: 680px;
+  margin: 0 auto 30px;
+  text-align: center;
+}
+
+.academy-gates-header h2 {
+  margin: 10px 0 8px;
+  color: #123c36;
+  font-size: clamp(28px, 4vw, 43px);
+  line-height: 1.35;
+}
+
+.academy-gates-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.academy-gates-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.academy-gates-secondary {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.academy-gate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 28px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.academy-gate:hover {
+  transform: translateY(-5px);
+}
+
+.academy-gate:active {
+  transform: scale(0.985);
+}
+
+.academy-gate--featured {
+  min-height: 330px;
+  padding: 34px;
+  background:
+    radial-gradient(
+      circle at 15% 12%,
+      rgba(255, 255, 255, 0.75),
+      transparent 28%
+    ),
+    linear-gradient(135deg, #dff8ff 0%, #ecfdf5 55%, #fffbea 100%);
+  box-shadow: 0 18px 42px rgba(14, 116, 144, 0.12);
+}
+
+.academy-gate--featured:hover {
+  border-color: rgba(14, 165, 233, 0.35);
+  box-shadow: 0 25px 48px rgba(14, 116, 144, 0.18);
+}
+
+.academy-gate--small {
+  min-height: 155px;
+  padding: 24px;
+}
+
+.parent-gate {
+  background: linear-gradient(135deg, #ecfdf5, #f7fee7);
+  box-shadow: 0 15px 32px rgba(22, 163, 74, 0.08);
+}
+
+.teacher-gate {
+  background: linear-gradient(135deg, #fff8df, #fffaf0);
+  box-shadow: 0 15px 32px rgba(217, 119, 6, 0.08);
+}
+
+.academy-gate-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 12px 26px rgba(15, 23, 42, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  font-size: 38px;
+  transition: transform 220ms ease;
+}
+
+.academy-gate:hover .academy-gate-icon {
+  transform: rotate(-4deg) scale(1.07);
+}
+
+.academy-gate--small .academy-gate-icon {
+  width: 58px;
+  height: 58px;
+  flex-basis: 58px;
+  border-radius: 19px;
+  font-size: 28px;
+}
+
+.academy-gate-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.academy-gate-label {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.academy-gate-content h3 {
+  margin: 0 0 8px;
+  color: #173c36;
+  font-size: 25px;
+  line-height: 1.4;
+}
+
+.academy-gate--featured .academy-gate-content h3 {
+  font-size: clamp(27px, 3.2vw, 38px);
+}
+
+.academy-gate-content p {
+  margin: 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.academy-gate-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #087f5b;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.11);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.academy-gate-arrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.76);
+  color: #0f766e;
+  font-size: 20px;
+  transition: transform 220ms ease;
+}
+
+.academy-gate:hover .academy-gate-arrow {
+  transform: translateX(-4px);
+}
+
+@keyframes academyGateSparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: scale(1.15) rotate(12deg);
+  }
+}
+
+@media (max-width: 820px) {
+  .academy-gates--compact {
+    padding: 32px 22px;
+    border-radius: 30px;
+  }
+
+  .academy-gates-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .academy-gates-secondary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+
+  .academy-gate--featured {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 640px) {
+  .academy-gates--compact {
+    padding: 28px 16px;
+  }
+
+  .academy-gates-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .academy-gate,
+  .academy-gate--featured,
+  .academy-gate--small {
+    min-height: auto;
+    padding: 22px 18px;
+    border-radius: 23px;
+  }
+
+  .academy-gate--featured {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .academy-gate-icon {
+    width: 62px;
+    height: 62px;
+    flex-basis: 62px;
+    border-radius: 20px;
+    font-size: 31px;
+  }
+
+  .academy-gate-content h3,
+  .academy-gate--featured .academy-gate-content h3 {
+    font-size: 23px;
+  }
+
+  .academy-gate-content p {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .academy-gates--compact::before,
+  .academy-gates--compact::after {
+    animation: none;
+  }
+
+  .academy-gate,
+  .academy-gate-icon,
+  .academy-gate-arrow {
+    transition: none;
+  }
+}

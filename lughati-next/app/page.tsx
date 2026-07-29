@@ -282,45 +282,67 @@ useEffect(() => {
       </section>
       <AcademicJourney events={academicJourneyEvents} />
       <ClassDiary />
-      <section className="academy-gates">
+      <section className="academy-gates academy-gates--compact">
   <div className="academy-gates-header">
     <span className="section-label">بوابات الأكاديمية</span>
     <h2>اختر بوابتك إلى أكاديمية لغتي</h2>
-    <p>
-      وصول سريع وواضح لكل طالب وولي أمر ومعلم.
-    </p>
+    <p>وصول سريع وواضح لكل طالب وولي أمر ومعلم.</p>
   </div>
 
-  <div className="academy-gates-grid">
-    <Link href="/login" className="academy-gate student-gate">
+  <div className="academy-gates-layout">
+    <Link
+      href="/login"
+      className="academy-gate academy-gate--featured student-gate"
+    >
       <span className="academy-gate-icon">🎒</span>
-      <div>
+
+      <div className="academy-gate-content">
         <span className="academy-gate-label">بوابة الطالب</span>
-        <h3>دخول الطالب</h3>
-        <p>ابدأ رحلتك، تابع واجباتك، وابنِ مدينة إنجازك.</p>
+        <h3>ابدأ رحلتك التعليمية</h3>
+        <p>تابع خطتك وواجباتك ودروسك، وواصل بناء إنجازاتك.</p>
+
+        <span className="academy-gate-action">
+          دخول الطالب
+          <span aria-hidden="true">←</span>
+        </span>
       </div>
-      <span className="academy-gate-arrow">←</span>
     </Link>
 
-    <Link href="/parent" className="academy-gate parent-gate">
-      <span className="academy-gate-icon">🤝</span>
-      <div>
-        <span className="academy-gate-label">شريك النجاح</span>
-        <h3>دخول ولي الأمر</h3>
-        <p>تابع تقدم ابنك واحتفِ بإنجازاته خطوةً بخطوة.</p>
-      </div>
-      <span className="academy-gate-arrow">←</span>
-    </Link>
+    <div className="academy-gates-secondary">
+      <Link
+        href="/parent"
+        className="academy-gate academy-gate--small parent-gate"
+      >
+        <span className="academy-gate-icon">🤝</span>
 
-    <Link href="/teacher-login" className="academy-gate teacher-gate">
-      <span className="academy-gate-icon">👨‍🏫</span>
-      <div>
-        <span className="academy-gate-label">بوابة المعلم</span>
-        <h3>دخول المعلم</h3>
-        <p>إدارة الطلاب، الدروس، الواجبات، والأوسمة.</p>
-      </div>
-      <span className="academy-gate-arrow">←</span>
-    </Link>
+        <div className="academy-gate-content">
+          <span className="academy-gate-label">شريك النجاح</span>
+          <h3>دخول ولي الأمر</h3>
+          <p>تابع تقدم ابنك واحتفِ بإنجازاته خطوةً بخطوة.</p>
+        </div>
+
+        <span className="academy-gate-arrow" aria-hidden="true">
+          ←
+        </span>
+      </Link>
+
+      <Link
+        href="/teacher-login"
+        className="academy-gate academy-gate--small teacher-gate"
+      >
+        <span className="academy-gate-icon">👨‍🏫</span>
+
+        <div className="academy-gate-content">
+          <span className="academy-gate-label">بوابة المعلم</span>
+          <h3>دخول المعلم</h3>
+          <p>إدارة الطلاب والدروس والواجبات والأوسمة.</p>
+        </div>
+
+        <span className="academy-gate-arrow" aria-hidden="true">
+          ←
+        </span>
+      </Link>
+    </div>
   </div>
 </section>
       
