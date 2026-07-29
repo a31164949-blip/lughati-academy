@@ -134,7 +134,7 @@ const [isMounted, setIsMounted] = useState(false);
   if (!today) return null;
 
   const semesterStartEvent = events.find((event) =>
-    event.title.includes("بداية الدراسة")
+    event.title.includes("بداية") && event.title.includes("الدراسي")
   );
 
   if (!semesterStartEvent?.date) return null;
