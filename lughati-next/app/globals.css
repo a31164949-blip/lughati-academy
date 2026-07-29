@@ -3624,3 +3624,89 @@ a {
     grid-template-columns: 1fr;
   }
 }
+.academicJourney__weekCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 13px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 20px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.96),
+      rgba(236, 253, 245, 0.94)
+    );
+  box-shadow:
+    0 12px 28px rgba(15, 118, 110, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  color: #134e4a;
+  text-align: right;
+  animation: academicWeekFloat 3.5s ease-in-out infinite;
+}
+
+.academicJourney__weekIcon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #10b981, #0f766e);
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.24);
+  font-size: 24px;
+}
+
+.academicJourney__weekCard > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.academicJourney__weekCard small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.academicJourney__weekCard strong {
+  color: #0f766e;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.academicJourney__weekCard > div > span {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@keyframes academicWeekFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 640px) {
+  .academicJourney__weekCard {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 14px;
+  }
+
+  .academicJourney__weekCard strong {
+    font-size: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .academicJourney__weekCard {
+    animation: none;
+  }
+}

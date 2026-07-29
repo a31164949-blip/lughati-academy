@@ -130,6 +130,39 @@ const [isMounted, setIsMounted] = useState(false);
 
     return datedEvents[0]?.index ?? 0;
   }, [events, today]);
+  const currentWeek = useMemo(() => {
+  if (!today) return null;
+
+  const semesterStartEvent = events.find((event) =>
+    event.title.includes("بداية الدراسة")
+  );
+
+  if (!semesterStartEvent?.date) return null;
+
+  const semesterStart = parseEventDate(semesterStartEvent.date);
+
+  if (!semesterStart) return null;
+
+  const todayDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+
+  const startDate = new Date(
+    semesterStart.getFullYear(),
+    semesterStart.getMonth(),
+    semesterStart.getDate()
+  );
+
+  const differenceInDays = Math.floor(
+    (todayDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (differenceInDays < 0) return 0;
+
+  return Math.floor(differenceInDays / 7) + 1;
+}, [events, today]);
 
   return (
     <section className="academicJourney">
@@ -144,6 +177,26 @@ const [isMounted, setIsMounted] = useState(false);
           تابع رحلتنا خطوة بخطوة، وتعرّف على المحطة الحالية
           وما ينتظرنا بعدها.
         </p>
+        {isMounted && currentWeek !== null && (
+  <div className="academicJourney__weekCard">
+    <span className="academicJourney__weekIcon">📅</span>
+
+    <div>
+      {currentWeek === 0 ? (
+        <>
+          <small>نستعد للانطلاق</small>
+          <strong>الفصل الدراسي الأول</strong>
+        </>
+      ) : (
+        <>
+          <small>نحن الآن في</small>
+          <strong>الأسبوع {currentWeek}</strong>
+          <span>الفصل الدراسي الأول</span>
+        </>
+      )}
+    </div>
+  </div>
+)}
       </div>
 
       <div className="academicJourney__scroll">
