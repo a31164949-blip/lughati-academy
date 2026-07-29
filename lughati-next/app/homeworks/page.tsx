@@ -22,6 +22,8 @@ type Homework = {
   className?: string;
   dueDate?: unknown;
   published?: boolean;
+  resourceUrl?: string;
+attachmentName?: string;
   createdAt?: unknown;
 };
 
@@ -609,7 +611,31 @@ useEffect(() => {
                         {formatDate(homework.dueDate)}
                       </div>
                     </div>
-
+{homework.resourceUrl && (
+  <a
+    href={homework.resourceUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      display: "block",
+      width: "100%",
+      marginTop: "18px",
+      padding: "14px 16px",
+      borderRadius: "16px",
+      background: "#eff6ff",
+      border: "1px solid #bfdbfe",
+      color: "#1d4ed8",
+      fontWeight: 800,
+      textAlign: "center",
+      textDecoration: "none",
+    }}
+  >
+    📎 فتح المرفق
+    {homework.attachmentName
+      ? ` — ${homework.attachmentName}`
+      : ""}
+  </a>
+)}
                     <button
                       type="button"
                       onClick={() => markHomeworkCompleted(homework)}
