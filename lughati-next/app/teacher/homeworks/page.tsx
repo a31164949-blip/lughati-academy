@@ -12,7 +12,8 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { db, storage } from "../../../firebase";
 
 type TargetClass = "الثاني أ" | "الثاني ب" | "الفصلان";
 
@@ -23,6 +24,8 @@ type Homework = {
   targetClass: TargetClass;
   dueDate: string;
   published: boolean;
+  resourceUrl: string;
+attachmentName: string;
   createdAt?: unknown;
 };
 
@@ -32,6 +35,8 @@ const emptyForm = {
   targetClass: "الفصلان" as TargetClass,
   dueDate: "",
   published: true,
+  resourceUrl: "",
+attachmentName: "",
 };
 
 export default function TeacherHomeworksPage() {
@@ -43,7 +48,8 @@ export default function TeacherHomeworksPage() {
   const [deletingId, setDeletingId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
+const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [uploadingFile, setUploadingFile] = useState(false);
   async function loadHomeworks() {
     try {
       setLoading(true);
@@ -67,6 +73,10 @@ export default function TeacherHomeworksPage() {
             targetClass: data.targetClass || "الفصلان",
             dueDate: data.dueDate || "",
             published: data.published === true,
+            resourceUrl:
+  typeof data.resourceUrl === "string" ? data.resourceUrl : "",
+attachmentName:
+  typeof data.attachmentName === "string" ? data.attachmentName : "",
             createdAt: data.createdAt,
           };
         }
@@ -84,7 +94,54 @@ export default function TeacherHomeworksPage() {
   useEffect(() => {
     loadHomeworks();
   }, []);
+async function uploadSelectedFile() {
+  if (!selectedFile) {
+    return null;
+  }
 
+  const allowedTypes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+
+  if (!allowedTypes.includes(selectedFile.type)) {
+    throw new Error("نوع الملف غير مدعوم. اختر PDF أو صورة أو ملف Word.");
+  }
+
+  const maximumFileSize = 10 * 1024 * 1024;
+
+  if (selectedFile.size > maximumFileSize) {
+    throw new Error("حجم الملف أكبر من 10 ميجابايت.");
+  }
+
+  setUploadingFile(true);
+
+  try {
+    const safeFileName = selectedFile.name.replace(
+      /[^a-zA-Z0-9.\-_\u0600-\u06FF]/g,
+      "-"
+    );
+
+    const fileReference = ref(
+      storage,
+      `homework-attachments/${Date.now()}-${safeFileName}`
+    );
+
+    await uploadBytes(fileReference, selectedFile);
+    const downloadUrl = await getDownloadURL(fileReference);
+
+    return {
+      downloadUrl,
+      fileName: selectedFile.name,
+    };
+  } finally {
+    setUploadingFile(false);
+  }
+}
   function updateForm(
     field: keyof typeof form,
     value: string | boolean
@@ -100,6 +157,7 @@ export default function TeacherHomeworksPage() {
 
   function resetForm() {
     setForm(emptyForm);
+    setSelectedFile(null);
     setEditingId("");
     setMessage("");
     setError("");
@@ -132,13 +190,25 @@ export default function TeacherHomeworksPage() {
       setMessage(
         editingId ? "جاري حفظ التعديلات..." : "جاري إنشاء الواجب..."
       );
+let attachmentUrl = form.resourceUrl.trim();
+let attachmentName = form.attachmentName.trim();
 
+if (selectedFile) {
+  const uploadedFile = await uploadSelectedFile();
+
+  if (uploadedFile) {
+    attachmentUrl = uploadedFile.downloadUrl;
+    attachmentName = uploadedFile.fileName;
+  }
+}
       const homeworkData = {
         title: cleanTitle,
         instructions: cleanInstructions,
         targetClass: form.targetClass,
         dueDate: form.dueDate,
         published: form.published,
+        resourceUrl: attachmentUrl,
+attachmentName,
         updatedAt: serverTimestamp(),
       };
 
@@ -156,6 +226,7 @@ export default function TeacherHomeworksPage() {
       }
 
       setForm(emptyForm);
+      setSelectedFile(null);
       setEditingId("");
       await loadHomeworks();
     } catch (saveError) {
@@ -175,6 +246,8 @@ export default function TeacherHomeworksPage() {
       targetClass: homework.targetClass,
       dueDate: homework.dueDate,
       published: homework.published,
+      resourceUrl: homework.resourceUrl,
+attachmentName: homework.attachmentName,
     });
 
     setMessage("أنت الآن تعدّل الواجب المحدد.");
@@ -355,8 +428,50 @@ export default function TeacherHomeworksPage() {
                 ...styles.textarea,
               }}
             />
-          </label>
+          
+<label style={styles.label}>
+  رابط الدرس أو الفيديو (اختياري)
+  <input
+    type="url"
+    value={form.resourceUrl}
+    onChange={(event) =>
+      updateForm("resourceUrl", event.target.value)
+    }
+    placeholder="https://example.com"
+    style={styles.input}
+  />
+</label>
 
+<label style={styles.label}>
+  ملف مرفق (اختياري)
+  <input
+    type="file"
+    accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+    onChange={(event) => {
+      const file = event.target.files?.[0] ?? null;
+      setSelectedFile(file);
+
+      if (file) {
+        updateForm("attachmentName", file.name);
+      }
+    }}
+    disabled={saving || uploadingFile}
+    style={styles.input}
+  />
+
+  {(selectedFile || form.attachmentName) && (
+    <span
+      style={{
+        marginTop: "8px",
+        color: "#475569",
+        fontWeight: 700,
+      }}
+    >
+      📎 {selectedFile?.name || form.attachmentName}
+    </span>
+  )}
+  </label>
+</label>
           <div style={styles.twoColumns}>
             <label style={styles.label}>
               الفصل المستهدف
@@ -415,11 +530,13 @@ export default function TeacherHomeworksPage() {
               opacity: saving ? 0.65 : 1,
             }}
           >
-            {saving
-              ? "جاري الحفظ..."
-              : editingId
-              ? "حفظ تعديلات الواجب"
-              : "إنشاء الواجب"}
+            {uploadingFile
+  ? "جارٍ رفع المرفق..."
+  : saving
+    ? "جارٍ الحفظ..."
+    : editingId
+      ? "حفظ التعديلات"
+      : "إنشاء الواجب"}
           </button>
         </form>
 
@@ -494,6 +611,24 @@ export default function TeacherHomeworksPage() {
                   <strong>تاريخ الاستحقاق:</strong>{" "}
                   {formatDueDate(homework.dueDate)}
                 </p>
+                {homework.resourceUrl && (
+  <p style={styles.dueDate}>
+    <strong>رابط الدرس:</strong>{" "}
+    <a
+      href={homework.resourceUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      فتح الرابط
+    </a>
+  </p>
+)}
+
+{homework.attachmentName && (
+  <p style={styles.dueDate}>
+    <strong>المرفق:</strong> {homework.attachmentName}
+  </p>
+)}
               </div>
 
               <div style={styles.actions}>
