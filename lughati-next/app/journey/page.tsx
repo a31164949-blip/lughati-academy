@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  arrayUnion,
+  doc,
+  getDoc,
+  increment,
+  runTransaction,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 
 const journeyCards = [
@@ -62,24 +69,32 @@ const dailyTasks = [
     id: 1,
     title: "قراءة درس اليوم",
     reward: "نجمتان",
+    rewardPoints: 0,
+    rewardStars: 2,
     icon: "📖",
   },
   {
     id: 2,
     title: "حل الواجب اليومي",
     reward: "3 نقاط",
+    rewardPoints: 3,
+    rewardStars: 0,
     icon: "✏️",
   },
   {
     id: 3,
     title: "التدرب على القراءة",
     reward: "نجمة",
+    rewardPoints: 0,
+    rewardStars: 1,
     icon: "🎙️",
   },
   {
     id: 4,
     title: "مراجعة كلمات الإملاء",
     reward: "نقطتان",
+    rewardPoints: 2,
+    rewardStars: 0,
     icon: "🔤",
   },
 ];
@@ -87,7 +102,10 @@ const dailyTasks = [
 export default function JourneyPage() {
   const [points, setPoints] = useState(0);
   const [completedTasks, setCompletedTasks] = useState<number[]>([1]);
-useEffect(() => {
+const [savingTaskId, setSavingTaskId] =
+  useState<number | null>(null);
+
+  useEffect(() => {
   async function loadStudentPoints() {
     try {
       const studentId =
@@ -134,14 +152,110 @@ useEffect(() => {
   const progress = useMemo(() => {
     return Math.round((completedCount / dailyTasks.length) * 100);
   }, [completedCount]);
+async function saveTaskReward(taskId: number) {
+  const task = dailyTasks.find(
+    (item) => item.id === taskId
+  );
 
-  function toggleTask(taskId: number) {
-    setCompletedTasks((currentTasks) =>
-      currentTasks.includes(taskId)
-        ? currentTasks.filter((id) => id !== taskId)
-        : [...currentTasks, taskId]
-    );
+  if (!task) return 0;
+
+  const studentId =
+    localStorage.getItem("student-id");
+
+  if (!studentId || studentId === "student-demo") {
+    throw new Error("STUDENT_NOT_FOUND");
   }
+
+  const rewardKey =
+    `${new Date().toLocaleDateString("en-CA")}-task-${taskId}`;
+
+  return runTransaction(db, async (transaction) => {
+    const studentRef = doc(
+      db,
+      "students",
+      studentId
+    );
+
+    const studentSnapshot =
+      await transaction.get(studentRef);
+
+    if (!studentSnapshot.exists()) {
+      throw new Error("STUDENT_NOT_FOUND");
+    }
+
+    const studentData = studentSnapshot.data();
+
+    const rewardedTasks = Array.isArray(
+      studentData.dailyTaskRewardKeys
+    )
+      ? studentData.dailyTaskRewardKeys
+      : [];
+
+    if (rewardedTasks.includes(rewardKey)) {
+      return 0;
+    }
+
+    transaction.update(studentRef, {
+      points: increment(task.rewardPoints),
+      stars: increment(task.rewardStars),
+      "journey.xp": increment(task.rewardPoints),
+      dailyTaskRewardKeys: arrayUnion(rewardKey),
+
+      pointsHistory: arrayUnion({
+        reason: `مهمة يومية: ${task.title}`,
+        points: task.rewardPoints,
+        stars: task.rewardStars,
+        category: "مهمة يومية",
+        createdAt: new Date(),
+        rewardKey,
+      }),
+
+      updatedAt: serverTimestamp(),
+    });
+
+    return task.rewardPoints;
+  });
+}
+  async function toggleTask(taskId: number) {
+  if (savingTaskId !== null) return;
+
+  if (completedTasks.includes(taskId)) {
+    setCompletedTasks((currentTasks) =>
+      currentTasks.filter((id) => id !== taskId)
+    );
+    return;
+  }
+
+  try {
+    setSavingTaskId(taskId);
+
+    const addedPoints =
+      await saveTaskReward(taskId);
+
+    setCompletedTasks((currentTasks) => [
+      ...currentTasks,
+      taskId,
+    ]);
+
+    if (addedPoints > 0) {
+      setPoints(
+        (currentPoints) =>
+          currentPoints + addedPoints
+      );
+    }
+  } catch (error) {
+    console.error(
+      "تعذر إكمال المهمة:",
+      error
+    );
+
+    alert(
+      "تعذر حفظ المهمة ومكافأتها، حاول مرة أخرى."
+    );
+  } finally {
+    setSavingTaskId(null);
+  }
+}
 
   return (
     <main
