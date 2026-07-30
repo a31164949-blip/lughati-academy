@@ -27,6 +27,11 @@ const sections = [
     href: "/teacher/students"
   },
   {
+  title: "🏫 تهيئة العام الدراسي",
+  description: "إعداد الطلاب والفصول وبيانات الدخول قبل بداية العام الدراسي.",
+  href: "/teacher/school-year",
+},
+  {
     title: "📤 مراجعة أعمال الطلاب",
     description: "مراجعة الملفات والصور والمقاطع المرفوعة.",
     href: "/teacher/submissions",

@@ -82,13 +82,7 @@ export default function TeacherLayout({
   </button>
 </div>
       </div>
-<button
-  type="button"
-  onClick={() => router.back()}
-  style={styles.backButton}
->
-  ← رجوع
-</button>
+
       {children}
     </>
   );
