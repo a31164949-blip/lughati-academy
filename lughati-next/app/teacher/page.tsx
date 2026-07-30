@@ -17,6 +17,11 @@ const sections = [
     href: "/teacher/homeworks",
   },
   {
+  title: "📝 إدارة الاختبارات",
+  description: "إنشاء الاختبارات والأسئلة ونشرها للطلاب.",
+  href: "/teacher/quizzes",
+},
+  {
     title: "📋 متابعة إنجاز الواجبات",
     description: "معرفة الطلاب الذين أكدوا الإنجاز ومراجعة حالاتهم.",
     href: "/teacher/homework-tracking",
