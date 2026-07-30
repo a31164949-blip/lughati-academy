@@ -154,8 +154,14 @@ const [dailyCompletions, setDailyCompletions] =
             studentName: data.studentName || "طالب",
             classroom: data.classroom || "",
             method: data.method || "",
-            completed: data.completed === true,
-            completedAtText: data.completedAtText || "",
+            completed:
+  data.completed === true || data.status === "completed",
+            completedAtText:
+  data.completedAtText ||
+  (data.completedAt &&
+  typeof data.completedAt.toDate === "function"
+    ? data.completedAt.toDate().toLocaleString("ar-SA")
+    : ""),
             teacherReviewed: data.teacherReviewed === true,
           };
         });

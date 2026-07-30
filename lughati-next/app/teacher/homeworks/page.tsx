@@ -358,7 +358,33 @@ attachmentName: homework.attachmentName,
           </p>
         </div>
       </section>
-
+<section
+  style={{
+    maxWidth: "1100px",
+    margin: "0 auto 22px",
+    display: "flex",
+    justifyContent: "flex-start",
+  }}
+>
+  <a
+    href="/teacher/homeworks/tracking"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "10px",
+      padding: "14px 20px",
+      borderRadius: "16px",
+      background: "#047857",
+      color: "white",
+      textDecoration: "none",
+      fontWeight: 800,
+      fontSize: "16px",
+      boxShadow: "0 10px 24px rgba(4, 120, 87, 0.18)",
+    }}
+  >
+    📊 متابعة إنجاز الواجبات
+  </a>
+</section>
       <section style={styles.statistics}>
         <article style={styles.statCard}>
           <strong style={styles.statNumber}>{homeworks.length}</strong>

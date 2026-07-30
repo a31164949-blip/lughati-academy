@@ -163,7 +163,7 @@ attachmentName:
       border: "1px solid #bfdbfe",
       color: "#1d4ed8",
       fontWeight: 800,
-      textAlign: "center",
+      textAlign: "center",  
       textDecoration: "none",
     }}
   >
