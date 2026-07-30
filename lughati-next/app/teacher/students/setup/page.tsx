@@ -27,6 +27,15 @@ export default function StudentsSetupPage() {
     try {
       setStatus("creating");
       setMessage("جاري إنشاء الطلاب التجريبيين...");
+      const existingStudents = await getDocs(collection(db, "students"));
+
+if (!existingStudents.empty) {
+  setStatus("error");
+  setMessage(
+    `تم العثور على ${existingStudents.size} طالبًا في قاعدة البيانات. لا يمكن تنفيذ التهيئة مرة أخرى حفاظًا على البيانات.`
+  );
+  return;
+}
 
       const batch = writeBatch(db);
 
@@ -45,6 +54,17 @@ export default function StudentsSetupPage() {
             temporary: true,
             loginCode: String(number).padStart(4, "0"),
             stars: 0,
+            points: 0,
+streakDays: 0,
+archived: false,
+
+journey: {
+  xp: 0,
+  level: 1,
+},
+
+dailyTaskRewardKeys: [],
+pointsHistory: [],
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
