@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 
 const journeyCards = [
   {
@@ -83,8 +85,49 @@ const dailyTasks = [
 ];
 
 export default function JourneyPage() {
+  const [points, setPoints] = useState(0);
   const [completedTasks, setCompletedTasks] = useState<number[]>([1]);
+useEffect(() => {
+  async function loadStudentPoints() {
+    try {
+      const studentId =
+        localStorage.getItem("student-id");
 
+      if (
+        !studentId ||
+        studentId === "student-demo"
+      ) {
+        setPoints(0);
+        return;
+      }
+
+      const studentSnapshot = await getDoc(
+        doc(db, "students", studentId)
+      );
+
+      if (!studentSnapshot.exists()) {
+        setPoints(0);
+        return;
+      }
+
+      const studentData = studentSnapshot.data();
+
+      setPoints(
+        typeof studentData.points === "number"
+          ? studentData.points
+          : 0
+      );
+    } catch (error) {
+      console.error(
+        "تعذر تحميل نقاط الطالب:",
+        error
+      );
+      setPoints(0);
+    }
+  }
+
+  void loadStudentPoints();
+}, []);
   const completedCount = completedTasks.length;
   const allTasksCompleted = completedCount === dailyTasks.length;
 
@@ -355,7 +398,11 @@ export default function JourneyPage() {
             marginBottom: "20px",
           }}
         >
-          <StatCard icon="⭐" title="نجومي" value="12" />
+          <StatCard
+  icon="⭐"
+  title="نقاطي"
+  value={String(points)}
+/>
           <StatCard icon="💎" title="نقاطي" value="35" />
           <StatCard icon="🔥" title="سلسلة الإنجاز" value="3 أيام" />
           <StatCard icon="👑" title="رتبتي" value="بطل نشيط" />
