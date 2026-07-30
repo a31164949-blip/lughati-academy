@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase";
 
 type StudentPreview = {
   id: string;
@@ -12,6 +14,8 @@ type StudentPreview = {
 export default function SchoolYearPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [message, setMessage] = useState("");
+  const [studentsCount, setStudentsCount] = useState<number | null>(null);
+const [checking, setChecking] = useState(false);
 
   const students = useMemo<StudentPreview[]>(() => {
     return Array.from({ length: 60 }, (_, index) => {
@@ -27,7 +31,20 @@ export default function SchoolYearPage() {
       };
     });
   }, []);
+async function handleCheckStudents() {
+  try {
+    setChecking(true);
 
+    const snapshot = await getDocs(collection(db, "students"));
+
+    setStudentsCount(snapshot.size);
+  } catch (error) {
+    console.error(error);
+    alert("تعذر التحقق من قاعدة البيانات.");
+  } finally {
+    setChecking(false);
+  }
+}
   async function handleCreateStudents() {
     setMessage("");
 
@@ -173,6 +190,38 @@ export default function SchoolYearPage() {
             {isCreating ? "جارٍ التجهيز..." : "معاينة تهيئة 60 طالبًا"}
           </button>
 
+<button
+  type="button"
+  onClick={handleCheckStudents}
+  disabled={checking}
+  style={{
+    border: "1px solid #16a34a",
+    borderRadius: "14px",
+    padding: "13px 22px",
+    fontSize: "16px",
+    fontWeight: 800,
+    cursor: checking ? "not-allowed" : "pointer",
+    background: "white",
+    color: "#166534",
+    marginRight: "10px",
+  }}
+>
+  {checking ? "جارٍ التحقق..." : "التحقق من عدد الطلاب"}
+</button>
+{studentsCount !== null && (
+  <div
+    style={{
+      marginTop: "16px",
+      padding: "14px",
+      borderRadius: "12px",
+      background: studentsCount > 0 ? "#ecfdf5" : "#fff7ed",
+      color: studentsCount > 0 ? "#166534" : "#9a3412",
+      fontWeight: 800,
+    }}
+  >
+    عدد الطلاب الموجودين في Firebase حاليًا: {studentsCount} طالبًا.
+  </div>
+)}
           {message && (
             <div
               style={{
