@@ -364,6 +364,7 @@ const awardHomeworkPoints = async (
 
       transaction.update(studentRef, {
         points: increment(pointsValue),
+        "journey.xp": increment(pointsValue),
         pointsHistory: arrayUnion(newHistoryEntry),
       });
 
