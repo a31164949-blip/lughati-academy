@@ -57,20 +57,38 @@ export default function TeacherLayout({
   return (
     <>
       <div dir="rtl" style={styles.topBar}>
-        <div>
-          <strong style={styles.topBarTitle}>لوحة المعلم</strong>
-          <span style={styles.topBarText}> دخول آمن ومصرح</span>
-        </div>
+        <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  }}
+>
+  <button
+    type="button"
+    onClick={() => router.push("/teacher")}
+    style={styles.backButton}
+  >
+    ← العودة إلى لوحة المعلم
+  </button>
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          style={styles.logoutButton}
-        >
-          تسجيل الخروج
-        </button>
+  <button
+    type="button"
+    onClick={handleLogout}
+    style={styles.logoutButton}
+  >
+    تسجيل الخروج
+  </button>
+</div>
       </div>
-
+<button
+  type="button"
+  onClick={() => router.back()}
+  style={styles.backButton}
+>
+  ← رجوع
+</button>
       {children}
     </>
   );
@@ -140,7 +158,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#6a8179",
     fontSize: "14px",
   },
-
+backButton: {
+  border: "1px solid #16835f",
+  borderRadius: "12px",
+  padding: "10px 14px",
+  background: "#ffffff",
+  color: "#166534",
+  fontSize: "15px",
+  fontWeight: 800,
+  cursor: "pointer",
+},
   logoutButton: {
     padding: "10px 15px",
     border: "none",
