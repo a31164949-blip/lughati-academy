@@ -1,8 +1,36 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function UploadPage() {
-  const formUrl = "https://forms.gle/KtB82NMFYPbfz3Ua6";
+  const [studentId, setStudentId] = useState("");
 
+  useEffect(() => {
+    const savedStudent = localStorage.getItem("lughatiStudent");
+
+    if (!savedStudent) return;
+
+    try {
+      const parsedStudent = JSON.parse(savedStudent);
+
+      const id = String(
+        parsedStudent.id ??
+        parsedStudent.studentId ??
+        ""
+      );
+
+      setStudentId(id);
+    } catch {
+      setStudentId("");
+    }
+  }, []);
+
+  const formUrl = studentId
+    ? `https://docs.google.com/forms/d/e/1FAIpQLScr24_JRH594jc8YGSbMqYJP2UQt-KLvHRyPOTf9i7ahX164w/viewform?usp=pp_url&entry.159568571=${encodeURIComponent(studentId)}`
+    : "https://forms.gle/KtB82NMFYPbfz3Ua6";
+
+  
   return (
     <main className="student-upload-page" dir="rtl">
       <section className="upload-header">

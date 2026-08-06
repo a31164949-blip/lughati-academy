@@ -17,9 +17,11 @@ import { db, storage } from "../../../firebase";
 
 type TargetClass = "الثاني أ" | "الثاني ب" | "الفصلان";
 
+type HomeworkType = "standard" | "creative" | "madrasati";
 type Homework = {
   id: string;
   title: string;
+  homeworkType?: HomeworkType;
   instructions: string;
   targetClass: TargetClass;
   dueDate: string;
@@ -31,6 +33,7 @@ attachmentName: string;
 
 const emptyForm = {
   title: "",
+  homeworkType: "standard" as HomeworkType,
   instructions: "",
   targetClass: "الفصلان" as TargetClass,
   dueDate: "",
@@ -69,6 +72,12 @@ const [uploadingFile, setUploadingFile] = useState(false);
           return {
             id: homeworkDocument.id,
             title: data.title || "واجب دون عنوان",
+            homeworkType:
+  data.homeworkType === "creative"
+    ? "creative"
+    : data.homeworkType === "madrasati"
+    ? "madrasati"
+    : "standard",
             instructions: data.instructions || "",
             targetClass: data.targetClass || "الفصلان",
             dueDate: data.dueDate || "",
@@ -203,6 +212,7 @@ if (selectedFile) {
 }
       const homeworkData = {
         title: cleanTitle,
+        homeworkType: form.homeworkType,
         instructions: cleanInstructions,
         targetClass: form.targetClass,
         dueDate: form.dueDate,
@@ -242,6 +252,7 @@ attachmentName,
 
     setForm({
       title: homework.title,
+      homeworkType: homework.homeworkType ?? "standard",
       instructions: homework.instructions,
       targetClass: homework.targetClass,
       dueDate: homework.dueDate,
@@ -454,7 +465,35 @@ attachmentName: homework.attachmentName,
                 ...styles.textarea,
               }}
             />
-          
+          <label style={styles.label}>
+  نوع الواجب
+
+  <select
+    value={form.homeworkType}
+    onChange={(event) =>
+      updateForm(
+        "homeworkType",
+        event.target.value as HomeworkType
+      )
+    }
+    style={{
+      ...styles.input,
+      marginTop: "8px",
+      fontWeight: 700,
+    }}
+  >
+    <option value="standard">
+      📘 واجب عادي
+    </option>
+
+    <option value="creative">
+      🎨 واجب إبداعي
+    </option>
+    <option value="madrasati">
+  🌉 جسر مدرستي
+</option>
+  </select>
+</label>
 <label style={styles.label}>
   رابط الدرس أو الفيديو (اختياري)
   <input

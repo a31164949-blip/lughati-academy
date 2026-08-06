@@ -60,6 +60,13 @@ const sections: AcademySection[] = [
     className: "yellow-card",
   },
   {
+  icon: "🏫",
+  title: "جسر مدرستي",
+  description: "أنجز واجبك في مدرستي ثم عد للأكاديمية",
+  href: "/madrasati-bridge",
+  className: "green-card",
+},
+  {
     icon: "🗓️",
     title: "الخطة الأسبوعية",
     description: "اطّلع على خطة التعلم لهذا الأسبوع",

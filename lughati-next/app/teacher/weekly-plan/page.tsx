@@ -16,6 +16,7 @@ type DayPlan = {
   homework: string;
   readingTask: string;
   spellingWords: string;
+  bringTomorrow: string;
   teacherNote: string;
 };
 
@@ -27,6 +28,7 @@ const initialDays: DayPlan[] = [
     homework: "",
     readingTask: "",
     spellingWords: "",
+    bringTomorrow: "",
     teacherNote: "",
   },
   {
@@ -36,6 +38,7 @@ const initialDays: DayPlan[] = [
     homework: "",
     readingTask: "",
     spellingWords: "",
+    bringTomorrow: "",
     teacherNote: "",
   },
   {
@@ -45,6 +48,7 @@ const initialDays: DayPlan[] = [
     homework: "",
     readingTask: "",
     spellingWords: "",
+    bringTomorrow: "",
     teacherNote: "",
   },
   {
@@ -54,6 +58,7 @@ const initialDays: DayPlan[] = [
     homework: "",
     readingTask: "",
     spellingWords: "",
+    bringTomorrow: "",
     teacherNote: "",
   },
   {
@@ -63,12 +68,15 @@ const initialDays: DayPlan[] = [
     homework: "",
     readingTask: "",
     spellingWords: "",
+    bringTomorrow: "",
     teacherNote: "",
   },
 ];
 
 export default function WeeklyPlanPage() {
   const [weekTitle, setWeekTitle] = useState("");
+  const [weeklyChallenge, setWeeklyChallenge] = useState("");
+const [farisMessage, setFarisMessage] = useState("");
   const [days, setDays] = useState<DayPlan[]>(initialDays);
   const [published, setPublished] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +95,13 @@ export default function WeeklyPlanPage() {
           setWeekTitle(
             typeof data.weekTitle === "string" ? data.weekTitle : ""
           );
+          setWeeklyChallenge(
+  typeof data.weeklyChallenge === "string" ? data.weeklyChallenge : ""
+);
+
+setFarisMessage(
+  typeof data.farisMessage === "string" ? data.farisMessage : ""
+);
 
           setPublished(
             typeof data.published === "boolean" ? data.published : true
@@ -122,6 +137,10 @@ spellingWords:
   typeof matchingDay.spellingWords === "string"
     ? matchingDay.spellingWords
     : "",
+    bringTomorrow:
+  typeof matchingDay.bringTomorrow === "string"
+    ? matchingDay.bringTomorrow
+    : "",
 
 teacherNote:
   typeof matchingDay.teacherNote === "string"
@@ -155,6 +174,7 @@ teacherNote:
   | "homework"
   | "readingTask"
   | "spellingWords"
+  | "bringTomorrow"
   | "teacherNote",
     value: string
   ) {
@@ -183,6 +203,8 @@ teacherNote:
         planReference,
         {
           weekTitle: weekTitle.trim(),
+          weeklyChallenge: weeklyChallenge.trim(),
+farisMessage: farisMessage.trim(),
           days,
           published,
           updatedAt: serverTimestamp(),
@@ -252,6 +274,47 @@ teacherNote:
             className="w-full rounded-2xl border border-slate-300 bg-white p-4 text-lg font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
           />
         </section>
+        <div className="grid gap-4 md:grid-cols-2 mb-6">
+  <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+    <label
+      htmlFor="weekly-challenge"
+      className="mb-3 block font-bold text-amber-900"
+    >
+      🏆 تحدي الأسبوع
+    </label>
+
+    <textarea
+      id="weekly-challenge"
+      value={weeklyChallenge}
+      onChange={(event) => {
+        setWeeklyChallenge(event.target.value);
+        setStatusMessage("");
+      }}
+      placeholder="مثال: اقرأ قصة قصيرة لأحد أفراد أسرتك، ثم أخبرنا بأجمل فكرة فيها."
+      className="min-h-28 w-full rounded-2xl border border-amber-200 bg-white p-4"
+    />
+  </section>
+
+  <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+    <label
+      htmlFor="faris-message"
+      className="mb-3 block font-bold text-emerald-900"
+    >
+      ✨ رسالة فارس للطلاب
+    </label>
+
+    <textarea
+      id="faris-message"
+      value={farisMessage}
+      onChange={(event) => {
+        setFarisMessage(event.target.value);
+        setStatusMessage("");
+      }}
+      placeholder="مثال: يا أبطال لغتي، أمامنا أسبوع جديد… خطوة صغيرة كل يوم تصنع إنجازًا كبيرًا 🌟"
+      className="min-h-28 w-full rounded-2xl border border-emerald-200 bg-white p-4"
+    />
+  </section>
+</div>
 
         <div className="space-y-5">
           {days.map((item, index) => (
@@ -359,7 +422,25 @@ teacherNote:
     className="w-full rounded-2xl border border-slate-300 px-4 py-3"
   />
 </div>
+<div>
+  <label
+     htmlFor={`bringTomorrow-${index}`}
+    className="mb-2 block font-bold text-sky-800"
+  >
+    🎒 ماذا أحضر غدًا؟
+  </label>
 
+  <input
+    id={`bringTomorrow-${index}`}
+    type="text"
+    value={item.bringTomorrow || ""}
+    onChange={(event) =>
+      updateDay(index, "bringTomorrow", event.target.value)
+    }
+    placeholder="مثال: كتاب لغتي + الدفتر + ملف الإنجاز"
+    className="w-full rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3"
+  />
+</div>
 <div>
   <label
     htmlFor={`teacherNote-${index}`}

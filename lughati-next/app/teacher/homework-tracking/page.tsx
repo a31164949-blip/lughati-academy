@@ -6,7 +6,12 @@ import {
   doc,
   getDocs,
   serverTimestamp,
+  setDoc,
   updateDoc,
+  query,
+where,
+getDoc,
+runTransaction,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 
@@ -38,10 +43,19 @@ type Completion = {
   studentId: string;
   studentName: string;
   classroom: string;
-  method: string;
+  completionMethod: string;
   completed: boolean;
   completedAtText: string;
   teacherReviewed: boolean;
+  needsRevision?: boolean;
+teacherNote?: string;
+  solutionUrl?: string;
+  solutionStatus?: "pending" | "approved" | "rejected";
+  readingAudioUrl: string;
+readingDurationSeconds: number;
+readingReviewed: boolean;
+readingStatus: "pending" | "approved" | "rejected";
+  
 };
 type DailyCompletion = {
   id: string;
@@ -58,9 +72,17 @@ type StudentHomeworkRow = {
   classroom: string;
   completionId: string;
   completed: boolean;
-  method: string;
+  completionMethod: string;
   completedAtText: string;
   teacherReviewed: boolean;
+  needsRevision?: boolean;
+teacherNote?: string;
+  solutionUrl?: string;
+  solutionStatus?: "pending" | "approved" | "rejected";
+  readingAudioUrl: string;
+readingDurationSeconds: number;
+readingReviewed: boolean;
+readingStatus: "pending" | "approved" | "rejected";
   status: "لم يؤكد" | "بانتظار المراجعة" | "تمت المراجعة";
 };
 
@@ -153,7 +175,7 @@ const [dailyCompletions, setDailyCompletions] =
             studentId: data.studentId || "",
             studentName: data.studentName || "طالب",
             classroom: data.classroom || "",
-            method: data.method || "",
+            completionMethod: data.completionMethod || "",
             completed:
   data.completed === true || data.status === "completed",
             completedAtText:
@@ -163,6 +185,39 @@ const [dailyCompletions, setDailyCompletions] =
     ? data.completedAt.toDate().toLocaleString("ar-SA")
     : ""),
             teacherReviewed: data.teacherReviewed === true,
+            needsRevision: data.needsRevision === true,
+teacherNote:
+  typeof data.teacherNote === "string"
+    ? data.teacherNote
+    : "",
+            solutionUrl:
+  typeof data.solutionUrl === "string"
+    ? data.solutionUrl
+    : "",
+    solutionStatus:
+  data.solutionStatus === "approved" ||
+  data.solutionStatus === "rejected"
+    ? data.solutionStatus
+    : "pending",
+    readingAudioUrl:
+  typeof data.readingAudioUrl === "string"
+    ? data.readingAudioUrl
+    : "",
+
+readingDurationSeconds:
+  typeof data.readingDurationSeconds === "number"
+    ? data.readingDurationSeconds
+    : 0,
+
+readingReviewed:
+  data.readingReviewed === true,
+  readingStatus:
+  data.readingStatus === "approved" ||
+  data.readingStatus === "rejected"
+    ? data.readingStatus
+    : data.readingReviewed === true
+      ? "approved"
+      : "pending",
           };
         });
 const loadedDailyCompletions: DailyCompletion[] =
@@ -222,6 +277,9 @@ const loadedDailyCompletions: DailyCompletion[] =
   );
 
   const eligibleStudents = useMemo(() => {
+    if (selectedHomeworkId.startsWith("madrasati_")) {
+  return students;
+}
     if (!selectedHomework) return [];
 
     return students.filter((student) => {
@@ -234,7 +292,7 @@ const loadedDailyCompletions: DailyCompletion[] =
 
       return student.classroom === selectedHomework.targetClass;
     });
-  }, [students, selectedHomework]);
+  }, [students, selectedHomework, selectedHomeworkId]);
 
   const studentRows = useMemo<StudentHomeworkRow[]>(() => {
     return eligibleStudents.map((student) => {
@@ -251,9 +309,16 @@ const loadedDailyCompletions: DailyCompletion[] =
           classroom: student.classroom,
           completionId: "",
           completed: false,
-          method: "",
+          completionMethod: "",
           completedAtText: "",
           teacherReviewed: false,
+          needsRevision: false,
+          teacherNote: "",
+          solutionUrl: "",
+          readingAudioUrl: "",
+          readingDurationSeconds: 0,
+          readingReviewed: false,
+          readingStatus: "pending",
           status: "لم يؤكد",
         };
       }
@@ -264,9 +329,17 @@ const loadedDailyCompletions: DailyCompletion[] =
         classroom: student.classroom,
         completionId: completion.id,
         completed: completion.completed,
-        method: completion.method,
+        completionMethod: completion.completionMethod,
         completedAtText: completion.completedAtText,
         teacherReviewed: completion.teacherReviewed,
+        needsRevision: completion?.needsRevision === true,
+teacherNote: completion?.teacherNote ?? "",
+        solutionUrl: completion.solutionUrl ?? "",
+        solutionStatus: completion.solutionStatus ?? "pending",
+        readingAudioUrl: completion.readingAudioUrl,
+readingDurationSeconds: completion.readingDurationSeconds,
+readingReviewed: completion.readingReviewed,
+readingStatus: completion.readingStatus,
         status: completion.teacherReviewed
           ? "تمت المراجعة"
           : "بانتظار المراجعة",
@@ -352,22 +425,154 @@ const loadedDailyCompletions: DailyCompletion[] =
       const newReviewedStatus = !row.teacherReviewed;
 
       await updateDoc(
-        doc(db, "homeworkCompletions", row.completionId),
-        {
-          teacherReviewed: newReviewedStatus,
-          teacherReviewedAt: newReviewedStatus
-            ? serverTimestamp()
-            : null,
-          updatedAt: serverTimestamp(),
-        }
-      );
+  doc(db, "homeworkCompletions", row.completionId),
+  {
+    teacherReviewed: newReviewedStatus,
+    teacherReviewedAt: newReviewedStatus
+      ? serverTimestamp()
+      : null,
+...(row.solutionUrl?.trim()
+  ? {
+      solutionStatus: newReviewedStatus
+        ? ("approved" as const)
+        : ("pending" as const),
+      solutionReviewedAt: newReviewedStatus
+        ? serverTimestamp()
+        : null,
+      solutionRejectedAt: null,
+      needsRevision: false,
+      teacherNote: "",
+      returnedAt: null,
+    }
+  : {}),
+    readingReviewed: row.readingReviewed,
+readingStatus: row.readingStatus,
 
+    updatedAt: serverTimestamp(),
+  }
+);
+if (
+  newReviewedStatus &&
+  row.completionMethod.includes("مدرستي")
+) {
+  const completionReference = doc(
+    db,
+    "homeworkCompletions",
+    row.completionId
+  );
+
+  const studentReference = doc(
+    db,
+    "students",
+    row.studentId
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const completionSnapshot =
+      await transaction.get(completionReference);
+
+    const studentSnapshot =
+      await transaction.get(studentReference);
+
+    if (
+      completionSnapshot.exists() &&
+      completionSnapshot.data().madrasatiPointsGranted === true
+    ) {
+      return;
+    }
+
+    const currentPoints =
+      studentSnapshot.exists() &&
+      typeof studentSnapshot.data().points === "number"
+        ? studentSnapshot.data().points
+        : 0;
+
+    transaction.set(
+      studentReference,
+      {
+        points: currentPoints + 2,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    transaction.set(
+      completionReference,
+      {
+        madrasatiPointsGranted: true,
+        madrasatiPoints: 2,
+        madrasatiPointsGrantedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+}
+if (
+  newReviewedStatus &&
+  row.completionMethod.includes("إبداعي")
+) {
+  const completionReference = doc(
+    db,
+    "homeworkCompletions",
+    row.completionId
+  );
+
+  const studentReference = doc(
+    db,
+    "students",
+    row.studentId
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const completionSnapshot =
+      await transaction.get(completionReference);
+
+    const studentSnapshot =
+      await transaction.get(studentReference);
+
+    if (
+      completionSnapshot.exists() &&
+      completionSnapshot.data().creativePointsGranted === true
+    ) {
+      return;
+    }
+
+    const currentPoints =
+      studentSnapshot.exists() &&
+      typeof studentSnapshot.data().points === "number"
+        ? studentSnapshot.data().points
+        : 0;
+
+    transaction.set(
+      studentReference,
+      {
+        points: currentPoints + 4,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    transaction.set(
+      completionReference,
+      {
+        creativePointsGranted: true,
+        creativePoints: 4,
+        creativePointsGrantedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+}
       setCompletions((currentCompletions) =>
         currentCompletions.map((completion) =>
           completion.id === row.completionId
             ? {
                 ...completion,
                 teacherReviewed: newReviewedStatus,
+                readingReviewed:
+  row.readingAudioUrl && newReviewedStatus
+    ? true
+    : false,
               }
             : completion
         )
@@ -385,7 +590,350 @@ const loadedDailyCompletions: DailyCompletion[] =
       setUpdatingId("");
     }
   }
+async function saveDailyReadingRecord(row: StudentHomeworkRow) {
+  if (!row.readingAudioUrl) {
+    return;
+  }
 
+  const today = new Date();
+
+  const dateKey = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  const recordId = `${row.studentId}_${dateKey}`;
+
+  await setDoc(
+    doc(db, "dailyReadingRecords", recordId),
+    {
+      studentId: row.studentId,
+      studentName: row.studentName,
+      classroom: row.classroom,
+      dateKey,
+      readingAudioUrl: row.readingAudioUrl,
+      readingDurationSeconds: row.readingDurationSeconds,
+      approved: true,
+      homeworkCompletionId: row.completionId,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+async function returnHomeworkToStudent(
+  row: StudentHomeworkRow,
+  note: string
+) {
+  if (!row.completionId) return;
+
+  try {
+    setUpdatingId(row.completionId);
+    setError("");
+    setMessage("...جاري إعادة الواجب للطالب");
+
+    await updateDoc(
+      doc(db, "homeworkCompletions", row.completionId),
+      {
+        teacherReviewed: false,
+        teacherReviewedAt: null,
+        teacherNote: note.trim(),
+        needsRevision: true,
+        ...(row.solutionUrl?.trim()
+  ? {
+      solutionStatus: "rejected" as const,
+      solutionReviewedAt: null,
+      solutionRejectedAt: serverTimestamp(),
+    }
+  : {}),
+        returnedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+
+    setMessage(`🔄 تمت إعادة الواجب إلى ${row.studentName}`);
+  } catch (error) {
+    console.error(error);
+    setError("تعذر إعادة الواجب للطالب، حاول مرة أخرى.");
+  } finally {
+    setUpdatingId("");
+  }
+}
+async function approveReading(row: StudentHomeworkRow) {
+  if (!row.completionId || !row.readingAudioUrl) {
+    return;
+  }
+
+  try {
+    setUpdatingId(row.completionId);
+    setError("");
+    setMessage("جارٍ اعتماد تسجيل القراءة...");
+
+    await updateDoc(
+      doc(db, "homeworkCompletions", row.completionId),
+      {
+        readingReviewed: true,
+        readingStatus: "approved",
+        readingReviewedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+
+    await saveDailyReadingRecord(row);
+
+    const readingProgress =
+      await getReadingProgress(row.studentId);
+
+    if (
+      readingProgress.readingDays > 0 &&
+      readingProgress.readingDays % 5 === 0
+    ) {
+      await grantReadingCycleReward(
+        row,
+        readingProgress.completedCycles
+      );
+    }
+
+    setCompletions((currentCompletions) =>
+      currentCompletions.map((completion) =>
+        completion.id === row.completionId
+          ? {
+              ...completion,
+              readingReviewed: true,
+              readingStatus: "approved",
+            }
+          : completion
+      )
+    );
+
+    setMessage(
+      `✅ تم اعتماد قراءة ${row.studentName}`
+    );
+  } catch (error) {
+    console.error(error);
+    setError("تعذر اعتماد القراءة، حاول مرة أخرى.");
+  } finally {
+    setUpdatingId("");
+  }
+}
+async function rejectReading(row: StudentHomeworkRow) {
+  if (!row.completionId) {
+    return;
+  }
+
+  try {
+    setUpdatingId(row.completionId);
+    setError("");
+    setMessage("جارٍ رفض تسجيل القراءة...");
+
+    await updateDoc(
+      doc(db, "homeworkCompletions", row.completionId),
+      {
+        readingReviewed: false,
+        readingStatus: "rejected",
+        readingReviewedAt: null,
+        readingRejectedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+
+    const readingQuery = query(
+      collection(db, "dailyReadingRecords"),
+      where(
+        "homeworkCompletionId",
+        "==",
+        row.completionId
+      )
+    );
+
+    const readingSnapshot =
+      await getDocs(readingQuery);
+
+    for (const readingDocument of readingSnapshot.docs) {
+      await updateDoc(
+        doc(
+          db,
+          "dailyReadingRecords",
+          readingDocument.id
+        ),
+        {
+          approved: false,
+          rejectedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+      );
+    }
+
+    setCompletions((currentCompletions) =>
+      currentCompletions.map((completion) =>
+        completion.id === row.completionId
+          ? {
+              ...completion,
+              readingReviewed: false,
+              readingStatus: "rejected",
+            }
+          : completion
+      )
+    );
+
+    setMessage(
+      `❌ تم رفض قراءة ${row.studentName} ويحتاج إلى إعادة التسجيل`
+    );
+  } catch (error) {
+    console.error(error);
+    setError("تعذر رفض القراءة، حاول مرة أخرى.");
+  } finally {
+    setUpdatingId("");
+  }
+}
+async function approveSolution(row: StudentHomeworkRow) {
+  if (!row.completionId) {
+    return;
+  }
+
+  try {
+    setUpdatingId(row.completionId);
+    setError("");
+    setMessage("...جار اعتماد صورة الحل");
+
+    await updateDoc(
+      doc(db, "homeworkCompletions", row.completionId),
+      {
+        solutionStatus: "approved",
+        solutionReviewedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+    if (
+  row.completionMethod.includes("الكتاب") ||
+  row.completionMethod.includes("الدفتر")
+) {
+  const completionReference = doc(
+    db,
+    "homeworkCompletions",
+    row.completionId
+  );
+
+  const studentReference = doc(
+    db,
+    "students",
+    row.studentId
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const completionSnapshot =
+      await transaction.get(completionReference);
+
+    const studentSnapshot =
+      await transaction.get(studentReference);
+
+    // منع تكرار النقاط
+    if (
+      completionSnapshot.exists() &&
+      completionSnapshot.data().solutionPointsGranted === true
+    ) {
+      return;
+    }
+
+    const currentPoints =
+      studentSnapshot.exists() &&
+      typeof studentSnapshot.data().points === "number"
+        ? studentSnapshot.data().points
+        : 0;
+
+    // إضافة 3 نقاط للطالب
+    transaction.set(
+      studentReference,
+      {
+        points: currentPoints + 3,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // تسجيل أن مكافأة هذا الحل مُنحت
+    transaction.set(
+      completionReference,
+      {
+        solutionPointsGranted: true,
+        solutionPoints: 3,
+        solutionPointsGrantedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+}
+
+    setCompletions((currentCompletions) =>
+      currentCompletions.map((completion) =>
+        completion.id === row.completionId
+          ? {
+              ...completion,
+              solutionStatus: "approved",
+            }
+          : completion
+      )
+    );
+
+    setMessage(`✅ تم اعتماد حل ${row.studentName}`);
+  } catch (error) {
+    console.error(error);
+    setError("تعذر اعتماد صورة الحل، حاول مرة أخرى.");
+  } finally {
+    setUpdatingId("");
+  }
+}
+
+async function rejectSolution(row: StudentHomeworkRow) {
+  if (!row.completionId) {
+    return;
+  }
+
+  try {
+    setUpdatingId(row.completionId);
+    setError("");
+    setMessage("...جار طلب إعادة صورة الحل");
+
+    await updateDoc(
+      doc(db, "homeworkCompletions", row.completionId),
+      {
+        solutionStatus: "rejected",
+        solutionReviewedAt: null,
+        solutionRejectedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+
+    setCompletions((currentCompletions) =>
+      currentCompletions.map((completion) =>
+        completion.id === row.completionId
+          ? {
+              ...completion,
+              solutionStatus: "rejected",
+            }
+          : completion
+      )
+    );
+
+    setMessage(`❌ تم طلب إعادة صورة الحل من ${row.studentName}`);
+  } catch (error) {
+    console.error(error);
+    setError("تعذر رفض صورة الحل، حاول مرة أخرى.");
+  } finally {
+    setUpdatingId("");
+  }
+}
+async function getStudentReadingDays(studentId: string) {
+  const readingQuery = query(
+    collection(db, "dailyReadingRecords"),
+    where("studentId", "==", studentId),
+    where("approved", "==", true)
+  );
+
+  const readingSnapshot = await getDocs(readingQuery);
+
+  return readingSnapshot.size;
+}
   function formatDueDate(dateValue: string) {
     if (!dateValue) return "غير محدد";
 
@@ -397,6 +945,121 @@ const loadedDailyCompletions: DailyCompletion[] =
       day: "numeric",
     });
   }
+  async function getReadingProgress(studentId: string) {
+  const readingDays = await getStudentReadingDays(studentId);
+
+  const completedCycles = Math.floor(readingDays / 5);
+  const progressInCurrentCycle = readingDays % 5;
+
+  return {
+    readingDays,
+    completedCycles,
+    progressInCurrentCycle,
+  };
+}
+async function saveReadingCycleReward(
+  row: StudentHomeworkRow,
+  cycleNumber: number
+) {
+  if (cycleNumber <= 0) {
+    return;
+  }
+
+  const rewardId = `${row.studentId}_reading-cycle-${cycleNumber}`;
+
+  await setDoc(
+    doc(db, "readingCycleRewards", rewardId),
+    {
+      studentId: row.studentId,
+      studentName: row.studentName,
+      classroom: row.classroom,
+      cycleNumber,
+      readingDaysRequired: cycleNumber * 5,
+      rewardType: "reading-five-days",
+      points: 50,
+      granted: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+async function grantReadingCycleReward(
+  row: StudentHomeworkRow,
+  cycleNumber: number
+) {
+  if (cycleNumber <= 0) {
+    return;
+  }
+
+  const rewardId =
+    `${row.studentId}_reading-cycle-${cycleNumber}`;
+
+  const rewardReference = doc(
+    db,
+    "readingCycleRewards",
+    rewardId
+  );
+
+  const studentReference = doc(
+    db,
+    "students",
+    row.studentId
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const rewardSnapshot =
+      await transaction.get(rewardReference);
+
+    const studentSnapshot =
+      await transaction.get(studentReference);
+
+    // إذا مُنحت مكافأة هذه الدورة سابقًا، لا نفعل شيئًا.
+    if (
+      rewardSnapshot.exists() &&
+      rewardSnapshot.data().granted === true
+    ) {
+      return;
+    }
+
+    const currentPoints =
+      studentSnapshot.exists() &&
+      typeof studentSnapshot.data().points === "number"
+        ? studentSnapshot.data().points
+        : 0;
+
+    // إضافة 50 نقطة إلى رصيد الطالب الحقيقي.
+    transaction.set(
+      studentReference,
+      {
+        studentId: row.studentId,
+        studentName: row.studentName,
+        classroom: row.classroom,
+        points: currentPoints + 50,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // إغلاق مكافأة هذه الدورة نهائيًا.
+    transaction.set(
+      rewardReference,
+      {
+        studentId: row.studentId,
+        studentName: row.studentName,
+        classroom: row.classroom,
+        cycleNumber,
+        readingDaysRequired: cycleNumber * 5,
+        rewardType: "reading-five-days",
+        points: 50,
+        granted: true,
+        grantedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+}
 const today = new Date();
 
 const todayDateKey = [
@@ -602,7 +1265,7 @@ const dailyClassroomOptions = [
 </div>
 
   {filteredTodayCompletionRows.length === 0 ? (
-    <p
+    <div
       style={{
         margin: 0,
         borderRadius: "16px",
@@ -613,7 +1276,7 @@ const dailyClassroomOptions = [
         fontWeight: 800,
       }}
     >
-      <p
+      <div
   style={{
     margin: 0,
     borderRadius: "16px",
@@ -625,8 +1288,8 @@ const dailyClassroomOptions = [
   }}
 >
   لا يوجد طلاب ضمن هذا التصنيف حاليًا.
-</p>
-    </p>
+</div>
+    </div>
   ) : (
     <div
       style={{
@@ -716,6 +1379,9 @@ const dailyClassroomOptions = [
               }}
               style={styles.input}
             >
+              <option value={`madrasati_${new Date().toLocaleDateString("en-CA")}`}>
+  🏫 جسر مدرستي
+</option>
               {homeworks.length === 0 && (
                 <option value="">لا توجد واجبات</option>
               )}
@@ -985,10 +1651,38 @@ const dailyClassroomOptions = [
 
               {row.completed ? (
                 <div style={styles.completionDetails}>
-                  <p>
-                    <strong>طريقة الإنجاز:</strong>{" "}
-                    {row.method || "غير محددة"}
-                  </p>
+                
+                    <div
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "8px 14px",
+    borderRadius: "999px",
+    background:
+      row.completionMethod.includes("الدفتر")
+        ? "#e8f1ff"
+        : row.completionMethod.includes("الكتاب")
+        ? "#f3e8ff"
+        : row.completionMethod.includes("إلكتروني")
+        ? "#e8fff1"
+        : row.completionMethod.includes("مدرستي")
+? "#ecfdf5"
+        : row.completionMethod.includes("صورة")
+        ? "#fff7e6"
+        : row.completionMethod.includes("ملف")
+        ? "#f3f4f6"
+        : row.completionMethod.includes("صوتي")
+        ? "#ede9fe"
+        : "#f8fafc",
+    color: "#065f46",
+    fontWeight: 800,
+    marginBottom: "10px",
+  }}
+>
+  <span>طريقة الإنجاز:</span>
+  <span>{row.completionMethod || "غير محددة"}</span>
+</div>
 
                   <p>
                     <strong>وقت التأكيد:</strong>{" "}
@@ -1007,7 +1701,161 @@ const dailyClassroomOptions = [
               )}
 
               {row.completed && (
-                <button
+       <div
+  style={{
+    display: "grid",
+    gap: "10px",
+    marginTop: "10px",
+  }}
+>
+       <button
+  type="button"
+  
+  onClick={() => {
+  const solutionUrl = row.solutionUrl?.trim();
+  const readingAudioUrl = row.readingAudioUrl?.trim();
+
+  if (readingAudioUrl) {
+    window.open(readingAudioUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  if (solutionUrl) {
+    window.open(solutionUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  if (row.completionMethod.includes("الدفتر")) {
+    alert("حل الطالب في الدفتر، اطلب منه إرفاق صورة عند الحاجة.");
+    return;
+  }
+
+  if (row.completionMethod.includes("الكتاب")) {
+    alert("حل الطالب في الكتاب، ويمكن طلب صورة عند الحاجة.");
+    return;
+  }
+
+  alert("لا يوجد حل مرفق يمكن عرضه حاليًا.");
+}}
+  style={{
+    ...styles.reviewButton,
+    background: "#eef6ff",
+    color: "#1d4ed8",
+    border: "1px solid #bfdbfe",
+    marginBottom: "10px",
+  }}
+>
+  {row.readingAudioUrl?.trim()
+  ? "🎙️ تشغيل التسجيل"
+  : row.solutionUrl?.trim()
+  ? row.completionMethod.includes("صورة")
+    ? "📸 عرض الصورة"
+    : row.completionMethod.includes("رابط")
+    ? "🔗 فتح الرابط"
+    : row.completionMethod.includes("ملف")
+    ? "📄 فتح الملف"
+    : "👁️ عرض الحل"
+  : row.completionMethod.includes("الدفتر")
+  ? "📘 حل في الدفتر"
+  : row.completionMethod.includes("الكتاب")
+  ? "📗 حل في الكتاب"
+  : "👁️ عرض الحل"}
+</button>
+{row.solutionUrl &&
+  (row.completionMethod.includes("الدفتر") ||
+    row.completionMethod.includes("الكتاب") ||
+    row.completionMethod.includes("صورة")) && (
+    <div
+      style={{
+        padding: "12px",
+        borderRadius: "14px",
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        marginBottom: "10px",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          marginBottom: "10px",
+          fontWeight: 700,
+          color:
+            row.solutionStatus === "approved"
+              ? "#15803d"
+              : row.solutionStatus === "rejected"
+              ? "#b91c1c"
+              : "#a16207",
+        }}
+      >
+        {row.solutionStatus === "approved"
+          ? "✅ تم اعتماد صورة الحل"
+          : row.solutionStatus === "rejected"
+          ? "❌ يحتاج الطالب إلى إعادة رفع الصورة"
+          : "⏳ صورة الحل بانتظار المراجعة"}
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "10px",
+        }}
+      >
+        <button
+          type="button"
+          disabled={updatingId === row.completionId}
+          onClick={() => approveSolution(row)}
+          style={{
+            ...styles.reviewButton,
+            background: "#bbf7d0",
+            color: "#166534",
+            border: "1px solid #86efac",
+          }}
+        >
+          ✅ اعتماد الحل
+        </button>
+
+        <button
+          type="button"
+          disabled={updatingId === row.completionId}
+          onClick={() => rejectSolution(row)}
+          style={{
+            ...styles.reviewButton,
+            background: "#fee2e2",
+            color: "#b91c1c",
+            border: "1px solid #fecaca",
+          }}
+        >
+          ❌ طلب إعادة الصورة
+        </button>
+      </div>
+    </div>
+  )}
+{row.readingAudioUrl && (
+  <button
+    type="button"
+    onClick={() => {
+      window.open(
+        row.readingAudioUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    }}
+    style={{
+      ...styles.reviewButton,
+      background: "#f0fdf4",
+      color: "#166534",
+      border: "1px solid #bbf7d0",
+      marginBottom: "10px",
+    }}
+  >
+    🎧 استماع للقراءة
+    {row.readingDurationSeconds > 0
+      ? ` — ${row.readingDurationSeconds} ثانية`
+      : ""}
+  </button>
+)}
+          <button
                   type="button"
                   disabled={updatingId === row.completionId}
                   onClick={() => toggleReviewed(row)}
@@ -1031,13 +1879,159 @@ const dailyClassroomOptions = [
                     : row.teacherReviewed
                     ? "إلغاء المراجعة"
                     : "تمت المراجعة"}
-                </button>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
+                
+</button>
+<button
+  type="button"
+  disabled={updatingId === row.completionId}
+  onClick={() => {
+    const note = window.prompt(
+      "اكتب ملاحظة للطالب قبل إعادة الواجب:"
+    );
 
+    if (!note?.trim()) {
+      return;
+    }
+returnHomeworkToStudent(row, note.trim()
+    );
+  }}
+  style={{
+    ...styles.reviewButton,
+    marginTop: "10px",
+    background: "#fff1f2",
+    color: "#b91c1c",
+    border: "1px solid #fecaca",
+    opacity:
+      updatingId === row.completionId ? 0.6 : 1,
+  }}
+>
+  🔄 إعادة للطالب
+</button>
+{row.needsRevision && (
+  <div
+    style={{
+      marginTop: "10px",
+      padding: "12px",
+      borderRadius: "12px",
+      background: "#fff1f2",
+      color: "#b91c1c",
+      border: "1px solid #fecaca",
+      fontWeight: 800,
+      textAlign: "center",
+      lineHeight: 1.7,
+    }}
+  >
+    <div>🔄 تمت إعادة الواجب للطالب للتعديل</div>
+
+    {row.teacherNote && (
+      <div
+        style={{
+          marginTop: "6px",
+          fontWeight: 600,
+        }}
+      >
+        ✏️ ملاحظتك: {row.teacherNote}
+      </div>
+    )}
+  </div>
+)}
+{row.readingAudioUrl && (
+  <div
+    style={{
+      marginTop: "12px",
+      padding: "12px",
+      borderRadius: "14px",
+      background: "#f8fafc",
+      border: "1px solid #e2e8f0",
+    }}
+  >
+    <div
+      style={{
+        textAlign: "center",
+        marginBottom: "10px",
+        fontWeight: 800,
+        color:
+          row.readingStatus === "approved"
+            ? "#15803d"
+            : row.readingStatus === "rejected"
+              ? "#b91c1c"
+              : "#92400e",
+      }}
+    >
+      {row.readingStatus === "approved"
+        ? "✅ القراءة معتمدة"
+        : row.readingStatus === "rejected"
+          ? "❌ القراءة مرفوضة — يحتاج الطالب إلى إعادة التسجيل"
+          : "⏳ تسجيل القراءة بانتظار قرار المعلم"}
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "10px",
+      }}
+    >
+      <button
+        type="button"
+        disabled={
+          updatingId === row.completionId ||
+          row.readingStatus === "approved"
+        }
+        onClick={() => approveReading(row)}
+        style={{
+          padding: "12px",
+          borderRadius: "12px",
+          border: "none",
+          background:
+            row.readingStatus === "approved"
+              ? "#bbf7d0"
+              : "#16a34a",
+          color:
+            row.readingStatus === "approved"
+              ? "#166534"
+              : "#ffffff",
+          fontWeight: 800,
+          cursor: "pointer",
+        }}
+      >
+        ✅ اعتماد القراءة
+      </button>
+
+      <button
+        type="button"
+        disabled={
+          updatingId === row.completionId ||
+          row.readingStatus === "rejected"
+        }
+        onClick={() => rejectReading(row)}
+        style={{
+          padding: "12px",
+          borderRadius: "12px",
+          border: "none",
+          background:
+            row.readingStatus === "rejected"
+              ? "#fecaca"
+              : "#dc2626",
+          color:
+            row.readingStatus === "rejected"
+              ? "#991b1b"
+              : "#ffffff",
+          fontWeight: 800,
+          cursor: "pointer",
+        }}
+      >
+        ❌ رفض القراءة
+      </button>
+    </div>
+  </div>
+)}
+</div>
+)}
+</article>
+))}
+</div>
+</section>
       <section style={styles.noteCard}>
         <span style={styles.noteIcon}>🛡️</span>
 

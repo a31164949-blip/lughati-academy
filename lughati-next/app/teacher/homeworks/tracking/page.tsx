@@ -548,6 +548,9 @@ const awardHomeworkPoints = async (
                 }
                 style={styles.select}
               >
+                <option value={`madrasati_${new Date().toLocaleDateString("en-CA")}`}>
+  🏫 جسر مدرستي
+</option>
                 {homeworks.map((homework) => (
                   <option key={homework.id} value={homework.id}>
                     {homework.title}

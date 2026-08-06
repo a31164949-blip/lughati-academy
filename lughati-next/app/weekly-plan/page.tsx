@@ -16,11 +16,14 @@ type DayPlan = {
   homework: string;
   readingTask: string;
   spellingWords: string;
+  bringTomorrow: string;
   teacherNote: string;
 };
 
 type WeeklyPlan = {
   weekTitle: string;
+  weeklyChallenge: string;
+farisMessage: string;
   days: DayPlan[];
   published: boolean;
 };
@@ -117,15 +120,37 @@ const savedDays: DayPlan[] = Array.isArray(data.days)
         typeof item.homework === "string" ? item.homework : "",
       readingTask:
         typeof item.readingTask === "string" ? item.readingTask : "",
-      spellingWords:
-        typeof item.spellingWords === "string" ? item.spellingWords : "",
-      teacherNote:
-        typeof item.teacherNote === "string" ? item.teacherNote : "",
+    
+
+spellingWords:
+  typeof item.spellingWords === "string"
+    ? item.spellingWords
+    : "",
+
+bringTomorrow:
+  typeof item.bringTomorrow === "string"
+    ? item.bringTomorrow
+    : "",
+
+teacherNote:
+  typeof item.teacherNote === "string"
+    ? item.teacherNote
+    : "",
+   
     }))
   : [];
         
 
         setPlan({
+          weeklyChallenge:
+  typeof data.weeklyChallenge === "string"
+    ? data.weeklyChallenge
+    : "",
+
+farisMessage:
+  typeof data.farisMessage === "string"
+    ? data.farisMessage
+    : "",
           weekTitle:
             typeof data.weekTitle === "string"
               ? data.weekTitle
@@ -260,6 +285,29 @@ const savedDays: DayPlan[] = Array.isArray(data.days)
             اطّلع على دروس هذا الأسبوع وأهدافها وواجباتها اليومية.
           </p>
         </header>
+        {plan.farisMessage && (
+  <section className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+    <h2 className="mb-2 text-xl font-black text-emerald-800">
+      ✨ رسالة فارس
+    </h2>
+
+    <p className="leading-8 text-emerald-900">
+      {plan.farisMessage}
+    </p>
+  </section>
+)}
+
+{plan.weeklyChallenge && (
+  <section className="mb-5 rounded-3xl border border-amber-200 bg-amber-50 p-5">
+    <h2 className="mb-2 text-xl font-black text-amber-800">
+      🏆 تحدي الأسبوع
+    </h2>
+
+    <p className="leading-8 text-amber-900">
+      {plan.weeklyChallenge}
+    </p>
+  </section>
+)}
 
         <div className="space-y-5">
           {plan.days.map((item) => (
@@ -323,6 +371,12 @@ const savedDays: DayPlan[] = Array.isArray(data.days)
   <p className="mt-3 text-lg font-bold leading-8 text-slate-800">
     {item.readingTask.trim() || "لا توجد مهمة قراءة"}
   </p>
+  <a
+  href="/reading-journey"
+  className="mt-4 block rounded-2xl bg-violet-600 px-4 py-3 text-center font-black text-white"
+>
+  🔥 ابدأ رحلة القراءة
+</a>
 </article>
 
 <article className="rounded-2xl bg-rose-50 p-5">
@@ -332,7 +386,17 @@ const savedDays: DayPlan[] = Array.isArray(data.days)
     {item.spellingWords.trim() || "لا توجد كلمات إملاء"}
   </p>
 </article>
+{item.bringTomorrow.trim() && (
+  <article className="rounded-2xl bg-sky-50 p-5 md:col-span-3">
+    <p className="font-black text-sky-800">
+      🎒 ماذا أحضر غدًا؟
+    </p>
 
+    <p className="mt-3 whitespace-pre-line text-lg font-bold leading-8 text-slate-800">
+      {item.bringTomorrow}
+    </p>
+  </article>
+)}
 <article className="rounded-2xl bg-teal-50 p-5 md:col-span-3">
   <p className="font-black text-teal-800">💬 ملاحظة المعلم</p>
 

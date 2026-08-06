@@ -27,6 +27,11 @@ const sections = [
     href: "/teacher/homework-tracking",
   },
   {
+  title: "🎙️ مراجعة قراءات الطلاب",
+  description: "الاستماع إلى تسجيلات القراءة واعتمادها أو طلب إعادة التسجيل",
+  href: "/teacher/reading-submissions",
+},
+  {
     title: "👨‍🎓 إدارة الطلاب",
     description: "إضافة الطلاب وتنظيمهم حسب الفصل.",
     href: "/teacher/students"

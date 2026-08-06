@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzwZWP3GlHZZ01jnMoLnnUbZUPhGUsR1i4dTodpcuH1CYhNqtoizdLQJckIrNXjZeg0lw/exec";
+  "https://script.google.com/macros/s/AKfycbzwZWP3GlHZZ01jnMoLnnUbZUPhGUsR1i4dTodpcuH1CYhNqtoizdLQJckIrNXjZeg0lw/exec"
 
 const SECRET_TOKEN = "lughati-2026-review-8K7mP2";
 
@@ -16,6 +16,12 @@ export async function GET() {
     });
 
     const responseText = await response.text();
+    console.log("Apps Script check:", {
+  status: response.status,
+  contentType: response.headers.get("content-type"),
+  length: responseText.length,
+  startsWithJson: responseText.trim().startsWith("{"),
+});
 
     let result: {
       success?: boolean;

@@ -9,8 +9,31 @@ import WeeklyStarsCard from "./components/WeeklyStarsCard";
 import WeeklyReportCard from "./components/WeeklyReportCard";
 import CelebrationCard from "./components/CelebrationCard";
 import { parentDemoData } from "./data/parentDemoData";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../../firebase";
+type ParentQuizResult = {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  studentId: string;
+  studentName: string;
+  assessmentCategory: "فتري" | "تشخيصي" | "بنائي";
+  assessmentType: "ورقي" | "إلكتروني";
+  studentScore: number;
+  totalScore: number;
+  teacherNote: string;
+  testPaperImageUrl: string;
+  parentViewed: boolean;
+};
 export default function ParentPage() {
     const {
     student: demoStudent,
@@ -28,9 +51,13 @@ const [student, setStudent] = useState(demoStudent);
 const [points, setPoints] = useState(0);
 const [stars, setStars] = useState(0);
 const [absenceDays, setAbsenceDays] = useState(0);
+const [readingDays, setReadingDays] = useState(0);
 const [teacherMessage, setTeacherMessage] = useState("");
 const [teacherMessageUpdatedAt, setTeacherMessageUpdatedAt] =
   useState<Date | null>(null);
+  const [quizResults, setQuizResults] = useState<ParentQuizResult[]>([]);
+const [quizResultsLoading, setQuizResultsLoading] = useState(true);
+const [quizResultsError, setQuizResultsError] = useState("");
 useEffect(() => {
   async function loadStudentRewards() {
   const studentId = localStorage.getItem("student-id");
@@ -43,6 +70,7 @@ useEffect(() => {
     setTeacherMessageUpdatedAt(null);
     return;
   }
+  
 
   try {
     const studentSnapshot = await getDoc(
@@ -111,16 +139,168 @@ setAbsenceDays(totalAbsenceDays);
   } catch (error) {
     console.error("تعذر قراءة بيانات الطالب:", error);
   }
+  async function loadReadingDays() {
+  try {
+    const studentId =
+      localStorage.getItem("student-id");
+
+    if (
+      !studentId ||
+      studentId === "student-demo"
+    ) {
+      setReadingDays(0);
+      return;
+    }
+
+    const readingQuery = query(
+      collection(db, "dailyReadingRecords"),
+      where("studentId", "==", studentId),
+      where("approved", "==", true)
+    );
+
+    const readingSnapshot =
+      await getDocs(readingQuery);
+
+    setReadingDays(readingSnapshot.size);
+  } catch (error) {
+    console.error(
+      "تعذر تحميل أيام القراءة لولي الأمر:",
+      error
+    );
+
+    setReadingDays(0);
+  }
+}
   loadStudentRewards();
+  loadReadingDays();
 }, [demoStudent]);
+useEffect(() => {
+  async function loadParentQuizResults() {
+    try {
+      setQuizResultsLoading(true);
+      setQuizResultsError("");
+
+      const studentId = localStorage.getItem("student-id");
+
+      if (!studentId) {
+        setQuizResults([]);
+        setQuizResultsError("تعذر معرفة حساب الطالب الحالي.");
+        return;
+      }
+
+      const resultsQuery = query(
+        collection(db, "quizResults"),
+        where("studentId", "==", studentId)
+      );
+
+      const snapshot = await getDocs(resultsQuery);
+
+      const loadedResults: ParentQuizResult[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+
+        return {
+          id: docSnap.id,
+          quizId: typeof data.quizId === "string" ? data.quizId : "",
+          quizTitle:
+            typeof data.quizTitle === "string"
+              ? data.quizTitle
+              : "اختبار لغتي",
+          studentId:
+            typeof data.studentId === "string" ? data.studentId : "",
+          studentName:
+            typeof data.studentName === "string" ? data.studentName : "",
+          assessmentCategory:
+            data.assessmentCategory === "تشخيصي" ||
+            data.assessmentCategory === "بنائي"
+              ? data.assessmentCategory
+              : "فتري",
+          assessmentType:
+            data.assessmentType === "إلكتروني"
+              ? "إلكتروني"
+              : "ورقي",
+          studentScore:
+            typeof data.studentScore === "number"
+              ? data.studentScore
+              : 0,
+          totalScore:
+            typeof data.totalScore === "number"
+              ? data.totalScore
+              : 0,
+          teacherNote:
+            typeof data.teacherNote === "string"
+              ? data.teacherNote
+              : "",
+          testPaperImageUrl:
+            typeof data.testPaperImageUrl === "string"
+              ? data.testPaperImageUrl
+              : "",
+          parentViewed: data.parentViewed === true,
+        };
+      });
+
+      setQuizResults(loadedResults);
+    } catch (error) {
+      console.error(
+        "تعذر تحميل نتائج الاختبارات لولي الأمر:",
+        error
+      );
+      setQuizResults([]);
+      setQuizResultsError(
+        "تعذر تحميل نتائج الاختبارات حاليًا."
+      );
+    } finally {
+      setQuizResultsLoading(false);
+    }
+  }
+
+  void loadParentQuizResults();
+}, []);
   const completedCount = dailyTasks.filter(
     (task) => task.completed
   ).length;
+const readingProgress = readingDays % 5;
 
+const displayedReadingProgress =
+  readingDays > 0 && readingProgress === 0
+    ? 5
+    : readingProgress;
+
+const remainingReadingDays =
+  displayedReadingProgress === 5
+    ? 0
+    : 5 - displayedReadingProgress;
   const progressPercentage = Math.round(
     (completedCount / dailyTasks.length) * 100
   );
+async function markParentQuizAsViewed(resultId: string) {
+  const confirmed = window.confirm(
+    "هل تؤكد أنك اطلعت على نتيجة الاختبار؟"
+  );
 
+  if (!confirmed) return;
+
+  try {
+    await updateDoc(doc(db, "quizResults", resultId), {
+      parentViewed: true,
+      parentViewedAt: serverTimestamp(),
+      viewedFrom: "parent-account",
+    });
+
+    setQuizResults((currentResults) =>
+      currentResults.map((result) =>
+        result.id === resultId
+          ? {
+              ...result,
+              parentViewed: true,
+            }
+          : result
+      )
+    );
+  } catch (error) {
+    console.error("تعذر تسجيل اطلاع ولي الأمر:", error);
+    window.alert("تعذر تسجيل الاطلاع، حاول مرة أخرى.");
+  }
+}
   return (
     <main
       dir="rtl"
@@ -179,7 +359,192 @@ setAbsenceDays(totalAbsenceDays);
             متابعة مختصرة وواضحة لتقدم ابنكم دون أعباء إضافية.
           </p>
         </header>
+<section
+  style={{
+    background: "white",
+    borderRadius: "26px",
+    padding: "22px",
+    marginBottom: "18px",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.07)",
+  }}
+>
+  <h2 style={{ margin: "0 0 8px", fontSize: "22px" }}>
+    📝 نتائج اختبارات ابني
+  </h2>
 
+  <p
+    style={{
+      margin: "0 0 18px",
+      color: "#64748b",
+      fontSize: "14px",
+    }}
+  >
+    تابع نتائج الاختبارات وملاحظات المعلم.
+  </p>
+
+  {quizResultsLoading ? (
+    <p>جارٍ تحميل النتائج...</p>
+  ) : quizResultsError ? (
+    <p style={{ color: "#b42318" }}>{quizResultsError}</p>
+  ) : quizResults.length === 0 ? (
+    <div
+      style={{
+        padding: "20px",
+        background: "#f8fbfa",
+        borderRadius: "18px",
+        textAlign: "center",
+        color: "#64748b",
+      }}
+    >
+      لا توجد نتائج اختبارات حتى الآن.
+    </div>
+  ) : (
+    <div style={{ display: "grid", gap: "16px" }}>
+      {quizResults.map((result) => (
+        <div
+          key={result.id}
+          style={{
+            padding: "18px",
+            borderRadius: "20px",
+            background: "#f7fbf9",
+            border: "1px solid #dcebe5",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "12px",
+              flexWrap: "wrap",
+              marginBottom: "14px",
+            }}
+          >
+            <strong style={{ fontSize: "18px" }}>
+              {result.quizTitle}
+            </strong>
+
+            <span
+              style={{
+                background: "#eaf8f2",
+                color: "#147a5b",
+                padding: "6px 12px",
+                borderRadius: "999px",
+                fontWeight: 700,
+              }}
+            >
+              ⭐ تم التصحيح
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(130px, 1fr))",
+              gap: "10px",
+            }}
+          >
+            <div>📋 {result.assessmentCategory}</div>
+            <div>📝 {result.assessmentType}</div>
+            <div>
+              ⭐ الدرجة: {result.studentScore} / {result.totalScore}
+            </div>
+          </div>
+
+          {result.teacherNote && (
+            <div
+              style={{
+                marginTop: "14px",
+                padding: "14px",
+                borderRadius: "16px",
+                background: "#fff9e9",
+              }}
+            >
+              💬 <strong>ملاحظة المعلم:</strong>{" "}
+              {result.teacherNote}
+            </div>
+          )}
+
+          {result.testPaperImageUrl && (
+            <button
+              type="button"
+              onClick={() =>
+                window.open(
+                  result.testPaperImageUrl,
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+              style={{
+                width: "100%",
+                marginTop: "14px",
+                padding: "13px",
+                border: "none",
+                borderRadius: "16px",
+                background: "#147a5b",
+                color: "white",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              👀 عرض صورة ورقة الاختبار
+            </button>
+          )}
+
+          <div
+            style={{
+              marginTop: "14px",
+              padding: "12px",
+              borderRadius: "14px",
+              textAlign: "center",
+              background: result.parentViewed
+                ? "#eaf8f2"
+                : "#fff8e8",
+              color: result.parentViewed
+                ? "#147a5b"
+                : "#8a6a16",
+              fontWeight: 700,
+            }}
+          >
+            {result.parentViewed ? (
+  <div
+    style={{
+      marginTop: "14px",
+      padding: "12px",
+      borderRadius: "14px",
+      textAlign: "center",
+      background: "#eaf8f2",
+      color: "#147a5b",
+      fontWeight: 700,
+    }}
+  >
+    ✅ تمت متابعة الأسرة والاطلاع على النتيجة
+  </div>
+) : (
+  <button
+    type="button"
+    onClick={() => markParentQuizAsViewed(result.id)}
+    style={{
+      width: "100%",
+      marginTop: "14px",
+      padding: "13px",
+      border: "2px solid #147a5b",
+      borderRadius: "16px",
+      background: "white",
+      color: "#147a5b",
+      fontWeight: 700,
+      cursor: "pointer",
+    }}
+  >
+    ✅ اطلعت على نتيجة الاختبار
+  </button>
+)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
 <DailyPulseCard
   completedCount={completedCount}
   totalCount={dailyTasks.length}
@@ -535,6 +900,114 @@ setAbsenceDays(totalAbsenceDays);
   </p>
 )}
         </section>
+        <section
+  style={{
+    ...cardStyle,
+    marginTop: "18px",
+    border: "1px solid #d9eee5",
+    background:
+      "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "12px",
+      marginBottom: "16px",
+    }}
+  >
+    <div>
+      <h2
+        style={{
+          margin: 0,
+          color: "#0f6b52",
+          fontSize: "22px",
+        }}
+      >
+        📖 رحلة القراءة
+      </h2>
+
+      <p
+        style={{
+          margin: "7px 0 0",
+          color: "#64748b",
+          fontSize: "14px",
+        }}
+      >
+        استمرارية ابنك في القراءة المنزلية
+      </p>
+    </div>
+
+    <div
+      style={{
+        padding: "8px 14px",
+        borderRadius: "999px",
+        background: "#dcfce7",
+        color: "#047857",
+        fontWeight: 900,
+        fontSize: "18px",
+      }}
+    >
+      {displayedReadingProgress} / 5
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(5, 1fr)",
+      gap: "8px",
+      marginBottom: "14px",
+    }}
+  >
+    {[1, 2, 3, 4, 5].map((day) => (
+      <div
+        key={day}
+        style={{
+          textAlign: "center",
+          padding: "10px 4px",
+          borderRadius: "12px",
+          background:
+            day <= displayedReadingProgress
+              ? "#dcfce7"
+              : "#f1f5f9",
+          border:
+            day <= displayedReadingProgress
+              ? "1px solid #86efac"
+              : "1px solid #e2e8f0",
+          fontSize: "20px",
+        }}
+      >
+        {day <= displayedReadingProgress
+          ? day === 5
+            ? "👑"
+            : "⭐"
+          : "○"}
+      </div>
+    ))}
+  </div>
+
+  <p
+    style={{
+      margin: 0,
+      textAlign: "center",
+      color:
+        displayedReadingProgress === 5
+          ? "#047857"
+          : "#475569",
+      fontWeight: 800,
+      lineHeight: 1.8,
+    }}
+  >
+    {displayedReadingProgress === 5
+      ? "🎉 أكمل ابنك خمسة أيام قراءة وحصل على مكافأة الاستمرارية!"
+      : remainingReadingDays === 1
+        ? "🔥 بقي لابنك يوم واحد فقط لإكمال تحدي القراءة!"
+        : `قرأ ابنك ${displayedReadingProgress} من 5 أيام، وبقيت ${remainingReadingDays} أيام لإكمال التحدي.`}
+  </p>
+</section>
   
 
         {/* رسالة فارس */}

@@ -8,6 +8,7 @@ type Submission = {
   row: number;
   timestamp: string;
   studentName: string;
+  studentId?: string;
   classroom: string;
   title: string;
   type: string;
@@ -109,17 +110,21 @@ export default function SubmissionsPage() {
 
     try {
       setUpdatingRow(row);
-
+const targetSubmission = submissions.find(
+  (submission) => submission.row === row
+);
       const response = await fetch("/api/submissions/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          row,
-          status: newStatus,
-          note,
-        }),
+  row,
+  status: newStatus,
+  note,
+  studentId: targetSubmission?.studentId ?? "",
+  rewardType: "",
+}),
       });
 
       const result = (await response.json()) as {

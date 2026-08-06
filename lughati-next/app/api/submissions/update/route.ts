@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getFirebaseAdmin } from "../../../../firebase-admin";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzwZWP3GlHZZ01jnMoLnnUbZUPhGUsR1i4dTodpcuH1CYhNqtoizdLQJckIrNXjZeg0lw/exec";
 
@@ -17,6 +18,8 @@ type UpdateRequest = {
   row?: number;
   status?: AllowedStatus;
   note?: string;
+  studentId?: string;
+  rewardType?: string;
 };
 
 export async function POST(request: Request) {
@@ -26,7 +29,14 @@ export async function POST(request: Request) {
     const row = Number(body.row);
     const status = body.status;
     const note = typeof body.note === "string" ? body.note.trim() : "";
-
+const studentId =
+  typeof body.studentId === "string"
+    ? body.studentId.trim()
+    : "";
+    const rewardType =
+  typeof body.rewardType === "string"
+    ? body.rewardType.trim()
+    : "";
     if (!Number.isInteger(row) || row < 2) {
       return NextResponse.json(
         {
@@ -57,12 +67,20 @@ export async function POST(request: Request) {
         row,
         status,
         note,
+        studentId,
+       rewardType,
       }),
       cache: "no-store",
     });
 
     const responseText = await response.text();
-
+console.log("UPDATE Apps Script check:", {
+  status: response.status,
+  contentType: response.headers.get("content-type"),
+  length: responseText.length,
+  startsWithJson: responseText.trim().startsWith("{"),
+  preview: responseText.trim().slice(0, 80),
+});
     let result: {
       success?: boolean;
       message?: string;

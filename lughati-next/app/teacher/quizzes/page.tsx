@@ -1,31 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   addDoc,
   collection,
   serverTimestamp,
+  doc,
+  getDoc, 
+  getDocs,
+query,
+where,
+updateDoc,
+setDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
-
-type Question = {
-  id: number;
-  text: string;
-  options: string[];
-  correctAnswer: number;
+import type { Question } from "./types";
+type TeacherQuizResult = {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  studentId: string;
+  studentName: string;
+  studentScore: number;
+  totalScore: number;
+  parentViewed: boolean;
+  viewedFrom: string;
+  parentViewedAt?: {
+    toDate?: () => Date;
+  } | null;
 };
-
-function createEmptyQuestion(id: number): Question {
-  return {
-    id,
-    text: "",
-    options: ["", "", "", ""],
-    correctAnswer: 0,
-  };
-}
+import { createEmptyQuestion } from "./helpers";
+import { styles } from "./styles";
+import { useSearchParams } from "next/navigation";
 
 export default function TeacherQuizzesPage() {
   const [title, setTitle] = useState("");
+  const searchParams = useSearchParams();
+const editQuizId = searchParams.get("quizId");
   const [description, setDescription] = useState("");
   const [classroom, setClassroom] = useState("الصف الثاني أ");
   const [questions, setQuestions] = useState<Question[]>([
@@ -34,7 +45,127 @@ export default function TeacherQuizzesPage() {
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [quizId, setQuizId] = useState<string | null>(null);
+const [assessmentCategory, setAssessmentCategory] = useState<
+  "فتري" | "تشخيصي" | "بنائي"
+>("فتري");
 
+const [assessmentType, setAssessmentType] = useState<
+  "ورقي" | "إلكتروني"
+>("ورقي");
+
+const [studentScore, setStudentScore] = useState("");
+const [totalScore, setTotalScore] = useState("");
+const [testPaperImageUrl, setTestPaperImageUrl] = useState("");
+const [testPaperFile, setTestPaperFile] = useState<File | null>(null);
+const [resultStudentId, setResultStudentId] = useState("");
+const [resultStudentName, setResultStudentName] = useState("");
+const [teacherResultNote, setTeacherResultNote] = useState("");
+const [quizResults, setQuizResults] = useState<TeacherQuizResult[]>([]);
+const [quizResultsLoading, setQuizResultsLoading] = useState(true);
+const [quizResultsError, setQuizResultsError] = useState("");
+useEffect(() => {
+  async function loadQuizForEditing() {
+    if (!editQuizId) return;
+
+    try {
+      const quizSnapshot = await getDoc(
+        doc(db, "quizzes", editQuizId)
+      );
+
+      if (!quizSnapshot.exists()) {
+        setMessage("لم يتم العثور على الاختبار.");
+        return;
+      }
+
+      const quizData = quizSnapshot.data();
+      console.log("Quiz loaded:", quizData);
+
+      setQuizId(quizSnapshot.id);
+      setTitle(quizData.title ?? "");
+      setDescription(quizData.description ?? "");
+      setClassroom(quizData.classroom ?? "الصف الثاني أ");
+      setQuestions(
+        Array.isArray(quizData.questions) && quizData.questions.length > 0
+          ? quizData.questions
+          : [createEmptyQuestion(1)]
+      );
+      setMessage("تم تحميل الاختبار للتعديل.");
+    } catch (error) {
+      console.error("تعذر تحميل الاختبار:", error);
+      setMessage("تعذر تحميل بيانات الاختبار.");
+    }
+  }
+
+  loadQuizForEditing();
+}, [editQuizId]);
+useEffect(() => {
+  async function loadQuizResultsForTeacher() {
+    try {
+      setQuizResultsLoading(true);
+      setQuizResultsError("");
+
+      const snapshot = await getDocs(
+        collection(db, "quizResults")
+      );
+
+      const loadedResults: TeacherQuizResult[] =
+        snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+
+          return {
+            id: docSnap.id,
+            quizId:
+              typeof data.quizId === "string"
+                ? data.quizId
+                : "",
+            quizTitle:
+              typeof data.quizTitle === "string"
+                ? data.quizTitle
+                : "اختبار لغتي",
+            studentId:
+              typeof data.studentId === "string"
+                ? data.studentId
+                : "",
+            studentName:
+              typeof data.studentName === "string"
+                ? data.studentName
+                : "",
+            studentScore:
+              typeof data.studentScore === "number"
+                ? data.studentScore
+                : 0,
+            totalScore:
+              typeof data.totalScore === "number"
+                ? data.totalScore
+                : 0,
+            parentViewed: data.parentViewed === true,
+            viewedFrom:
+              typeof data.viewedFrom === "string"
+                ? data.viewedFrom
+                : "",
+            parentViewedAt:
+              data.parentViewedAt ?? null,
+          };
+        });
+
+      setQuizResults(loadedResults);
+    } catch (error) {
+      console.error(
+        "تعذر تحميل نتائج الطلاب للمعلم:",
+        error
+      );
+      setQuizResults([]);
+      setQuizResultsError(
+        "تعذر تحميل متابعة نتائج الطلاب حاليًا."
+      );
+    } finally {
+      setQuizResultsLoading(false);
+    }
+  }
+
+  void loadQuizResultsForTeacher();
+}, []);
   function updateQuestionText(questionId: number, value: string) {
     setQuestions((currentQuestions) =>
       currentQuestions.map((question) =>
@@ -89,7 +220,13 @@ export default function TeacherQuizzesPage() {
       createEmptyQuestion(nextId),
     ]);
   }
-
+function createNewQuiz() {
+  setQuizId(null);
+  setTitle("");
+  setDescription("");
+  setQuestions([createEmptyQuestion(1)]);
+  setMessage("");
+}
   function removeQuestion(questionId: number) {
     if (questions.length === 1) {
       setMessage("يجب أن يحتوي الاختبار على سؤال واحد على الأقل.");
@@ -140,27 +277,40 @@ export default function TeacherQuizzesPage() {
     try {
       setSaving(true);
 
-      await addDoc(collection(db, "quizzes"), {
-        title: title.trim(),
-        description: description.trim(),
-        classroom,
-        published,
-        status: published ? "published" : "draft",
+      const quizData = {
+  title: title.trim(),
+  description: description.trim(),
+  classroom,
+  published,
+  status: published ? "published" : "draft",
+assessmentCategory,
+assessmentType,
+totalScore: totalScore.trim()
+  ? Number(totalScore)
+  : questions.length,
+  questions: questions.map((question, index) => ({
+    order: index + 1,
+    text: question.text.trim(),
+    options: question.options.map((option) => option.trim()),
+    correctAnswer: question.correctAnswer,
+    points: 1,
+  })),
 
-        questions: questions.map((question, index) => ({
-          order: index + 1,
-          text: question.text.trim(),
-          options: question.options.map((option) => option.trim()),
-          correctAnswer: question.correctAnswer,
-          points: 1,
-        })),
+  totalQuestions: questions.length,
+  totalPoints: questions.length,
+  updatedAt: serverTimestamp(),
+};
 
-        totalQuestions: questions.length,
-        totalPoints: questions.length,
+if (quizId) {
+  await updateDoc(doc(db, "quizzes", quizId), quizData);
+} else {
+  const quizReference = await addDoc(collection(db, "quizzes"), {
+    ...quizData,
+    createdAt: serverTimestamp(),
+  });
 
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+  setQuizId(quizReference.id);
+}
 
       setMessage(
         published
@@ -168,9 +318,7 @@ export default function TeacherQuizzesPage() {
           : "تم حفظ الاختبار كمسودة ✅"
       );
 
-      setTitle("");
-      setDescription("");
-      setQuestions([createEmptyQuestion(1)]);
+    
     } catch (error) {
       console.error("تعذر حفظ الاختبار:", error);
       setMessage(
@@ -180,6 +328,107 @@ export default function TeacherQuizzesPage() {
       setSaving(false);
     }
   }
+  async function uploadTestPaperImage(file: File) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("upload_preset", "lughati_homework_upload");
+
+  const response = await fetch(
+    "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`فشل رفع صورة ورقة الاختبار: ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  return data.secure_url as string;
+}
+  async function saveStudentResult() {
+  if (!quizId) {
+    setMessage("احفظ الاختبار أولًا قبل إضافة نتيجة الطالب.");
+    return;
+  }
+
+  if (!resultStudentId.trim() || !resultStudentName.trim()) {
+    setMessage("أكمل رقم الطالب واسم الطالب أولًا.");
+    return;
+  }
+
+  if (!studentScore.trim()) {
+    setMessage("أدخل درجة الطالب.");
+    return;
+  }
+
+  const numericStudentScore = Number(studentScore);
+  const numericTotalScore = totalScore.trim()
+    ? Number(totalScore)
+    : questions.length;
+
+  if (
+    Number.isNaN(numericStudentScore) ||
+    Number.isNaN(numericTotalScore) ||
+    numericStudentScore < 0 ||
+    numericTotalScore <= 0 ||
+    numericStudentScore > numericTotalScore
+  ) {
+    setMessage("تحقق من درجة الطالب والدرجة الكلية.");
+    return;
+  }
+
+  try {
+    setSaving(true);
+    setMessage("");
+let uploadedTestPaperImageUrl = testPaperImageUrl;
+
+if (testPaperFile) {
+  uploadedTestPaperImageUrl = await uploadTestPaperImage(testPaperFile);
+  setTestPaperImageUrl(uploadedTestPaperImageUrl);
+}
+    const resultId = `${quizId}_${resultStudentId.trim()}`;
+
+    await setDoc(
+      doc(db, "quizResults", resultId),
+      {
+        quizId,
+        quizTitle: title.trim(),
+
+        studentId: resultStudentId.trim(),
+        studentName: resultStudentName.trim(),
+
+        assessmentCategory,
+        assessmentType,
+
+        studentScore: numericStudentScore,
+        totalScore: numericTotalScore,
+
+        teacherNote: teacherResultNote.trim(),
+
+        testPaperImageUrl: uploadedTestPaperImageUrl.trim(),
+
+        parentViewed: false,
+        parentViewedAt: null,
+
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    setMessage("✅ تم حفظ نتيجة الطالب بنجاح");
+  } catch (error) {
+    console.error("تعذر حفظ نتيجة الطالب:", error);
+    setMessage("تعذر حفظ نتيجة الطالب، حاول مرة أخرى.");
+  } finally {
+    setSaving(false);
+  }
+}
 
   return (
     <main dir="rtl" style={styles.page}>
@@ -209,7 +458,129 @@ export default function TeacherQuizzesPage() {
               style={styles.input}
             />
           </label>
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 14,
+  }}
+>
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>تصنيف الاختبار</span>
+    <select
+      value={assessmentCategory}
+      onChange={(event) =>
+        setAssessmentCategory(
+          event.target.value as "فتري" | "تشخيصي" | "بنائي"
+        )
+      }
+      style={styles.input}
+    >
+      <option value="فتري">فتري</option>
+      <option value="تشخيصي">تشخيصي</option>
+      <option value="بنائي">بنائي</option>
+    </select>
+  </label>
 
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>نوع الاختبار</span>
+    <select
+      value={assessmentType}
+      onChange={(event) =>
+        setAssessmentType(
+          event.target.value as "ورقي" | "إلكتروني"
+        )
+      }
+      style={styles.input}
+    >
+      <option value="ورقي">ورقي</option>
+      <option value="إلكتروني">إلكتروني</option>
+    </select>
+  </label>
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 14,
+  }}
+>
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>رقم الطالب</span>
+    <input
+      value={resultStudentId}
+      onChange={(event) => setResultStudentId(event.target.value)}
+      placeholder="مثال: 08"
+      style={styles.input}
+    />
+  </label>
+
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>اسم الطالب</span>
+    <input
+      value={resultStudentName}
+      onChange={(event) => setResultStudentName(event.target.value)}
+      placeholder="اكتب اسم الطالب"
+      style={styles.input}
+    />
+  </label>
+</div>
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>درجة الطالب</span>
+    <input
+      type="number"
+      min="0"
+      value={studentScore}
+      onChange={(event) => setStudentScore(event.target.value)}
+      placeholder="مثال: 18"
+      style={styles.input}
+    />
+  </label>
+
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>الدرجة الكلية</span>
+    <input
+      type="number"
+      min="0"
+      value={totalScore}
+      onChange={(event) => setTotalScore(event.target.value)}
+      placeholder="مثال: 20"
+      style={styles.input}
+    />
+  </label>
+</div>
+<label style={styles.field}>
+  <span style={styles.fieldLabel}>📄 صورة ورقة الاختبار — اختيارية</span>
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(event) => {
+      const file = event.target.files?.[0] ?? null;
+      setTestPaperFile(file);
+    }}
+    style={styles.input}
+  />
+
+  <span
+    style={{
+      fontSize: 13,
+      color: "#6b7f78",
+      lineHeight: 1.7,
+    }}
+  >
+    ارفع صورة الورقة فقط إذا رغبت في إتاحتها للطالب وولي الأمر.
+  </span>
+</label>
+<label style={styles.field}>
+  <span style={styles.fieldLabel}>💬 ملاحظة المعلم — اختيارية</span>
+
+  <textarea
+    value={teacherResultNote}
+    onChange={(event) => setTeacherResultNote(event.target.value)}
+    placeholder="مثال: أداء مميز، استمر يا بطل 🌟"
+    style={styles.textarea}
+  />
+</label>
           <label style={styles.field}>
             <span style={styles.fieldLabel}>وصف مختصر</span>
             <textarea
@@ -239,7 +610,134 @@ export default function TeacherQuizzesPage() {
             </select>
           </label>
         </div>
+<div
+  style={{
+    ...styles.card,
+    marginTop: "18px",
+  }}
+>
+  <h2 style={styles.sectionTitle}>
+    👨‍👩‍👦 متابعة اطلاع الأسرة على النتائج
+  </h2>
 
+  {quizResultsLoading ? (
+    <p style={styles.helperText}>
+      جارٍ تحميل نتائج الطلاب...
+    </p>
+  ) : quizResultsError ? (
+    <p
+      style={{
+        ...styles.helperText,
+        color: "#b42318",
+      }}
+    >
+      {quizResultsError}
+    </p>
+  ) : quizResults.length === 0 ? (
+    <div
+      style={{
+        padding: "18px",
+        borderRadius: "16px",
+        background: "#f8fbfa",
+        textAlign: "center",
+      }}
+    >
+      لا توجد نتائج طلاب حتى الآن.
+    </div>
+  ) : (
+    <div
+      style={{
+        display: "grid",
+        gap: "14px",
+      }}
+    >
+      {quizResults.map((result) => {
+        const viewedDate =
+          result.parentViewedAt?.toDate?.() ?? null;
+
+        return (
+          <div
+            key={result.id}
+            style={{
+              padding: "16px",
+              borderRadius: "18px",
+              border: "1px solid #dbe9e3",
+              background: "#f9fcfb",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <strong>
+                {result.studentName || result.studentId}
+              </strong>
+
+              <span>
+                {result.studentScore} / {result.totalScore}
+              </span>
+            </div>
+
+            <div
+              style={{
+                marginTop: "8px",
+                fontWeight: 700,
+              }}
+            >
+              📝 {result.quizTitle}
+            </div>
+
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "14px",
+                background: result.parentViewed
+                  ? "#eaf8f2"
+                  : "#fff8e8",
+                color: result.parentViewed
+                  ? "#147a5b"
+                  : "#8a6a16",
+              }}
+            >
+              {result.parentViewed ? (
+                <>
+                  <div>
+                    ✅ تمت متابعة الأسرة
+                  </div>
+
+                  {viewedDate && (
+                    <div style={{ marginTop: "6px" }}>
+                      🕒{" "}
+                      {viewedDate.toLocaleString("ar-SA")}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: "6px" }}>
+                    📱 المصدر:{" "}
+                    {result.viewedFrom === "parent-account"
+                      ? "حساب ولي الأمر"
+                      : result.viewedFrom === "student-account"
+                      ? "حساب الطالب"
+                      : "غير محدد"}
+                  </div>
+                </>
+              ) : (
+                <div>
+                  ⏳ لم تطّلع الأسرة على النتيجة بعد
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</div>
         <div style={styles.questionsHeader}>
           <div>
             <h2 style={styles.sectionTitle}>أسئلة الاختبار</h2>
@@ -346,6 +844,13 @@ export default function TeacherQuizzesPage() {
 
         <div style={styles.actions}>
           <button
+  type="button"
+  onClick={createNewQuiz}
+  style={styles.secondaryButton}
+>
+  ➕ اختبار جديد
+</button>
+          <button
             type="button"
             disabled={saving}
             onClick={() => saveQuiz(false)}
@@ -356,10 +861,15 @@ export default function TeacherQuizzesPage() {
           >
             {saving ? "جارٍ الحفظ..." : "حفظ كمسودة"}
           </button>
-
+<button
+  type="button"
+  onClick={saveStudentResult}
+  style={styles.secondaryButton}
+>
+  💾 حفظ نتيجة الطالب
+</button>
           <button
             type="button"
-            disabled={saving}
             onClick={() => saveQuiz(true)}
             style={{
               ...styles.publishButton,
@@ -373,246 +883,3 @@ export default function TeacherQuizzesPage() {
     </main>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    padding: "24px",
-    background:
-      "linear-gradient(180deg, #f4fbf8 0%, #eef5ff 100%)",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  container: {
-    width: "100%",
-    maxWidth: "1100px",
-    margin: "0 auto",
-  },
-
-  hero: {
-    display: "flex",
-    alignItems: "center",
-    gap: "18px",
-    padding: "24px",
-    marginBottom: "20px",
-    borderRadius: "24px",
-    background: "#ffffff",
-    border: "1px solid #d5e8df",
-    boxShadow: "0 12px 35px rgba(22, 101, 52, 0.08)",
-  },
-
-  heroIcon: {
-    display: "grid",
-    placeItems: "center",
-    width: "76px",
-    height: "76px",
-    flexShrink: 0,
-    borderRadius: "20px",
-    background: "#e8f8ef",
-    fontSize: "38px",
-  },
-
-  label: {
-    margin: 0,
-    color: "#15835f",
-    fontWeight: 800,
-  },
-
-  title: {
-    margin: "7px 0",
-    color: "#173f34",
-    fontSize: "34px",
-  },
-
-  subtitle: {
-    margin: 0,
-    color: "#60736d",
-    lineHeight: 1.8,
-  },
-
-  card: {
-    padding: "22px",
-    marginBottom: "22px",
-    borderRadius: "22px",
-    background: "#ffffff",
-    border: "1px solid #dce9e4",
-  },
-
-  sectionTitle: {
-    margin: "0 0 16px",
-    color: "#173f34",
-    fontSize: "24px",
-  },
-
-  field: {
-    display: "grid",
-    gap: "8px",
-    marginBottom: "17px",
-  },
-
-  fieldLabel: {
-    color: "#294f44",
-    fontWeight: 800,
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "13px 14px",
-    border: "1px solid #cbded6",
-    borderRadius: "13px",
-    background: "#ffffff",
-    color: "#173f34",
-    fontSize: "16px",
-  },
-
-  textarea: {
-    width: "100%",
-    minHeight: "95px",
-    boxSizing: "border-box",
-    padding: "13px 14px",
-    resize: "vertical",
-    border: "1px solid #cbded6",
-    borderRadius: "13px",
-    background: "#ffffff",
-    color: "#173f34",
-    fontSize: "16px",
-    lineHeight: 1.7,
-  },
-
-  questionsHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "14px",
-    flexWrap: "wrap",
-    marginBottom: "14px",
-  },
-
-  helperText: {
-    margin: 0,
-    color: "#64748b",
-  },
-
-  addButton: {
-    padding: "12px 18px",
-    border: "none",
-    borderRadius: "13px",
-    background: "#16835f",
-    color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-
-  questionCard: {
-    padding: "22px",
-    marginBottom: "18px",
-    borderRadius: "22px",
-    background: "#ffffff",
-    border: "1px solid #dce9e4",
-    boxShadow: "0 8px 25px rgba(30, 80, 65, 0.06)",
-  },
-
-  questionTop: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "12px",
-    marginBottom: "16px",
-  },
-
-  questionTitle: {
-    margin: 0,
-    color: "#173f34",
-    fontSize: "21px",
-  },
-
-  deleteButton: {
-    padding: "8px 12px",
-    border: "1px solid #fecaca",
-    borderRadius: "10px",
-    background: "#fff7f7",
-    color: "#b91c1c",
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-
-  optionsGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(230px, 1fr))",
-    gap: "12px",
-  },
-
-  optionBox: {
-    display: "grid",
-    gap: "10px",
-    padding: "13px",
-    border: "1px solid #dbe5e1",
-    borderRadius: "14px",
-    background: "#f8faf9",
-  },
-
-  correctOption: {
-    border: "2px solid #22a06b",
-    background: "#ecfdf5",
-  },
-
-  optionHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    color: "#315b4f",
-    fontWeight: 800,
-  },
-
-  optionInput: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "11px",
-    border: "1px solid #cadbd4",
-    borderRadius: "10px",
-    background: "#ffffff",
-    fontSize: "15px",
-  },
-
-  message: {
-    padding: "14px",
-    marginBottom: "18px",
-    borderRadius: "13px",
-    background: "#eef7f3",
-    color: "#166534",
-    fontWeight: 800,
-    textAlign: "center",
-  },
-
-  actions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "12px",
-    flexWrap: "wrap",
-  },
-
-  draftButton: {
-    padding: "13px 20px",
-    border: "1px solid #16835f",
-    borderRadius: "13px",
-    background: "#ffffff",
-    color: "#166534",
-    fontSize: "16px",
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-
-  publishButton: {
-    padding: "13px 20px",
-    border: "none",
-    borderRadius: "13px",
-    background: "#16a34a",
-    color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-};

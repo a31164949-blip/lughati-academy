@@ -9,6 +9,10 @@ import {
   increment,
   runTransaction,
   serverTimestamp,
+  collection,
+getDocs,
+query,
+where,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 
@@ -35,6 +39,13 @@ const journeyCards = [
     background: "#fff3df",
   },
   {
+  icon: "🎙️",
+  title: "رحلة القراءة",
+  description: "سجّل دقيقة قراءة يومية وواصل سلسلة إنجازك",
+  href: "/reading-journey",
+  background: "#ecfdf5",
+},
+  {
     icon: "🗓️",
     title: "الخطة الأسبوعية",
     description: "تعرّف على مهام الأسبوع",
@@ -55,6 +66,20 @@ const journeyCards = [
     href: "/honor-board",
     background: "#fff8d8",
   },
+  {
+  icon: "📝",
+  title: "اختباراتي",
+  description: "اختبر مهاراتك وشاهد تقدمك 🌟",
+  href: "/quizzes",
+  background: "#eef4ff",
+},
+{
+  icon: "🎨",
+  title: "معرض الطلاب",
+  description: "شاهد إبداعاتك وإبداعات زملائك ✨",
+  href: "/gallery",
+  background: "#fff3e8",
+},
   {
     icon: "📤",
     title: "ارفع عملي",
@@ -101,6 +126,35 @@ const dailyTasks = [
 
 export default function JourneyPage() {
   const [points, setPoints] = useState(0);
+  const [readingDays, setReadingDays] = useState(0);
+  useEffect(() => {
+  async function loadReadingDays() {
+    try {
+      const studentId = localStorage.getItem("student-id");
+      
+
+      if (!studentId) return;
+
+      const progressRef = doc(
+        db,
+        "reading-progress",
+        studentId
+      );
+
+      const progressSnap = await getDoc(progressRef);
+
+      if (progressSnap.exists()) {
+        const data = progressSnap.data();
+
+        setReadingDays(data.totalApprovedDays || 0);
+      }
+    } catch (error) {
+      console.error("فشل تحميل أيام القراءة:", error);
+    }
+  }
+
+  loadReadingDays();
+}, []);
   const [completedTasks, setCompletedTasks] = useState<number[]>([1]);
 const [savingTaskId, setSavingTaskId] =
   useState<number | null>(null);
@@ -145,8 +199,20 @@ const [savingTaskId, setSavingTaskId] =
   }
 
   void loadStudentPoints();
+  
 }, []);
   const completedCount = completedTasks.length;
+  const readingProgress = readingDays % 5;
+
+const displayedReadingProgress =
+  readingDays > 0 && readingProgress === 0
+    ? 5
+    : readingProgress;
+
+const remainingReadingDays =
+  displayedReadingProgress === 5
+    ? 0
+    : 5 - displayedReadingProgress;
   const allTasksCompleted = completedCount === dailyTasks.length;
 
   const progress = useMemo(() => {
@@ -775,7 +841,114 @@ async function saveTaskReward(taskId: number) {
             </p>
           </div>
         </section>
+<div
+  style={{
+    marginTop: "18px",
+    padding: "22px",
+    borderRadius: "24px",
+    background: "#ffffff",
+    border: "1px solid #d9eee5",
+    boxShadow: "0 8px 24px rgba(8, 127, 91, 0.08)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "12px",
+      marginBottom: "16px",
+    }}
+  >
+    <div>
+      <div
+        style={{
+          fontSize: "22px",
+          fontWeight: 900,
+          color: "#0f6b52",
+        }}
+      >
+        🔥 رحلة القراءة
+      </div>
 
+      <div
+        style={{
+          marginTop: "6px",
+          color: "#64748b",
+          fontSize: "14px",
+        }}
+      >
+        اقرأ في 5 أيام لتحصل على 50 نقطة
+      </div>
+    </div>
+
+    <div
+      style={{
+        background: "#ecfdf5",
+        color: "#047857",
+        padding: "8px 14px",
+        borderRadius: "999px",
+        fontWeight: 900,
+        fontSize: "18px",
+      }}
+    >
+      {displayedReadingProgress} / 5
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(5, 1fr)",
+      gap: "8px",
+      marginBottom: "14px",
+    }}
+  >
+    {[1, 2, 3, 4, 5].map((day) => (
+      <div
+        key={day}
+        style={{
+          textAlign: "center",
+          padding: "11px 4px",
+          borderRadius: "14px",
+          background:
+            day <= displayedReadingProgress
+              ? "#dcfce7"
+              : "#f1f5f9",
+          border:
+            day <= displayedReadingProgress
+              ? "1px solid #86efac"
+              : "1px solid #e2e8f0",
+          fontSize: "21px",
+        }}
+      >
+        {day <= displayedReadingProgress
+          ? day === 5
+            ? "👑"
+            : "⭐"
+          : "○"}
+      </div>
+    ))}
+  </div>
+
+  <div
+    style={{
+      textAlign: "center",
+      fontWeight: 800,
+      color:
+        displayedReadingProgress === 5
+          ? "#047857"
+          : "#475569",
+      fontSize: "15px",
+    }}
+  >
+    {displayedReadingProgress === 5
+      ? "🎉 أكملت خمسة أيام قراءة وحصلت على مكافأة الاستمرارية!"
+      : remainingReadingDays === 1
+        ? "🔥 بقي يوم واحد فقط لتحصل على +50 نقطة!"
+        : `بقيت ${remainingReadingDays} أيام لتحصل على +50 نقطة 🎁`}
+  </div>
+</div>
         <section>
           <div
             style={{
