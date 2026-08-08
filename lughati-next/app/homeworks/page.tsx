@@ -417,7 +417,16 @@ async function uploadAudioToCloudinary(audioFile: Blob) {
       }));
       return;
     }
-
+if (
+  homework.homeworkType === "madrasati" &&
+  !finalSolutionUrl.trim()
+) {
+  setMessageByHomework((current) => ({
+    ...current,
+    [homework.id]: "📸 ارفع صورة إثبات الحل من منصة مدرستي أولًا.",
+  }));
+  return;
+}
     if (
   completedIds.has(homework.id) &&
   solutionStatusByHomework[homework.id] !== "rejected"
@@ -742,7 +751,7 @@ function stopAudioRecording() {
           </div>
 
           <Link
-            href="/"
+            href="/journey"
             style={{
               textDecoration: "none",
               color: "#087f5b",
@@ -1016,7 +1025,13 @@ function stopAudioRecording() {
                       onClick={() => {
   setSelectedHomework(homework);
   setReadingOnlyMode(false);
-  setSelectedCompletionMethod("");
+
+  if (homework.homeworkType === "madrasati") {
+    setSelectedCompletionMethod("📸 إثبات مدرستي");
+  } else {
+    setSelectedCompletionMethod("");
+  }
+
   setSolutionUrl("");
   setShowCompletionDialog(true);
 }}
@@ -1384,19 +1399,23 @@ setSolutionUrl("");
         }}
       >
         
-        {(
-  selectedHomework?.homeworkType === "creative"
+  {(
+  selectedHomework?.homeworkType === "madrasati"
     ? [
-        "📸 صورة لإبداعي",
+      "📸 إثبات مدرستي",
+      ]
+    : selectedHomework?.homeworkType === "creative"
+    ? [
+        "📸 صورة إبداعي",
         "🎙️ تسجيل صوتي",
-        "🔗 رابط لإبداعي",
+        "🔗 رابط إبداعي",
         "📄 ملف إبداعي",
       ]
     : [
         "📖 في الكتاب",
         "📒 في الدفتر",
         "💻 حل إلكتروني",
-        "📷 أرفقت صورة",
+        "📸 أرفقت صورة",
         "📄 أرفقت ملفاً",
       ]
 ).map((method) => {
@@ -1457,6 +1476,7 @@ setSolutionUrl("");
   }}
 >
   {(
+    selectedHomework?.homeworkType !== "madrasati" &&
   readingOnlyMode ||
   (
     selectedCompletionMethod &&
@@ -1507,8 +1527,7 @@ setSolutionUrl("");
       {String(Math.floor(recordingSeconds / 60)).padStart(2, "0")}:
       {String(recordingSeconds % 60).padStart(2, "0")}
     </div>
-
-    {!isRecordingAudio && !audioPreviewUrl && (
+{!isRecordingAudio && !audioPreviewUrl && (
       <button
         type="button"
         onClick={startAudioRecording}
@@ -1600,8 +1619,10 @@ setSolutionUrl("");
     htmlFor="solutionImage"
     style={{
       display:
-  selectedHomework?.homeworkType === "creative" &&
-  selectedCompletionMethod !== "📸 صورة لإبداعي"
+  selectedHomework?.homeworkType === "madrasati"
+    ? "block"
+    : selectedHomework?.homeworkType === "creative" &&
+      selectedCompletionMethod !== "📸 صورة إبداعي"
     ? "none"
     : "block",
       marginBottom: "10px",
@@ -1610,7 +1631,9 @@ setSolutionUrl("");
       cursor: "pointer",
     }}
   >
-    📷 اختر صورة الحل من الجهاز
+  {selectedHomework?.homeworkType === "madrasati"
+  ? "📸 ارفع صورة إثبات الحل من منصة مدرستي"
+  : "📷 اختر صورة الحل من الجهاز"}
   </label>
 
   <input
@@ -1620,8 +1643,10 @@ setSolutionUrl("");
     onChange={handleImageSelection}
     style={{
       display:
-  selectedHomework?.homeworkType === "creative" &&
-  selectedCompletionMethod !== "📸 صورة لإبداعي"
+  selectedHomework?.homeworkType === "madrasati"
+    ? "block"
+    : selectedHomework?.homeworkType === "creative" &&
+      selectedCompletionMethod !== "📸 صورة إبداعي"
     ? "none"
     : "block",
       width: "100%",

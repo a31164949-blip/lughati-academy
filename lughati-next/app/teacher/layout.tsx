@@ -19,16 +19,23 @@ export default function TeacherLayout({
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        setIsAuthorized(false);
-        setIsChecking(false);
-        router.replace("/teacher-login");
-        return;
-      }
+  if (!user) {
+    setIsAuthorized(false);
+    setIsChecking(false);
+    router.replace("/teacher-login");
+    return;
+  }
 
-      setIsAuthorized(true);
-      setIsChecking(false);
-    });
+  if (user.email?.toLowerCase() !== "a31164949@gmail.com") {
+    setIsAuthorized(false);
+    setIsChecking(false);
+    router.replace("/journey");
+    return;
+  }
+
+  setIsAuthorized(true);
+  setIsChecking(false);
+});
 
     return unsubscribe;
   }, [router]);

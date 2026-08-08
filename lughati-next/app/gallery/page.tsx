@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   collection,
   getDocs,
@@ -128,6 +129,8 @@ function parsePublishedAt(value: string) {
   ).getTime();
 }
 export default function GalleryPage() {
+  const searchParams = useSearchParams();
+const fromParent = searchParams.get("from") === "parent";
   const [works, setWorks] = useState<GalleryWork[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -416,7 +419,24 @@ const notebookCategoryStyle = {
           >
             مساحة آمنة لإبداعات طلابنا
           </div>
-
+<div style={{ marginBottom: "22px", textAlign: "right" }}>
+  <a
+    href={fromParent ? "/parent" : "/journey"}
+    style={{
+      display: "inline-block",
+      textDecoration: "none",
+      color: "#087f5b",
+      background: "#ffffff",
+      border: "1px solid #b7ead6",
+      borderRadius: "16px",
+      padding: "12px 20px",
+      fontWeight: 800,
+      fontSize: "16px",
+    }}
+  >
+    {fromParent ? "← العودة إلى صفحة ولي الأمر" : "← العودة إلى رحلتي"}
+  </a>
+</div>
           <h1
   className="gallery-title"
             style={{

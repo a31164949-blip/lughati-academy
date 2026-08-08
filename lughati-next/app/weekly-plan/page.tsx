@@ -269,6 +269,16 @@ farisMessage:
     <main dir="rtl" className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 rounded-3xl bg-gradient-to-l from-emerald-600 to-emerald-500 p-7 text-white shadow-lg">
+          <a
+  href="/journey"
+  className="inline-block mb-4 rounded-xl border border-emerald-200 bg-white px-4 py-3 font-bold no-underline"
+style={{
+  color: "#065f46",
+  fontSize: "16px",
+}}
+>
+  ← العودة إلى رحلتي
+</a>
           <p className="font-bold text-emerald-50">
             أكاديمية لغتي الرقمية
           </p>

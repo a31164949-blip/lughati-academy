@@ -3,6 +3,9 @@ export type Question = {
   text: string;
   options: string[];
   correctAnswer: number;
+  questionType?: "multiple-choice" | "essay" | "yes-no" | "short-text";
+required?: boolean;
+points?: number;
 };
 
 export type Quiz = {
@@ -10,6 +13,8 @@ export type Quiz = {
   title: string;
   description: string;
   classroom: string;
+  audience?: "student" | "family";
+contentKind?: "quiz" | "diagnostic-form" | "case-study-form";
   published: boolean;
   status: "draft" | "published";
   questions: Question[];

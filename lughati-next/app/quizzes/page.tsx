@@ -157,6 +157,22 @@ async function markResultAsViewed(resultId: string) {
         }}
       >
         {/* العنوان */}
+        <a
+  href="/journey"
+  style={{
+    display: "inline-block",
+    marginBottom: "18px",
+    textDecoration: "none",
+    background: "#ffffff",
+    color: "#087f5b",
+    border: "1px solid #b7ead6",
+    borderRadius: "14px",
+    padding: "12px 18px",
+    fontWeight: 700,
+  }}
+>
+  ← العودة إلى رحلتي
+</a>
         <section
           style={{
             background: "white",

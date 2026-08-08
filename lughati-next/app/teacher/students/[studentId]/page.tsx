@@ -208,6 +208,7 @@ const [isSavingBadge, setIsSavingBadge] = useState(false);
 const [showJourneyPathBox, setShowJourneyPathBox] = useState(false);
 const [teacherMessage, setTeacherMessage] = useState("");
 
+
 const [selectedJourneyPath, setSelectedJourneyPath] = useState<
   "rescue" | "mastery" | "creative"
 >("mastery");
@@ -847,8 +848,27 @@ alert(
       <a href="/teacher/students" style={styles.backButton}>
         ← العودة إلى الطلاب
       </a>
-
-      <section style={styles.profileCard}>
+<a
+  href={`/teacher/case-studies?studentId=${encodeURIComponent(
+  studentId
+)}`}
+  style={{
+    display: "block",
+    marginBottom: "14px",
+    textDecoration: "none",
+    background: "#f0faf6",
+    border: "1px solid #b8ddcf",
+    color: "#147a5b",
+    padding: "14px 16px",
+    borderRadius: "16px",
+    fontWeight: 800,
+    textAlign: "center",
+  }}
+>
+  📋 دراسة حالة الطالب
+</a>
+      <section
+style={styles.profileInfo}>
         <div style={styles.avatar}>🧒</div>
 
         <div style={styles.profileInfo}>

@@ -34,7 +34,7 @@ export default function UploadPage() {
   return (
     <main className="student-upload-page" dir="rtl">
       <section className="upload-header">
-        <Link href="/" className="upload-back-link">
+        <Link   href="/journey"       className="upload-back-link">
           العودة إلى الرئيسية ←
         </Link>
 

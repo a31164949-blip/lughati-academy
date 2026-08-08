@@ -25,6 +25,14 @@ type TeacherQuizResult = {
   totalScore: number;
   parentViewed: boolean;
   viewedFrom: string;
+  answers: Record<string, string | number>;
+  quizQuestions: Question[];
+needsTeacherReview: boolean;
+reviewStatus: string;
+autoScore: number;
+autoTotal: number;
+manualScores: Record<string, number>;
+manualScoreTotal: number;
   parentViewedAt?: {
     toDate?: () => Date;
   } | null;
@@ -39,6 +47,11 @@ export default function TeacherQuizzesPage() {
 const editQuizId = searchParams.get("quizId");
   const [description, setDescription] = useState("");
   const [classroom, setClassroom] = useState("الصف الثاني أ");
+  const [audience, setAudience] = useState<"student" | "family">("student");
+
+const [contentKind, setContentKind] = useState<
+  "quiz" | "diagnostic-form" | "case-study-form"
+>("quiz");
   const [questions, setQuestions] = useState<Question[]>([
     createEmptyQuestion(1),
   ]);
@@ -77,14 +90,14 @@ useEffect(() => {
         setMessage("لم يتم العثور على الاختبار.");
         return;
       }
-
       const quizData = quizSnapshot.data();
       console.log("Quiz loaded:", quizData);
-
       setQuizId(quizSnapshot.id);
       setTitle(quizData.title ?? "");
       setDescription(quizData.description ?? "");
       setClassroom(quizData.classroom ?? "الصف الثاني أ");
+      setAudience(quizData.audience ?? "student");
+setContentKind(quizData.contentKind ?? "quiz");
       setQuestions(
         Array.isArray(quizData.questions) && quizData.questions.length > 0
           ? quizData.questions
@@ -109,10 +122,20 @@ useEffect(() => {
         collection(db, "quizResults")
       );
 
-      const loadedResults: TeacherQuizResult[] =
-        snapshot.docs.map((docSnap) => {
+      const loadedResults: TeacherQuizResult[] = await Promise.all(
+  snapshot.docs.map(async (docSnap) => {
           const data = docSnap.data();
+const quizSnapshot = await getDoc(
+  doc(
+    db,
+    "quizzes",
+    typeof data.quizId === "string" ? data.quizId : ""
+  )
+);
 
+const quizData = quizSnapshot.exists()
+  ? quizSnapshot.data()
+  : null;
           return {
             id: docSnap.id,
             quizId:
@@ -131,6 +154,40 @@ useEffect(() => {
               typeof data.studentName === "string"
                 ? data.studentName
                 : "",
+                answers:
+  data.answers && typeof data.answers === "object"
+    ? (data.answers as Record<string, string | number>)
+    : {},
+quizQuestions:
+  quizData && Array.isArray(quizData.questions)
+    ? (quizData.questions as Question[])
+    : [],
+needsTeacherReview:
+  data.needsTeacherReview === true,
+
+reviewStatus:
+  typeof data.reviewStatus === "string"
+    ? data.reviewStatus
+    : "completed",
+
+autoScore:
+  typeof data.autoScore === "number"
+    ? data.autoScore
+    : 0,
+
+autoTotal:
+  typeof data.autoTotal === "number"
+    ? data.autoTotal
+    : 0,
+    manualScores:
+  data.manualScores && typeof data.manualScores === "object"
+    ? (data.manualScores as Record<string, number>)
+    : {},
+
+manualScoreTotal:
+  typeof data.manualScoreTotal === "number"
+    ? data.manualScoreTotal
+    : 0,
             studentScore:
               typeof data.studentScore === "number"
                 ? data.studentScore
@@ -147,7 +204,8 @@ useEffect(() => {
             parentViewedAt:
               data.parentViewedAt ?? null,
           };
-        });
+        })
+);
 
       setQuizResults(loadedResults);
     } catch (error) {
@@ -278,6 +336,8 @@ function createNewQuiz() {
       setSaving(true);
 
       const quizData = {
+        audience,
+contentKind,
   title: title.trim(),
   description: description.trim(),
   classroom,
@@ -291,13 +351,17 @@ totalScore: totalScore.trim()
   questions: questions.map((question, index) => ({
     order: index + 1,
     text: question.text.trim(),
+    questionType: question.questionType ?? "multiple-choice",
     options: question.options.map((option) => option.trim()),
     correctAnswer: question.correctAnswer,
-    points: 1,
+    points: question.points ?? 1,
   })),
 
   totalQuestions: questions.length,
-  totalPoints: questions.length,
+  totalPoints: questions.reduce(
+  (sum, question) => sum + (question.points ?? 1),
+  0
+),
   updatedAt: serverTimestamp(),
 };
 
@@ -429,7 +493,44 @@ if (testPaperFile) {
     setSaving(false);
   }
 }
+async function handleApproveQuizReview(result: TeacherQuizResult) {
+  try {
+    const manualScoreTotal = Object.values(result.manualScores).reduce(
+      (sum, score) => sum + Number(score || 0),
+      0
+    );
 
+    const finalScore = result.autoScore + manualScoreTotal;
+
+    await updateDoc(doc(db, "quizResults", result.id), {
+      manualScores: result.manualScores,
+      manualScoreTotal,
+      studentScore: finalScore,
+      reviewStatus: "completed",
+      needsTeacherReview: false,
+      reviewedAt: serverTimestamp(),
+    });
+
+    setQuizResults((currentResults) =>
+      currentResults.map((currentResult) =>
+        currentResult.id === result.id
+          ? {
+              ...currentResult,
+              manualScoreTotal,
+              studentScore: finalScore,
+              reviewStatus: "completed",
+              needsTeacherReview: false,
+            }
+          : currentResult
+      )
+    );
+
+    alert(`✅ تم اعتماد التصحيح النهائي. الدرجة: ${finalScore} من ${result.totalScore}`);
+  } catch (error) {
+    console.error("تعذر اعتماد التصحيح:", error);
+    alert("تعذر اعتماد التصحيح. حاول مرة أخرى.");
+  }
+}
   return (
     <main dir="rtl" style={styles.page}>
       <section style={styles.container}>
@@ -449,6 +550,55 @@ if (testPaperFile) {
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>بيانات الاختبار</h2>
 
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "14px",
+    marginBottom: "18px",
+  }}
+>
+  <label style={styles.field}>
+    <span style={styles.fieldLabel}>نوع المحتوى</span>
+    <select
+      value={audience}
+      onChange={(event) => {
+        const value = event.target.value as "student" | "family";
+        setAudience(value);
+
+        if (value === "student") {
+          setContentKind("quiz");
+        } else {
+          setContentKind("diagnostic-form");
+        }
+      }}
+      style={styles.input}
+    >
+      <option value="student">📝 اختبار طالب</option>
+      <option value="family">👨‍👩‍👦 نموذج أسرة</option>
+    </select>
+  </label>
+
+  {audience === "family" && (
+    <label style={styles.field}>
+      <span style={styles.fieldLabel}>نوع نموذج الأسرة</span>
+      <select
+        value={contentKind}
+        onChange={(event) =>
+          setContentKind(
+            event.target.value as
+              | "diagnostic-form"
+              | "case-study-form"
+          )
+        }
+        style={styles.input}
+      >
+        <option value="diagnostic-form">🔎 استمارة تشخيص الطالب</option>
+        <option value="case-study-form">📋 دراسة حالة الطالب</option>
+      </select>
+    </label>
+  )}
+</div>
           <label style={styles.field}>
             <span style={styles.fieldLabel}>عنوان الاختبار</span>
             <input
@@ -654,6 +804,7 @@ if (testPaperFile) {
       {quizResults.map((result) => {
         const viewedDate =
           result.parentViewedAt?.toDate?.() ?? null;
+          
 
         return (
           <div
@@ -690,7 +841,139 @@ if (testPaperFile) {
             >
               📝 {result.quizTitle}
             </div>
+{result.needsTeacherReview && (
+  <div
+    style={{
+      marginTop: "14px",
+      padding: "14px",
+      borderRadius: "14px",
+      background: "white",
+      border: "1px solid #dbe9e3",
+    }}
+  >
+    <div
+      style={{
+        fontWeight: 800,
+        marginBottom: "12px",
+        color: "#147a5b",
+      }}
+    >
+      ✍️ إجابات تحتاج مراجعة المعلم
+    </div>
 
+    {result.quizQuestions.map((question, questionIndex) => {
+      const questionType =
+        question.questionType ?? "multiple-choice";
+
+      if (
+        questionType !== "essay" &&
+        questionType !== "short-text"
+      ) {
+        return null;
+      }
+
+      const studentAnswer =
+        result.answers[String(questionIndex)];
+
+      return (
+        <div
+          key={questionIndex}
+          style={{
+            padding: "12px",
+            marginBottom: "10px",
+            borderRadius: "12px",
+            background: "#f8fbfa",
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>
+            السؤال {questionIndex + 1}: {question.text}
+          </div>
+
+          <div style={{ marginTop: "8px" }}>
+            <strong>إجابة الطالب:</strong>{" "}
+            {studentAnswer !== undefined &&
+            String(studentAnswer).trim() !== ""
+              ? String(studentAnswer)
+              : "لم يُجب"}
+          </div>
+
+          <div style={{ marginTop: "6px" }}>
+            الدرجة القصوى: {question.points ?? 1}
+          </div>
+          <div style={{ marginTop: "10px" }}>
+  <label
+    style={{
+      display: "block",
+      fontWeight: 800,
+      marginBottom: "6px",
+    }}
+  >
+    ⭐ درجة المعلم
+  </label>
+
+  <input
+    type="number"
+    min={0}
+    max={question.points ?? 1}
+    value={
+      result.manualScores[String(questionIndex)] ?? ""
+    }
+    onChange={(event) => {
+      const maxScore = question.points ?? 1;
+      const enteredScore = Number(event.target.value);
+
+      const safeScore = Math.max(
+        0,
+        Math.min(enteredScore, maxScore)
+      );
+
+      setQuizResults((currentResults) =>
+        currentResults.map((currentResult) =>
+          currentResult.id === result.id
+            ? {
+                ...currentResult,
+                manualScores: {
+                  ...currentResult.manualScores,
+                  [String(questionIndex)]: safeScore,
+                },
+              }
+            : currentResult
+        )
+      );
+    }}
+    style={{
+      width: "100%",
+      padding: "12px",
+      borderRadius: "10px",
+      border: "1px solid #cbded6",
+      fontSize: "16px",
+      boxSizing: "border-box",
+    }}
+  />
+</div>
+        </div>
+      );
+    })}
+  <button
+  type="button"
+  onClick={() => handleApproveQuizReview(result)}
+  style={{
+    width: "100%",
+    marginTop: "14px",
+    padding: "14px",
+    border: "none",
+    borderRadius: "12px",
+    background: "#147a5b",
+    color: "white",
+    fontSize: "17px",
+    fontWeight: 800,
+    cursor: "pointer",
+  }}
+>
+  ✅ اعتماد التصحيح النهائي
+</button>
+  </div>
+)}
             <div
               style={{
                 marginTop: "12px",
@@ -770,7 +1053,70 @@ if (testPaperFile) {
                 حذف السؤال
               </button>
             </div>
+<label style={styles.field}>
+  <span style={styles.fieldLabel}>نوع السؤال</span>
 
+  <select
+    value={question.questionType ?? "multiple-choice"}
+    onChange={(event) => {
+      const selectedType = event.target.value as
+        | "multiple-choice"
+        | "essay"
+        | "yes-no"
+        | "short-text";
+
+      setQuestions((currentQuestions) =>
+        currentQuestions.map((item) =>
+          item.id === question.id
+            ? {
+                ...item,
+                questionType: selectedType,
+                options:
+                  selectedType === "yes-no"
+                    ? ["نعم", "لا"]
+                    : selectedType === "multiple-choice"
+                    ? item.options.length > 0
+                      ? item.options
+                      : ["", "", "", ""]
+                    : [],
+                correctAnswer: 0,
+              }
+            : item
+        )
+      );
+    }}
+    style={styles.input}
+  >
+    <option value="multiple-choice">🔘 اختيار من متعدد</option>
+    <option value="essay">✍️ سؤال مقالي</option>
+    <option value="yes-no">✅ نعم / لا</option>
+    <option value="short-text">📝 إجابة قصيرة</option>
+  </select>
+</label>
+<label style={styles.field}>
+  <span style={styles.fieldLabel}>درجة السؤال</span>
+
+  <input
+    type="number"
+    min="0"
+    value={question.points ?? 1}
+    onChange={(event) => {
+      const pointsValue = Number(event.target.value);
+
+      setQuestions((currentQuestions) =>
+        currentQuestions.map((item) =>
+          item.id === question.id
+            ? {
+                ...item,
+                points: Number.isFinite(pointsValue) ? pointsValue : 1,
+              }
+            : item
+        )
+      );
+    }}
+    style={styles.input}
+  />
+</label>
             <label style={styles.field}>
               <span style={styles.fieldLabel}>نص السؤال</span>
               <input
@@ -785,7 +1131,8 @@ if (testPaperFile) {
                 style={styles.input}
               />
             </label>
-
+{(question.questionType ?? "multiple-choice") !== "essay" &&
+  (question.questionType ?? "multiple-choice") !== "short-text" && (
             <div style={styles.optionsGrid}>
               {question.options.map((option, optionIndex) => (
                 <label
@@ -835,7 +1182,9 @@ if (testPaperFile) {
                 </label>
               ))}
             </div>
+            )}
           </div>
+        
         ))}
 
         {message && (

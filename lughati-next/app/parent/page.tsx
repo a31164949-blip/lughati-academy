@@ -133,9 +133,11 @@ setAbsenceDays(totalAbsenceDays);
     const loggedInStudent = JSON.parse(savedStudent);
 
     setStudent({
-      ...demoStudent,
-      ...loggedInStudent,
-    });
+  ...demoStudent,
+  ...loggedInStudent,
+  name: loggedInStudent.studentName || demoStudent.name,
+  className: loggedInStudent.classroom || demoStudent.className,
+});
   } catch (error) {
     console.error("تعذر قراءة بيانات الطالب:", error);
   }
@@ -590,7 +592,7 @@ async function markParentQuizAsViewed(resultId: string) {
                   fontSize: "24px",
                 }}
               >
-                أحمد محمد
+                {student.name || "الطالب"}
               </h2>
 
               <p
@@ -1072,11 +1074,33 @@ async function markParentQuizAsViewed(resultId: string) {
           ["📸", "يوميات الفصل"],
           ["🎨", "معرض ابني"],
           ["💬", "الرسائل"],
+          ["📋", "دراسة الحالة"],
           ["👤", "حسابي"],
         ].map(([icon, label]) => (
+          
           <button
-            key={label}
-            type="button"
+  key={label}
+  type="button"
+  onClick={() => {
+  if (label === "الرئيسية") window.location.href = "/parent";
+
+  if (label === "يوميات الفصل") {
+    alert("📸 يوميات الفصل\nقريبًا بإذن الله");
+    return;
+  }
+
+  if (label === "معرض ابني") window.location.href = "/gallery";
+
+  if (label === "الرسائل") {
+    alert("💬 الرسائل\nقريبًا بإذن الله");
+    return;
+  }
+if (label === "دراسة الحالة") {
+  window.location.href = "/parent/case-study";
+  return;
+}
+  if (label === "حسابي") window.location.href = "/parent/profile";
+}}
             style={{
               border: "none",
               background: "transparent",

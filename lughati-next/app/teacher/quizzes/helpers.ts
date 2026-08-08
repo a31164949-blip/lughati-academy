@@ -6,5 +6,8 @@ export function createEmptyQuestion(id: number): Question {
     text: "",
     options: ["", "", "", ""],
     correctAnswer: 0,
+    questionType: "multiple-choice",
+required: true,
+points: 1,
   };
 }

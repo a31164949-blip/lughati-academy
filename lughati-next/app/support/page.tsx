@@ -42,10 +42,9 @@ export default function SupportPage() {
   return (
     <main className="support-page" dir="rtl">
       <header className="support-header">
-        <Link href="/" className="back-home">
-          → العودة للرئيسية
-        </Link>
-
+        <Link href="/journey" className="back-home">
+  ← العودة إلى رحلتي
+</Link>
         <div className="support-title">
           <span>🌱</span>
           <div>

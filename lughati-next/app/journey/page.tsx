@@ -408,6 +408,26 @@ async function saveTaskReward(taskId: number) {
 >
   🚪 تسجيل الخروج
 </button>
+<button
+  type="button"
+  onClick={() => {
+    window.location.href = "/parent";
+  }}
+  style={{
+    textDecoration: "none",
+    background: "#ffffff",
+    color: "#157347",
+    padding: "12px 18px",
+    borderRadius: "16px",
+    fontWeight: "bold",
+    boxShadow: "0 5px 12px rgba(0,0,0,0.12)",
+    border: "none",
+    cursor: "pointer",
+    marginInlineStart: "10px",
+  }}
+>
+  👨‍👩‍👦 ولي الأمر
+</button>
         </div>
       </header>
 
@@ -583,7 +603,7 @@ async function saveTaskReward(taskId: number) {
   title="نقاطي"
   value={String(points)}
 />
-          <StatCard icon="💎" title="نقاطي" value="35" />
+          
           <StatCard icon="🔥" title="سلسلة الإنجاز" value="3 أيام" />
           <StatCard icon="👑" title="رتبتي" value="بطل نشيط" />
         </section>

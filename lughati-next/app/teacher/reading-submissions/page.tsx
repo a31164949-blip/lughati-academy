@@ -11,6 +11,7 @@ import {
   setDoc,
 getDoc,
 increment,
+runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
@@ -113,6 +114,46 @@ export default function ReadingSubmissionsPage() {
         },
         { merge: true }
       );
+      // 🎉 مكافأة إكمال 5 أيام قراءة معتمدة
+if (newDates.length >= 5) {
+  const studentRef = doc(
+    db,
+    "students",
+    submission.studentId
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const latestProgressSnap =
+      await transaction.get(progressRef);
+
+    const rewardAlreadyGranted =
+      latestProgressSnap.exists() &&
+      latestProgressSnap.data().fiveDayRewardGranted === true;
+
+    if (rewardAlreadyGranted) {
+      return;
+    }
+
+    transaction.set(
+      studentRef,
+      {
+        points: increment(50),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    transaction.set(
+      progressRef,
+      {
+        fiveDayRewardGranted: true,
+        fiveDayRewardPoints: 50,
+        fiveDayRewardGrantedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+}
     }
   }
 }

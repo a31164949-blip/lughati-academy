@@ -86,7 +86,7 @@ export default function LessonsPage() {
           </div>
 
           <a
-            href="/"
+            href="/journey"
             style={{
               textDecoration: "none",
               background: "#ffffff",

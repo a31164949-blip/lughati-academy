@@ -47,6 +47,11 @@ export default function TeacherLoginPage() {
         email.trim().toLowerCase(),
         password
       );
+      if (email.trim().toLowerCase() !== "a31164949@gmail.com") {
+  await auth.signOut();
+  setMessage("هذا الحساب غير مخول بالدخول إلى لوحة المعلم");
+  return;
+}
 
       router.replace("/teacher");
     } catch (error) {
