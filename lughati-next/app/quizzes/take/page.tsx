@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   addDoc,
@@ -37,8 +38,9 @@ questions?: StudentQuestion[];
   status?: "draft" | "published";
 };
 
-export default function TakeQuizPage() {
-    const searchParams = useSearchParams();
+
+    function TakeQuizPageContent() {
+      const searchParams = useSearchParams();
 const quizId = searchParams.get("quizId");
   const [quizzes, setQuizzes] = useState<StudentQuiz[]>([]);
   const [loading, setLoading] = useState(true);
@@ -583,5 +585,12 @@ async function loadSelectedQuiz(quizId: string) {
           ))}
       </div>
     </main>
+  );
+}
+export default function TakeQuizPage() {
+  return (
+    <Suspense fallback={<div>جاري تحميل الاختبار...</div>}>
+      <TakeQuizPageContent />
+    </Suspense>
   );
 }

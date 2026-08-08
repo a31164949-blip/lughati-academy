@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   collection,
@@ -128,7 +128,7 @@ function parsePublishedAt(value: string) {
     Number(second)
   ).getTime();
 }
-export default function GalleryPage() {
+function GalleryPageContent() {
   const searchParams = useSearchParams();
 const fromParent = searchParams.get("from") === "parent";
   const [works, setWorks] = useState<GalleryWork[]>([]);
@@ -1015,5 +1015,12 @@ onTouchEnd={(e) => {
   </div>
 )}
     </main>
+  );
+}
+export default function GalleryPage() {
+  return (
+    <Suspense fallback={<div>جاري تحميل المعرض...</div>}>
+      <GalleryPageContent />
+    </Suspense>
   );
 }
