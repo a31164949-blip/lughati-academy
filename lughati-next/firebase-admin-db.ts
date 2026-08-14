@@ -1,0 +1,65 @@
+import {
+  cert,
+  getApps,
+  initializeApp,
+  type App,
+} from "firebase-admin/app";
+
+import { getFirestore } from "firebase-admin/firestore";
+
+let cachedAdminApp: App | null = null;
+
+function getAdminApp(): App {
+  if (cachedAdminApp) {
+    return cachedAdminApp;
+  }
+
+  const existingApp = getApps()[0];
+
+  if (existingApp) {
+    cachedAdminApp = existingApp;
+    return existingApp;
+  }
+
+  const projectId =
+    process.env.FIREBASE_ADMIN_PROJECT_ID
+      ?.trim()
+      .replace(/^["']|["']$/g, "");
+
+  const clientEmail =
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL
+      ?.trim()
+      .replace(/^["']|["']$/g, "");
+
+  const privateKey =
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY
+      ?.trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/\\n/g, "\n");
+
+  if (
+    !projectId ||
+    !clientEmail ||
+    !privateKey
+  ) {
+    throw new Error(
+      "Firebase Admin environment variables are missing."
+    );
+  }
+
+  cachedAdminApp = initializeApp({
+    credential: cert({
+      projectId,
+      clientEmail,
+      privateKey,
+    }),
+  });
+
+  return cachedAdminApp;
+}
+
+export function getFirebaseAdminDb() {
+  const adminApp = getAdminApp();
+
+  return getFirestore(adminApp);
+}

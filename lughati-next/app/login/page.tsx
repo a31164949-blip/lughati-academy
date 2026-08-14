@@ -40,50 +40,75 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    async function loadStudents() {
-      try {
-        setLoading(true);
-        setMessage("");
+  async function loadStudents() {
+    try {
+      setLoading(true);
+      setMessage("");
 
-        const response = await fetch("/api/students", {
-          method: "GET",
-          cache: "no-store",
-        });
+      const response = await fetch("/api/students", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-        const data = await response.json();
+      const contentType =
+        response.headers.get("content-type") || "";
 
-        if (!response.ok) {
-          throw new Error(
-            data?.message || data?.error || "تعذر تحميل قائمة الطلاب."
-          );
-        }
+      if (!contentType.includes("application/json")) {
+        const responseText = await response.text();
 
-        const receivedStudents = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.students)
-            ? data.students
-            : [];
-
-        const activeStudents = receivedStudents.filter(
-          (student: Student) => student.active !== false
+        console.error(
+          "المسار /api/students لم يُرجع JSON:",
+          response.status,
+          responseText.slice(0, 300)
         );
 
-        setStudents(activeStudents);
-      } catch (error) {
-        console.error("خطأ في تحميل الطلاب:", error);
-
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "تعذر تحميل قائمة الطلاب، حاول مرة أخرى."
+        throw new Error(
+          response.status === 404
+            ? "مسار تحميل الطلاب غير موجود في النسخة المنشورة."
+            : `تعذر تحميل الطلاب من الخادم. رمز الخطأ: ${response.status}`
         );
-      } finally {
-        setLoading(false);
       }
-    }
 
-    loadStudents();
-  }, []);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            "تعذر تحميل قائمة الطلاب."
+        );
+      }
+
+      const receivedStudents = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.students)
+          ? data.students
+          : [];
+
+      const activeStudents = receivedStudents.filter(
+        (student: Student) =>
+          student.active !== false
+      );
+
+      setStudents(activeStudents);
+    } catch (error) {
+      console.error(
+        "خطأ في تحميل الطلاب:",
+        error
+      );
+
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "تعذر تحميل قائمة الطلاب، حاول مرة أخرى."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  void loadStudents();
+}, []);
 
   const classrooms = useMemo(() => {
     return Array.from(
