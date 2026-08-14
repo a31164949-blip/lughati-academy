@@ -31,6 +31,11 @@ export async function GET() {
 
     try {
       result = JSON.parse(responseText);
+      console.log("CREATE Apps Script check:", {
+  status: response.status,
+  success: result.success,
+  message: result.message,
+});
     } catch {
       return NextResponse.json(
         {

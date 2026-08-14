@@ -562,6 +562,31 @@ if (
       { merge: true }
     );
   });
+  if (row.solutionUrl?.trim()) {
+  const galleryResponse = await fetch("/api/submissions/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      studentName: row.studentName,
+      studentId: row.studentId,
+      type: "واجب إبداعي",
+      fileUrl: row.solutionUrl,
+      classroom: row.classroom,
+      note: "نُشر تلقائيًا بعد اعتماد المعلم",
+    }),
+  });
+
+  const galleryResult = await galleryResponse.json();
+
+  if (!galleryResponse.ok || !galleryResult.success) {
+    console.error(
+      "تعذر نشر الواجب الإبداعي في المعرض:",
+      galleryResult
+    );
+  }
+}
 }
       setCompletions((currentCompletions) =>
         currentCompletions.map((completion) =>

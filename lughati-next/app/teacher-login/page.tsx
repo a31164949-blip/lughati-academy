@@ -19,10 +19,9 @@ export default function TeacherLoginPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/teacher");
-        return;
-      }
+      if (user?.email?.toLowerCase() === "a31164949@gmail.com") {
+  router.replace("/teacher");
+  }
 
       setIsChecking(false);
     });

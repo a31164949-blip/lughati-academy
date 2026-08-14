@@ -160,7 +160,25 @@ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
       setMessage("تعذر العثور على بيانات الطالب");
       return;
     }
+const loginResponse = await fetch("/api/student-login", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    studentId: selectedStudent.id,
+    studentCode: studentCode.trim(),
+  }),
+});
 
+const loginData = await loginResponse.json();
+
+if (!loginResponse.ok || !loginData.success || !loginData.token) {
+  setMessage(loginData.message || "رمز الدخول غير صحيح");
+  return;
+}
+
+await signInWithCustomToken(auth, loginData.token);
     localStorage.setItem(
   "lughatiStudent",
   JSON.stringify({

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +12,8 @@ type StudentData = {
 
 export async function GET() {
   try {
-    const snapshot = await getDocs(collection(db, "students"));
+    const { adminDb } = getFirebaseAdmin();
+const snapshot = await adminDb.collection("students").get();
 
     const students = snapshot.docs
       .map((studentDocument) => {

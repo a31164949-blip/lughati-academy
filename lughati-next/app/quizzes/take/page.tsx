@@ -13,7 +13,7 @@ import {
   serverTimestamp,
   where,
 } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 type StudentQuestion = {
   id: number;
@@ -110,38 +110,49 @@ async function submitQuiz() {
     setLoading(true);
     setError("");
 
-    const { autoScore, autoTotal, needsTeacherReview } =
-      calculateQuizResult();
+   const currentUser = auth.currentUser;
 
-    await addDoc(collection(db, "quizResults"), {
-      quizId: selectedQuiz.id,
-      quizTitle: selectedQuiz.title,
-studentId,
-studentName,
-      answers,
+if (!currentUser) {
+  throw new Error("تعذر التحقق من تسجيل دخول الطالب.");
+}
 
-      autoScore,
-      autoTotal,
+const idToken = await currentUser.getIdToken();
 
-      totalScore: selectedQuiz.totalPoints ?? autoTotal,
+const response = await fetch("/api/quiz-submit", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${idToken}`,
+  },
+  body: JSON.stringify({
+    quizId: selectedQuiz.id,
+    answers,
+  }),
+});
 
-      needsTeacherReview,
-      reviewStatus: needsTeacherReview ? "pending" : "completed",
+const data = await response.json();
 
-      submittedAt: serverTimestamp(),
+if (!response.ok || !data.success) {
+  throw new Error(
+    data?.message || "تعذر إرسال الاختبار."
+  );
+}
 
-      parentViewed: false,
-    });
-
-    alert(
-      needsTeacherReview
-        ? "تم إرسال الاختبار بنجاح ✅ بعض الإجابات بانتظار مراجعة المعلم."
-        : `تم إرسال الاختبار بنجاح ✅ درجتك: ${autoScore} من ${autoTotal}`
-    );
+alert(
+  data.needsTeacherReview
+    ? "✅ تم إرسال الاختبار بنجاح، وبعض الإجابات بانتظار مراجعة المعلم."
+    : `✅ تم إرسال الاختبار بنجاح. درجتك: ${data.autoScore} من ${data.autoTotal}`
+);
   } catch (submitError) {
-    console.error("تعذر إرسال الاختبار:", submitError);
-    setError("تعذر إرسال الاختبار. حاول مرة أخرى.");
-  } finally {
+  console.error("تعذر إرسال الاختبار:", submitError);
+
+  setError(
+    submitError instanceof Error
+      ? submitError.message
+      : "تعذر إرسال الاختبار. حاول مرة أخرى."
+  );
+}
+   finally {
     setLoading(false);
   }
 }
@@ -151,22 +162,46 @@ async function loadSelectedQuiz(quizId: string) {
     setLoading(true);
     setError("");
 
-    const quizSnapshot = await getDoc(
-      doc(db, "quizzes", quizId)
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      setSelectedQuiz(null);
+      setError("يجب تسجيل الدخول بحساب الطالب أولًا.");
+      return;
+    }
+
+    const idToken = await currentUser.getIdToken();
+
+    const response = await fetch("/api/student-quizzes", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "تعذر تحميل الاختبار."
+      );
+    }
+
+    const quizzes = Array.isArray(data.quizzes)
+      ? (data.quizzes as StudentQuiz[])
+      : [];
+
+    const selected = quizzes.find(
+      (quiz) => quiz.id === quizId
     );
 
-    if (!quizSnapshot.exists()) {
+    if (!selected) {
       setSelectedQuiz(null);
       setError("لم يتم العثور على الاختبار.");
       return;
     }
 
-    const quizData = quizSnapshot.data();
-
-    setSelectedQuiz({
-      id: quizSnapshot.id,
-      ...quizData,
-    } as StudentQuiz);
+    setSelectedQuiz(selected);
   } catch (error) {
     console.error("تعذر تحميل الاختبار:", error);
     setSelectedQuiz(null);
@@ -177,54 +212,60 @@ async function loadSelectedQuiz(quizId: string) {
 }
 
 
+
   useEffect(() => {
     if (quizId) {
   loadSelectedQuiz(quizId);
   return;
 }
     async function loadPublishedQuizzes() {
-      try {
-        setLoading(true);
-        setError("");
+  try {
+    setLoading(true);
+    setError("");
 
-        const quizzesQuery = query(
-          collection(db, "quizzes"),
-          where("published", "==", true)
-        );
+    const currentUser = auth.currentUser;
 
-        const snapshot = await getDocs(quizzesQuery);
-
-        const loadedQuizzes = snapshot.docs
-          .map((docSnapshot) => {
-            const data = docSnapshot.data();
-
-            return {
-              id: docSnapshot.id,
-              title: data.title ?? "اختبار",
-              description: data.description ?? "",
-              classroom: data.classroom ?? "",
-              totalQuestions: data.totalQuestions ?? 0,
-              totalPoints: data.totalPoints ?? 0,
-              audience: data.audience ?? "student",
-              contentKind: data.contentKind ?? "quiz",
-              published: data.published === true,
-              status: data.status ?? "published",
-            } as StudentQuiz;
-          })
-          .filter(
-            (quiz) =>
-              quiz.audience === "student" &&
-              quiz.contentKind === "quiz"
-          );
-
-        setQuizzes(loadedQuizzes);
-      } catch (loadError) {
-        console.error("تعذر تحميل الاختبارات:", loadError);
-        setError("تعذر تحميل الاختبارات المنشورة.");
-      } finally {
-        setLoading(false);
-      }
+    if (!currentUser) {
+      setQuizzes([]);
+      setError("يجب تسجيل الدخول بحساب الطالب أولًا.");
+      return;
     }
+
+    const idToken = await currentUser.getIdToken();
+
+    const response = await fetch("/api/student-quizzes", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "تعذر تحميل الاختبارات المنشورة."
+      );
+    }
+
+    const loadedQuizzes = Array.isArray(data.quizzes)
+      ? (data.quizzes as StudentQuiz[])
+      : [];
+
+    setQuizzes(loadedQuizzes);
+  } catch (loadError) {
+    console.error("تعذر تحميل الاختبارات:", loadError);
+    setQuizzes([]);
+
+    setError(
+      loadError instanceof Error
+        ? loadError.message
+        : "تعذر تحميل الاختبارات المنشورة."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
 
     loadPublishedQuizzes();
   }, [quizId]);
@@ -239,6 +280,22 @@ async function loadSelectedQuiz(quizId: string) {
         fontFamily: "inherit",
       }}
     >
+      <a
+  href="/journey"
+  style={{
+    display: "inline-block",
+    marginBottom: "18px",
+    padding: "10px 16px",
+    borderRadius: "14px",
+    border: "1px solid #b7d7c8",
+    background: "#ffffff",
+    color: "#176b4b",
+    textDecoration: "none",
+    fontWeight: 700,
+  }}
+>
+  ← العودة إلى رحلتي
+</a>
       <div
         style={{
           maxWidth: "900px",

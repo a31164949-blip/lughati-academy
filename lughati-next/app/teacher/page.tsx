@@ -17,34 +17,59 @@ const sections = [
     href: "/teacher/homeworks",
   },
   {
-  title: "📝 إدارة الاختبارات",
-  description: "إنشاء الاختبارات والأسئلة ونشرها للطلاب.",
-  href: "/teacher/quizzes",
-},
+    title: "📝 إدارة الاختبارات",
+    description: "إنشاء الاختبارات والأسئلة ونشرها للطلاب.",
+    href: "/teacher/quizzes",
+  },
   {
     title: "📋 متابعة إنجاز الواجبات",
     description: "معرفة الطلاب الذين أكدوا الإنجاز ومراجعة حالاتهم.",
     href: "/teacher/homework-tracking",
   },
   {
-  title: "🎙️ مراجعة قراءات الطلاب",
-  description: "الاستماع إلى تسجيلات القراءة واعتمادها أو طلب إعادة التسجيل",
-  href: "/teacher/reading-submissions",
-},
+    title: "🎙️ مراجعة قراءات الطلاب",
+    description: "الاستماع إلى تسجيلات القراءة واعتمادها أو طلب إعادة التسجيل.",
+    href: "/teacher/reading-submissions",
+  },
   {
     title: "👨‍🎓 إدارة الطلاب",
     description: "إضافة الطلاب وتنظيمهم حسب الفصل.",
-    href: "/teacher/students"
+    href: "/teacher/students",
   },
   {
-  title: "🏫 تهيئة العام الدراسي",
-  description: "إعداد الطلاب والفصول وبيانات الدخول قبل بداية العام الدراسي.",
-  href: "/teacher/school-year",
-},
+    title: "🏫 تهيئة العام الدراسي",
+    description: "إعداد الطلاب والفصول وبيانات الدخول قبل بداية العام الدراسي.",
+    href: "/teacher/school-year",
+  },
+  {
+    title: "📅 إدارة الجدول المدرسي",
+    description: "إعداد جدول الثاني أ والثاني ب وأوقات الحصص.",
+    href: "/teacher/school-schedule",
+  },
+  {
+    title: "📋 السجل الذكي",
+    description: "متابعة الحضور والغياب والواجب والقراءة والمشاركة يوميًا.",
+    href: "/teacher/smart-record",
+  },
+  {
+    title: "🌟 أبطال الأكاديمية",
+    description: "إدارة الأبطال والألقاب والإنجازات والنشر في الواجهة العامة.",
+    href: "/teacher/heroes",
+  },
   {
     title: "📤 مراجعة أعمال الطلاب",
     description: "مراجعة الملفات والصور والمقاطع المرفوعة.",
     href: "/teacher/submissions",
+  },
+  {
+    title: "🎨 إدارة معرض الطلاب",
+    description: "إدارة الأعمال المنشورة وتمييزها أو إخفاؤها ومتابعة محتوى المعرض.",
+    href: "/teacher/gallery",
+  },
+  {
+    title: "✨ جماليات الدفاتر",
+    description: "إدارة ونشر صور الدفاتر المميزة وتصنيفها وعرضها في معرض الطلاب.",
+    href: "/teacher/notebook-gallery",
   },
 ];
 
@@ -56,7 +81,9 @@ export default function TeacherDashboardPage() {
 
         <div>
           <p style={styles.label}>أكاديمية لغتي الرقمية</p>
+
           <h1 style={styles.title}>لوحة المعلم</h1>
+
           <p style={styles.subtitle}>
             أهلاً أستاذ إبراهيم، اختر القسم الذي ترغب في إدارته.
           </p>
@@ -75,15 +102,20 @@ export default function TeacherDashboardPage() {
         </article>
 
         <article style={styles.statCard}>
-          <strong style={styles.statNumber}>6</strong>
-          <span>أقسام إدارية</span>
+          <strong style={styles.statNumber}>
+            {sections.length}
+          </strong>
+          <span>أداة إدارية</span>
         </article>
       </section>
 
       <section>
         <div style={styles.heading}>
           <p style={styles.label}>الإدارة اليومية</p>
-          <h2 style={styles.sectionTitle}>أقسام لوحة المعلم</h2>
+
+          <h2 style={styles.sectionTitle}>
+            أقسام لوحة المعلم
+          </h2>
         </div>
 
         <div style={styles.grid}>
@@ -91,22 +123,49 @@ export default function TeacherDashboardPage() {
             <Link
               key={section.href}
               href={section.href}
-              style={styles.card}
+              style={
+                section.href === "/teacher/heroes"
+                  ? {
+                      ...styles.card,
+                      ...styles.heroesCard,
+                    }
+                  : styles.card
+              }
             >
-              <h3 style={styles.cardTitle}>{section.title}</h3>
-              <p style={styles.cardText}>{section.description}</p>
-              <span style={styles.open}>فتح القسم ←</span>
+              <h3 style={styles.cardTitle}>
+                {section.title}
+              </h3>
+
+              <p style={styles.cardText}>
+                {section.description}
+              </p>
+
+              <span
+                style={
+                  section.href === "/teacher/heroes"
+                    ? {
+                        ...styles.open,
+                        color: "#8a6500",
+                      }
+                    : styles.open
+                }
+              >
+                فتح القسم ←
+              </span>
             </Link>
           ))}
         </div>
       </section>
 
       <section style={styles.note}>
-        <span style={styles.noteIcon}>💡</span>
+        <span style={styles.noteIcon}>⚡</span>
+
         <div>
-          <strong>لوحة سهلة وسريعة</strong>
+          <strong>كل أدوات المعلم في مكان واحد</strong>
+
           <p style={styles.noteText}>
-            يمكنك الآن الوصول مباشرة إلى متابعة إنجاز الواجبات دون كتابة الرابط.
+            يمكنك الوصول مباشرة إلى الجدول المدرسي والسجل الذكي
+            وأبطال الأكاديمية والواجبات والاختبارات دون كتابة أي رابط.
           </p>
         </div>
       </section>
@@ -123,6 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#174d3b",
     fontFamily: "Arial, sans-serif",
   },
+
   hero: {
     maxWidth: "1100px",
     margin: "0 auto 28px",
@@ -135,6 +195,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #d6ebe2",
     boxShadow: "0 12px 35px rgba(23, 77, 59, 0.08)",
   },
+
   icon: {
     width: "90px",
     height: "90px",
@@ -144,29 +205,35 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#168c65",
     fontSize: "45px",
   },
+
   label: {
     margin: "0 0 8px",
     color: "#168c65",
     fontWeight: 800,
   },
+
   title: {
     margin: 0,
     fontSize: "42px",
     lineHeight: 1.3,
   },
+
   subtitle: {
     margin: "10px 0 0",
     color: "#668379",
     fontSize: "18px",
     lineHeight: 1.8,
   },
+
   stats: {
     maxWidth: "1100px",
     margin: "0 auto 30px",
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns:
+      "repeat(3, minmax(0, 1fr))",
     gap: "16px",
   },
+
   statCard: {
     padding: "22px",
     display: "flex",
@@ -177,25 +244,31 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#ffffff",
     border: "1px solid #d6ebe2",
   },
+
   statNumber: {
     color: "#168c65",
     fontSize: "38px",
   },
+
   heading: {
     maxWidth: "1100px",
     margin: "0 auto 18px",
   },
+
   sectionTitle: {
     margin: 0,
     fontSize: "32px",
   },
+
   grid: {
     maxWidth: "1100px",
     margin: "0 auto",
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "18px",
   },
+
   card: {
     padding: "24px",
     minHeight: "170px",
@@ -204,25 +277,38 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "24px",
     background: "#ffffff",
     border: "1px solid #d6ebe2",
-    boxShadow: "0 10px 28px rgba(23, 77, 59, 0.06)",
+    boxShadow:
+      "0 10px 28px rgba(23, 77, 59, 0.06)",
     color: "#174d3b",
     textDecoration: "none",
   },
+
+  heroesCard: {
+    background:
+      "linear-gradient(135deg, #fffdf2 0%, #fff8d8 100%)",
+    border: "2px solid #f0d56b",
+    boxShadow:
+      "0 12px 30px rgba(180, 140, 20, 0.12)",
+  },
+
   cardTitle: {
     margin: "0 0 12px",
     fontSize: "24px",
   },
+
   cardText: {
     margin: 0,
     color: "#668379",
     lineHeight: 1.8,
     flex: 1,
   },
+
   open: {
     marginTop: "20px",
     color: "#168c65",
     fontWeight: 800,
   },
+
   note: {
     maxWidth: "1100px",
     margin: "28px auto 0",
@@ -234,9 +320,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#e8f7f0",
     border: "1px solid #cde9dc",
   },
+
   noteIcon: {
     fontSize: "34px",
   },
+
   noteText: {
     margin: "6px 0 0",
     color: "#668379",

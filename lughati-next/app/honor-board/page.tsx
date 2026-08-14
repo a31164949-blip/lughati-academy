@@ -1,272 +1,114 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  getDocs,
-  orderBy,
-  query,
-} from "firebase/firestore";
-
-import { db } from "../../firebase";
-
-type StudentReward = {
-  id: string;
-  studentName: string;
-  classroom: string;
-  points: number;
-  stars: number;
-};
-
 export default function HonorBoardPage() {
-  const [students, setStudents] = useState<StudentReward[]>([]);
-  const [selectedClass, setSelectedClass] = useState("الجميع");
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    async function loadStudents() {
-      try {
-        setLoading(true);
-        setErrorMessage("");
-
-        const studentsQuery = query(
-          collection(db, "students"),
-          orderBy("points", "desc")
-        );
-
-        const snapshot = await getDocs(studentsQuery);
-
-        const loadedStudents: StudentReward[] =
-          snapshot.docs.map((studentDocument) => {
-            const data = studentDocument.data();
-
-            return {
-              id: studentDocument.id,
-              studentName:
-                typeof data.studentName === "string"
-                  ? data.studentName
-                  : "طالب",
-              classroom:
-                typeof data.classroom === "string"
-                  ? data.classroom
-                  : "غير محدد",
-              points:
-                typeof data.points === "number"
-                  ? data.points
-                  : 0,
-              stars:
-                typeof data.stars === "number"
-                  ? data.stars
-                  : 0,
-            };
-          });
-
-        loadedStudents.sort((firstStudent, secondStudent) => {
-          if (secondStudent.points !== firstStudent.points) {
-            return secondStudent.points - firstStudent.points;
-          }
-
-          return secondStudent.stars - firstStudent.stars;
-        });
-
-        setStudents(loadedStudents);
-      } catch (error) {
-        console.error(error);
-        setErrorMessage(
-          "تعذر تحميل لوحة الشرف. تحقق من الاتصال ثم حاول مرة أخرى."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadStudents();
-  }, []);
-
-  const filteredStudents = useMemo(() => {
-    if (selectedClass === "الجميع") {
-      return students;
-    }
-
-    return students.filter(
-      (student) => student.classroom === selectedClass
-    );
-  }, [students, selectedClass]);
-
-  const topThree = filteredStudents.slice(0, 3);
-  const remainingStudents = filteredStudents.slice(3);
-
-  function getMedal(index: number) {
-    if (index === 0) return "🥇";
-    if (index === 1) return "🥈";
-    if (index === 2) return "🥉";
-    return "⭐";
-  }
-
   return (
     <main style={styles.page} dir="rtl">
-      <a
-  href="/journey"
-  style={{
-    display: "inline-block",
-    marginBottom: "18px",
-    textDecoration: "none",
-    background: "#ffffff",
-    color: "#087f5b",
-    border: "1px solid #b7ead6",
-    borderRadius: "14px",
-    padding: "12px 18px",
-    fontWeight: 700,
-  }}
->
-  ← العودة إلى رحلتي
-</a>
+      <a href="/journey" style={styles.backButton}>
+        ← العودة إلى رحلتي
+      </a>
+
       <section style={styles.hero}>
         <div style={styles.heroIcon}>🏆</div>
 
         <div>
           <p style={styles.eyebrow}>أكاديمية لغتي الرقمية</p>
+
           <h1 style={styles.title}>لوحة الشرف</h1>
+
           <p style={styles.subtitle}>
-            نحتفي باجتهاد الطلاب وإنجازاتهم ونجومهم.
+            نحتفي بالاجتهاد والتقدم والاستمرار، فكل طالب يستطيع أن يكون من أبطال الأكاديمية.
           </p>
         </div>
       </section>
 
-      <section style={styles.filterCard}>
-        <label style={styles.label}>اختر الفصل</label>
+      <section style={styles.highlightCard}>
+        <div style={styles.bigIcon}>🌟</div>
 
-        <select
-          value={selectedClass}
-          onChange={(event) =>
-            setSelectedClass(event.target.value)
-          }
-          style={styles.select}
-        >
-          <option value="الجميع">جميع الفصول</option>
-          <option value="الثاني أ">الثاني أ</option>
-          <option value="الثاني ب">الثاني ب</option>
-        </select>
+        <h2 style={styles.highlightTitle}>
+          كل مجتهد له مكان في لوحة الشرف
+        </h2>
+
+        <p style={styles.highlightText}>
+          لا تعتمد لوحة الشرف على الدرجات فقط، بل على القراءة، والإملاء،
+          وإنجاز الواجبات، والاستمرار، والتطور الملحوظ.
+        </p>
       </section>
 
-      {loading && (
-        <section style={styles.messageCard}>
-          جارٍ تحميل نجوم الطلاب...
-        </section>
-      )}
+      <section style={styles.cardsGrid}>
+        <article style={styles.rewardCard}>
+          <div style={styles.cardIcon}>📚</div>
+          <h3 style={styles.cardTitle}>بطل القراءة</h3>
+          <p style={styles.cardText}>
+            للطالب الذي يواصل القراءة ويتطور يومًا بعد يوم.
+          </p>
+        </article>
 
-      {errorMessage && (
-        <section style={styles.errorCard}>
-          {errorMessage}
-        </section>
-      )}
+        <article style={styles.rewardCard}>
+          <div style={styles.cardIcon}>✍️</div>
+          <h3 style={styles.cardTitle}>بطل الإملاء</h3>
+          <p style={styles.cardText}>
+            لمن يحرص على التدريب ويتقدم في كتابة الكلمات بصورة صحيحة.
+          </p>
+        </article>
 
-      {!loading &&
-        !errorMessage &&
-        filteredStudents.length === 0 && (
-          <section style={styles.messageCard}>
-            لا توجد بيانات مكافآت لهذا الفصل حتى الآن.
-          </section>
-        )}
+        <article style={styles.rewardCard}>
+          <div style={styles.cardIcon}>🔥</div>
+          <h3 style={styles.cardTitle}>وسام الاستمرارية</h3>
+          <p style={styles.cardText}>
+            للطالب الذي يحافظ على إنجازه ويستمر دون انقطاع.
+          </p>
+        </article>
 
-      {!loading &&
-        !errorMessage &&
-        filteredStudents.length > 0 && (
-          <>
-            <section style={styles.podiumSection}>
-              <div style={styles.sectionHeading}>
-                <p style={styles.eyebrow}>نجوم الأكاديمية</p>
-                <h2 style={styles.sectionTitle}>
-                  المراكز الثلاثة الأولى
-                </h2>
-              </div>
+        <article style={styles.rewardCard}>
+          <div style={styles.cardIcon}>🌱</div>
+          <h3 style={styles.cardTitle}>الأكثر تطورًا</h3>
+          <p style={styles.cardText}>
+            للطالب الذي يظهر تقدمًا واضحًا مقارنة بمستواه السابق.
+          </p>
+        </article>
 
-              <div style={styles.podiumGrid}>
-                {topThree.map((student, index) => (
-                  <article
-                    key={student.id}
-                    style={styles.podiumCard}
-                  >
-                    <div style={styles.medal}>
-                      {getMedal(index)}
-                    </div>
+        <article style={styles.rewardCard}>
+          <div style={styles.cardIcon}>✅</div>
+          <h3 style={styles.cardTitle}>الأكثر التزامًا</h3>
+          <p style={styles.cardText}>
+            لمن ينجز مهامه ويحافظ على واجباته باستمرار.
+          </p>
+        </article>
 
-                    <p style={styles.rankText}>
-                      المركز {index + 1}
-                    </p>
+        <article style={styles.rewardCard}>
+          <div style={styles.cardIcon}>🎨</div>
+          <h3 style={styles.cardTitle}>مبدع الأكاديمية</h3>
+          <p style={styles.cardText}>
+            للأعمال المميزة والمشاركات الإبداعية الجميلة.
+          </p>
+        </article>
+      </section>
 
-                    <h3 style={styles.studentName}>
-                      {student.studentName}
-                    </h3>
-
-                    <p style={styles.classroom}>
-                      {student.classroom}
-                    </p>
-
-                    <div style={styles.rewardRow}>
-                      <span>{student.stars} ⭐</span>
-                      <span>{student.points} نقطة</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            {remainingStudents.length > 0 && (
-              <section style={styles.listSection}>
-                <div style={styles.sectionHeading}>
-                  <p style={styles.eyebrow}>بقية المتميزين</p>
-                  <h2 style={styles.sectionTitle}>
-                    ترتيب الطلاب
-                  </h2>
-                </div>
-
-                <div style={styles.studentList}>
-                  {remainingStudents.map(
-                    (student, index) => (
-                      <article
-                        key={student.id}
-                        style={styles.studentRow}
-                      >
-                        <div style={styles.rankCircle}>
-                          {index + 4}
-                        </div>
-
-                        <div style={styles.studentDetails}>
-                          <h3 style={styles.rowStudentName}>
-                            {student.studentName}
-                          </h3>
-                          <p style={styles.classroom}>
-                            {student.classroom}
-                          </p>
-                        </div>
-
-                        <div style={styles.rowRewards}>
-                          <span>{student.stars} ⭐</span>
-                          <strong>
-                            {student.points} نقطة
-                          </strong>
-                        </div>
-                      </article>
-                    )
-                  )}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-
-      <section style={styles.noteCard}>
-        <div style={styles.noteIcon}>🌟</div>
+      <section style={styles.comingSection}>
+        <div style={styles.comingIcon}>👑</div>
 
         <div>
-          <h3 style={styles.noteTitle}>
-            كل طالب يستطيع الوصول
+          <h2 style={styles.comingTitle}>
+            قريبًا: أبطال هذا الأسبوع
+          </h2>
+
+          <p style={styles.comingText}>
+            ستظهر هنا أسماء الطلاب المتميزين بعد اعتماد الإنجازات من المعلم،
+            مع الحفاظ على خصوصية بيانات الطلاب.
+          </p>
+        </div>
+      </section>
+
+      <section style={styles.messageCard}>
+        <div style={styles.messageIcon}>💚</div>
+
+        <div>
+          <h3 style={styles.messageTitle}>
+            لا تقارن نفسك بغيرك
           </h3>
-          <p style={styles.noteText}>
-            لوحة الشرف تتغير مع كل واجب وإنجاز جديد،
-            والاجتهاد هو طريق التقدم.
+
+          <p style={styles.messageText}>
+            نافس نفسك، وتقدم خطوة كل يوم، فكل تقدم صغير يقربك من التميز.
           </p>
         </div>
       </section>
@@ -284,6 +126,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "Arial, sans-serif",
   },
 
+  backButton: {
+    display: "inline-block",
+    marginBottom: "18px",
+    textDecoration: "none",
+    background: "#ffffff",
+    color: "#087f5b",
+    border: "1px solid #b7ead6",
+    borderRadius: "14px",
+    padding: "12px 18px",
+    fontWeight: 700,
+  },
+
   hero: {
     maxWidth: "1100px",
     margin: "0 auto 28px",
@@ -295,6 +149,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#ffffff",
     border: "1px solid #cfe5da",
     boxShadow: "0 12px 30px rgba(21, 79, 61, 0.08)",
+    flexWrap: "wrap",
   },
 
   heroIcon: {
@@ -327,177 +182,71 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.8,
   },
 
-  filterCard: {
+  highlightCard: {
     maxWidth: "1100px",
     margin: "0 auto 28px",
-    padding: "22px",
-    borderRadius: "24px",
-    background: "#ffffff",
-    border: "1px solid #cfe5da",
-  },
-
-  label: {
-    display: "block",
-    marginBottom: "10px",
-    fontSize: "18px",
-    fontWeight: 800,
-  },
-
-  select: {
-    width: "100%",
-    padding: "15px",
-    borderRadius: "16px",
-    border: "1px solid #badbcc",
-    background: "#fbfefd",
-    color: "#154f3d",
-    fontSize: "18px",
-    fontWeight: 700,
-  },
-
-  messageCard: {
-    maxWidth: "1100px",
-    margin: "0 auto 28px",
-    padding: "28px",
+    padding: "30px",
     textAlign: "center",
-    borderRadius: "24px",
-    background: "#ffffff",
-    border: "1px solid #cfe5da",
-    fontSize: "20px",
-    fontWeight: 700,
+    borderRadius: "28px",
+    background:
+      "linear-gradient(135deg, #fff9db 0%, #fffef7 100%)",
+    border: "1px solid #f1df95",
   },
 
-  errorCard: {
-    maxWidth: "1100px",
-    margin: "0 auto 28px",
-    padding: "24px",
-    textAlign: "center",
-    borderRadius: "24px",
-    background: "#fff0f0",
-    border: "1px solid #f1c2c2",
-    color: "#9c3434",
-    fontSize: "18px",
-    fontWeight: 700,
+  bigIcon: {
+    fontSize: "56px",
   },
 
-  podiumSection: {
-    maxWidth: "1100px",
-    margin: "0 auto 32px",
+  highlightTitle: {
+    margin: "12px 0 10px",
+    fontSize: "28px",
+    color: "#7a5a0a",
   },
 
-  sectionHeading: {
-    marginBottom: "18px",
-  },
-
-  sectionTitle: {
+  highlightText: {
     margin: 0,
-    fontSize: "32px",
-    color: "#123f32",
+    color: "#6b5b2a",
+    fontSize: "17px",
+    lineHeight: 1.9,
   },
 
-  podiumGrid: {
+  cardsGrid: {
+    maxWidth: "1100px",
+    margin: "0 auto 30px",
     display: "grid",
     gridTemplateColumns:
       "repeat(auto-fit, minmax(240px, 1fr))",
-    gap: "18px",
+    gap: "16px",
   },
 
-  podiumCard: {
-    padding: "26px",
-    textAlign: "center",
-    borderRadius: "26px",
+  rewardCard: {
+    padding: "24px",
+    borderRadius: "24px",
     background: "#ffffff",
     border: "1px solid #cfe5da",
-    boxShadow: "0 10px 24px rgba(21, 79, 61, 0.07)",
+    boxShadow: "0 8px 22px rgba(21, 79, 61, 0.06)",
   },
 
-  medal: {
-    fontSize: "54px",
+  cardIcon: {
+    fontSize: "40px",
+    marginBottom: "12px",
   },
 
-  rankText: {
-    margin: "8px 0",
-    color: "#8a6b16",
-    fontWeight: 800,
-  },
-
-  studentName: {
-    margin: "8px 0",
-    fontSize: "28px",
+  cardTitle: {
+    margin: "0 0 9px",
     color: "#123f32",
-  },
-
-  classroom: {
-    margin: 0,
-    color: "#789289",
-    fontWeight: 700,
-  },
-
-  rewardRow: {
-    marginTop: "18px",
-    padding: "13px",
-    display: "flex",
-    justifyContent: "center",
-    gap: "16px",
-    borderRadius: "16px",
-    background: "#effaf5",
-    color: "#147d5e",
-    fontWeight: 900,
-  },
-
-  listSection: {
-    maxWidth: "1100px",
-    margin: "0 auto 32px",
-  },
-
-  studentList: {
-    display: "grid",
-    gap: "12px",
-  },
-
-  studentRow: {
-    padding: "18px",
-    display: "grid",
-    gridTemplateColumns: "60px 1fr auto",
-    alignItems: "center",
-    gap: "16px",
-    borderRadius: "20px",
-    background: "#ffffff",
-    border: "1px solid #cfe5da",
-  },
-
-  rankCircle: {
-    width: "48px",
-    height: "48px",
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "50%",
-    background: "#e4f6ee",
-    color: "#148660",
-    fontWeight: 900,
-    fontSize: "20px",
-  },
-
-  studentDetails: {
-    minWidth: 0,
-  },
-
-  rowStudentName: {
-    margin: "0 0 5px",
     fontSize: "21px",
-    color: "#123f32",
   },
 
-  rowRewards: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: "5px",
-    color: "#168c68",
+  cardText: {
+    margin: 0,
+    color: "#648579",
+    lineHeight: 1.8,
   },
 
-  noteCard: {
+  comingSection: {
     maxWidth: "1100px",
-    margin: "0 auto",
+    margin: "0 auto 24px",
     padding: "24px",
     display: "flex",
     alignItems: "center",
@@ -507,18 +256,45 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #cfe5da",
   },
 
-  noteIcon: {
-    fontSize: "40px",
+  comingIcon: {
+    fontSize: "44px",
   },
 
-  noteTitle: {
-    margin: "0 0 6px",
+  comingTitle: {
+    margin: "0 0 7px",
     color: "#154f3d",
   },
 
-  noteText: {
+  comingText: {
     margin: 0,
     color: "#5d7e73",
+    lineHeight: 1.8,
+  },
+
+  messageCard: {
+    maxWidth: "1100px",
+    margin: "0 auto",
+    padding: "24px",
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    borderRadius: "24px",
+    background: "#f8fbff",
+    border: "1px solid #dce7f3",
+  },
+
+  messageIcon: {
+    fontSize: "40px",
+  },
+
+  messageTitle: {
+    margin: "0 0 6px",
+    color: "#173b57",
+  },
+
+  messageText: {
+    margin: 0,
+    color: "#60788c",
     lineHeight: 1.8,
   },
 };

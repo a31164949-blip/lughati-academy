@@ -11,149 +11,270 @@ import {
 
 import { db } from "../../../firebase";
 
+type FormData = {
+  guardianRelation: string;
+  homeFollower: string;
+  homeReadingFrequency: string;
+  learningEnvironment: string;
+
+  strengths: string;
+  interests: string;
+  supportNeeds: string;
+
+  readingLevel: string;
+  writingLevel: string;
+
+  motivation: string;
+  preferredLearning: string;
+
+  healthStatus: string;
+  healthDetails: string;
+
+  familyNotes: string;
+  photoConsent: string;
+};
+
+const emptyForm: FormData = {
+  guardianRelation: "",
+  homeFollower: "",
+  homeReadingFrequency: "",
+  learningEnvironment: "",
+
+  strengths: "",
+  interests: "",
+  supportNeeds: "",
+
+  readingLevel: "",
+  writingLevel: "",
+
+  motivation: "",
+  preferredLearning: "",
+
+  healthStatus: "",
+  healthDetails: "",
+
+  familyNotes: "",
+  photoConsent: "",
+};
+
 export default function StudentCaseStudyPage() {
-  const [formData, setFormData] = useState({
-    homeFollower: "",
-    strengths: "",
-    supportNeeds: "",
-    readingLevel: "",
-    writingLevel: "",
-    motivation: "",
-    familyNotes: "",
-    healthStatus: "",
-healthDetails: "",
-photoConsent: "",
-  });
-const [studentId, setStudentId] = useState("");
-const [studentName, setStudentName] = useState("");
-  function updateField(field: string, value: string) {
+  const [formData, setFormData] = useState<FormData>(emptyForm);
+
+  const [studentId, setStudentId] = useState("");
+  const [studentName, setStudentName] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedSuccessfully, setSavedSuccessfully] =
+    useState(false);
+
+  function updateField(
+    field: keyof FormData,
+    value: string
+  ) {
+    setSavedSuccessfully(false);
+
     setFormData((current) => ({
       ...current,
       [field]: value,
     }));
   }
-useEffect(() => {
-  async function loadCaseStudy() {
-    const savedStudentId =
-      window.localStorage.getItem("student-id") ?? "";
 
-    const savedStudentName =
-      window.localStorage.getItem("student-name") ?? "";
+  useEffect(() => {
+    async function loadCaseStudy() {
+      const savedStudentId =
+        window.localStorage.getItem("student-id") ?? "";
 
-    setStudentId(savedStudentId);
-    setStudentName(savedStudentName);
+      const savedStudentName =
+        window.localStorage.getItem("student-name") ?? "";
 
-    if (!savedStudentId) return;
+      setStudentId(savedStudentId);
+      setStudentName(savedStudentName);
+
+      if (!savedStudentId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const caseStudyRef = doc(
+          db,
+          "studentCaseStudies",
+          savedStudentId
+        );
+
+        const caseStudySnapshot =
+          await getDoc(caseStudyRef);
+
+        if (!caseStudySnapshot.exists()) {
+          setLoading(false);
+          return;
+        }
+
+        const data = caseStudySnapshot.data();
+
+        setFormData({
+          guardianRelation:
+            typeof data.guardianRelation === "string"
+              ? data.guardianRelation
+              : "",
+
+          homeFollower:
+            typeof data.homeFollower === "string"
+              ? data.homeFollower
+              : "",
+
+          homeReadingFrequency:
+            typeof data.homeReadingFrequency === "string"
+              ? data.homeReadingFrequency
+              : "",
+
+          learningEnvironment:
+            typeof data.learningEnvironment === "string"
+              ? data.learningEnvironment
+              : "",
+
+          strengths:
+            typeof data.strengths === "string"
+              ? data.strengths
+              : "",
+
+          interests:
+            typeof data.interests === "string"
+              ? data.interests
+              : "",
+
+          supportNeeds:
+            typeof data.supportNeeds === "string"
+              ? data.supportNeeds
+              : "",
+
+          readingLevel:
+            typeof data.readingLevel === "string"
+              ? data.readingLevel
+              : "",
+
+          writingLevel:
+            typeof data.writingLevel === "string"
+              ? data.writingLevel
+              : "",
+
+          motivation:
+            typeof data.motivation === "string"
+              ? data.motivation
+              : "",
+
+          preferredLearning:
+            typeof data.preferredLearning === "string"
+              ? data.preferredLearning
+              : "",
+
+          healthStatus:
+            typeof data.healthStatus === "string"
+              ? data.healthStatus
+              : "",
+
+          healthDetails:
+            typeof data.healthDetails === "string"
+              ? data.healthDetails
+              : "",
+
+          familyNotes:
+            typeof data.familyNotes === "string"
+              ? data.familyNotes
+              : "",
+
+          photoConsent:
+            typeof data.photoConsent === "string"
+              ? data.photoConsent
+              : "",
+        });
+      } catch (error) {
+        console.error(
+          "تعذر تحميل ملف الطالب والأسرة:",
+          error
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadCaseStudy();
+  }, []);
+
+  async function saveCaseStudy() {
+    if (!studentId) {
+      alert(
+        "تعذر تحديد الطالب. الرجاء تسجيل الدخول مرة أخرى."
+      );
+      return;
+    }
+
+    if (!formData.guardianRelation) {
+      alert("يرجى تحديد صلة القرابة بالطالب.");
+      return;
+    }
+
+    if (!formData.homeFollower) {
+      alert(
+        "يرجى تحديد الشخص الذي يتابع الطالب في المنزل."
+      );
+      return;
+    }
+
+    if (!formData.photoConsent) {
+      alert(
+        "يرجى تحديد الموافقة على التصوير قبل الحفظ."
+      );
+      return;
+    }
+
+    if (
+      formData.healthStatus === "yes" &&
+      !formData.healthDetails.trim()
+    ) {
+      alert("يرجى ذكر الأعراض الصحية.");
+      return;
+    }
 
     try {
-      const caseStudyRef = doc(
-        db,
-        "studentCaseStudies",
-        savedStudentId
+      setSaving(true);
+
+      await setDoc(
+        doc(
+          db,
+          "studentCaseStudies",
+          studentId
+        ),
+        {
+          studentId,
+          studentName,
+          ...formData,
+          formType: "student-family-profile",
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
       );
 
-      const caseStudySnapshot = await getDoc(caseStudyRef);
+      setSavedSuccessfully(true);
 
-      if (!caseStudySnapshot.exists()) return;
-
-      const data = caseStudySnapshot.data();
-
-      setFormData({
-        homeFollower:
-          typeof data.homeFollower === "string"
-            ? data.homeFollower
-            : "",
-
-        strengths:
-          typeof data.strengths === "string"
-            ? data.strengths
-            : "",
-
-        supportNeeds:
-          typeof data.supportNeeds === "string"
-            ? data.supportNeeds
-            : "",
-
-        readingLevel:
-          typeof data.readingLevel === "string"
-            ? data.readingLevel
-            : "",
-
-        writingLevel:
-          typeof data.writingLevel === "string"
-            ? data.writingLevel
-            : "",
-
-        motivation:
-          typeof data.motivation === "string"
-            ? data.motivation
-            : "",
-
-        familyNotes:
-          typeof data.familyNotes === "string"
-            ? data.familyNotes
-            : "",
-
-        healthStatus:
-          typeof data.healthStatus === "string"
-            ? data.healthStatus
-            : "",
-
-        healthDetails:
-          typeof data.healthDetails === "string"
-            ? data.healthDetails
-            : "",
-
-        photoConsent:
-          typeof data.photoConsent === "string"
-            ? data.photoConsent
-            : "",
-      });
+      alert(
+        "✅ تم حفظ ملف الطالب والأسرة بنجاح"
+      );
     } catch (error) {
-      console.error("تعذر تحميل دراسة الحالة:", error);
+      console.error(
+        "تعذر حفظ ملف الطالب والأسرة:",
+        error
+      );
+
+      alert(
+        "تعذر حفظ الملف. حاول مرة أخرى."
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
-  loadCaseStudy();
-}, []);
-
-async function saveCaseStudy() {
-  if (!studentId) {
-    alert("تعذر تحديد الطالب. الرجاء تسجيل الدخول مرة أخرى.");
-    return;
-  }
-
-  if (!formData.photoConsent) {
-    alert("يرجى تحديد الموافقة على التصوير قبل الحفظ.");
-    return;
-  }
-
-  if (
-    formData.healthStatus === "yes" &&
-    !formData.healthDetails.trim()
-  ) {
-    alert("يرجى ذكر الأعراض الصحية.");
-    return;
-  }
-
-  try {
-    await setDoc(
-      doc(db, "studentCaseStudies", studentId),
-      {
-        studentId,
-        studentName,
-        ...formData,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    alert("✅ تم حفظ دراسة حالة الطالب بنجاح");
-  } catch (error) {
-    console.error("تعذر حفظ دراسة الحالة:", error);
-    alert("تعذر حفظ دراسة الحالة. حاول مرة أخرى.");
-  }
-}
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "14px",
@@ -163,6 +284,7 @@ async function saveCaseStudy() {
     boxSizing: "border-box",
     background: "#ffffff",
     color: "#173b31",
+    outline: "none",
   };
 
   const cardStyle: React.CSSProperties = {
@@ -171,7 +293,8 @@ async function saveCaseStudy() {
     padding: "20px",
     marginBottom: "16px",
     border: "1px solid #e0ece7",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
+    boxShadow:
+      "0 8px 24px rgba(0,0,0,0.04)",
   };
 
   const labelStyle: React.CSSProperties = {
@@ -179,7 +302,27 @@ async function saveCaseStudy() {
     fontWeight: 800,
     marginBottom: "8px",
     color: "#174f3d",
+    lineHeight: 1.7,
   };
+
+  if (loading) {
+    return (
+      <main
+        dir="rtl"
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          background: "#f4fbf8",
+          color: "#147a5b",
+          fontWeight: 900,
+          fontSize: "18px",
+        }}
+      >
+        جارٍ تحميل ملف الطالب والأسرة...
+      </main>
+    );
+  }
 
   return (
     <main
@@ -199,6 +342,7 @@ async function saveCaseStudy() {
           margin: "0 auto",
         }}
       >
+        {/* الشريط العلوي */}
         <div
           style={{
             display: "flex",
@@ -234,6 +378,7 @@ async function saveCaseStudy() {
           </div>
         </div>
 
+        {/* العنوان */}
         <section
           style={{
             background:
@@ -242,10 +387,18 @@ async function saveCaseStudy() {
             borderRadius: "28px",
             padding: "30px 22px",
             marginBottom: "20px",
-            boxShadow: "0 14px 32px rgba(20,122,91,0.18)",
+            boxShadow:
+              "0 14px 32px rgba(20,122,91,0.18)",
           }}
         >
-          <div style={{ fontSize: "46px", marginBottom: "8px" }}>📋</div>
+          <div
+            style={{
+              fontSize: "46px",
+              marginBottom: "8px",
+            }}
+          >
+            👨‍👩‍👦
+          </div>
 
           <h1
             style={{
@@ -253,7 +406,7 @@ async function saveCaseStudy() {
               fontSize: "30px",
             }}
           >
-            دراسة حالة الطالب
+            ملف الطالب والأسرة
           </h1>
 
           <p
@@ -261,14 +414,30 @@ async function saveCaseStudy() {
               margin: 0,
               lineHeight: 1.9,
               fontSize: "16px",
-              opacity: 0.95,
+              opacity: 0.96,
             }}
           >
-            ساعدونا في معرفة الطالب بصورة أفضل؛ فهذه المعلومات تساعد المعلم
-            على تقديم دعم يناسب احتياجاته وقدراته 🌱
+            لنتعرّف على طالبنا أكثر...
+            لنساعده على النجاح 🌱
           </p>
+
+          {studentName && (
+            <div
+              style={{
+                marginTop: "18px",
+                background:
+                  "rgba(255,255,255,0.15)",
+                borderRadius: "16px",
+                padding: "12px 16px",
+                fontWeight: 800,
+              }}
+            >
+              👦 الطالب: {studentName}
+            </div>
+          )}
         </section>
 
+        {/* الخصوصية */}
         <div
           style={{
             background: "#fff8e8",
@@ -280,9 +449,12 @@ async function saveCaseStudy() {
             lineHeight: 1.8,
           }}
         >
-          🔒 هذه المعلومات مخصصة للمتابعة التعليمية وتظهر للمعلم فقط.
+          🔒 هذه المعلومات مخصصة للمتابعة
+          التعليمية، وتساعد المعلم على تقديم
+          الدعم المناسب للطالب.
         </div>
 
+        {/* الأسرة */}
         <section style={cardStyle}>
           <h2
             style={{
@@ -291,28 +463,132 @@ async function saveCaseStudy() {
               fontSize: "21px",
             }}
           >
-            🏡 المتابعة في المنزل
+            👨‍👩‍👦 أولًا: الأسرة
           </h2>
 
           <label style={labelStyle}>
-            من الشخص الذي يتابع دراسة الطالب غالبًا؟
+            صلة القرابة بالشخص الذي يعبئ
+            النموذج
+          </label>
+
+          <select
+            value={formData.guardianRelation}
+            onChange={(event) =>
+              updateField(
+                "guardianRelation",
+                event.target.value
+              )
+            }
+            style={{
+              ...inputStyle,
+              marginBottom: "18px",
+            }}
+          >
+            <option value="">اختر...</option>
+            <option value="father">الأب</option>
+            <option value="mother">الأم</option>
+            <option value="brother">
+              الأخ / الأخت
+            </option>
+            <option value="guardian">
+              ولي أمر آخر
+            </option>
+          </select>
+
+          <label style={labelStyle}>
+            من الشخص الذي يتابع دراسة
+            الطالب غالبًا؟
           </label>
 
           <select
             value={formData.homeFollower}
             onChange={(event) =>
-              updateField("homeFollower", event.target.value)
+              updateField(
+                "homeFollower",
+                event.target.value
+              )
             }
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              marginBottom: "18px",
+            }}
           >
             <option value="">اختر...</option>
             <option value="father">الأب</option>
             <option value="mother">الأم</option>
-            <option value="both">الأب والأم</option>
-            <option value="other">شخص آخر من الأسرة</option>
+            <option value="both">
+              الأب والأم
+            </option>
+            <option value="other">
+              شخص آخر من الأسرة
+            </option>
+          </select>
+
+          <label style={labelStyle}>
+            كم مرة يقرأ الطالب في المنزل؟
+          </label>
+
+          <select
+            value={
+              formData.homeReadingFrequency
+            }
+            onChange={(event) =>
+              updateField(
+                "homeReadingFrequency",
+                event.target.value
+              )
+            }
+            style={{
+              ...inputStyle,
+              marginBottom: "18px",
+            }}
+          >
+            <option value="">اختر...</option>
+            <option value="daily">
+              يوميًا
+            </option>
+            <option value="often">
+              عدة مرات في الأسبوع
+            </option>
+            <option value="sometimes">
+              أحيانًا
+            </option>
+            <option value="rarely">
+              نادرًا
+            </option>
+          </select>
+
+          <label style={labelStyle}>
+            هل يتوفر للطالب مكان مناسب
+            وهادئ للمذاكرة؟
+          </label>
+
+          <select
+            value={
+              formData.learningEnvironment
+            }
+            onChange={(event) =>
+              updateField(
+                "learningEnvironment",
+                event.target.value
+              )
+            }
+            style={inputStyle}
+          >
+            <option value="">اختر...</option>
+            <option value="yes">
+              نعم
+            </option>
+            <option value="sometimes">
+              أحيانًا
+            </option>
+            <option value="no">
+              لا
+            </option>
           </select>
         </section>
 
+        {/* أعرف طفلي */}
         <section style={cardStyle}>
           <h2
             style={{
@@ -321,17 +597,22 @@ async function saveCaseStudy() {
               fontSize: "21px",
             }}
           >
-            🌟 أعرف طفلي
+            🌟 ثانيًا: أعرف طفلي
           </h2>
 
-          <label style={labelStyle}>ما أبرز نقاط القوة لديه؟</label>
+          <label style={labelStyle}>
+            ما أبرز نقاط القوة لديه؟
+          </label>
 
           <textarea
             value={formData.strengths}
             onChange={(event) =>
-              updateField("strengths", event.target.value)
+              updateField(
+                "strengths",
+                event.target.value
+              )
             }
-            placeholder="مثال: يحب القراءة، سريع الحفظ، اجتماعي..."
+            placeholder="مثال: سريع الحفظ، اجتماعي، يحب المشاركة..."
             rows={4}
             style={{
               ...inputStyle,
@@ -341,13 +622,38 @@ async function saveCaseStudy() {
           />
 
           <label style={labelStyle}>
-            ما المهارات التي ترون أنه يحتاج دعمًا فيها؟
+            ما الأشياء أو الأنشطة التي يحبها؟
+          </label>
+
+          <textarea
+            value={formData.interests}
+            onChange={(event) =>
+              updateField(
+                "interests",
+                event.target.value
+              )
+            }
+            placeholder="مثال: القصص، الرسم، الرياضة، الألعاب التعليمية..."
+            rows={4}
+            style={{
+              ...inputStyle,
+              resize: "vertical",
+              marginBottom: "18px",
+            }}
+          />
+
+          <label style={labelStyle}>
+            ما المهارات التي ترون أنه يحتاج
+            دعمًا فيها؟
           </label>
 
           <textarea
             value={formData.supportNeeds}
             onChange={(event) =>
-              updateField("supportNeeds", event.target.value)
+              updateField(
+                "supportNeeds",
+                event.target.value
+              )
             }
             placeholder="اكتبوا ما تلاحظونه في المنزل..."
             rows={4}
@@ -358,6 +664,7 @@ async function saveCaseStudy() {
           />
         </section>
 
+        {/* القراءة والكتابة */}
         <section style={cardStyle}>
           <h2
             style={{
@@ -366,17 +673,21 @@ async function saveCaseStudy() {
               fontSize: "21px",
             }}
           >
-            📚 القراءة والكتابة
+            📚 ثالثًا: القراءة والكتابة
           </h2>
 
           <label style={labelStyle}>
-            كيف تصفون مستوى القراءة حاليًا؟
+            كيف تصفون مستوى القراءة
+            حاليًا؟
           </label>
 
           <select
             value={formData.readingLevel}
             onChange={(event) =>
-              updateField("readingLevel", event.target.value)
+              updateField(
+                "readingLevel",
+                event.target.value
+              )
             }
             style={{
               ...inputStyle,
@@ -384,83 +695,52 @@ async function saveCaseStudy() {
             }}
           >
             <option value="">اختر...</option>
-            <option value="excellent">يقرأ بطلاقة</option>
-            <option value="good">يقرأ جيدًا مع بعض التوقف</option>
-            <option value="developing">لا يزال يتدرب على القراءة</option>
-            <option value="needs-support">يحتاج دعمًا واضحًا</option>
+            <option value="excellent">
+              يقرأ بطلاقة
+            </option>
+            <option value="good">
+              يقرأ جيدًا مع بعض التوقف
+            </option>
+            <option value="developing">
+              لا يزال يتدرب على القراءة
+            </option>
+            <option value="needs-support">
+              يحتاج دعمًا واضحًا
+            </option>
           </select>
 
           <label style={labelStyle}>
-            كيف تصفون مستوى الكتابة حاليًا؟
+            كيف تصفون مستوى الكتابة
+            حاليًا؟
           </label>
 
           <select
             value={formData.writingLevel}
             onChange={(event) =>
-              updateField("writingLevel", event.target.value)
+              updateField(
+                "writingLevel",
+                event.target.value
+              )
             }
             style={inputStyle}
           >
             <option value="">اختر...</option>
-            <option value="excellent">يكتب بصورة جيدة ومستقلة</option>
-            <option value="good">يكتب جيدًا مع بعض الأخطاء</option>
-            <option value="developing">يحتاج مساعدة أحيانًا</option>
-            <option value="needs-support">يحتاج دعمًا مستمرًا</option>
+            <option value="excellent">
+              يكتب بصورة جيدة ومستقلة
+            </option>
+            <option value="good">
+              يكتب جيدًا مع بعض الأخطاء
+            </option>
+            <option value="developing">
+              يحتاج مساعدة أحيانًا
+            </option>
+            <option value="needs-support">
+              يحتاج دعمًا مستمرًا
+            </option>
           </select>
         </section>
-<section style={cardStyle}>
-  <h2
-    style={{
-      marginTop: 0,
-      color: "#147a5b",
-      fontSize: "21px",
-    }}
-  >
-    🩺 معلومات صحية مهمة
-  </h2>
 
-  <label style={labelStyle}>
-    هل يعاني الطالب من أي أعراض صحية؟
-  </label>
-
-  <select
-    value={formData.healthStatus}
-    onChange={(event) => {
-      const value = event.target.value;
-      updateField("healthStatus", value);
-
-      if (value === "no") {
-        updateField("healthDetails", "");
-      }
-    }}
-    style={inputStyle}
-  >
-    <option value="">اختر...</option>
-    <option value="yes">نعم</option>
-    <option value="no">لا</option>
-  </select>
-
-  {formData.healthStatus === "yes" && (
-    <div style={{ marginTop: "16px" }}>
-      <label style={labelStyle}>
-        اذكر الأعراض التي يحتاج المعلم إلى معرفتها
-      </label>
-
-      <textarea
-        value={formData.healthDetails}
-        onChange={(event) =>
-          updateField("healthDetails", event.target.value)
-        }
-        placeholder="اكتب هنا..."
-        rows={4}
-        style={{
-          ...inputStyle,
-          resize: "vertical",
-        }}
-      />
-    </div>
-  )}
-</section>
+        {/* التحفيز */}
         <section style={cardStyle}>
           <h2
             style={{
@@ -469,27 +749,69 @@ async function saveCaseStudy() {
               fontSize: "21px",
             }}
           >
-            🎯 مفتاح التحفيز
+            🎯 رابعًا: كيف يتعلم الطالب
+            بشكل أفضل؟
           </h2>
 
           <label style={labelStyle}>
-            ما أكثر شيء يحفز الطالب على التعلم؟
+            ما أكثر شيء يحفز الطالب على
+            التعلم؟
           </label>
 
           <textarea
             value={formData.motivation}
             onChange={(event) =>
-              updateField("motivation", event.target.value)
+              updateField(
+                "motivation",
+                event.target.value
+              )
             }
-            placeholder="مثال: التشجيع، المنافسة، المكافآت، القصص، الألعاب..."
+            placeholder="مثال: التشجيع، المنافسة، المكافآت، القصص..."
             rows={3}
             style={{
               ...inputStyle,
               resize: "vertical",
+              marginBottom: "18px",
             }}
           />
+
+          <label style={labelStyle}>
+            ما الطريقة التي يتفاعل معها
+            أكثر؟
+          </label>
+
+          <select
+            value={
+              formData.preferredLearning
+            }
+            onChange={(event) =>
+              updateField(
+                "preferredLearning",
+                event.target.value
+              )
+            }
+            style={inputStyle}
+          >
+            <option value="">اختر...</option>
+            <option value="visual">
+              الصور والمشاهدة
+            </option>
+            <option value="audio">
+              الاستماع والشرح
+            </option>
+            <option value="practice">
+              التطبيق والممارسة
+            </option>
+            <option value="games">
+              الألعاب والمسابقات
+            </option>
+            <option value="mixed">
+              أكثر من طريقة
+            </option>
+          </select>
         </section>
 
+        {/* الصحة */}
         <section style={cardStyle}>
           <h2
             style={{
@@ -498,17 +820,97 @@ async function saveCaseStudy() {
               fontSize: "21px",
             }}
           >
-            💬 رسالة الأسرة للمعلم
+            🩺 خامسًا: معلومات صحية مهمة
           </h2>
 
           <label style={labelStyle}>
-            هل توجد ملاحظة ترون أنها تساعد المعلم في فهم الطالب؟
+            هل يعاني الطالب من أي أعراض
+            صحية يحتاج المعلم إلى معرفتها؟
+          </label>
+
+          <select
+            value={formData.healthStatus}
+            onChange={(event) => {
+              const value =
+                event.target.value;
+
+              updateField(
+                "healthStatus",
+                value
+              );
+
+              if (value === "no") {
+                updateField(
+                  "healthDetails",
+                  ""
+                );
+              }
+            }}
+            style={inputStyle}
+          >
+            <option value="">اختر...</option>
+            <option value="yes">نعم</option>
+            <option value="no">لا</option>
+          </select>
+
+          {formData.healthStatus ===
+            "yes" && (
+            <div
+              style={{
+                marginTop: "16px",
+              }}
+            >
+              <label style={labelStyle}>
+                اذكر الأعراض أو المعلومات
+                المهمة
+              </label>
+
+              <textarea
+                value={
+                  formData.healthDetails
+                }
+                onChange={(event) =>
+                  updateField(
+                    "healthDetails",
+                    event.target.value
+                  )
+                }
+                placeholder="اكتب هنا..."
+                rows={4}
+                style={{
+                  ...inputStyle,
+                  resize: "vertical",
+                }}
+              />
+            </div>
+          )}
+        </section>
+
+        {/* رسالة الأسرة */}
+        <section style={cardStyle}>
+          <h2
+            style={{
+              marginTop: 0,
+              color: "#147a5b",
+              fontSize: "21px",
+            }}
+          >
+            💬 سادسًا: رسالة الأسرة للمعلم
+          </h2>
+
+          <label style={labelStyle}>
+            هل توجد ملاحظة ترون أنها
+            تساعد المعلم على فهم الطالب
+            ودعمه؟
           </label>
 
           <textarea
             value={formData.familyNotes}
             onChange={(event) =>
-              updateField("familyNotes", event.target.value)
+              updateField(
+                "familyNotes",
+                event.target.value
+              )
             }
             placeholder="هذه المساحة لكم..."
             rows={5}
@@ -519,64 +921,102 @@ async function saveCaseStudy() {
           />
         </section>
 
-<section style={cardStyle}>
-  <h2
-    style={{
-      marginTop: 0,
-      color: "#147a5b",
-      fontSize: "21px",
-    }}
-  >
-    📸 موافقة الأسرة على التصوير
-  </h2>
+        {/* التصوير */}
+        <section style={cardStyle}>
+          <h2
+            style={{
+              marginTop: 0,
+              color: "#147a5b",
+              fontSize: "21px",
+            }}
+          >
+            📸 سابعًا: موافقة الأسرة على
+            التصوير
+          </h2>
 
-  <label style={labelStyle}>
-    هل توافق على تصوير ابنكم داخل الصف وعرض صوره في يوميات الفصل؟
-  </label>
+          <label style={labelStyle}>
+            هل توافق على تصوير ابنكم داخل
+            الصف وعرض صوره في يوميات الفصل؟
+          </label>
 
-  <select
-    value={formData.photoConsent}
-    onChange={(event) =>
-      updateField("photoConsent", event.target.value)
-    }
-    style={inputStyle}
-  >
-    <option value="">اختر...</option>
-    <option value="yes">نعم، أوافق</option>
-    <option value="no">لا أوافق</option>
-  </select>
+          <select
+            value={formData.photoConsent}
+            onChange={(event) =>
+              updateField(
+                "photoConsent",
+                event.target.value
+              )
+            }
+            style={inputStyle}
+          >
+            <option value="">اختر...</option>
+            <option value="yes">
+              نعم، أوافق
+            </option>
+            <option value="no">
+              لا أوافق
+            </option>
+          </select>
 
-  <div
-    style={{
-      marginTop: "12px",
-      padding: "12px",
-      borderRadius: "12px",
-      background: "#f8fbfa",
-      color: "#607a70",
-      fontSize: "14px",
-      lineHeight: 1.8,
-    }}
-  >
-    سيتم الالتزام باختيار الأسرة عند نشر الصور في يوميات الفصل.
-  </div>
-</section>
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "12px",
+              borderRadius: "12px",
+              background: "#f8fbfa",
+              color: "#607a70",
+              fontSize: "14px",
+              lineHeight: 1.8,
+            }}
+          >
+            سيتم الالتزام باختيار الأسرة عند
+            نشر الصور في يوميات الفصل.
+          </div>
+        </section>
+
+        {savedSuccessfully && (
+          <div
+            style={{
+              background: "#eaf8f1",
+              border: "1px solid #a9dbc5",
+              color: "#126647",
+              padding: "14px 16px",
+              borderRadius: "16px",
+              marginBottom: "14px",
+              fontWeight: 800,
+              textAlign: "center",
+            }}
+          >
+            ✅ تم حفظ ملف الطالب والأسرة
+            بنجاح
+          </div>
+        )}
+
         <button
           type="button"
           onClick={saveCaseStudy}
+          disabled={saving}
           style={{
             width: "100%",
             border: "none",
             borderRadius: "18px",
             padding: "17px",
-            background: "#147a5b",
+            background: saving
+              ? "#86aa9e"
+              : "#147a5b",
             color: "white",
             fontSize: "18px",
             fontWeight: 900,
-            cursor: "pointer",
-            boxShadow: "0 10px 24px rgba(20,122,91,0.18)",
+            cursor: saving
+              ? "not-allowed"
+              : "pointer",
+            boxShadow:
+              "0 10px 24px rgba(20,122,91,0.18)",
           }}
         >
-          💾 حفظ دراسة الحالة
+          {saving
+            ? "⏳ جارٍ الحفظ..."
+            : "💾 حفظ ملف الطالب والأسرة"}
         </button>
 
         <div
@@ -585,9 +1025,14 @@ async function saveCaseStudy() {
             marginTop: "14px",
             color: "#71877f",
             fontSize: "14px",
+            lineHeight: 1.8,
           }}
         >
-          شكرًا لشراكتكم في رحلة تعلم الطالب 🤝
+          شكرًا لشراكتكم في رحلة تعلم
+          الطالب 🤝
+          <br />
+          نجاح الطالب يبدأ بالتعاون بين
+          المدرسة والأسرة.
         </div>
       </div>
     </main>

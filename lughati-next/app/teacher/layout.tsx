@@ -1,93 +1,189 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
 import { useRouter } from "next/navigation";
+
 import { auth } from "../../firebase";
 
 type TeacherLayoutProps = {
   children: ReactNode;
 };
 
+const TEACHER_EMAIL = "a31164949@gmail.com";
+
 export default function TeacherLayout({
   children,
 }: TeacherLayoutProps) {
   const router = useRouter();
 
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isChecking, setIsChecking] =
+    useState(true);
+
+  const [isAuthorized, setIsAuthorized] =
+    useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    setIsAuthorized(false);
-    setIsChecking(false);
-    router.replace("/teacher-login");
-    return;
-  }
+    let active = true;
 
-  if (user.email?.toLowerCase() !== "a31164949@gmail.com") {
-    setIsAuthorized(false);
-    setIsChecking(false);
-    router.replace("/journey");
-    return;
-  }
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user) => {
+        if (!active) return;
 
-  setIsAuthorized(true);
-  setIsChecking(false);
-});
+        const email =
+          user?.email?.trim().toLowerCase() ?? "";
 
-    return unsubscribe;
+        // لا يوجد مستخدم مسجل
+        if (!user) {
+          setIsAuthorized(false);
+          setIsChecking(false);
+
+          router.replace("/teacher-login");
+          return;
+        }
+
+        // يوجد مستخدم لكنه ليس حساب المعلم
+        if (email !== TEACHER_EMAIL) {
+          setIsAuthorized(false);
+
+          try {
+            await signOut(auth);
+          } catch (error) {
+            console.error(
+              "تعذر تسجيل خروج الحساب غير المصرح:",
+              error
+            );
+          }
+
+          if (!active) return;
+
+          setIsChecking(false);
+          router.replace("/teacher-login");
+          return;
+        }
+
+        // حساب المعلم الصحيح
+        setIsAuthorized(true);
+        setIsChecking(false);
+      }
+    );
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [router]);
 
   async function handleLogout() {
-    await signOut(auth);
-    router.replace("/teacher-login");
+    try {
+      await signOut(auth);
+      router.replace("/teacher-login");
+    } catch (error) {
+      console.error(
+        "تعذر تسجيل الخروج:",
+        error
+      );
+    }
   }
 
   if (isChecking) {
     return (
-      <main dir="rtl" style={styles.loadingPage}>
-        <section style={styles.loadingCard}>
-          <div style={styles.loadingIcon}>⏳</div>
-          <h2 style={styles.loadingTitle}>جارٍ التحقق من صلاحية الدخول</h2>
-          <p style={styles.loadingText}>لحظات قليلة يا أستاذ إبراهيم...</p>
+      <main
+        dir="rtl"
+        style={styles.loadingPage}
+      >
+        <section
+          style={styles.loadingCard}
+        >
+          <div
+            style={styles.loadingIcon}
+          >
+            🔐
+          </div>
+
+          <h2
+            style={styles.loadingTitle}
+          >
+            جارٍ التحقق من صلاحية الدخول
+          </h2>
+
+          <p
+            style={styles.loadingText}
+          >
+            يتم تأمين لوحة المعلم...
+          </p>
         </section>
       </main>
     );
   }
 
   if (!isAuthorized) {
-    return null;
+    return (
+      <main
+        dir="rtl"
+        style={styles.loadingPage}
+      >
+        <section
+          style={styles.loadingCard}
+        >
+          <div
+            style={styles.loadingIcon}
+          >
+            🔒
+          </div>
+
+          <h2
+            style={styles.loadingTitle}
+          >
+            جارٍ الانتقال إلى صفحة الدخول
+          </h2>
+        </section>
+      </main>
+    );
   }
 
   return (
     <>
-      <div dir="rtl" style={styles.topBar}>
+      <div
+        dir="rtl"
+        style={styles.topBar}
+      >
         <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    flexWrap: "wrap",
-  }}
->
-  <button
-    type="button"
-    onClick={() => router.push("/teacher")}
-    style={styles.backButton}
-  >
-    ← العودة إلى لوحة المعلم
-  </button>
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/teacher")
+            }
+            style={styles.backButton}
+          >
+            ← العودة إلى لوحة المعلم
+          </button>
 
-  <button
-    type="button"
-    onClick={handleLogout}
-    style={styles.logoutButton}
-  >
-    تسجيل الخروج
-  </button>
-</div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={styles.logoutButton}
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+
+        <strong
+          style={styles.secureText}
+        >
+          🔐 لوحة المعلم محمية
+        </strong>
       </div>
 
       {children}
@@ -95,7 +191,10 @@ export default function TeacherLayout({
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<
+  string,
+  React.CSSProperties
+> = {
   loadingPage: {
     minHeight: "100vh",
     display: "flex",
@@ -114,7 +213,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "26px",
     background: "#ffffff",
     border: "1px solid #cde9dc",
-    boxShadow: "0 18px 50px rgba(22, 134, 101, 0.13)",
+    boxShadow:
+      "0 18px 50px rgba(22, 134, 101, 0.13)",
     textAlign: "center",
   },
 
@@ -143,32 +243,28 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: "12px",
     padding: "12px 18px",
-    background: "rgba(255, 255, 255, 0.96)",
-    borderBottom: "1px solid #cde9dc",
-    boxShadow: "0 4px 18px rgba(22, 134, 101, 0.08)",
+    background:
+      "rgba(255, 255, 255, 0.96)",
+    borderBottom:
+      "1px solid #cde9dc",
+    boxShadow:
+      "0 4px 18px rgba(22, 134, 101, 0.08)",
     fontFamily: "Arial, sans-serif",
+    flexWrap: "wrap",
   },
 
-  topBarTitle: {
-    color: "#176b50",
-    fontSize: "17px",
+  backButton: {
+    border:
+      "1px solid #16835f",
+    borderRadius: "12px",
+    padding: "10px 14px",
+    background: "#ffffff",
+    color: "#166534",
+    fontSize: "15px",
+    fontWeight: 800,
+    cursor: "pointer",
   },
 
-  topBarText: {
-    marginRight: "7px",
-    color: "#6a8179",
-    fontSize: "14px",
-  },
-backButton: {
-  border: "1px solid #16835f",
-  borderRadius: "12px",
-  padding: "10px 14px",
-  background: "#ffffff",
-  color: "#166534",
-  fontSize: "15px",
-  fontWeight: 800,
-  cursor: "pointer",
-},
   logoutButton: {
     padding: "10px 15px",
     border: "none",
@@ -178,5 +274,10 @@ backButton: {
     fontSize: "15px",
     fontWeight: 800,
     cursor: "pointer",
+  },
+
+  secureText: {
+    color: "#176b50",
+    fontSize: "14px",
   },
 };
