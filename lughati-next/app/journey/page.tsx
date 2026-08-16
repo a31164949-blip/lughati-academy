@@ -10,27 +10,46 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { auth } from "../../firebase";
+import {
+  doc,
+  getDoc,
+} from "firebase/firestore";
+
+import {
+  auth,
+  db,
+} from "../../firebase";
 
 const journeyCards = [
   {
     icon: "🏡",
     title: "مدينة الإنجاز",
-    description: "ابنِ مدينتك مع كل تقدم جديد",
+    description:
+      "ابنِ مدينتك مع كل تقدم جديد",
     href: "/journey/city",
     background: "#fff7d6",
   },
   {
+  icon: "👦🏻",
+  title: "شخصيتي",
+  description:
+    "اختر شخصيتك وافتح صورًا جديدة مع تقدمك",
+  href: "/student-avatar",
+  background: "#eefbf6",
+},
+  {
     icon: "📚",
     title: "الدروس",
-    description: "تعلّم واقرأ واستمتع",
+    description:
+      "تعلّم واقرأ واستمتع",
     href: "/lessons",
     background: "#e8f2ff",
   },
   {
     icon: "📝",
     title: "واجباتي",
-    description: "أنجز واجباتك اليومية",
+    description:
+      "أنجز واجباتك اليومية",
     href: "/homeworks",
     background: "#fff3df",
   },
@@ -45,7 +64,8 @@ const journeyCards = [
   {
     icon: "🗓️",
     title: "الخطة الأسبوعية",
-    description: "تعرّف على مهام الأسبوع",
+    description:
+      "تعرّف على مهام الأسبوع",
     href: "/weekly-plan",
     background: "#e9f9ee",
   },
@@ -60,22 +80,24 @@ const journeyCards = [
   {
     icon: "🌱",
     title: "رحلة الدعم",
-    description: "تدريبات تساعدني على التقدم",
+    description:
+      "تدريبات تساعدني على التقدم",
     href: "/support",
     background: "#f2ebff",
   },
   {
-      
     icon: "🏆",
     title: "لوحة الشرف",
-    description: "شاهد أوسمتك وألقابك وإنجازاتك المميزة",
+    description:
+      "شاهد أوسمتك وألقابك وإنجازاتك المميزة",
     href: "/honor-board",
     background: "#fff8d8",
   },
   {
     icon: "🌟",
     title: "أبطال الأكاديمية",
-    description: "شاهد أبطال القراءة والإملاء والإنجاز",
+    description:
+      "شاهد أبطال القراءة والإملاء والإنجاز",
     href: "/heroes",
     background: "#fff6dc",
   },
@@ -98,9 +120,18 @@ const journeyCards = [
   {
     icon: "📤",
     title: "ارفع عملي",
-    description: "أرسل صوتًا أو صورة أو فيديو",
+    description:
+      "أرسل صوتًا أو صورة أو فيديو",
     href: "/upload",
     background: "#e9fbff",
+  },
+  {
+    icon: "💬",
+    title: "تواصل مع معلمي",
+    description:
+      "أرسل استفسارك أو طلب المساعدة إلى معلمك",
+    href: "/student-contact",
+    background: "#eefbf6",
   },
 ];
 
@@ -137,13 +168,55 @@ type JourneyData = {
   stars?: number;
   streak?: number;
   readingDays?: number;
+  personalPhotoUrl?: string;
+  selectedAvatarIcon?: string;
   completedTaskIds?: number[];
   message?: string;
+};
+type CrownAchievement = {
+  id: string;
+  mode: string;
+  lessonName: string;
+  king: boolean;
+  kingTitle: string;
+  fullMastery: boolean;
+  personalPhotoUrl: string;
+  selectedAvatarIcon: string;
+};
+
+type CrownData = {
+  success: boolean;
+  readingKingCount?: number;
+  spellingKingCount?: number;
+  masteryCount?: number;
+  latestAchievement?: CrownAchievement | null;
+  achievements?: CrownAchievement[];
+  message?: string;
+};
+type StudentSmartFollowUp = {
+  date: string;
+
+  homeworkLabel: string;
+
+  readingLevelLabel: string;
+  readingAccuracyLabel: string;
+  readingFluencyLabel: string;
+  readingDiacriticsLabel: string;
+
+  readingNote: string;
 };
 
 export default function JourneyPage() {
   const [user, setUser] =
     useState<User | null>(null);
+
+  const [
+    smartFollowUp,
+    setSmartFollowUp,
+  ] =
+    useState<StudentSmartFollowUp | null>(
+      null
+    );
 
   const [loading, setLoading] =
     useState(true);
@@ -160,15 +233,58 @@ export default function JourneyPage() {
   const [readingDays, setReadingDays] =
     useState(0);
 
-  const [completedTasks, setCompletedTasks] =
-    useState<number[]>([]);
+  const [
+    completedTasks,
+    setCompletedTasks,
+  ] = useState<number[]>([]);
 
-  const [savingTaskId, setSavingTaskId] =
+  const [
+    savingTaskId,
+    setSavingTaskId,
+  ] =
     useState<number | null>(null);
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
+  const [
+  personalPhotoUrl,
+  setPersonalPhotoUrl,
+] = useState("");
+
+const [
+  selectedAvatarIcon,
+  setSelectedAvatarIcon,
+] = useState("🧒🏻");
+const [
+  crownLoading,
+  setCrownLoading,
+] = useState(true);
+
+const [
+  readingKingCount,
+  setReadingKingCount,
+] = useState(0);
+
+const [
+  spellingKingCount,
+  setSpellingKingCount,
+] = useState(0);
+
+const [
+  masteryCount,
+  setMasteryCount,
+] = useState(0);
+
+const [
+  latestCrownAchievement,
+  setLatestCrownAchievement,
+] =
+  useState<CrownAchievement | null>(
+    null
+  );
   useEffect(() => {
     const unsubscribe =
       onAuthStateChanged(
@@ -196,17 +312,18 @@ export default function JourneyPage() {
         const token =
           await currentUser.getIdToken();
 
-        const response = await fetch(
-          "/api/student-journey",
-          {
-            method: "GET",
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-            cache: "no-store",
-          }
-        );
+        const response =
+          await fetch(
+            "/api/student-journey",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
 
         const data =
           (await response.json()) as JourneyData;
@@ -222,19 +339,22 @@ export default function JourneyPage() {
         }
 
         setPoints(
-          typeof data.points === "number"
+          typeof data.points ===
+            "number"
             ? data.points
             : 0
         );
 
         setStars(
-          typeof data.stars === "number"
+          typeof data.stars ===
+            "number"
             ? data.stars
             : 0
         );
 
         setStreak(
-          typeof data.streak === "number"
+          typeof data.streak ===
+            "number"
             ? data.streak
             : 0
         );
@@ -244,6 +364,20 @@ export default function JourneyPage() {
             "number"
             ? data.readingDays
             : 0
+        );
+
+        setPersonalPhotoUrl(
+          typeof data.personalPhotoUrl ===
+            "string"
+            ? data.personalPhotoUrl
+            : ""
+        );
+
+        setSelectedAvatarIcon(
+          typeof data.selectedAvatarIcon ===
+            "string"
+            ? data.selectedAvatarIcon
+            : "🧒🏻"
         );
 
         setCompletedTasks(
@@ -269,6 +403,192 @@ export default function JourneyPage() {
 
     void loadJourneyData();
   }, [user]);
+useEffect(() => {
+  if (!user) {
+    return;
+  }
+
+  const currentUser = user;
+
+  async function loadCrownData() {
+    try {
+      setCrownLoading(true);
+
+      const token =
+        await currentUser.getIdToken();
+
+      const response =
+        await fetch(
+          "/api/student-crown",
+          {
+            method: "GET",
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+      const data =
+        (await response.json()) as CrownData;
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر تحميل تاج لغتي."
+        );
+      }
+
+      setReadingKingCount(
+        typeof data.readingKingCount ===
+          "number"
+          ? data.readingKingCount
+          : 0
+      );
+
+      setSpellingKingCount(
+        typeof data.spellingKingCount ===
+          "number"
+          ? data.spellingKingCount
+          : 0
+      );
+
+      setMasteryCount(
+        typeof data.masteryCount ===
+          "number"
+          ? data.masteryCount
+          : 0
+      );
+
+      setLatestCrownAchievement(
+        data.latestAchievement ??
+          null
+      );
+    } catch (error) {
+      console.error(
+        "تعذر تحميل تاج لغتي:",
+        error
+      );
+
+      setReadingKingCount(0);
+      setSpellingKingCount(0);
+      setMasteryCount(0);
+
+      setLatestCrownAchievement(
+        null
+      );
+    } finally {
+      setCrownLoading(false);
+    }
+  }
+
+  void loadCrownData();
+}, [user]);
+  useEffect(() => {
+    async function loadSmartFollowUp() {
+      try {
+        const studentId =
+          localStorage.getItem(
+            "student-id"
+          );
+
+        if (
+          !studentId ||
+          studentId === "student-demo"
+        ) {
+          setSmartFollowUp(null);
+          return;
+        }
+
+        const studentSnapshot =
+          await getDoc(
+            doc(
+              db,
+              "students",
+              studentId
+            )
+          );
+
+        if (
+          !studentSnapshot.exists()
+        ) {
+          setSmartFollowUp(null);
+          return;
+        }
+
+        const studentData =
+          studentSnapshot.data();
+
+        const saved =
+          studentData.smartFollowUp;
+
+        if (
+          !saved ||
+          typeof saved !== "object"
+        ) {
+          setSmartFollowUp(null);
+          return;
+        }
+
+        setSmartFollowUp({
+          date:
+            typeof saved.date ===
+              "string"
+              ? saved.date
+              : "",
+
+          homeworkLabel:
+            typeof saved.homeworkLabel ===
+              "string"
+              ? saved.homeworkLabel
+              : "",
+
+          readingLevelLabel:
+            typeof saved.readingLevelLabel ===
+              "string"
+              ? saved.readingLevelLabel
+              : "",
+
+          readingAccuracyLabel:
+            typeof saved.readingAccuracyLabel ===
+              "string"
+              ? saved.readingAccuracyLabel
+              : "",
+
+          readingFluencyLabel:
+            typeof saved.readingFluencyLabel ===
+              "string"
+              ? saved.readingFluencyLabel
+              : "",
+
+          readingDiacriticsLabel:
+            typeof saved.readingDiacriticsLabel ===
+              "string"
+              ? saved.readingDiacriticsLabel
+              : "",
+
+          readingNote:
+            typeof saved.readingNote ===
+              "string"
+              ? saved.readingNote
+              : "",
+        });
+      } catch (error) {
+        console.error(
+          "تعذر تحميل متابعة الطالب:",
+          error
+        );
+
+        setSmartFollowUp(null);
+      }
+    }
+
+    void loadSmartFollowUp();
+  }, []);
 
   const completedCount =
     completedTasks.length;
@@ -316,9 +636,7 @@ export default function JourneyPage() {
     }
 
     if (
-      completedTasks.includes(
-        taskId
-      )
+      completedTasks.includes(taskId)
     ) {
       return;
     }
@@ -333,21 +651,22 @@ export default function JourneyPage() {
       const token =
         await user.getIdToken();
 
-      const response = await fetch(
-        "/api/student-journey",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            taskId,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          "/api/student-journey",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              taskId,
+            }),
+          }
+        );
 
       const data =
         await response.json();
@@ -525,6 +844,8 @@ export default function JourneyPage() {
           padding: "22px 16px",
         }}
       >
+        {/* الترحيب */}
+
         <section style={cardStyle}>
           <div
             style={{
@@ -533,20 +854,37 @@ export default function JourneyPage() {
               gap: "15px",
             }}
           >
-            <div
-              style={{
-                width: "72px",
-                height: "72px",
-                borderRadius: "50%",
-                background: "#e6f8ed",
-                display: "grid",
-                placeItems: "center",
-                fontSize: "40px",
-                flexShrink: 0,
-              }}
-            >
-              🧒🏻
-            </div>
+        <div
+  style={{
+    width: "72px",
+    height: "72px",
+    borderRadius: "50%",
+    background: "#e6f8ed",
+    display: "grid",
+    placeItems: "center",
+    fontSize: "40px",
+    flexShrink: 0,
+    overflow: "hidden",
+    border:
+      "3px solid #d5eee1",
+  }}
+>
+  {personalPhotoUrl ? (
+    <img
+      src={personalPhotoUrl}
+      alt="صورة الطالب"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+      }}
+    />
+  ) : (
+    <span>
+      {selectedAvatarIcon}
+    </span>
+  )}
+</div>
 
             <div>
               <h2
@@ -573,6 +911,281 @@ export default function JourneyPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* مستواي اليوم */}
+
+        <section
+          style={{
+            ...cardStyle,
+            border:
+              "2px solid #cfe9dd",
+            background:
+              "linear-gradient(135deg,#ffffff 0%,#effcf6 100%)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+              marginBottom: "18px",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  color: "#126b49",
+                  fontSize: "24px",
+                }}
+              >
+                🌟 مستواي اليوم
+              </h2>
+
+              <p
+                style={{
+                  margin: "7px 0 0",
+                  color: "#64748b",
+                  lineHeight: 1.7,
+                }}
+              >
+                شاهد ما أتقنته وما يمكنني تحسينه.
+              </p>
+            </div>
+
+            {smartFollowUp?.date && (
+              <span
+                style={{
+                  padding:
+                    "7px 12px",
+                  borderRadius:
+                    "999px",
+                  background:
+                    "#dcfce7",
+                  color: "#08734b",
+                  fontWeight: 800,
+                  fontSize: "13px",
+                }}
+              >
+                📅{" "}
+                {smartFollowUp.date}
+              </span>
+            )}
+          </div>
+
+          {!smartFollowUp ? (
+            <div
+              style={{
+                padding: "18px",
+                borderRadius:
+                  "18px",
+                background:
+                  "#f8fafc",
+                color: "#64748b",
+                textAlign: "center",
+                fontWeight: 700,
+              }}
+            >
+              ⏳ لم يسجل المعلم تقييمًا جديدًا حتى الآن.
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  padding: "17px",
+                  borderRadius:
+                    "20px",
+                  background:
+                    "#eef8ff",
+                  border:
+                    "1px solid #d4eafb",
+                  marginBottom:
+                    "14px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent:
+                      "space-between",
+                    alignItems:
+                      "center",
+                    gap: "10px",
+                    flexWrap:
+                      "wrap",
+                    marginBottom:
+                      "14px",
+                  }}
+                >
+                  <strong
+                    style={{
+                      fontSize:
+                        "18px",
+                      color:
+                        "#075985",
+                    }}
+                  >
+                    📖 قراءتي
+                  </strong>
+
+                  <span
+                    style={{
+                      background:
+                        "#ffffff",
+                      borderRadius:
+                        "999px",
+                      padding:
+                        "7px 12px",
+                      fontWeight: 900,
+                      color:
+                        "#075985",
+                    }}
+                  >
+                    {smartFollowUp.readingLevelLabel ||
+                      "لم أُقيّم بعد"}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fit,minmax(135px,1fr))",
+                    gap: "10px",
+                  }}
+                >
+                  <div
+                    style={
+                      studentLevelCardStyle
+                    }
+                  >
+                    <span>
+                      🎯 الدقة
+                    </span>
+
+                    <strong>
+                      {smartFollowUp.readingAccuracyLabel ||
+                        "لم أُقيّم"}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={
+                      studentLevelCardStyle
+                    }
+                  >
+                    <span>
+                      ⚡ الطلاقة
+                    </span>
+
+                    <strong>
+                      {smartFollowUp.readingFluencyLabel ||
+                        "لم أُقيّم"}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={
+                      studentLevelCardStyle
+                    }
+                  >
+                    <span>
+                      🎨 الحركات
+                    </span>
+
+                    <strong>
+                      {smartFollowUp.readingDiacriticsLabel ||
+                        "لم أُقيّم"}
+                    </strong>
+                  </div>
+                </div>
+
+                {smartFollowUp.readingNote && (
+                  <div
+                    style={{
+                      marginTop:
+                        "12px",
+                      padding:
+                        "13px",
+                      background:
+                        "#ffffff",
+                      borderRadius:
+                        "15px",
+                      color:
+                        "#475569",
+                      lineHeight: 1.8,
+                      fontWeight: 700,
+                    }}
+                  >
+                    💬 معلمي يقول:{" "}
+                    {
+                      smartFollowUp.readingNote
+                    }
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{
+                  padding: "17px",
+                  borderRadius:
+                    "20px",
+                  background:
+                    "#fff8e7",
+                  border:
+                    "1px solid #f0dfae",
+                }}
+              >
+                <strong
+                  style={{
+                    display: "block",
+                    color:
+                      "#8a5b00",
+                    marginBottom:
+                      "8px",
+                    fontSize:
+                      "18px",
+                  }}
+                >
+                  📝 إنجاز واجبي
+                </strong>
+
+                <div
+                  style={{
+                    fontWeight: 900,
+                    color:
+                      "#735316",
+                    lineHeight: 1.8,
+                  }}
+                >
+                  {smartFollowUp.homeworkLabel ||
+                    "لم تُسجل متابعة الواجب بعد"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: "14px",
+                  padding: "15px",
+                  borderRadius:
+                    "18px",
+                  background:
+                    "linear-gradient(135deg,#eaf9f1,#ffffff)",
+                  border:
+                    "1px solid #cfead9",
+                  color: "#176c46",
+                  lineHeight: 1.8,
+                  fontWeight: 800,
+                }}
+              >
+                🦸 فارس يقول: استمر يا بطل! كل تدريب صغير اليوم يجعلك قارئًا أقوى غدًا. 🌟
+              </div>
+            </>
+          )}
         </section>
 
         {errorMessage && (
@@ -630,9 +1243,7 @@ export default function JourneyPage() {
                   lineHeight: 1.7,
                 }}
               >
-                اعرف جدولك، وتابع
-                حصتك الحالية والقادمة
-                بسهولة.
+                اعرف جدولك، وتابع حصتك الحالية والقادمة بسهولة.
               </p>
             </div>
 
@@ -717,8 +1328,7 @@ export default function JourneyPage() {
                     lineHeight: 1.6,
                   }}
                 >
-                  الحصة الحالية،
-                  القادمة، وبقية اليوم
+                  الحصة الحالية، القادمة، وبقية اليوم
                 </span>
               </div>
             </Link>
@@ -781,13 +1391,14 @@ export default function JourneyPage() {
                     lineHeight: 1.6,
                   }}
                 >
-                  شاهد حصص الأسبوع
-                  كاملة في مكان واحد
+                  شاهد حصص الأسبوع كاملة في مكان واحد
                 </span>
               </div>
             </Link>
           </div>
         </section>
+
+        {/* الإحصاءات */}
 
         <section
           style={{
@@ -832,7 +1443,261 @@ export default function JourneyPage() {
             }
           />
         </section>
+{/* تاج لغتي */}
 
+<section
+  style={{
+    ...cardStyle,
+    border: "2px solid #edc84d",
+    background:
+      "linear-gradient(135deg,#fff7c9 0%,#fffdf2 55%,#ffffff 100%)",
+    position: "relative",
+    overflow: "hidden",
+  }}
+>
+  <div
+    style={{
+      position: "absolute",
+      top: "12px",
+      left: "18px",
+      fontSize: "30px",
+      opacity: 0.35,
+    }}
+  >
+    ✨
+  </div>
+
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "14px",
+      flexWrap: "wrap",
+      marginBottom: "18px",
+    }}
+  >
+    <div>
+      <h2
+        style={{
+          margin: "0 0 6px",
+          color: "#805b00",
+          fontSize: "25px",
+        }}
+      >
+        👑 تاج لغتي
+      </h2>
+
+      <p
+        style={{
+          margin: 0,
+          color: "#7f7147",
+          lineHeight: 1.7,
+        }}
+      >
+        هنا أحتفظ بتيجاني وإنجازاتي في القراءة والإملاء.
+      </p>
+    </div>
+
+    <Link
+      href="/lughati-crown"
+      style={{
+        textDecoration: "none",
+        padding: "10px 15px",
+        borderRadius: "14px",
+        background: "#8a6500",
+        color: "#ffffff",
+        fontWeight: 900,
+      }}
+    >
+      شاهد تيجاني ←
+    </Link>
+  </div>
+
+  {crownLoading ? (
+    <div
+      style={{
+        padding: "18px",
+        borderRadius: "18px",
+        background: "rgba(255,255,255,.65)",
+        textAlign: "center",
+        color: "#8a783e",
+        fontWeight: 800,
+      }}
+    >
+      ⏳ جارٍ تجهيز تيجاني...
+    </div>
+  ) : (
+    <>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(150px,1fr))",
+          gap: "11px",
+        }}
+      >
+        <div style={crownStatStyle}>
+          <span
+            style={{
+              fontSize: "29px",
+            }}
+          >
+            📖👑
+          </span>
+
+          <strong>
+            {readingKingCount}
+          </strong>
+
+          <small>
+            تاج قراءة
+          </small>
+        </div>
+
+        <div style={crownStatStyle}>
+          <span
+            style={{
+              fontSize: "29px",
+            }}
+          >
+            ✍️👑
+          </span>
+
+          <strong>
+            {spellingKingCount}
+          </strong>
+
+          <small>
+            تاج إملاء
+          </small>
+        </div>
+
+        <div style={crownStatStyle}>
+          <span
+            style={{
+              fontSize: "29px",
+            }}
+          >
+            💎
+          </span>
+
+          <strong>
+            {masteryCount}
+          </strong>
+
+          <small>
+            إتقان كامل
+          </small>
+        </div>
+      </div>
+
+      {latestCrownAchievement ? (
+        <div
+          style={{
+            marginTop: "14px",
+            padding: "15px",
+            borderRadius: "18px",
+            background: "#ffffff",
+            border: "1px solid #edd88a",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              display: "grid",
+              placeItems: "center",
+              overflow: "hidden",
+              background: "#fff8d9",
+              border: "2px solid #e6bf3d",
+              fontSize: "31px",
+              flexShrink: 0,
+            }}
+          >
+            {latestCrownAchievement.personalPhotoUrl ? (
+              <img
+                src={
+                  latestCrownAchievement.personalPhotoUrl
+                }
+                alt=""
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <span>
+                {latestCrownAchievement.selectedAvatarIcon ||
+                  selectedAvatarIcon}
+              </span>
+            )}
+          </div>
+
+          <div>
+            <div
+              style={{
+                color: "#8a6500",
+                fontWeight: 900,
+                fontSize: "17px",
+              }}
+            >
+              {
+                latestCrownAchievement.kingTitle
+              }
+            </div>
+
+            <div
+              style={{
+                marginTop: "4px",
+                color: "#6c705f",
+                fontSize: "14px",
+                fontWeight: 700,
+              }}
+            >
+              في درس:{" "}
+              {
+                latestCrownAchievement.lessonName
+              }
+            </div>
+
+            {latestCrownAchievement.fullMastery && (
+              <div
+                style={{
+                  marginTop: "5px",
+                  color: "#16724d",
+                  fontSize: "13px",
+                  fontWeight: 900,
+                }}
+              >
+                💎 إتقان كامل للدرس
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            marginTop: "14px",
+            padding: "15px",
+            textAlign: "center",
+            borderRadius: "18px",
+            background: "rgba(255,255,255,.6)",
+            color: "#8b7a46",
+            fontWeight: 800,
+          }}
+        >
+          🌱 ابدأ رحلتك نحو أول تاج في القراءة أو الإملاء.
+        </div>
+      )}
+    </>
+  )}
+</section>
         {allTasksCompleted && (
           <section
             style={{
@@ -872,8 +1737,7 @@ export default function JourneyPage() {
               }}
             >
               أكملت جميع مهام اليوم
-              وحصلت على مكافأة النشاط
-              اليومي:
+              وحصلت على مكافأة النشاط اليومي:
               <strong>
                 {" "}
                 10 نقاط و3 نجوم 🏅
@@ -881,6 +1745,8 @@ export default function JourneyPage() {
             </p>
           </section>
         )}
+
+        {/* تقدمي اليوم */}
 
         <section style={cardStyle}>
           <div
@@ -1094,6 +1960,8 @@ export default function JourneyPage() {
           </div>
         </section>
 
+        {/* المكافأة والسلسلة */}
+
         <section
           style={{
             display: "grid",
@@ -1191,6 +2059,8 @@ export default function JourneyPage() {
             </p>
           </div>
         </section>
+
+        {/* رحلة القراءة */}
 
         <section style={cardStyle}>
           <div
@@ -1305,6 +2175,8 @@ export default function JourneyPage() {
           </div>
         </section>
 
+        {/* المحطات */}
+
         <section>
           <div
             style={{
@@ -1327,8 +2199,7 @@ export default function JourneyPage() {
                 color: "#687b72",
               }}
             >
-              اختر المحطة التي ترغب
-              في زيارتها
+              اختر المحطة التي ترغب في زيارتها
             </p>
           </div>
 
@@ -1516,4 +2387,32 @@ const streakCardStyle = {
   border: "2px solid #ffbcae",
   borderRadius: "24px",
   padding: "20px",
+};
+
+const studentLevelCardStyle = {
+  background: "#ffffff",
+  borderRadius: "15px",
+  padding: "13px",
+  display: "grid",
+  gap: "6px",
+  textAlign: "center" as const,
+  color: "#475569",
+};
+const crownStatStyle = {
+  background:
+    "rgba(255,255,255,.82)",
+  border:
+    "1px solid #ead487",
+  borderRadius:
+    "17px",
+  padding:
+    "14px",
+  textAlign:
+    "center" as const,
+  display:
+    "grid",
+  gap:
+    "5px",
+  color:
+    "#7c620d",
 };

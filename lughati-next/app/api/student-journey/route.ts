@@ -161,6 +161,20 @@ export async function GET(request: Request) {
           ? readingProgressData.totalApprovedDays
           : 0,
 
+      personalPhotoUrl:
+        studentData.personalPhotoStatus ===
+          "approved" &&
+        typeof studentData.personalPhotoUrl ===
+          "string"
+          ? studentData.personalPhotoUrl
+          : "",
+
+      selectedAvatarIcon:
+        typeof studentData.selectedAvatarIcon ===
+          "string"
+          ? studentData.selectedAvatarIcon
+          : "🧒🏻",
+
       completedTaskIds,
     });
   } catch (error) {

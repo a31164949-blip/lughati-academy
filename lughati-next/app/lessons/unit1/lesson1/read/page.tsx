@@ -1,416 +1,697 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { completeLessonOneStation } from "../progress";
+import { Fragment, useMemo, useState } from "react";
 
-const readingText =
-  "صلة الرحم خُلُق جميل. أتواصل مع أقاربي، وأسأل عنهم، وأزورهم، وأساعدهم عند الحاجة. أحب جدتي وجدي، وأحترم عمي وعمتي، وأزور خالي وخالتي. عندما أصل رحمي أنشر المحبة والسعادة بين أفراد عائلتي.";
-
-const vocabulary = [
+const readingParts = [
   {
-    word: "صلة الرحم",
-    meaning: "التواصل مع الأقارب والإحسان إليهم.",
+    title: "بِدَايَةُ الرِّحْلَةِ",
+    text:
+      "عِنْدَ عَوْدَةِ فَوَّازٍ وَنُورَةَ مِنَ الْمَدْرَسَةِ بِصُحْبَةِ أَبِيهِمَا، اسْتَمَعُوا إِلَى مُذِيعٍ يَقْرَأُ فِي الْإِذَاعَةِ قَوْلَ الرَّسُولِ ﷺ: «مَنْ كَانَ يُؤْمِنُ بِاللَّهِ وَالْيَوْمِ الْآخِرِ فَلْيَصِلْ رَحِمَهُ».",
+    icon: "🚗",
+  },
+  {
+    title: "مَا مَعْنَى الرَّحِمِ؟",
+    text:
+      "سَأَلَ فَوَّازٌ أَبَاهُ: مَا مَعْنَى الرَّحِمِ يَا أَبِي؟ فَقَالَ الْأَبُ: الرَّحِمُ اسْمٌ لِكُلِّ مَنْ تَرْبِطُنَا بِهِمْ صِلَةُ قُرْبَى.",
+    icon: "👨‍👧‍👦",
+  },
+  {
+    title: "مَا مَعْنَى صِلَةِ الرَّحِمِ؟",
+    text:
+      "سَأَلَتْ نُورَةُ: وَمَا مَعْنَى صِلَةِ الرَّحِمِ؟ فَقَالَ الْأَبُ: صِلَةُ الرَّحِمِ تَعْنِي زِيَارَةَ الْأَقَارِبِ، وَالسُّؤَالَ عَنْهُمْ، وَتَفَقُّدَ أَحْوَالِهِمْ، وَمُسَاعَدَتَهُمْ عِنْدَ الْحَاجَةِ، وَمُشَارَكَتَهُمْ أَفْرَاحَهُمْ وَأَحْزَانَهُمْ.",
     icon: "🤝",
   },
   {
-    word: "أقاربي",
-    meaning: "أفراد عائلتي من جهة الأب والأم.",
-    icon: "👨‍👩‍👧‍👦",
+    title: "فِكْرَةُ فَوَّازٍ",
+    text:
+      "قَالَ فَوَّازٌ: مَا رَأْيُكَ يَا أَبِي أَنْ نُخَصِّصَ يَوْمًا نَصِلُ فِيهِ أَرْحَامَنَا؟ فَقَالَ الْأَبُ: إِنَّهُ رَأْيٌ جَمِيلٌ، بَارَكَ اللَّهُ فِيكَ يَا بُنَيَّ.",
+    icon: "💡",
   },
   {
-    word: "أطمئن",
-    meaning: "أسأل عن الشخص لأعرف أنه بخير.",
-    icon: "💚",
+    title: "نُورَةُ مُتَشَوِّقَةٌ",
+    text:
+      "قَالَتْ نُورَةُ: أَنَا مُتَشَوِّقَةٌ لِهَذَا الْيَوْمِ يَا أَبِي. فَقَالَ الْأَبُ: بَارَكَ اللَّهُ فِيكِ يَا بُنَيَّتِي.",
+    icon: "🌟",
   },
 ];
 
-const questions = [
-  {
-    question: "أيُّ سلوك يدل على صلة الرحم؟",
-    options: [
-      "زيارة الأقارب والسؤال عنهم",
-      "تجاهل الأقارب",
-      "عدم مساعدة أفراد العائلة",
-    ],
-    correctAnswer: 0,
-  },
-  {
-    question: "من أقاربي؟",
-    options: ["عمي وخالتي", "كتابي وقلمي", "مقعدي وحقيبتي"],
-    correctAnswer: 0,
-  },
-  {
-    question: "ماذا أنشر عندما أصل رحمي؟",
-    options: ["المحبة والسعادة", "الحزن والخلاف", "الإهمال"],
-    correctAnswer: 0,
-  },
-];
+const wordMeanings: Record<string, string> = {
+  الرحم: "الأقارب الذين تربطنا بهم صلة قرابة.",
+  الأقارب: "أفراد العائلة الذين تجمعنا بهم صلة قرابة.",
+  تفقد: "السؤال عن أحوال الشخص والاطمئنان عليه.",
+  الحاجة: "وقت احتياج الشخص إلى المساعدة.",
+  أرحامنا: "أقاربنا.",
+};
 
-export default function ReadPage() {
-  const [selectedAnswers, setSelectedAnswers] = useState<
-    Record<number, number>
-  >({});
-  const [showResults, setShowResults] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+const diacriticColors: Record<string, string> = {
+  "َ": "#ef4444", // فتحة
+  "ِ": "#2563eb", // كسرة
+  "ُ": "#16a34a", // ضمة
+  "ْ": "#7c3aed", // سكون
+  "ّ": "#f59e0b", // شدة
+  "ً": "#ef4444",
+  "ٍ": "#2563eb",
+  "ٌ": "#16a34a",
+};
 
-  useEffect(() => {
-    const savedCompletion = window.localStorage.getItem(
-      "unit1-lesson1-read-completed",
-    );
+const arabicDiacriticsRegex = /[\u064B-\u0652]/g;
 
-    if (savedCompletion === "true") {
-      setCompleted(true);
-    }
-  }, []);
-
-  const score = questions.reduce((total, question, index) => {
-    return selectedAnswers[index] === question.correctAnswer
-      ? total + 1
-      : total;
-  }, 0);
-
-  const allQuestionsAnswered =
-    Object.keys(selectedAnswers).length === questions.length;
-
-  function selectAnswer(questionIndex: number, answerIndex: number) {
-    if (showResults) return;
-
-    setSelectedAnswers((currentAnswers) => ({
-      ...currentAnswers,
-      [questionIndex]: answerIndex,
-    }));
-  }
-
-  function checkAnswers() {
-    if (!allQuestionsAnswered) return;
-
-    setShowResults(true);
-
-    if (score === questions.length) {
-      setCompleted(true);
-      window.localStorage.setItem(
-        "unit1-lesson1-read-completed",
-        "true",
-      );
-    }
-  }
-
-  function tryAgain() {
-    setSelectedAnswers({});
-    setShowResults(false);
-  }
-
-  function readTextAloud() {
-  
-if (!("speechSynthesis" in window)) {
-  return;
+function removeDiacritics(text: string) {
+  return text.replace(arabicDiacriticsRegex, "");
 }
-    window.speechSynthesis.cancel();
 
-    const speech = new SpeechSynthesisUtterance(readingText);
-    speech.lang = "ar-SA";
-    speech.rate = 0.8;
-    speech.pitch = 1;
-
-    speech.onstart = () => setIsSpeaking(true);
-    speech.onend = () => setIsSpeaking(false);
-    speech.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(speech);
+function ColoredArabicText({
+  text,
+  showDiacritics,
+}: {
+  text: string;
+  showDiacritics: boolean;
+}) {
+  if (!showDiacritics) {
+    return <>{removeDiacritics(text)}</>;
   }
 
-  function stopReading() {
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
+  return (
+    <>
+      {Array.from(text).map((char, index) => {
+        const color = diacriticColors[char];
+
+        if (color) {
+          return (
+            <span
+              key={`${char}-${index}`}
+              style={{
+                color,
+                fontWeight: 900,
+              }}
+            >
+              {char}
+            </span>
+          );
+        }
+
+        return (
+          <Fragment key={`${char}-${index}`}>
+            {char}
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+export default function LessonReadPage() {
+  const [partIndex, setPartIndex] = useState(0);
+  const [focusMode, setFocusMode] = useState(false);
+  const [showDiacritics, setShowDiacritics] = useState(true);
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
+
+  const currentPart = readingParts[partIndex];
+
+  const progress = useMemo(
+    () =>
+      Math.round(
+        ((partIndex + 1) / readingParts.length) * 100
+      ),
+    [partIndex]
+  );
+function nextPart() {
+  if (partIndex === readingParts.length - 1) {
+    completeLessonOneStation("reading");
+    setFinished(true);
+    return;
+  }
+
+  setPartIndex((current) => current + 1);
+  setSelectedWord(null);
+}
+
+  function previousPart() {
+    if (partIndex === 0) return;
+
+    setPartIndex((current) => current - 1);
+    setSelectedWord(null);
+  }
+
+  function restartReading() {
+    setPartIndex(0);
+    setFinished(false);
+    setSelectedWord(null);
+    setShowDiacritics(true);
   }
 
   return (
     <main
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-sky-50 px-4 py-6 text-slate-900 md:px-8 md:py-10"
+      style={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(180deg,#eefaf5 0%,#f8fbff 55%,#fff9ed 100%)",
+        padding: "24px 16px 60px",
+        fontFamily: "Arial, sans-serif",
+        color: "#174c3b",
+      }}
     >
-      <section className="mx-auto max-w-6xl">
-        <header className="mb-7 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm md:p-9">
-          <div className="flex flex-wrap items-center justify-between gap-6">
-            <div>
-              <p className="mb-2 font-bold text-emerald-700">
-                أكاديمية لغتي
-              </p>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 980,
+          margin: "0 auto",
+        }}
+      >
+        {/* أعلى الصفحة */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+            marginBottom: 20,
+          }}
+        >
+          <Link
+            href="/lessons/unit1/lesson1"
+            style={{
+              textDecoration: "none",
+              background: "#ffffff",
+              color: "#176d4c",
+              border: "1px solid #cfe7dd",
+              borderRadius: 16,
+              padding: "12px 18px",
+              fontWeight: 900,
+            }}
+          >
+            ← العودة إلى محطات الدرس
+          </Link>
 
-              <span className="mb-3 inline-block rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-800">
-                📖 أقرأ وأفهم
-              </span>
-
-              <h1 className="mb-3 text-3xl font-bold md:text-5xl">
-                صلة الرحم
-              </h1>
-
-              <p className="max-w-3xl text-lg leading-9 text-slate-600">
-                اقرأ النص بهدوء، واستمع إليه، ثم أجب عن الأسئلة لتحصل
-                على نجمة القراءة.
-              </p>
-            </div>
-
-            <Link
-              href="/lessons/unit1/lesson1"
-              className="rounded-2xl border border-emerald-200 bg-white px-5 py-3 font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-50"
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setShowDiacritics((current) => !current)
+              }
+              style={{
+                border: showDiacritics
+                  ? "1px solid #f0d47a"
+                  : "1px solid #cfe7dd",
+                background: showDiacritics
+                  ? "#fff8d9"
+                  : "#ffffff",
+                color: showDiacritics
+                  ? "#8a6500"
+                  : "#176d4c",
+                borderRadius: 16,
+                padding: "12px 18px",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
             >
-              العودة إلى الدرس
-            </Link>
+              {showDiacritics
+                ? "👁️ أخفِ الحركات — أتحدى نفسي"
+                : "🎨 أظهر الحركات الملوّنة"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setFocusMode((current) => !current)
+              }
+              style={{
+                border: "1px solid #d4e7df",
+                background: focusMode
+                  ? "#176d4c"
+                  : "#ffffff",
+                color: focusMode
+                  ? "#ffffff"
+                  : "#176d4c",
+                borderRadius: 16,
+                padding: "12px 18px",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              ☝️{" "}
+              {focusMode
+                ? "إيقاف إصبع القراءة"
+                : "إصبع القراءة"}
+            </button>
           </div>
+        </div>
 
-          <div className="mt-7">
-            <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-600">
-              <span>تقدم نشاط القراءة</span>
-              <span>{completed ? "100%" : "50%"}</span>
-            </div>
-
-            <div className="h-4 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className={`h-full rounded-full bg-emerald-500 transition-all duration-500 ${
-                  completed ? "w-full" : "w-1/2"
-                }`}
-              />
-            </div>
-          </div>
-        </header>
-
-        <section className="mb-7 overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
-          <div className="grid md:grid-cols-[280px_1fr]">
-            <div className="flex min-h-64 items-center justify-center bg-gradient-to-br from-emerald-100 to-sky-100 p-8">
-              <div className="text-center">
-                <div className="mb-4 text-8xl">👨‍👩‍👧‍👦</div>
-
-                <p className="text-xl font-bold text-emerald-800">
-                  عائلتي مصدر المحبة
-                </p>
-              </div>
-            </div>
-
-            <div className="p-6 md:p-9">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-3xl font-bold">
-                  📚 نص القراءة
-                </h2>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={readTextAloud}
-                    disabled={isSpeaking}
-                    className="rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSpeaking ? "🔊 جاري الاستماع..." : "🔊 استمع إلى النص"}
-                  </button>
-
-                  {isSpeaking && (
-                    <button
-                      type="button"
-                      onClick={stopReading}
-                      className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 font-bold text-rose-700"
-                    >
-                      ⏹ إيقاف
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <p className="rounded-3xl bg-amber-50 p-6 text-2xl leading-[2.2] text-slate-800">
-                صلة الرحم خُلُق جميل. أتواصل مع{" "}
-                <span className="font-bold text-emerald-700">
-                  أقاربي
-                </span>
-                ، وأسأل عنهم، وأزورهم، وأساعدهم عند الحاجة. أحب جدتي
-                وجدي، وأحترم عمي وعمتي، وأزور خالي وخالتي. عندما{" "}
-                <span className="font-bold text-emerald-700">
-                  أصل رحمي
-                </span>{" "}
-                أنشر المحبة والسعادة بين أفراد عائلتي.
-              </p>
-
-              <div className="mt-5 rounded-2xl border-r-4 border-emerald-500 bg-emerald-50 p-5">
-                <p className="text-lg font-bold leading-8 text-emerald-900">
-                  💡 الفكرة الرئيسة: أتواصل مع أقاربي وأحسن إليهم
-                  لتسود المحبة بين أفراد العائلة.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-7 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm md:p-8">
-          <h2 className="mb-6 text-3xl font-bold">
-            🌱 كلمات جديدة
-          </h2>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {vocabulary.map((item) => (
-              <article
-                key={item.word}
-                className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5"
-              >
-                <div className="mb-3 text-4xl">{item.icon}</div>
-
-                <h3 className="mb-2 text-2xl font-bold text-emerald-800">
-                  {item.word}
-                </h3>
-
-                <p className="leading-8 text-slate-700">
-                  {item.meaning}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-7 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm md:p-8">
-          <div className="mb-7">
-            <span className="mb-3 inline-block rounded-full bg-sky-100 px-4 py-2 text-sm font-bold text-sky-800">
-              اختبر فهمك
+        {/* دليل ألوان الحركات */}
+        {showDiacritics && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              gap: 8,
+              marginBottom: 18,
+            }}
+          >
+            <span style={legendStyle}>
+              <strong style={{ color: "#ef4444" }}>َ</strong>{" "}
+              الفتحة
             </span>
 
-            <h2 className="text-3xl font-bold">
-              ✍️ أجب عن الأسئلة
-            </h2>
+            <span style={legendStyle}>
+              <strong style={{ color: "#2563eb" }}>ِ</strong>{" "}
+              الكسرة
+            </span>
+
+            <span style={legendStyle}>
+              <strong style={{ color: "#16a34a" }}>ُ</strong>{" "}
+              الضمة
+            </span>
+
+            <span style={legendStyle}>
+              <strong style={{ color: "#7c3aed" }}>ْ</strong>{" "}
+              السكون
+            </span>
+
+            <span style={legendStyle}>
+              <strong style={{ color: "#f59e0b" }}>ّ</strong>{" "}
+              الشدة
+            </span>
+          </div>
+        )}
+
+        {/* رأس الرحلة */}
+        <section
+          style={{
+            background:
+              "linear-gradient(135deg,#168a63,#2fb889)",
+            color: "#ffffff",
+            borderRadius: 30,
+            padding: "34px 20px",
+            textAlign: "center",
+            boxShadow:
+              "0 16px 40px rgba(22,138,99,.18)",
+            marginBottom: 22,
+          }}
+        >
+          <div style={{ fontSize: 56 }}>📖</div>
+
+          <div
+            style={{
+              display: "inline-block",
+              marginTop: 10,
+              background: "rgba(255,255,255,.16)",
+              borderRadius: 999,
+              padding: "7px 15px",
+              fontWeight: 900,
+            }}
+          >
+            رحلة القراءة
           </div>
 
-          <div className="space-y-7">
-            {questions.map((question, questionIndex) => (
-              <article
-                key={question.question}
-                className="rounded-3xl border border-slate-200 p-5 md:p-6"
-              >
-                <h3 className="mb-5 text-xl font-bold leading-9">
-                  {questionIndex + 1}. {question.question}
-                </h3>
+          <h1
+            style={{
+              margin: "14px 0 8px",
+              fontSize: "clamp(32px,5vw,48px)",
+            }}
+          >
+            صلة الرحم
+          </h1>
 
-                <div className="grid gap-3">
-                  {question.options.map((option, answerIndex) => {
-                    const isSelected =
-                      selectedAnswers[questionIndex] === answerIndex;
-                    const isCorrect =
-                      question.correctAnswer === answerIndex;
-
-                    let answerStyle =
-                      "border-slate-200 bg-white text-slate-700";
-
-                    if (isSelected && !showResults) {
-                      answerStyle =
-                        "border-emerald-500 bg-emerald-50 text-emerald-900";
-                    }
-
-                    if (showResults && isCorrect) {
-                      answerStyle =
-                        "border-emerald-500 bg-emerald-100 text-emerald-900";
-                    }
-
-                    if (showResults && isSelected && !isCorrect) {
-                      answerStyle =
-                        "border-rose-400 bg-rose-50 text-rose-800";
-                    }
-
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() =>
-                          selectAnswer(questionIndex, answerIndex)
-                        }
-                        className={`rounded-2xl border-2 p-4 text-right text-lg font-bold transition ${answerStyle}`}
-                      >
-                        {option}
-
-                        {showResults && isCorrect && (
-                          <span className="mr-2">✅</span>
-                        )}
-
-                        {showResults && isSelected && !isCorrect && (
-                          <span className="mr-2">❌</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-7 flex flex-wrap items-center gap-4">
-            {!showResults ? (
-              <button
-                type="button"
-                onClick={checkAnswers}
-                disabled={!allQuestionsAnswered}
-                className="rounded-2xl bg-emerald-600 px-7 py-4 text-lg font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                تحقق من إجاباتي
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={tryAgain}
-                className="rounded-2xl border border-emerald-300 bg-white px-7 py-4 text-lg font-bold text-emerald-700"
-              >
-                إعادة المحاولة
-              </button>
-            )}
-
-            {!allQuestionsAnswered && !showResults && (
-              <p className="text-slate-500">
-                أجب عن جميع الأسئلة أولًا.
-              </p>
-            )}
-          </div>
-
-          {showResults && (
-            <div
-              className={`mt-7 rounded-3xl p-6 ${
-                score === questions.length
-                  ? "bg-emerald-100"
-                  : "bg-amber-100"
-              }`}
-            >
-              <h3 className="mb-2 text-2xl font-bold">
-                نتيجتك: {score} من {questions.length}
-              </h3>
-
-              <p className="text-lg leading-8">
-                {score === questions.length
-                  ? "🌟 أحسنت يا بطل! أجبت عن جميع الأسئلة بصورة صحيحة وحصلت على نجمة القراءة."
-                  : "محاولة جميلة! راجع النص ثم أعد المحاولة حتى تحصل على النجمة."}
-              </p>
-            </div>
-          )}
+          <p
+            style={{
+              margin: 0,
+              lineHeight: 1.9,
+              fontSize: 17,
+            }}
+          >
+            اقرأ بهدوء، وانتقل بين أجزاء النص حتى تصل إلى
+            نجمة القراءة ⭐
+          </p>
         </section>
 
-        <section className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-6">
-            <div>
-              <h2 className="mb-2 text-3xl font-bold">
-                {completed
-                  ? "⭐ حصلت على نجمة القراءة"
-                  : "🏆 أكمل النشاط لتحصل على النجمة"}
-              </h2>
+        {!finished ? (
+          <>
+            {/* التقدم */}
+            <section
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dcece5",
+                borderRadius: 22,
+                padding: 18,
+                marginBottom: 20,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  marginBottom: 10,
+                  fontWeight: 900,
+                  color: "#176d4c",
+                }}
+              >
+                <span>
+                  المحطة {partIndex + 1} من{" "}
+                  {readingParts.length}
+                </span>
 
-              <p className="leading-8 text-slate-600">
-                {completed
-                  ? "تم حفظ إنجازك على هذا الجهاز. تستطيع العودة إلى الدرس ومتابعة رحلتك التعليمية."
-                  : "اقرأ النص وأجب عن جميع الأسئلة بصورة صحيحة."}
-              </p>
-            </div>
+                <span>{progress}%</span>
+              </div>
+
+              <div
+                style={{
+                  height: 14,
+                  background: "#e7efeb",
+                  borderRadius: 999,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${progress}%`,
+                    height: "100%",
+                    background:
+                      "linear-gradient(90deg,#26a96d,#6bd69b)",
+                    transition: "width .35s ease",
+                  }}
+                />
+              </div>
+            </section>
+
+            {/* بطاقة القراءة */}
+            <section
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dcece5",
+                borderRadius: 30,
+                padding: "32px 24px",
+                boxShadow:
+                  "0 14px 40px rgba(30,100,70,.08)",
+              }}
+            >
+              <div
+                style={{
+                  textAlign: "center",
+                  marginBottom: 26,
+                }}
+              >
+                <div style={{ fontSize: 56 }}>
+                  {currentPart.icon}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 9,
+                    color: "#16835f",
+                    fontSize: 15,
+                    fontWeight: 900,
+                  }}
+                >
+                  الجزء {partIndex + 1}
+                </div>
+
+                <h2
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: "clamp(25px,4vw,34px)",
+                    color: "#174c3b",
+                  }}
+                >
+                  <ColoredArabicText
+                    text={currentPart.title}
+                    showDiacritics={showDiacritics}
+                  />
+                </h2>
+              </div>
+
+              <div
+                style={{
+                  background: focusMode
+                    ? "#fffdf5"
+                    : "linear-gradient(135deg,#f7fcf9,#fffdf8)",
+                  border: focusMode
+                    ? "2px solid #f1d582"
+                    : "1px solid #e5eee9",
+                  borderRadius: 24,
+                  padding: "28px 22px",
+                  fontSize: "clamp(24px,4vw,34px)",
+                  lineHeight: 2.15,
+                  fontWeight: 700,
+                  color: "#183f32",
+                  textAlign: "right",
+                  transition: "all .25s ease",
+                }}
+              >
+                <ColoredArabicText
+                  text={currentPart.text}
+                  showDiacritics={showDiacritics}
+                />
+              </div>
+
+              {/* كلمات تفاعلية */}
+              <div
+                style={{
+                  marginTop: 24,
+                  background: "#f4fbf8",
+                  border: "1px solid #dceee6",
+                  borderRadius: 20,
+                  padding: 18,
+                }}
+              >
+                <div
+                  style={{
+                    marginBottom: 13,
+                    fontWeight: 900,
+                    color: "#176d4c",
+                  }}
+                >
+                  💎 كنوز صغيرة في النص
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 9,
+                  }}
+                >
+                  {Object.keys(wordMeanings).map((word) => (
+                    <button
+                      key={word}
+                      type="button"
+                      onClick={() =>
+                        setSelectedWord(word)
+                      }
+                      style={{
+                        border: "1px solid #bfe3d3",
+                        background:
+                          selectedWord === word
+                            ? "#168a63"
+                            : "#ffffff",
+                        color:
+                          selectedWord === word
+                            ? "#ffffff"
+                            : "#176d4c",
+                        borderRadius: 999,
+                        padding: "9px 14px",
+                        fontSize: 16,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {word}
+                    </button>
+                  ))}
+                </div>
+
+                {selectedWord && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      background: "#ffffff",
+                      borderRadius: 16,
+                      padding: 14,
+                      color: "#55766a",
+                      lineHeight: 1.8,
+                      fontWeight: 800,
+                    }}
+                  >
+                    💡{" "}
+                    <strong
+                      style={{
+                        color: "#176d4c",
+                      }}
+                    >
+                      {selectedWord}:
+                    </strong>{" "}
+                    {wordMeanings[selectedWord]}
+                  </div>
+                )}
+              </div>
+
+              {/* تشجيع فارس */}
+              <div
+                style={{
+                  marginTop: 22,
+                  borderRadius: 20,
+                  padding: 17,
+                  textAlign: "center",
+                  background: "#fff8e6",
+                  border: "1px solid #f2dfab",
+                  color: "#806116",
+                  fontWeight: 900,
+                  lineHeight: 1.8,
+                }}
+              >
+                🧒🏻 فارس يقول: اقرأ الكلمات بهدوء، ولا
+                تستعجل. أنت تتقدم بشكل رائع!
+              </div>
+
+              {/* التنقل */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    partIndex === 0 ? "1fr" : "1fr 1fr",
+                  gap: 12,
+                  marginTop: 22,
+                }}
+              >
+                {partIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={previousPart}
+                    style={{
+                      border: "1px solid #cfe7dd",
+                      background: "#ffffff",
+                      color: "#17674d",
+                      borderRadius: 17,
+                      padding: 14,
+                      fontSize: 17,
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    → الجزء السابق
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={nextPart}
+                  style={{
+                    border: "none",
+                    background:
+                      "linear-gradient(135deg,#168a63,#0f7654)",
+                    color: "#ffffff",
+                    borderRadius: 17,
+                    padding: 14,
+                    fontSize: 17,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {partIndex === readingParts.length - 1
+                    ? "⭐ أنهيت القراءة"
+                    : "الجزء التالي ←"}
+                </button>
+              </div>
+            </section>
+          </>
+        ) : (
+          <section
+            style={{
+              background: "#ffffff",
+              borderRadius: 30,
+              padding: "42px 24px",
+              border: "1px solid #dceee6",
+              textAlign: "center",
+              boxShadow:
+                "0 15px 40px rgba(30,100,70,.08)",
+            }}
+          >
+            <div style={{ fontSize: 76 }}>⭐</div>
+
+            <h2
+              style={{
+                margin: "12px 0 8px",
+                fontSize: 32,
+                color: "#176d4c",
+              }}
+            >
+              أصبحت بطل القراءة!
+            </h2>
+
+            <p
+              style={{
+                color: "#687f75",
+                fontSize: 18,
+                lineHeight: 1.9,
+                maxWidth: 600,
+                margin: "0 auto",
+              }}
+            >
+              أحسنت قراءة نص صلة الرحم. الآن أنت مستعد
+              لتثبت فهمك في المحطة التالية.
+            </p>
 
             <Link
-              href="/lessons/unit1/lesson1"
-              className={`rounded-2xl px-7 py-4 text-lg font-bold text-white ${
-                completed ? "bg-emerald-600" : "bg-slate-400"
-              }`}
+              href="/lessons/unit1/lesson1/comprehension"
+              style={{
+                display: "block",
+                marginTop: 24,
+                textDecoration: "none",
+                background:
+                  "linear-gradient(135deg,#168a63,#0f7654)",
+                color: "#ffffff",
+                borderRadius: 17,
+                padding: 15,
+                fontSize: 18,
+                fontWeight: 900,
+              }}
             >
-              العودة إلى أنشطة الدرس
+              🧠 انتقل إلى محطة أفهم النص
             </Link>
-          </div>
-        </section>
-      </section>
+
+            <button
+              type="button"
+              onClick={restartReading}
+              style={{
+                width: "100%",
+                marginTop: 12,
+                border: "1px solid #cfe7dd",
+                background: "#ffffff",
+                color: "#17674d",
+                borderRadius: 17,
+                padding: 14,
+                fontSize: 17,
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              🔁 أقرأ النص مرة أخرى
+            </button>
+          </section>
+        )}
+      </div>
     </main>
   );
 }
+
+const legendStyle = {
+  background: "#ffffff",
+  border: "1px solid #e3ebe7",
+  borderRadius: 999,
+  padding: "7px 12px",
+  color: "#526d63",
+  fontSize: 14,
+  fontWeight: 800,
+};

@@ -37,6 +37,12 @@ const sections = [
     href: "/teacher/students",
   },
   {
+  title: "📷 اعتماد صور الطلاب",
+  description:
+    "مراجعة الصور الشخصية المرسلة من الأسر واعتمادها أو رفضها قبل ظهورها في الأكاديمية.",
+  href: "/teacher/student-photos",
+},
+  {
     title: "🏫 تهيئة العام الدراسي",
     description: "إعداد الطلاب والفصول وبيانات الدخول قبل بداية العام الدراسي.",
     href: "/teacher/school-year",
@@ -57,14 +63,30 @@ const sections = [
     href: "/teacher/heroes",
   },
   {
+  title: "👑 تاج لغتي",
+  description:
+    "تقييم القراءة والإملاء، منح الألقاب، وتتويج ملوك القراءة والإملاء.",
+  href: "/teacher/lughati-crown",
+},
+  {
     title: "📤 مراجعة أعمال الطلاب",
     description: "مراجعة الملفات والصور والمقاطع المرفوعة.",
     href: "/teacher/submissions",
   },
   {
+  title: "📨 رسائل الطلاب",
+  description: "استقبال استفسارات الطلاب والرد عليها مباشرة داخل الأكاديمية.",
+  href: "/teacher/student-messages",
+},
+  {
     title: "🎨 إدارة معرض الطلاب",
     description: "إدارة الأعمال المنشورة وتمييزها أو إخفاؤها ومتابعة محتوى المعرض.",
     href: "/teacher/gallery",
+  },
+    {
+    title: "📸 يوميات الفصل",
+    description: "نشر صور ولقطات يومية من أنشطة الفصل مع عنوان ووصف وتاريخ.",
+    href: "/teacher/class-diary",
   },
   {
     title: "✨ جماليات الدفاتر",
@@ -124,13 +146,18 @@ export default function TeacherDashboardPage() {
               key={section.href}
               href={section.href}
               style={
-                section.href === "/teacher/heroes"
-                  ? {
-                      ...styles.card,
-                      ...styles.heroesCard,
-                    }
-                  : styles.card
-              }
+  section.href === "/teacher/heroes"
+    ? {
+        ...styles.card,
+        ...styles.heroesCard,
+      }
+    : section.href === "/teacher/lughati-crown"
+      ? {
+          ...styles.card,
+          ...styles.crownCard,
+        }
+      : styles.card
+}
             >
               <h3 style={styles.cardTitle}>
                 {section.title}

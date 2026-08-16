@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  setDoc,
+} from "firebase/firestore";
 
+import { db } from "../../../firebase";
 type GalleryWork = {
   id?: string;
   row?: number;
@@ -23,7 +31,37 @@ export default function TeacherGalleryPage() {
   const [works, setWorks] = useState<GalleryWork[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+const [updatingRow, setUpdatingRow] = useState<number | null>(null);
+const [featuredRows, setFeaturedRows] = useState<number[]>([]);
+const [highlightLoadingRow, setHighlightLoadingRow] =
+  useState<number | null>(null);
+  async function loadHighlights() {
+  try {
+    const snapshot = await getDocs(
+      collection(db, "galleryHighlights")
+    );
 
+    const rows = snapshot.docs
+      .map((item) => {
+        const data = item.data();
+
+        return typeof data.row === "number"
+          ? data.row
+          : null;
+      })
+      .filter(
+        (row): row is number =>
+          typeof row === "number"
+      );
+
+    setFeaturedRows(rows);
+  } catch (error) {
+    console.error(
+      "تعذر تحميل الأعمال المميزة:",
+      error
+    );
+  }
+}
   async function loadGallery() {
     try {
       setLoading(true);
@@ -61,8 +99,9 @@ export default function TeacherGalleryPage() {
   }
 
   useEffect(() => {
-    loadGallery();
-  }, []);
+  void loadGallery();
+  void loadHighlights();
+}, []);
 
   const creativeWorks = useMemo(
     () =>
@@ -78,9 +117,149 @@ export default function TeacherGalleryPage() {
   );
 
   function getWorkUrl(work: GalleryWork) {
-    return work.imageUrl || work.fileUrl || "";
+  const url = work.imageUrl || work.fileUrl || "";
+
+  if (!url) return "";
+
+  try {
+    if (!url.includes("drive.google.com")) {
+      return url;
+    }
+
+    const match =
+  url.match(/[?&]id=([^&]+)/) ||
+  url.match(/\/d\/([^/]+)/);
+
+    if (!match?.[1]) {
+      return url;
+    }
+
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
+  } catch {
+    return url;
+  }
+}
+async function hideFromGallery(work: GalleryWork) {
+  const row = Number(work.row);
+
+  if (!Number.isInteger(row) || row < 2) {
+    alert("تعذر تحديد العمل المراد إخفاؤه.");
+    return;
   }
 
+  const confirmed = window.confirm(
+    `هل تريد إخفاء عمل ${work.studentName || "الطالب"} من المعرض؟\n\nلن يتم حذف العمل، ويمكن مراجعته ونشره مرة أخرى لاحقًا.`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setUpdatingRow(row);
+
+    const response = await fetch("/api/submissions/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        row,
+        status: "بانتظار المراجعة",
+        note: work.note || "",
+        studentId: work.studentId || "",
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "تعذر إخفاء العمل من المعرض"
+      );
+    }
+
+    setWorks((currentWorks) =>
+      currentWorks.filter(
+        (currentWork) => Number(currentWork.row) !== row
+      )
+    );
+
+    alert("✅ تم إخفاء العمل من المعرض دون حذفه.");
+  } catch (hideError) {
+    console.error(hideError);
+
+    alert(
+      hideError instanceof Error
+        ? hideError.message
+        : "حدث خطأ أثناء إخفاء العمل."
+    );
+  } finally {
+    setUpdatingRow(null);
+  }
+}
+async function toggleFeatured(work: GalleryWork) {
+  const row = Number(work.row);
+
+  if (!Number.isInteger(row) || row < 2) {
+    alert("تعذر تحديد العمل.");
+    return;
+  }
+
+  const isFeatured = featuredRows.includes(row);
+  const highlightId = `row-${row}`;
+
+  try {
+    setHighlightLoadingRow(row);
+
+    if (isFeatured) {
+      await deleteDoc(
+        doc(
+          db,
+          "galleryHighlights",
+          highlightId
+        )
+      );
+
+      setFeaturedRows((current) =>
+        current.filter(
+          (currentRow) =>
+            currentRow !== row
+        )
+      );
+    } else {
+      await setDoc(
+        doc(
+          db,
+          "galleryHighlights",
+          highlightId
+        ),
+        {
+          row,
+          studentName: work.studentName || "",
+          title: work.title || "",
+          featured: true,
+          createdAt: new Date().toISOString(),
+        }
+      );
+
+      setFeaturedRows((current) =>
+        current.includes(row)
+          ? current
+          : [...current, row]
+      );
+    }
+  } catch (error) {
+    console.error(
+      "تعذر تحديث تمييز العمل:",
+      error
+    );
+
+    alert("تعذر تحديث حالة التمييز.");
+  } finally {
+    setHighlightLoadingRow(null);
+  }
+}
   return (
     <main
       dir="rtl"
@@ -292,6 +471,9 @@ export default function TeacherGalleryPage() {
                       <img
                         src={workUrl}
                         alt={work.title || work.studentName || "عمل طالب"}
+                        onError={(event) => {
+  event.currentTarget.style.display = "none";
+}}
                         style={{
                           width: "100%",
                           height: "230px",
@@ -377,37 +559,103 @@ export default function TeacherGalleryPage() {
                       </div>
                     ) : null}
 
-                    {workUrl ? (
-                      <a
-                        href={workUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          display: "block",
-                          textAlign: "center",
-                          textDecoration: "none",
-                          background: "#178f68",
-                          color: "#ffffff",
-                          borderRadius: "14px",
-                          padding: "12px",
-                          fontWeight: 800,
-                        }}
-                      >
-                        👀 معاينة العمل
-                      </a>
-                    ) : (
-                      <div
-                        style={{
-                          textAlign: "center",
-                          background: "#f3f6f5",
-                          color: "#70827c",
-                          borderRadius: "14px",
-                          padding: "12px",
-                        }}
-                      >
-                        لا يوجد مرفق للمعاينة
-                      </div>
-                    )}
+                    <div
+  style={{
+    display: "grid",
+    gap: "10px",
+  }}
+>
+  {workUrl ? (
+    <a
+      href={workUrl}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        display: "block",
+        textAlign: "center",
+        textDecoration: "none",
+        background: "#178f68",
+        color: "#ffffff",
+        borderRadius: "14px",
+        padding: "12px",
+        fontWeight: 800,
+      }}
+    >
+      👀 معاينة العمل
+    </a>
+  ) : (
+    <div
+      style={{
+        textAlign: "center",
+        background: "#f3f6f5",
+        color: "#70827c",
+        borderRadius: "14px",
+        padding: "12px",
+      }}
+    >
+      لا يوجد مرفق للمعاينة
+    </div>
+  )}
+<button
+  type="button"
+  onClick={() => toggleFeatured(work)}
+  disabled={
+    highlightLoadingRow === Number(work.row)
+  }
+  style={{
+    width: "100%",
+    border: featuredRows.includes(Number(work.row))
+      ? "1px solid #e7b927"
+      : "1px solid #d9e3df",
+    background: featuredRows.includes(Number(work.row))
+      ? "#fff7cc"
+      : "#f8fbfa",
+    color: featuredRows.includes(Number(work.row))
+      ? "#8a6500"
+      : "#48665a",
+    borderRadius: "14px",
+    padding: "12px",
+    fontWeight: 800,
+    cursor:
+      highlightLoadingRow === Number(work.row)
+        ? "not-allowed"
+        : "pointer",
+  }}
+>
+  {highlightLoadingRow === Number(work.row)
+    ? "⏳ جارٍ التحديث..."
+    : featuredRows.includes(Number(work.row))
+      ? "⭐ عمل مميز — إلغاء التمييز"
+      : "☆ تمييز العمل"}
+</button>
+  <button
+    type="button"
+    onClick={() => hideFromGallery(work)}
+    disabled={updatingRow === Number(work.row)}
+    style={{
+      width: "100%",
+      border: "1px solid #f2d49b",
+      background: "#fff8e8",
+      color: "#9a6700",
+      borderRadius: "14px",
+      padding: "12px",
+      fontWeight: 800,
+      cursor:
+        updatingRow === Number(work.row)
+          ? "not-allowed"
+          : "pointer",
+      opacity:
+        updatingRow === Number(work.row)
+          ? 0.65
+          : 1,
+    }}
+  >
+    {updatingRow === Number(work.row)
+      ? "⏳ جارٍ الإخفاء..."
+      : "🙈 إخفاء من المعرض"}
+  </button>
+</div>
+                    
                   </div>
                 </article>
               );

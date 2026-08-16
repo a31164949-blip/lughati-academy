@@ -253,13 +253,12 @@ export default function StudentSchoolSchedulePage() {
           <p className="mt-4 text-lg leading-8 text-slate-600">
             {errorMessage}
           </p>
-
-          <a
-            href="/journey"
-            className="mt-6 inline-block rounded-2xl bg-emerald-600 px-5 py-3 font-black text-white no-underline"
-          >
-            ← العودة إلى رحلتي
-          </a>
+<a
+  href="/"
+  className="mt-6 inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
+>
+  ← العودة إلى الصفحة الرئيسية
+</a>
         </div>
       </main>
     );

@@ -390,7 +390,8 @@ export default function Home() {
    * التاريخ.
    */
   useEffect(() => {
-    setToday(
+  const updateToday = () => {
+    const formattedDate =
       new Intl.DateTimeFormat(
         "ar-SA",
         {
@@ -398,10 +399,15 @@ export default function Home() {
           day: "numeric",
           month: "long",
           year: "numeric",
+          timeZone: "Asia/Riyadh",
         }
-      ).format(new Date())
-    );
-  }, []);
+      ).format(new Date());
+
+    setToday(formattedDate);
+  };
+
+  updateToday();
+}, []);
 
   function getAnnouncementPreview(
     message: string
@@ -560,7 +566,11 @@ export default function Home() {
               opacity: 0.9,
             }}
           >
-            🗓️ {today}
+            {today ? (
+  <>🗓️ {today}</>
+) : (
+  <>🗓️ اليوم</>
+)}
           </span>
 
           <Link
@@ -1143,18 +1153,133 @@ export default function Home() {
           <span> ←</span>
         </Link>
       </section>
+{/* الهوية الرسمية للأكاديمية */}
 
-      <footer className="academy-footer">
-        <p>
-          بإشراف الأستاذ / إبراهيم
-          أحمد
-        </p>
+<section
+  style={{
+    maxWidth: "1180px",
+    margin: "14px auto 10px",
+    padding: "12px 16px",
+    borderRadius: "18px",
+    background:
+      "linear-gradient(135deg, #ffffff 0%, #eef9f4 100%)",
+    border: "1px solid #d4eade",
+    boxShadow:
+      "0 8px 22px rgba(23, 108, 70, 0.06)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      flexWrap: "wrap",
+    }}
+  >
+    <div
+      style={{
+        width: "44px",
+        height: "44px",
+        borderRadius: "14px",
+        background:
+          "linear-gradient(135deg, #168a63, #0f7654)",
+        color: "white",
+        display: "grid",
+        placeItems: "center",
+        fontSize: "23px",
+        flexShrink: 0,
+      }}
+    >
+      🏫
+    </div>
+
+    <div
+      style={{
+        flex: 1,
+        minWidth: "220px",
+      }}
+    >
+      <div
+        style={{
+          color: "#168a63",
+          fontSize: "12px",
+          fontWeight: 900,
+          marginBottom: "3px",
+        }}
+      >
+        الهوية الرسمية
+      </div>
+
+      <h2
+        style={{
+          margin: "0 0 4px",
+          color: "#174c3b",
+          fontSize:
+            "clamp(16px, 2.2vw, 19px)",
+          lineHeight: 1.5,
+        }}
+      >
+        ابتدائية ومتوسطة زيد بن الخطاب والشهداء
+      </h2>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          flexWrap: "wrap",
+          alignItems: "center",
+          color: "#64756d",
+          fontSize: "13px",
+          lineHeight: 1.6,
+        }}
+      >
+        <span>
+          📍 محايل عسير
+        </span>
 
         <span>
-          أكاديمية لغتي الرقمية ©
-          2026
+          👨‍🏫 بإشراف الأستاذ / إبراهيم أحمد
         </span>
-      </footer>
+      </div>
+
+      <a
+        href="mailto:t267707@asrb.moe.gov.sa"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          marginTop: "5px",
+          color: "#126b49",
+          textDecoration: "none",
+          fontWeight: 900,
+          fontSize: "13px",
+          direction: "ltr",
+        }}
+      >
+        ✉️ t267707@asrb.moe.gov.sa
+      </a>
+    </div>
+
+    <div
+      style={{
+        padding: "7px 11px",
+        borderRadius: "999px",
+        background: "#fff7d6",
+        color: "#8a6500",
+        fontWeight: 900,
+        fontSize: "13px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      📚 نتعلّم… نقرأ… نبدع
+    </div>
+  </div>
+</section>
+      <footer className="academy-footer">
+  <span>
+    أكاديمية لغتي الرقمية © 2026
+  </span>
+</footer>
     </main>
   );
 }

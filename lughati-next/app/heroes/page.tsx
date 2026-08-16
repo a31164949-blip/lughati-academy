@@ -264,11 +264,11 @@ export default function HeroesPage() {
             </div>
 
             <a
-              href="/"
-              className="rounded-2xl bg-white px-5 py-3 font-black text-emerald-700 no-underline shadow"
-            >
-              ← الرئيسية
-            </a>
+  href="/"
+  className="inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
+>
+  ← العودة إلى الصفحة الرئيسية
+</a>
           </div>
         </header>
 

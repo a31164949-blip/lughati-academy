@@ -18,6 +18,29 @@ type AttendanceStatus =
   | "absent"
   | "late";
 
+type HomeworkLevel =
+  | "mastered"
+  | "complete-minor-errors"
+  | "most-completed"
+  | "partial"
+  | "needs-redo"
+  | "not-done";
+
+type ReadingLevel =
+  | "mastered"
+  | "very-good"
+  | "good"
+  | "needs-practice"
+  | "intensive-support"
+  | "not-evaluated";
+
+type ReadingMetric =
+  | "mastered"
+  | "very-good"
+  | "good"
+  | "needs-practice"
+  | "not-evaluated";
+
 type StudentRecord = {
   studentId: string;
   studentName: string;
@@ -25,8 +48,14 @@ type StudentRecord = {
 
   attendance: AttendanceStatus;
 
-  homeworkCompleted: boolean;
-  readingCompleted: boolean;
+  homeworkLevel: HomeworkLevel;
+
+  readingLevel: ReadingLevel;
+  readingAccuracy: ReadingMetric;
+  readingFluency: ReadingMetric;
+  readingDiacritics: ReadingMetric;
+  readingNote: string;
+
   participated: boolean;
 
   note: string;
@@ -49,6 +78,92 @@ const classroomOptions: {
   {
     key: "second-b",
     label: "الثاني ب",
+  },
+];
+
+const homeworkOptions: {
+  value: HomeworkLevel;
+  label: string;
+}[] = [
+  {
+    value: "mastered",
+    label: "🌟 أتم الواجب كاملًا بإتقان",
+  },
+  {
+    value: "complete-minor-errors",
+    label: "✅ أتم الواجب كاملًا مع أخطاء بسيطة",
+  },
+  {
+    value: "most-completed",
+    label: "👍 أتم معظم الواجب",
+  },
+  {
+    value: "partial",
+    label: "🌱 أتم جزءًا من الواجب",
+  },
+  {
+    value: "needs-redo",
+    label: "🧩 يحتاج إلى إعادة أو متابعة",
+  },
+  {
+    value: "not-done",
+    label: "⏳ لم يُنجز الواجب",
+  },
+];
+
+const readingLevelOptions: {
+  value: ReadingLevel;
+  label: string;
+}[] = [
+  {
+    value: "mastered",
+    label: "🌟 متقن",
+  },
+  {
+    value: "very-good",
+    label: "✅ جيد جدًا",
+  },
+  {
+    value: "good",
+    label: "👍 جيد",
+  },
+  {
+    value: "needs-practice",
+    label: "🌱 يحتاج تدريبًا",
+  },
+  {
+    value: "intensive-support",
+    label: "🧩 يحتاج دعمًا مكثفًا",
+  },
+  {
+    value: "not-evaluated",
+    label: "⏳ لم يُقيّم بعد",
+  },
+];
+
+const readingMetricOptions: {
+  value: ReadingMetric;
+  label: string;
+}[] = [
+  {
+    value: "mastered",
+    label: "🌟 متقن",
+  },
+  {
+    value: "very-good",
+    label: "✅ جيد جدًا",
+  },
+  {
+    value: "good",
+    label: "👍 جيد",
+  },
+  {
+    value: "needs-practice",
+    label: "🌱 يحتاج تدريبًا",
+  },
+  {
+    value: "not-evaluated",
+    label: "⏳ لم يُقيّم",
   },
 ];
 
@@ -101,6 +216,60 @@ function mapAttendanceToArabic(
   return "حاضر";
 }
 
+function getHomeworkLabel(
+  value: HomeworkLevel
+) {
+  return (
+    homeworkOptions.find(
+      (item) => item.value === value
+    )?.label ?? ""
+  );
+}
+
+function getReadingLevelLabel(
+  value: ReadingLevel
+) {
+  return (
+    readingLevelOptions.find(
+      (item) => item.value === value
+    )?.label ?? ""
+  );
+}
+
+function getReadingMetricLabel(
+  value: ReadingMetric
+) {
+  return (
+    readingMetricOptions.find(
+      (item) => item.value === value
+    )?.label ?? ""
+  );
+}
+
+function isHomeworkLevel(
+  value: unknown
+): value is HomeworkLevel {
+  return homeworkOptions.some(
+    (item) => item.value === value
+  );
+}
+
+function isReadingLevel(
+  value: unknown
+): value is ReadingLevel {
+  return readingLevelOptions.some(
+    (item) => item.value === value
+  );
+}
+
+function isReadingMetric(
+  value: unknown
+): value is ReadingMetric {
+  return readingMetricOptions.some(
+    (item) => item.value === value
+  );
+}
+
 export default function SmartRecordPage() {
   const [selectedClassroom, setSelectedClassroom] =
     useState<ClassroomKey>("second-a");
@@ -129,10 +298,6 @@ export default function SmartRecordPage() {
         item.key === selectedClassroom
     ) ?? classroomOptions[0];
 
-  /*
-   * تحميل طلاب الفصل الحقيقيين
-   * ثم تحميل سجل اليوم إن كان موجودًا.
-   */
   useEffect(() => {
     async function loadSmartRecord() {
       try {
@@ -166,7 +331,7 @@ export default function SmartRecordPage() {
 
             const name =
               typeof data.studentName ===
-              "string"
+                "string"
                 ? data.studentName
                 : typeof data.name ===
                     "string"
@@ -186,16 +351,29 @@ export default function SmartRecordPage() {
               attendance:
                 "present",
 
-              homeworkCompleted:
-                false,
+              homeworkLevel:
+                "not-done",
 
-              readingCompleted:
-                false,
+              readingLevel:
+                "not-evaluated",
+
+              readingAccuracy:
+                "not-evaluated",
+
+              readingFluency:
+                "not-evaluated",
+
+              readingDiacritics:
+                "not-evaluated",
+
+              readingNote:
+                "",
 
               participated:
                 false,
 
-              note: "",
+              note:
+                "",
             });
           }
         );
@@ -241,7 +419,10 @@ export default function SmartRecordPage() {
                 const savedStudent =
                   savedRecords.find(
                     (
-                      saved: Partial<StudentRecord>
+                      saved: Partial<StudentRecord> & {
+                        homeworkCompleted?: boolean;
+                        readingCompleted?: boolean;
+                      }
                     ) =>
                       saved.studentId ===
                       student.studentId
@@ -262,13 +443,52 @@ export default function SmartRecordPage() {
                       ? savedStudent.attendance
                       : "present",
 
-                  homeworkCompleted:
-                    savedStudent.homeworkCompleted ===
-                    true,
+                  homeworkLevel:
+                    isHomeworkLevel(
+                      savedStudent.homeworkLevel
+                    )
+                      ? savedStudent.homeworkLevel
+                      : savedStudent.homeworkCompleted ===
+                          true
+                        ? "mastered"
+                        : "not-done",
 
-                  readingCompleted:
-                    savedStudent.readingCompleted ===
-                    true,
+                  readingLevel:
+                    isReadingLevel(
+                      savedStudent.readingLevel
+                    )
+                      ? savedStudent.readingLevel
+                      : savedStudent.readingCompleted ===
+                          true
+                        ? "good"
+                        : "not-evaluated",
+
+                  readingAccuracy:
+                    isReadingMetric(
+                      savedStudent.readingAccuracy
+                    )
+                      ? savedStudent.readingAccuracy
+                      : "not-evaluated",
+
+                  readingFluency:
+                    isReadingMetric(
+                      savedStudent.readingFluency
+                    )
+                      ? savedStudent.readingFluency
+                      : "not-evaluated",
+
+                  readingDiacritics:
+                    isReadingMetric(
+                      savedStudent.readingDiacritics
+                    )
+                      ? savedStudent.readingDiacritics
+                      : "not-evaluated",
+
+                  readingNote:
+                    typeof savedStudent.readingNote ===
+                      "string"
+                      ? savedStudent.readingNote
+                      : "",
 
                   participated:
                     savedStudent.participated ===
@@ -369,13 +589,15 @@ export default function SmartRecordPage() {
         homework:
           records.filter(
             (student) =>
-              student.homeworkCompleted
+              student.homeworkLevel !==
+              "not-done"
           ).length,
 
         reading:
           records.filter(
             (student) =>
-              student.readingCompleted
+              student.readingLevel !==
+              "not-evaluated"
           ).length,
 
         participation:
@@ -440,16 +662,29 @@ export default function SmartRecordPage() {
           (student) => ({
             ...student,
 
-            homeworkCompleted:
-              false,
+            homeworkLevel:
+              "not-done",
 
-            readingCompleted:
-              false,
+            readingLevel:
+              "not-evaluated",
+
+            readingAccuracy:
+              "not-evaluated",
+
+            readingFluency:
+              "not-evaluated",
+
+            readingDiacritics:
+              "not-evaluated",
+
+            readingNote:
+              "",
 
             participated:
               false,
 
-            note: "",
+            note:
+              "",
           })
         )
     );
@@ -459,11 +694,6 @@ export default function SmartRecordPage() {
     );
   }
 
-  /*
-   * حفظ السجل الرئيسي
-   * ثم تحديث attendanceHistory
-   * لكل طالب دون تكرار نفس التاريخ.
-   */
   async function handleSave() {
     if (
       records.length === 0
@@ -471,6 +701,7 @@ export default function SmartRecordPage() {
       setStatusMessage(
         "لا توجد بيانات طلاب لحفظها."
       );
+
       return;
     }
 
@@ -512,10 +743,10 @@ export default function SmartRecordPage() {
           lateCount:
             summary.late,
 
-          homeworkCompletedCount:
+          homeworkFollowUpCount:
             summary.homework,
 
-          readingCompletedCount:
+          readingEvaluationCount:
             summary.reading,
 
           participationCount:
@@ -532,13 +763,6 @@ export default function SmartRecordPage() {
         }
       );
 
-      /*
-       * تحديث كل ملف طالب.
-       *
-       * نزيل سجل نفس التاريخ
-       * ثم نضع الحالة الجديدة.
-       * لذلك إعادة الحفظ لا تكرر الغياب.
-       */
       for (const student of records) {
         const studentReference =
           doc(
@@ -576,10 +800,6 @@ export default function SmartRecordPage() {
               )
             : [];
 
-        /*
-         * إزالة أي سجل سابق
-         * لنفس اليوم.
-         */
         const historyWithoutToday =
           currentHistory.filter(
             (item) =>
@@ -606,6 +826,18 @@ export default function SmartRecordPage() {
           newAttendanceItem,
         ];
 
+        const homeworkCompleted =
+          student.homeworkLevel ===
+            "mastered" ||
+          student.homeworkLevel ===
+            "complete-minor-errors" ||
+          student.homeworkLevel ===
+            "most-completed";
+
+        const readingCompleted =
+          student.readingLevel !==
+          "not-evaluated";
+
         await setDoc(
           studentReference,
           {
@@ -616,11 +848,52 @@ export default function SmartRecordPage() {
               date:
                 selectedDate,
 
-              homeworkCompleted:
-                student.homeworkCompleted,
+              homeworkLevel:
+                student.homeworkLevel,
 
-              readingCompleted:
-                student.readingCompleted,
+              homeworkLabel:
+                getHomeworkLabel(
+                  student.homeworkLevel
+                ),
+
+              homeworkCompleted,
+
+              readingLevel:
+                student.readingLevel,
+
+              readingLevelLabel:
+                getReadingLevelLabel(
+                  student.readingLevel
+                ),
+
+              readingAccuracy:
+                student.readingAccuracy,
+
+              readingAccuracyLabel:
+                getReadingMetricLabel(
+                  student.readingAccuracy
+                ),
+
+              readingFluency:
+                student.readingFluency,
+
+              readingFluencyLabel:
+                getReadingMetricLabel(
+                  student.readingFluency
+                ),
+
+              readingDiacritics:
+                student.readingDiacritics,
+
+              readingDiacriticsLabel:
+                getReadingMetricLabel(
+                  student.readingDiacritics
+                ),
+
+              readingNote:
+                student.readingNote,
+
+              readingCompleted,
 
               participated:
                 student.participated,
@@ -642,7 +915,7 @@ export default function SmartRecordPage() {
       }
 
       setStatusMessage(
-        `✅ تم حفظ سجل ${currentClassroom.label} وتحديث ملفات الطلاب بنجاح.`
+        `✅ تم حفظ سجل ${currentClassroom.label} وتحديث مستويات الطلاب بنجاح.`
       );
     } catch (error) {
       console.error(
@@ -678,8 +951,6 @@ export default function SmartRecordPage() {
     >
       <div className="mx-auto max-w-7xl">
 
-        {/* الترويسة */}
-
         <header className="mb-6 rounded-3xl bg-gradient-to-l from-emerald-700 to-emerald-500 p-7 text-white shadow-lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -692,10 +963,8 @@ export default function SmartRecordPage() {
               </h1>
 
               <p className="mt-3 max-w-3xl leading-8 text-emerald-50">
-                متابعة سريعة للحضور
-                والواجب والقراءة
-                والمشاركة دون أوراق
-                إضافية.
+                متابعة الحضور والواجب والقراءة والمشاركة
+                بمستويات وصفية تساعد على متابعة نمو الطالب.
               </p>
             </div>
 
@@ -707,8 +976,6 @@ export default function SmartRecordPage() {
             </a>
           </div>
         </header>
-
-        {/* الفصل + التاريخ */}
 
         <section className="mb-6 grid gap-4 lg:grid-cols-2">
           <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -783,8 +1050,6 @@ export default function SmartRecordPage() {
           </article>
         </section>
 
-        {/* الملخص */}
-
         <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           <SummaryCard
             icon="👥"
@@ -812,13 +1077,13 @@ export default function SmartRecordPage() {
 
           <SummaryCard
             icon="📝"
-            label="الواجب"
+            label="تمت متابعة الواجب"
             value={summary.homework}
           />
 
           <SummaryCard
             icon="📖"
-            label="القراءة"
+            label="تم تقييم القراءة"
             value={summary.reading}
           />
 
@@ -831,24 +1096,19 @@ export default function SmartRecordPage() {
           />
         </section>
 
-        {/* أدوات */}
-
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
-
             <div>
               <h2 className="text-xl font-black text-slate-800">
                 ⚡ أدوات سريعة
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                لتقليل وقت تسجيل
-                المتابعة داخل الحصة.
+                لتقليل وقت تسجيل المتابعة داخل الحصة.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-
               <button
                 type="button"
                 onClick={
@@ -872,8 +1132,6 @@ export default function SmartRecordPage() {
           </div>
         </section>
 
-        {/* البحث */}
-
         <section className="mb-4">
           <input
             value={searchText}
@@ -887,10 +1145,7 @@ export default function SmartRecordPage() {
           />
         </section>
 
-        {/* الطلاب */}
-
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-
           <div className="border-b border-slate-200 p-5">
             <h2 className="text-2xl font-black text-slate-800">
               👨‍🎓 طلاب{" "}
@@ -900,8 +1155,7 @@ export default function SmartRecordPage() {
             </h2>
 
             <p className="mt-2 text-slate-500">
-              اضغط مرة واحدة فقط
-              لتسجيل حالة الطالب.
+              سجّل وصف أداء الطالب بدل الاكتفاء بعلامة تم أو لم يتم.
             </p>
           </div>
 
@@ -928,14 +1182,11 @@ export default function SmartRecordPage() {
             {filteredRecords.length ===
               0 && (
               <div className="rounded-2xl bg-slate-50 p-8 text-center font-bold text-slate-500">
-                لا توجد بيانات طلاب
-                لهذا الفصل.
+                لا توجد بيانات طلاب لهذا الفصل.
               </div>
             )}
           </div>
         </section>
-
-        {/* الحفظ */}
 
         <button
           type="button"
@@ -963,11 +1214,8 @@ export default function SmartRecordPage() {
           </h2>
 
           <p className="mt-2 leading-8 text-emerald-900">
-            عند حفظ السجل يتم حفظ
-            المتابعة اليومية وتحديث
-            حضور الطالب داخل ملفه،
-            لتستفيد منه صفحة ولي الأمر
-            وبقية أدوات الأكاديمية.
+            عند الحفظ تُحدّث بيانات الطالب لتصبح جاهزة
+            للعرض في صفحة ولي الأمر وتتبع التحسن مع مرور الوقت.
           </p>
         </section>
       </div>
@@ -1011,10 +1259,8 @@ function StudentRecordCard({
   ) => void;
 }) {
   return (
-    <article className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-
+    <article className="rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-100 text-2xl">
             👦
@@ -1052,44 +1298,155 @@ function StudentRecordCard({
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-2">
+        {/* الواجب */}
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <h4 className="mb-3 text-lg font-black text-amber-900">
+            📝 مستوى إنجاز الواجب
+          </h4>
 
-        <FollowButton
-          active={
-            student.homeworkCompleted
-          }
-          activeText="الواجب مكتمل"
-          inactiveText="الواجب"
-          icon="📝"
-          onClick={() =>
-            onUpdate({
-              homeworkCompleted:
-                !student.homeworkCompleted,
-            })
-          }
-        />
+          <select
+            value={
+              student.homeworkLevel
+            }
+            onChange={(event) =>
+              onUpdate({
+                homeworkLevel:
+                  event.target.value as HomeworkLevel,
+              })
+            }
+            className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 font-black text-slate-700"
+          >
+            {homeworkOptions.map(
+              (option) => (
+                <option
+                  key={
+                    option.value
+                  }
+                  value={
+                    option.value
+                  }
+                >
+                  {option.label}
+                </option>
+              )
+            )}
+          </select>
 
-        <FollowButton
-          active={
-            student.readingCompleted
-          }
-          activeText="تمت القراءة"
-          inactiveText="القراءة"
-          icon="📖"
-          onClick={() =>
-            onUpdate({
-              readingCompleted:
-                !student.readingCompleted,
-            })
-          }
-        />
+          <div className="mt-3 rounded-xl bg-white p-3 text-sm font-bold text-amber-900">
+            الحالي:{" "}
+            {getHomeworkLabel(
+              student.homeworkLevel
+            )}
+          </div>
+        </section>
 
+        {/* القراءة */}
+        <section className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <h4 className="mb-3 text-lg font-black text-sky-900">
+            📖 تقييم القراءة
+          </h4>
+
+          <label className="mb-2 block text-sm font-black text-slate-600">
+            المستوى العام
+          </label>
+
+          <select
+            value={
+              student.readingLevel
+            }
+            onChange={(event) =>
+              onUpdate({
+                readingLevel:
+                  event.target.value as ReadingLevel,
+              })
+            }
+            className="w-full rounded-xl border border-sky-200 bg-white px-4 py-3 font-black text-slate-700"
+          >
+            {readingLevelOptions.map(
+              (option) => (
+                <option
+                  key={
+                    option.value
+                  }
+                  value={
+                    option.value
+                  }
+                >
+                  {option.label}
+                </option>
+              )
+            )}
+          </select>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <ReadingMetricSelect
+              label="🎯 الدقة"
+              value={
+                student.readingAccuracy
+              }
+              onChange={(
+                readingAccuracy
+              ) =>
+                onUpdate({
+                  readingAccuracy,
+                })
+              }
+            />
+
+            <ReadingMetricSelect
+              label="⚡ الطلاقة"
+              value={
+                student.readingFluency
+              }
+              onChange={(
+                readingFluency
+              ) =>
+                onUpdate({
+                  readingFluency,
+                })
+              }
+            />
+
+            <ReadingMetricSelect
+              label="🎨 الحركات"
+              value={
+                student.readingDiacritics
+              }
+              onChange={(
+                readingDiacritics
+              ) =>
+                onUpdate({
+                  readingDiacritics,
+                })
+              }
+            />
+          </div>
+
+          <textarea
+            value={
+              student.readingNote
+            }
+            onChange={(event) =>
+              onUpdate({
+                readingNote:
+                  event.target.value,
+              })
+            }
+            placeholder="💬 ملاحظة القراءة: يحتاج تدريبًا على المد، تحسن في الطلاقة..."
+            rows={2}
+            className="mt-3 w-full rounded-xl border border-sky-200 bg-white px-4 py-3 font-bold outline-none focus:border-sky-400"
+          />
+        </section>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <FollowButton
           active={
             student.participated
           }
           activeText="شارك اليوم"
-          inactiveText="المشاركة"
+          inactiveText="لم تُسجل مشاركة"
           icon="🌟"
           onClick={() =>
             onUpdate({
@@ -1098,6 +1455,10 @@ function StudentRecordCard({
             })
           }
         />
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center text-sm font-bold text-slate-600">
+          📅 المتابعة لهذا اليوم مرتبطة بتاريخ السجل
+        </div>
       </div>
 
       <textarea
@@ -1108,11 +1469,52 @@ function StudentRecordCard({
               event.target.value,
           })
         }
-        placeholder="💬 ملاحظة سريعة عن الطالب..."
+        placeholder="💬 ملاحظة عامة عن الطالب..."
         rows={2}
         className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-emerald-400"
       />
     </article>
+  );
+}
+
+function ReadingMetricSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: ReadingMetric;
+  onChange: (
+    value: ReadingMetric
+  ) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-black text-slate-600">
+        {label}
+      </span>
+
+      <select
+        value={value}
+        onChange={(event) =>
+          onChange(
+            event.target.value as ReadingMetric
+          )
+        }
+        className="w-full rounded-xl border border-sky-200 bg-white px-3 py-3 text-sm font-black text-slate-700"
+      >
+        {readingMetricOptions.map(
+          (option) => (
+            <option
+              key={option.value}
+              value={option.value}
+            >
+              {option.label}
+            </option>
+          )
+        )}
+      </select>
+    </label>
   );
 }
 
@@ -1127,7 +1529,6 @@ function AttendanceSelector({
 }) {
   return (
     <div className="flex flex-wrap gap-2">
-
       <button
         type="button"
         onClick={() =>

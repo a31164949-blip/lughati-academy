@@ -34,7 +34,29 @@ type ParentQuizResult = {
   testPaperImageUrl: string;
   parentViewed: boolean;
 };
+type ParentSmartFollowUp = {
+  date: string;
 
+  homeworkLevel: string;
+  homeworkLabel: string;
+
+  readingLevel: string;
+  readingLevelLabel: string;
+
+  readingAccuracy: string;
+  readingAccuracyLabel: string;
+
+  readingFluency: string;
+  readingFluencyLabel: string;
+
+  readingDiacritics: string;
+  readingDiacriticsLabel: string;
+
+  readingNote: string;
+
+  participated: boolean;
+  note: string;
+};
 const defaultStudent = {
   name: "الطالب",
   className: "الصف الثاني الابتدائي",
@@ -65,9 +87,34 @@ const parentDailyTasks = [
 
 export default function ParentPage() {
   const router = useRouter();
-
+const [smartFollowUp, setSmartFollowUp] =
+  useState<ParentSmartFollowUp | null>(null);
   const [student, setStudent] = useState(defaultStudent);
+const [
+  personalPhotoPreview,
+  setPersonalPhotoPreview,
+] = useState("");
 
+const [
+  personalPhotoStatus,
+  setPersonalPhotoStatus,
+] = useState<
+  "none" | "pending" | "approved" | "rejected"
+>("none");
+
+const [
+  personalPhotoFile,
+  setPersonalPhotoFile,
+] = useState<File | null>(null);
+const [
+  personalPhotoUploading,
+  setPersonalPhotoUploading,
+] = useState(false);
+
+const [
+  personalPhotoSavedUrl,
+  setPersonalPhotoSavedUrl,
+] = useState("");
   const [points, setPoints] = useState(0);
   const [stars, setStars] = useState(0);
   const [absenceDays, setAbsenceDays] = useState(0);
@@ -148,6 +195,131 @@ export default function ParentPage() {
         const studentData =
           studentSnapshot.data();
 
+        const savedPersonalPhotoStatus =
+          studentData.personalPhotoStatus;
+
+        if (
+          savedPersonalPhotoStatus === "pending" ||
+          savedPersonalPhotoStatus === "approved" ||
+          savedPersonalPhotoStatus === "rejected"
+        ) {
+          setPersonalPhotoStatus(
+            savedPersonalPhotoStatus
+          );
+        } else {
+          setPersonalPhotoStatus("none");
+        }
+
+        const savedPersonalPhotoUrl =
+          savedPersonalPhotoStatus === "approved" &&
+          typeof studentData.personalPhotoUrl === "string"
+            ? studentData.personalPhotoUrl
+            : typeof studentData.personalPhotoPendingUrl === "string"
+              ? studentData.personalPhotoPendingUrl
+              : "";
+
+        setPersonalPhotoSavedUrl(
+          savedPersonalPhotoUrl
+        );
+
+        if (savedPersonalPhotoUrl) {
+          setPersonalPhotoPreview(
+            savedPersonalPhotoUrl
+          );
+        }
+const savedSmartFollowUp =
+  studentData.smartFollowUp;
+
+if (
+  savedSmartFollowUp &&
+  typeof savedSmartFollowUp === "object"
+) {
+  setSmartFollowUp({
+    date:
+      typeof savedSmartFollowUp.date ===
+      "string"
+        ? savedSmartFollowUp.date
+        : "",
+
+    homeworkLevel:
+      typeof savedSmartFollowUp.homeworkLevel ===
+      "string"
+        ? savedSmartFollowUp.homeworkLevel
+        : "",
+
+    homeworkLabel:
+      typeof savedSmartFollowUp.homeworkLabel ===
+      "string"
+        ? savedSmartFollowUp.homeworkLabel
+        : "",
+
+    readingLevel:
+      typeof savedSmartFollowUp.readingLevel ===
+      "string"
+        ? savedSmartFollowUp.readingLevel
+        : "",
+
+    readingLevelLabel:
+      typeof savedSmartFollowUp.readingLevelLabel ===
+      "string"
+        ? savedSmartFollowUp.readingLevelLabel
+        : "",
+
+    readingAccuracy:
+      typeof savedSmartFollowUp.readingAccuracy ===
+      "string"
+        ? savedSmartFollowUp.readingAccuracy
+        : "",
+
+    readingAccuracyLabel:
+      typeof savedSmartFollowUp.readingAccuracyLabel ===
+      "string"
+        ? savedSmartFollowUp.readingAccuracyLabel
+        : "",
+
+    readingFluency:
+      typeof savedSmartFollowUp.readingFluency ===
+      "string"
+        ? savedSmartFollowUp.readingFluency
+        : "",
+
+    readingFluencyLabel:
+      typeof savedSmartFollowUp.readingFluencyLabel ===
+      "string"
+        ? savedSmartFollowUp.readingFluencyLabel
+        : "",
+
+    readingDiacritics:
+      typeof savedSmartFollowUp.readingDiacritics ===
+      "string"
+        ? savedSmartFollowUp.readingDiacritics
+        : "",
+
+    readingDiacriticsLabel:
+      typeof savedSmartFollowUp.readingDiacriticsLabel ===
+      "string"
+        ? savedSmartFollowUp.readingDiacriticsLabel
+        : "",
+
+    readingNote:
+      typeof savedSmartFollowUp.readingNote ===
+      "string"
+        ? savedSmartFollowUp.readingNote
+        : "",
+
+    participated:
+      savedSmartFollowUp.participated ===
+      true,
+
+    note:
+      typeof savedSmartFollowUp.note ===
+      "string"
+        ? savedSmartFollowUp.note
+        : "",
+  });
+} else {
+  setSmartFollowUp(null);
+}
         setTeacherMessage(
           typeof studentData.teacherMessage ===
             "string"
@@ -710,6 +882,210 @@ export default function ParentPage() {
     }
   }
 
+  function handlePersonalPhotoSelect(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      window.alert(
+        "يرجى اختيار صورة فقط."
+      );
+      return;
+    }
+
+    const maxSize =
+      5 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      window.alert(
+        "حجم الصورة كبير. اختر صورة أقل من 5 ميجابايت."
+      );
+      return;
+    }
+
+    if (
+      personalPhotoPreview.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        personalPhotoPreview
+      );
+    }
+
+    setPersonalPhotoFile(file);
+
+    const previewUrl =
+      URL.createObjectURL(file);
+
+    setPersonalPhotoPreview(
+      previewUrl
+    );
+
+    setPersonalPhotoSavedUrl("");
+    setPersonalPhotoStatus("none");
+  }
+
+  async function uploadPersonalPhotoToCloudinary(
+    file: File
+  ) {
+    const formData =
+      new FormData();
+
+    formData.append(
+      "file",
+      file
+    );
+
+    formData.append(
+      "upload_preset",
+      "lughati_homework_upload"
+    );
+
+    const response =
+      await fetch(
+        "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+    if (!response.ok) {
+      const errorText =
+        await response.text();
+
+      throw new Error(
+        `فشل رفع الصورة: ${errorText}`
+      );
+    }
+
+    const data =
+      await response.json();
+
+    if (
+      typeof data.secure_url !==
+      "string"
+    ) {
+      throw new Error(
+        "لم يرجع Cloudinary رابطًا صالحًا للصورة."
+      );
+    }
+
+    return data.secure_url as string;
+  }
+
+  async function sendPersonalPhotoForApproval() {
+    if (!personalPhotoFile) {
+      window.alert(
+        "اختر صورة أولًا."
+      );
+      return;
+    }
+
+    const studentId =
+      localStorage.getItem(
+        "student-id"
+      );
+
+    if (
+      !studentId ||
+      studentId ===
+        "student-demo"
+    ) {
+      window.alert(
+        "تعذر معرفة حساب الطالب الحالي."
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "هل تريد إرسال هذه الصورة للمعلم لاعتمادها؟"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setPersonalPhotoUploading(
+        true
+      );
+
+      const secureUrl =
+        await uploadPersonalPhotoToCloudinary(
+          personalPhotoFile
+        );
+
+      await updateDoc(
+        doc(
+          db,
+          "students",
+          studentId
+        ),
+        {
+          personalPhotoPendingUrl:
+            secureUrl,
+
+          personalPhotoStatus:
+            "pending",
+
+          personalPhotoRequestedAt:
+            serverTimestamp(),
+
+          personalPhotoRequestedBy:
+            "parent",
+
+          personalPhotoApprovedAt:
+            null,
+
+          personalPhotoRejectedAt:
+            null,
+        }
+      );
+
+      setPersonalPhotoSavedUrl(
+        secureUrl
+      );
+
+      setPersonalPhotoPreview(
+        secureUrl
+      );
+
+      setPersonalPhotoStatus(
+        "pending"
+      );
+
+      setPersonalPhotoFile(
+        null
+      );
+
+      window.alert(
+        "✅ تم إرسال الصورة للمعلم بنجاح، وهي الآن بانتظار الاعتماد."
+      );
+    } catch (error) {
+      console.error(
+        "تعذر إرسال صورة الطالب:",
+        error
+      );
+
+      window.alert(
+        "تعذر إرسال الصورة حاليًا. تحقق من الاتصال ثم حاول مرة أخرى."
+      );
+    } finally {
+      setPersonalPhotoUploading(
+        false
+      );
+    }
+  }
+
   return (
     <main
       dir="rtl"
@@ -1057,6 +1433,7 @@ export default function ParentPage() {
         {/* بطاقة الطالب */}
 
         <section style={cardStyle}>
+          
           <div
             style={{
               display: "flex",
@@ -1208,10 +1585,557 @@ export default function ParentPage() {
                       totalDailyTasks -
                       completedCount
                     } من المهام لإكمال رحلته اليومية. 🌟`}
+                    
             </p>
           </div>
         </section>
 
+        {/* صورة ابني */}
+
+        <section
+          style={{
+            ...cardStyle,
+            border: "1px solid #d8e7f4",
+            background:
+              "linear-gradient(135deg,#ffffff 0%,#f3f9ff 100%)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+              marginBottom: "18px",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "22px",
+                  color: "#17547a",
+                }}
+              >
+                📷 صورة ابني
+              </h2>
+
+              <p
+                style={{
+                  margin: "7px 0 0",
+                  color: "#64748b",
+                  lineHeight: 1.7,
+                }}
+              >
+                يمكنكم استخدام الشخصية الرمزية أو اختيار صورة شخصية للطالب.
+              </p>
+            </div>
+
+            <span
+              style={{
+                padding: "7px 12px",
+                borderRadius: "999px",
+                background: "#eef6ff",
+                color: "#17547a",
+                fontWeight: 800,
+                fontSize: "13px",
+              }}
+            >
+              🛡️ بإشراف المعلم
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(220px,1fr))",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                padding: "18px",
+                borderRadius: "18px",
+                background: "#f3fbf6",
+                border: "1px solid #d5eadc",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "56px",
+                  marginBottom: "10px",
+                }}
+              >
+                👦🏻
+              </div>
+
+              <strong
+                style={{
+                  color: "#176c46",
+                  fontSize: "17px",
+                }}
+              >
+                استخدام الشخصية الرمزية
+              </strong>
+
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  color: "#64748b",
+                  lineHeight: 1.7,
+                  fontSize: "14px",
+                }}
+              >
+                يبقى الطالب على شخصيته المختارة داخل الأكاديمية.
+              </p>
+            </div>
+
+            <label
+              style={{
+                padding: "18px",
+                borderRadius: "18px",
+                background: "#eef7ff",
+                border: "1px solid #d5e7f7",
+                textAlign: "center",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "56px",
+                  marginBottom: "10px",
+                }}
+              >
+                📸
+              </div>
+
+              <strong
+                style={{
+                  color: "#17547a",
+                  fontSize: "17px",
+                }}
+              >
+                رفع صورة شخصية
+              </strong>
+
+              <p
+                style={{
+                  margin: "8px 0 12px",
+                  color: "#64748b",
+                  lineHeight: 1.7,
+                  fontSize: "14px",
+                }}
+              >
+                اختر صورة واضحة للطالب.
+              </p>
+
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "10px 15px",
+                  borderRadius: "14px",
+                  background: "#17547a",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                اختر صورة
+              </span>
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={
+                  handlePersonalPhotoSelect
+                }
+                style={{
+                  display: "none",
+                }}
+              />
+            </label>
+          </div>
+
+          {personalPhotoPreview && (
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "18px",
+                borderRadius: "18px",
+                background: "#ffffff",
+                border: "1px solid #dbe5ec",
+                textAlign: "center",
+              }}
+            >
+              <img
+                src={
+                  personalPhotoPreview
+                }
+                alt="معاينة صورة الطالب"
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "4px solid #e5eef5",
+                  marginBottom: "12px",
+                }}
+              />
+
+              <div
+                style={{
+                  fontWeight: 800,
+                  color:
+                    personalPhotoStatus ===
+                    "approved"
+                      ? "#147a5b"
+                      : personalPhotoStatus ===
+                          "rejected"
+                        ? "#b42318"
+                        : "#475569",
+                  lineHeight: 1.8,
+                }}
+              >
+                {personalPhotoStatus ===
+                "pending"
+                  ? "⏳ تم إرسال الصورة وهي بانتظار اعتماد المعلم"
+                  : personalPhotoStatus ===
+                      "approved"
+                    ? "✅ تم اعتماد الصورة الشخصية"
+                    : personalPhotoStatus ===
+                        "rejected"
+                      ? "❌ لم يعتمد المعلم الصورة، ويمكنكم اختيار صورة أخرى"
+                      : personalPhotoFile
+                        ? "✅ الصورة جاهزة للإرسال لاعتماد المعلم"
+                        : ""}
+              </div>
+
+              {personalPhotoFile && (
+                <>
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      color: "#64748b",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {personalPhotoFile.name}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      sendPersonalPhotoForApproval
+                    }
+                    disabled={
+                      personalPhotoUploading
+                    }
+                    style={{
+                      width: "100%",
+                      marginTop: "14px",
+                      padding: "13px",
+                      border: "none",
+                      borderRadius: "15px",
+                      background:
+                        personalPhotoUploading
+                          ? "#94a3b8"
+                          : "#17547a",
+                      color: "white",
+                      fontWeight: 800,
+                      cursor:
+                        personalPhotoUploading
+                          ? "default"
+                          : "pointer",
+                    }}
+                  >
+                    {personalPhotoUploading
+                      ? "⏳ جارٍ رفع الصورة وإرسالها..."
+                      : "📤 إرسال الصورة لاعتماد المعلم"}
+                  </button>
+                </>
+              )}
+
+              {!personalPhotoFile &&
+                personalPhotoSavedUrl &&
+                personalPhotoStatus ===
+                  "pending" && (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      color: "#64748b",
+                      fontSize: "13px",
+                    }}
+                  >
+                    لا يلزم إرسالها مرة أخرى.
+                  </div>
+                )}
+            </div>
+          )}
+
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "13px",
+              borderRadius: "15px",
+              background: "#fff9e8",
+              color: "#7a5b16",
+              lineHeight: 1.8,
+              fontWeight: 700,
+            }}
+          >
+            🛡️ بعد الإرسال تبقى الشخصية الرمزية ظاهرة، ولن تصبح الصورة الشخصية الرسمية إلا بعد اعتماد المعلم.
+          </div>
+        </section>
+
+        {/* السجل الذكي */}
+
+<section
+  style={{
+    ...cardStyle,
+    border: "1px solid #cfe8dd",
+    background:
+      "linear-gradient(135deg,#ffffff 0%,#f0fbf6 100%)",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "12px",
+      flexWrap: "wrap",
+      marginBottom: "18px",
+    }}
+  >
+    <div>
+      <h2
+        style={{
+          margin: 0,
+          fontSize: "22px",
+          color: "#126a4b",
+        }}
+      >
+        📋 متابعة ابني
+      </h2>
+
+      <p
+        style={{
+          margin: "7px 0 0",
+          color: "#64748b",
+          fontSize: "14px",
+        }}
+      >
+        آخر متابعة سجلها المعلم
+      </p>
+    </div>
+
+    {smartFollowUp?.date && (
+      <span
+        style={{
+          background: "#e5f7ed",
+          color: "#147a5b",
+          padding: "7px 12px",
+          borderRadius: "999px",
+          fontWeight: 700,
+          fontSize: "13px",
+        }}
+      >
+        📅 {smartFollowUp.date}
+      </span>
+    )}
+  </div>
+
+  {!smartFollowUp ? (
+    <div
+      style={{
+        padding: "18px",
+        borderRadius: "16px",
+        background: "#f8fafc",
+        textAlign: "center",
+        color: "#64748b",
+      }}
+    >
+      لا توجد متابعة جديدة مسجلة حتى الآن.
+    </div>
+  ) : (
+    <>
+      {/* الواجب */}
+
+      <div
+        style={{
+          padding: "16px",
+          borderRadius: "18px",
+          background: "#fff9e8",
+          border: "1px solid #f1dfaa",
+          marginBottom: "14px",
+        }}
+      >
+        <strong
+          style={{
+            display: "block",
+            marginBottom: "8px",
+            color: "#8a5700",
+            fontSize: "17px",
+          }}
+        >
+          📝 مستوى إنجاز الواجب
+        </strong>
+
+        <div
+          style={{
+            fontWeight: 800,
+            color: "#684d17",
+            lineHeight: 1.8,
+          }}
+        >
+          {smartFollowUp.homeworkLabel ||
+            "لم تسجل متابعة للواجب."}
+        </div>
+      </div>
+
+      {/* القراءة */}
+
+      <div
+        style={{
+          padding: "16px",
+          borderRadius: "18px",
+          background: "#eef8ff",
+          border: "1px solid #d5eafb",
+          marginBottom: "14px",
+        }}
+      >
+        <strong
+          style={{
+            display: "block",
+            marginBottom: "10px",
+            color: "#075985",
+            fontSize: "17px",
+          }}
+        >
+          📖 مستوى القراءة
+        </strong>
+
+        <div
+          style={{
+            padding: "12px",
+            background: "white",
+            borderRadius: "14px",
+            marginBottom: "12px",
+            fontWeight: 800,
+            color: "#173b57",
+          }}
+        >
+          المستوى العام:{" "}
+          <strong>
+            {smartFollowUp.readingLevelLabel ||
+              "لم يُقيّم بعد"}
+          </strong>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fit,minmax(140px,1fr))",
+            gap: "10px",
+          }}
+        >
+          <div style={smartMetricStyle}>
+            <span>🎯 الدقة</span>
+
+            <strong>
+              {smartFollowUp.readingAccuracyLabel ||
+                "لم يُقيّم"}
+            </strong>
+          </div>
+
+          <div style={smartMetricStyle}>
+            <span>⚡ الطلاقة</span>
+
+            <strong>
+              {smartFollowUp.readingFluencyLabel ||
+                "لم يُقيّم"}
+            </strong>
+          </div>
+
+          <div style={smartMetricStyle}>
+            <span>🎨 الحركات</span>
+
+            <strong>
+              {smartFollowUp.readingDiacriticsLabel ||
+                "لم يُقيّم"}
+            </strong>
+          </div>
+        </div>
+
+        {smartFollowUp.readingNote && (
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "13px",
+              borderRadius: "14px",
+              background: "#ffffff",
+              color: "#475569",
+              lineHeight: 1.8,
+            }}
+          >
+            💬{" "}
+            <strong>
+              ملاحظة المعلم:
+            </strong>{" "}
+            {smartFollowUp.readingNote}
+          </div>
+        )}
+      </div>
+
+      {/* المشاركة والملاحظة */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(190px,1fr))",
+          gap: "10px",
+        }}
+      >
+        <div
+          style={{
+            padding: "13px",
+            borderRadius: "15px",
+            background: smartFollowUp.participated
+              ? "#eefaf2"
+              : "#f8fafc",
+            color: smartFollowUp.participated
+              ? "#166534"
+              : "#64748b",
+            fontWeight: 800,
+            textAlign: "center",
+          }}
+        >
+          {smartFollowUp.participated
+            ? "🌟 شارك في الحصة اليوم"
+            : "المشاركة لم تُسجل اليوم"}
+        </div>
+
+        {smartFollowUp.note && (
+          <div
+            style={{
+              padding: "13px",
+              borderRadius: "15px",
+              background: "#f8fafc",
+              color: "#475569",
+              fontWeight: 700,
+            }}
+          >
+            💬 {smartFollowUp.note}
+          </div>
+        )}
+      </div>
+    </>
+  )}
+</section>
         {/* ماذا أنجز اليوم */}
 
         <section style={cardStyle}>
@@ -1861,4 +2785,13 @@ const redBadgeStyle = {
   borderRadius: "12px",
   background: "#fff1f2",
   fontWeight: 700,
+};
+const smartMetricStyle = {
+  display: "grid",
+  gap: "7px",
+  padding: "13px",
+  borderRadius: "14px",
+  background: "#ffffff",
+  textAlign: "center" as const,
+  color: "#475569",
 };
