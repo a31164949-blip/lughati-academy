@@ -79,8 +79,10 @@ export default function SchoolDayPage() {
   const [studentName, setStudentName] =
     useState("");
 
-  const [studentClassroom, setStudentClassroom] =
-    useState("");
+  const [
+    studentClassroom,
+    setStudentClassroom,
+  ] = useState("");
 
   const [currentTime, setCurrentTime] =
     useState(new Date());
@@ -88,31 +90,40 @@ export default function SchoolDayPage() {
   const [isLoading, setIsLoading] =
     useState(true);
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
   useEffect(() => {
     const savedStudent =
-      localStorage.getItem("lughatiStudent");
+      localStorage.getItem(
+        "lughatiStudent"
+      );
 
     let loadedStudentName = "";
     let loadedClassroom = "";
 
     if (savedStudent) {
       try {
-        const parsed = JSON.parse(savedStudent);
+        const parsed =
+          JSON.parse(savedStudent);
 
         loadedStudentName =
-          typeof parsed.studentName === "string"
+          typeof parsed.studentName ===
+          "string"
             ? parsed.studentName
-            : typeof parsed.name === "string"
+            : typeof parsed.name ===
+                "string"
               ? parsed.name
               : "";
 
         loadedClassroom =
-          typeof parsed.classroom === "string"
+          typeof parsed.classroom ===
+          "string"
             ? parsed.classroom
-            : typeof parsed.className === "string"
+            : typeof parsed.className ===
+                "string"
               ? parsed.className
               : "";
       } catch (error) {
@@ -123,33 +134,48 @@ export default function SchoolDayPage() {
       }
     }
 
-    setStudentName(loadedStudentName);
-    setStudentClassroom(loadedClassroom);
+    setStudentName(
+      loadedStudentName
+    );
+
+    setStudentClassroom(
+      loadedClassroom
+    );
 
     async function loadSchedule() {
       try {
         const classroomKey =
-          getClassroomKey(loadedClassroom);
+          getClassroomKey(
+            loadedClassroom
+          );
 
-        const scheduleReference = doc(
-          db,
-          "schoolSchedules",
-          classroomKey
-        );
+        const scheduleReference =
+          doc(
+            db,
+            "schoolSchedules",
+            classroomKey
+          );
 
         const snapshot =
-          await getDoc(scheduleReference);
+          await getDoc(
+            scheduleReference
+          );
 
-        if (!snapshot.exists()) {
+        if (
+          !snapshot.exists()
+        ) {
           setErrorMessage(
             "لم يتم نشر جدول هذا الفصل حتى الآن."
           );
           return;
         }
 
-        const data = snapshot.data();
+        const data =
+          snapshot.data();
 
-        if (data.published !== true) {
+        if (
+          data.published !== true
+        ) {
           setErrorMessage(
             "الجدول الدراسي غير متاح حاليًا."
           );
@@ -158,22 +184,29 @@ export default function SchoolDayPage() {
 
         setSchedule({
           classroomKey:
-            typeof data.classroomKey === "string"
+            typeof data.classroomKey ===
+            "string"
               ? data.classroomKey
               : classroomKey,
 
           classroom:
-            typeof data.classroom === "string"
+            typeof data.classroom ===
+            "string"
               ? data.classroom
-              : loadedClassroom || "الثاني أ",
+              : loadedClassroom ||
+                "الثاني أ",
 
           periods:
-            Array.isArray(data.periods)
+            Array.isArray(
+              data.periods
+            )
               ? data.periods
               : [],
 
           days:
-            Array.isArray(data.days)
+            Array.isArray(
+              data.days
+            )
               ? data.days
               : [],
 
@@ -197,153 +230,220 @@ export default function SchoolDayPage() {
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setCurrentTime(new Date());
-    }, 30000);
+    const interval =
+      window.setInterval(() => {
+        setCurrentTime(
+          new Date()
+        );
+      }, 30000);
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval
+      );
     };
   }, []);
 
   const todayName =
-    dayNames[currentTime.getDay()];
+    dayNames[
+      currentTime.getDay()
+    ];
 
-  const todaySchedule = useMemo(() => {
-    if (!schedule) {
-      return null;
-    }
-
-    return (
-      schedule.days.find(
-        (day) => day.day === todayName
-      ) ?? null
-    );
-  }, [schedule, todayName]);
-
-  const activePeriod = useMemo<ActivePeriodState>(() => {
-    if (!schedule) {
-      return {
-        current: null,
-        next: null,
-        status: "no-school-day",
-      };
-    }
-
-    if (
-      todayName === "الجمعة" ||
-      todayName === "السبت"
-    ) {
-      return {
-        current: null,
-        next: null,
-        status: "no-school-day",
-      };
-    }
-
-    const periods = schedule.periods;
-
-    if (periods.length === 0) {
-      return {
-        current: null,
-        next: null,
-        status: "no-school-day",
-      };
-    }
-
-    const nowMinutes =
-      currentTime.getHours() * 60 +
-      currentTime.getMinutes();
-
-    const firstPeriod = periods[0];
-    const lastPeriod =
-      periods[periods.length - 1];
-
-    if (
-      nowMinutes <
-      timeToMinutes(firstPeriod.startTime)
-    ) {
-      return {
-        current: null,
-        next: firstPeriod,
-        status: "before-school",
-      };
-    }
-
-    for (let index = 0; index < periods.length; index++) {
-      const period = periods[index];
-
-      const start =
-        timeToMinutes(period.startTime);
-
-      const end =
-        timeToMinutes(period.endTime);
-
-      if (
-        nowMinutes >= start &&
-        nowMinutes < end
-      ) {
-        return {
-          current: period,
-          next:
-            index + 1 < periods.length
-              ? periods[index + 1]
-              : null,
-          status: "during-period",
-        };
+  const todaySchedule =
+    useMemo(() => {
+      if (!schedule) {
+        return null;
       }
 
-      if (
-        index + 1 < periods.length
-      ) {
-        const nextPeriod =
-          periods[index + 1];
+      return (
+        schedule.days.find(
+          (day) =>
+            day.day ===
+            todayName
+        ) ?? null
+      );
+    }, [
+      schedule,
+      todayName,
+    ]);
 
-        const nextStart =
-          timeToMinutes(
-            nextPeriod.startTime
-          );
+  const activePeriod =
+    useMemo<ActivePeriodState>(
+      () => {
+        if (!schedule) {
+          return {
+            current: null,
+            next: null,
+            status:
+              "no-school-day",
+          };
+        }
 
         if (
-          nowMinutes >= end &&
-          nowMinutes < nextStart
+          todayName ===
+            "الجمعة" ||
+          todayName ===
+            "السبت"
         ) {
           return {
             current: null,
-            next: nextPeriod,
-            status: "between-periods",
+            next: null,
+            status:
+              "no-school-day",
           };
         }
-      }
-    }
 
-    if (
-      nowMinutes >=
-      timeToMinutes(lastPeriod.endTime)
-    ) {
-      return {
-        current: null,
-        next: null,
-        status: "after-school",
-      };
-    }
+        const periods =
+          schedule.periods;
 
-    return {
-      current: null,
-      next: null,
-      status: "no-school-day",
-    };
-  }, [schedule, currentTime, todayName]);
+        if (
+          periods.length === 0
+        ) {
+          return {
+            current: null,
+            next: null,
+            status:
+              "no-school-day",
+          };
+        }
 
-  function getSubject(periodId: number) {
+        const nowMinutes =
+          currentTime.getHours() *
+            60 +
+          currentTime.getMinutes();
+
+        const firstPeriod =
+          periods[0];
+
+        const lastPeriod =
+          periods[
+            periods.length - 1
+          ];
+
+        if (
+          nowMinutes <
+          timeToMinutes(
+            firstPeriod.startTime
+          )
+        ) {
+          return {
+            current: null,
+            next: firstPeriod,
+            status:
+              "before-school",
+          };
+        }
+
+        for (
+          let index = 0;
+          index <
+          periods.length;
+          index++
+        ) {
+          const period =
+            periods[index];
+
+          const start =
+            timeToMinutes(
+              period.startTime
+            );
+
+          const end =
+            timeToMinutes(
+              period.endTime
+            );
+
+          if (
+            nowMinutes >= start &&
+            nowMinutes < end
+          ) {
+            return {
+              current: period,
+              next:
+                index + 1 <
+                periods.length
+                  ? periods[
+                      index + 1
+                    ]
+                  : null,
+              status:
+                "during-period",
+            };
+          }
+
+          if (
+            index + 1 <
+            periods.length
+          ) {
+            const nextPeriod =
+              periods[
+                index + 1
+              ];
+
+            const nextStart =
+              timeToMinutes(
+                nextPeriod.startTime
+              );
+
+            if (
+              nowMinutes >= end &&
+              nowMinutes <
+                nextStart
+            ) {
+              return {
+                current: null,
+                next:
+                  nextPeriod,
+                status:
+                  "between-periods",
+              };
+            }
+          }
+        }
+
+        if (
+          nowMinutes >=
+          timeToMinutes(
+            lastPeriod.endTime
+          )
+        ) {
+          return {
+            current: null,
+            next: null,
+            status:
+              "after-school",
+          };
+        }
+
+        return {
+          current: null,
+          next: null,
+          status:
+            "no-school-day",
+        };
+      },
+      [
+        schedule,
+        currentTime,
+        todayName,
+      ]
+    );
+
+  function getSubject(
+    periodId: number
+  ) {
     if (!todaySchedule) {
       return "";
     }
 
     return (
-      todaySchedule.periods?.[periodId] ??
       todaySchedule.periods?.[
-        String(periodId) as unknown as number
+        periodId
+      ] ??
+      todaySchedule.periods?.[
+        String(
+          periodId
+        ) as unknown as number
       ] ??
       ""
     );
@@ -353,15 +453,19 @@ export default function SchoolDayPage() {
     period: SchoolPeriod
   ) {
     const endMinutes =
-      timeToMinutes(period.endTime);
+      timeToMinutes(
+        period.endTime
+      );
 
     const nowMinutes =
-      currentTime.getHours() * 60 +
+      currentTime.getHours() *
+        60 +
       currentTime.getMinutes();
 
     return Math.max(
       0,
-      endMinutes - nowMinutes
+      endMinutes -
+        nowMinutes
     );
   }
 
@@ -372,7 +476,8 @@ export default function SchoolDayPage() {
         className="flex min-h-screen items-center justify-center bg-slate-50 p-6"
       >
         <div className="rounded-3xl bg-white px-8 py-6 text-xl font-black text-emerald-700 shadow-sm">
-          جارٍ تجهيز يومك الدراسي...
+          جارٍ تجهيز يومك
+          الدراسي...
         </div>
       </main>
     );
@@ -399,7 +504,35 @@ export default function SchoolDayPage() {
 
           <a
             href="/journey"
-            className="mt-6 inline-block rounded-2xl bg-emerald-600 px-5 py-3 font-black text-white no-underline"
+            style={{
+              display:
+                "inline-flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              gap: "8px",
+              marginTop:
+                "22px",
+              padding:
+                "11px 17px",
+              borderRadius:
+                "14px",
+              background:
+                "#ffffff",
+              color:
+                "#047857",
+              border:
+                "1px solid #a7f3d0",
+              fontWeight:
+                900,
+              fontSize:
+                "15px",
+              textDecoration:
+                "none",
+              boxShadow:
+                "0 5px 14px rgba(4,120,87,0.10)",
+            }}
           >
             ← العودة إلى رحلتي
           </a>
@@ -427,12 +560,59 @@ export default function SchoolDayPage() {
       dir="rtl"
       className="min-h-screen bg-slate-50 p-4 sm:p-6"
     >
+      {/* زر العودة */}
+
+      <div
+        style={{
+          maxWidth: "1180px",
+          margin:
+            "0 auto 14px",
+          display: "flex",
+          justifyContent:
+            "flex-start",
+        }}
+      >
+        <a
+          href="/journey"
+          style={{
+            display:
+              "inline-flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
+            gap: "8px",
+            padding:
+              "11px 17px",
+            borderRadius:
+              "14px",
+            background:
+              "#ffffff",
+            color:
+              "#047857",
+            border:
+              "1px solid #a7f3d0",
+            fontWeight:
+              900,
+            fontSize:
+              "15px",
+            textDecoration:
+              "none",
+            boxShadow:
+              "0 5px 14px rgba(4,120,87,0.10)",
+          }}
+        >
+          ← العودة إلى رحلتي
+        </a>
+      </div>
+
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 rounded-3xl bg-gradient-to-l from-emerald-700 to-emerald-500 p-7 text-white shadow-lg">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="font-bold text-emerald-50">
-                أكاديمية لغتي الرقمية
+                أكاديمية لغتي
+                الرقمية
               </p>
 
               <h1 className="mt-2 text-3xl font-black sm:text-4xl">
@@ -446,17 +626,12 @@ export default function SchoolDayPage() {
               </p>
 
               <p className="mt-2 text-emerald-50">
-                {schedule.classroom} —{" "}
-                {todayName}
+                {
+                  schedule.classroom
+                }{" "}
+                — {todayName}
               </p>
             </div>
-
-            <a
-              href="/journey"
-              className="rounded-2xl bg-white px-5 py-3 font-black text-emerald-700 no-underline"
-            >
-              ← العودة إلى رحلتي
-            </a>
           </div>
         </header>
 
@@ -473,8 +648,10 @@ export default function SchoolDayPage() {
               {currentTime.toLocaleTimeString(
                 "ar-SA",
                 {
-                  hour: "2-digit",
-                  minute: "2-digit",
+                  hour:
+                    "2-digit",
+                  minute:
+                    "2-digit",
                 }
               )}
             </p>
@@ -488,7 +665,11 @@ export default function SchoolDayPage() {
             {activePeriod.current ? (
               <>
                 <p className="mt-2 text-2xl font-black text-emerald-700">
-                  {activePeriod.current.title}
+                  {
+                    activePeriod
+                      .current
+                      .title
+                  }
                 </p>
 
                 <p className="mt-2 text-lg font-bold text-slate-800">
@@ -506,7 +687,8 @@ export default function SchoolDayPage() {
               </>
             ) : (
               <p className="mt-3 font-bold text-slate-600">
-                لا توجد حصة جارية الآن
+                لا توجد حصة
+                جارية الآن
               </p>
             )}
           </article>
@@ -519,7 +701,10 @@ export default function SchoolDayPage() {
             {activePeriod.next ? (
               <>
                 <p className="mt-2 text-2xl font-black text-sky-700">
-                  {activePeriod.next.title}
+                  {
+                    activePeriod
+                      .next.title
+                  }
                 </p>
 
                 <p className="mt-2 text-lg font-bold text-slate-800">
@@ -532,14 +717,16 @@ export default function SchoolDayPage() {
                   className="mt-2 text-sm font-bold text-sky-700"
                 >
                   {
-                    activePeriod.next
+                    activePeriod
+                      .next
                       .startTime
                   }
                 </p>
               </>
             ) : (
               <p className="mt-3 font-bold text-slate-600">
-                لا توجد حصة قادمة
+                لا توجد حصة
+                قادمة
               </p>
             )}
           </article>
@@ -580,8 +767,9 @@ export default function SchoolDayPage() {
             </h2>
 
             <p className="mt-2 text-slate-500">
-              جدولك لليوم مرتّب من أول
-              حصة حتى نهاية اليوم.
+              جدولك لليوم مرتّب
+              من أول حصة حتى
+              نهاية اليوم.
             </p>
           </div>
 
@@ -589,19 +777,25 @@ export default function SchoolDayPage() {
             {schedule.periods.map(
               (period) => {
                 const subject =
-                  getSubject(period.id);
+                  getSubject(
+                    period.id
+                  );
 
                 const isCurrent =
-                  activePeriod.current?.id ===
+                  activePeriod.current
+                    ?.id ===
                   period.id;
 
                 const isNext =
-                  activePeriod.next?.id ===
+                  activePeriod.next
+                    ?.id ===
                   period.id;
 
                 return (
                   <article
-                    key={period.id}
+                    key={
+                      period.id
+                    }
                     className={`rounded-2xl border p-4 ${
                       isCurrent
                         ? "border-emerald-400 bg-emerald-50"
@@ -614,7 +808,9 @@ export default function SchoolDayPage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-lg font-black text-slate-800">
-                            {period.title}
+                            {
+                              period.title
+                            }
                           </p>
 
                           {isCurrent && (
@@ -640,8 +836,13 @@ export default function SchoolDayPage() {
                         dir="ltr"
                         className="whitespace-nowrap font-black text-slate-500"
                       >
-                        {period.startTime} -{" "}
-                        {period.endTime}
+                        {
+                          period.startTime
+                        }{" "}
+                        -{" "}
+                        {
+                          period.endTime
+                        }
                       </p>
                     </div>
                   </article>
@@ -657,8 +858,8 @@ export default function SchoolDayPage() {
           </p>
 
           <p className="mt-2 text-sm text-slate-500">
-            يوم دراسي منظم يصنع إنجازًا
-            أجمل 🌟
+            يوم دراسي منظم يصنع
+            إنجازًا أجمل 🌟
           </p>
         </footer>
       </div>

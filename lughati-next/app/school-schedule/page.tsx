@@ -293,12 +293,35 @@ export default function StudentSchoolSchedulePage() {
               </p>
             </div>
 
-            <a
-              href="/journey"
-              className="rounded-2xl bg-white px-5 py-3 font-black text-emerald-700 no-underline"
-            >
-              ← العودة إلى رحلتي
-            </a>
+           <div
+  style={{
+    maxWidth: "1180px",
+    margin: "0 auto 14px",
+    display: "flex",
+    justifyContent: "flex-start",
+  }}
+>
+  <a
+    href="/journey"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px",
+      padding: "11px 17px",
+      borderRadius: "14px",
+      background: "#ffffff",
+      color: "#047857",
+      border: "1px solid #a7f3d0",
+      fontWeight: 900,
+      fontSize: "15px",
+      textDecoration: "none",
+      boxShadow: "0 5px 14px rgba(4,120,87,0.10)",
+    }}
+  >
+    ← العودة إلى رحلتي
+  </a>
+</div>
           </div>
         </header>
 

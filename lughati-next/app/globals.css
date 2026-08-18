@@ -2872,70 +2872,59 @@ a {
 }
 
 .academy-gate-icon {
-  width: 62px;
-  height: 62px;
+  width: 50px;
+  height: 50px;
   display: grid;
   place-items: center;
-  border-radius: 19px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.88);
   box-shadow:
-    0 10px 22px rgba(23, 50, 77, 0.08),
-    inset 0 0 0 1px rgba(23, 50, 77, 0.06);
-  font-size: 32px;
+    0 8px 18px rgba(23, 50, 77, 0.07),
+    inset 0 0 0 1px rgba(23, 50, 77, 0.05);
+  font-size: 26px;
 }
 
 .academy-gate-label {
   display: inline-block;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
   color: #16805e;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
 }
 
 .academy-gate h3 {
-  margin: 0 0 8px;
+  margin: 0 0 5px;
   color: #17324d;
-  font-size: 23px;
+  font-size: 19px;
+  line-height: 1.45;
 }
 
 .academy-gate p {
   margin: 0;
   color: #66788a;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .academy-gate-arrow {
   position: absolute;
-  left: 22px;
-  bottom: 20px;
-  width: 38px;
-  height: 38px;
+  left: 16px;
+  bottom: 14px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   color: #1769aa;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
-  box-shadow: 0 8px 18px rgba(23, 50, 77, 0.1);
+  box-shadow: 0 6px 14px rgba(23, 50, 77, 0.09);
   transition: transform 0.25s ease;
 }
 
 .academy-gate:hover .academy-gate-arrow {
-  transform: translateX(-4px);
-}
-
-@keyframes academySparkle {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: scale(0.9) rotate(0deg);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.15) rotate(18deg);
-  }
+  transform: translateX(-3px);
 }
 
 @media (max-width: 900px) {
@@ -2950,25 +2939,45 @@ a {
 
 @media (max-width: 600px) {
   .academy-gates {
-    margin: 22px 12px;
-    padding: 22px 14px;
-    border-radius: 23px;
-  }
-
-  .academy-gate {
-    min-height: 185px;
-    padding: 20px;
+    margin: 18px 10px;
+    padding: 18px 12px;
     border-radius: 21px;
   }
 
+  .academy-gate {
+    min-height: 145px;
+    padding: 16px;
+    border-radius: 19px;
+  }
+
   .academy-gate-icon {
-    width: 54px;
-    height: 54px;
-    font-size: 28px;
+    width: 46px;
+    height: 46px;
+    font-size: 24px;
+    border-radius: 14px;
+  }
+
+  .academy-gate-label {
+    font-size: 11px;
+    margin-bottom: 2px;
   }
 
   .academy-gate h3 {
-    font-size: 21px;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  .academy-gate p {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .academy-gate-arrow {
+    width: 29px;
+    height: 29px;
+    left: 12px;
+    bottom: 11px;
+    font-size: 15px;
   }
 }
 /* ================================
@@ -4338,5 +4347,97 @@ a {
   .academy-gate-icon,
   .academy-gate-arrow {
     transition: none;
+  }
+}
+/* تحسين يوميات الفصل على الشاشات الكبيرة */
+
+.classDiary__highlights {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr;
+  gap: 16px;
+}
+
+.classDiary__starsGrid {
+  grid-template-columns: repeat(5, minmax(90px, 1fr));
+}
+
+
+/* الجوال والآيباد الصغير */
+
+@media (max-width: 768px) {
+  .classDiary__highlights {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .classDiary__highlight--stars {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  .classDiary__highlight--learned {
+    order: 2;
+  }
+
+  .classDiary__highlight--message {
+    order: 3;
+    min-height: auto !important;
+    align-self: start;
+  }
+
+  .classDiary__highlight--message p {
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+
+  .classDiary__starsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+
+/* ضبط نجوم اليوم على الجوال */
+
+@media (max-width: 768px) {
+  .classDiary__starsGrid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .classDiary__starCard {
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 10px 6px !important;
+  }
+
+  .classDiary__starCard > div:first-child {
+    width: 46px !important;
+    height: 46px !important;
+  }
+}
+@media (max-width: 768px) {
+  .classDiary__starCard {
+    padding: 8px 6px !important;
+    min-height: 128px !important;
+  }
+
+  .classDiary__starCard > div:first-child {
+    width: 44px !important;
+    height: 44px !important;
+    margin-bottom: 3px !important;
+  }
+
+  .classDiary__starCard > div:nth-child(2) {
+    margin-top: 3px !important;
+    min-height: auto !important;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+  }
+
+  .classDiary__starCard > div:nth-child(3) {
+    margin-top: 1px !important;
+    font-size: 10px !important;
   }
 }

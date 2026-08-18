@@ -147,7 +147,7 @@ async function handleCompleteMadrasati() {
           )}
 
           <a
-            href="/"
+            href="/journey"
             style={{
               display: "inline-block",
               marginTop: "28px",

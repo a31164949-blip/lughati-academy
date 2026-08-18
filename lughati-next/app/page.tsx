@@ -1,7 +1,9 @@
 "use client";
 
+import WeeklyGames from "./components/WeeklyGames";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+
 import {
   collection,
   getDocs,
@@ -9,6 +11,7 @@ import {
 
 import { db } from "../firebase";
 
+import WeeklyPicks from "./components/WeeklyPicks";
 import HomeworkReminder from "./components/HomeworkReminder";
 import AcademicJourney from "./components/AcademicJourney";
 import ClassDiary from "./components/ClassDiary";
@@ -53,6 +56,13 @@ type AcademyHero = {
   published: boolean;
 };
 
+type DayMessage = {
+  show: boolean;
+  title: string;
+  message: string;
+  icon: string;
+};
+
 const sections: AcademySection[] = [
   {
     icon: "📚",
@@ -71,14 +81,6 @@ const sections: AcademySection[] = [
     className: "green-card",
   },
   {
-    icon: "📤",
-    title: "ارفع عملك",
-    description:
-      "أرسل صورة أو تسجيلًا صوتيًا أو مقطع فيديو لمعلمك",
-    href: "/upload",
-    className: "teal-card",
-  },
-  {
     icon: "📖",
     title: "الفهم القرائي",
     description:
@@ -93,30 +95,6 @@ const sections: AcademySection[] = [
       "تعلّم والعب واكسب النجوم",
     href: "/games",
     className: "orange-card",
-  },
-  {
-    icon: "✏️",
-    title: "الواجبات",
-    description:
-      "شاهد واجباتك اليومية وأنجزها",
-    href: "/homework",
-    className: "yellow-card",
-  },
-  {
-    icon: "🏫",
-    title: "جسر مدرستي",
-    description:
-      "أنجز واجبك في مدرستي ثم عد للأكاديمية",
-    href: "/madrasati-bridge",
-    className: "green-card",
-  },
-  {
-    icon: "🗓️",
-    title: "الخطة الأسبوعية",
-    description:
-      "اطّلع على خطة التعلم لهذا الأسبوع",
-    href: "/login",
-    className: "pink-card",
   },
   {
     icon: "🌟",
@@ -218,68 +196,218 @@ export default function Home() {
   const [today, setToday] =
     useState("");
 
-  const [announcements, setAnnouncements] =
-    useState<AcademyAnnouncement[]>([]);
+  const [
+    announcements,
+    setAnnouncements,
+  ] =
+    useState<
+      AcademyAnnouncement[]
+    >([]);
+
+  const [
+    dayMessage,
+    setDayMessage,
+  ] =
+    useState<DayMessage>({
+      show: false,
+      title: "",
+      message: "",
+      icon: "🌙",
+    });
 
   const [
     announcementsLoading,
     setAnnouncementsLoading,
   ] = useState(true);
 
-  const [heroes, setHeroes] =
+  const [
+    heroes,
+    setHeroes,
+  ] =
     useState<AcademyHero[]>([]);
 
-  const [heroIndex, setHeroIndex] =
+  const [
+    heroIndex,
+    setHeroIndex,
+  ] =
     useState(0);
 
   /*
-   * تحميل الإعلانات.
+   * رسالة الوقت الذكية.
+   * تظهر بعد الساعة 10 مساءً
+   * وحتى الساعة 5 صباحًا
+   * حسب توقيت الرياض.
    */
-  useEffect(() => {
-    async function loadAnnouncements() {
-      try {
-        setAnnouncementsLoading(true);
-
-        const response = await fetch(
-          "/api/public-announcements",
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
-
-        const data =
-          await response.json();
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          setAnnouncements([]);
-          return;
+/*
+ * رسالة فارس الذكية حسب الوقت
+ * بتوقيت الرياض.
+ */
+useEffect(() => {
+  const updateDayMessage = () => {
+    const parts =
+      new Intl.DateTimeFormat(
+        "en-US",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+          timeZone: "Asia/Riyadh",
         }
+      ).formatToParts(new Date());
 
-        setAnnouncements(
-          Array.isArray(
-            data.announcements
-          )
-            ? data.announcements
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "تعذر تحميل نبض الأكاديمية:",
-          error
+    const hour =
+      Number(
+        parts.find(
+          (part) =>
+            part.type === "hour"
+        )?.value ?? 0
+      );
+
+    // من 5 صباحًا إلى 12 ظهرًا
+    if (hour >= 5 && hour < 12) {
+      setDayMessage({
+        show: true,
+        title:
+          "صباح النشاط يا بطل ☀️",
+        message:
+          "يوم جديد بدأ… اقرأ، تعلّم، واصنع إنجازًا جميلًا مع فارس 🌱✨",
+        icon: "☀️",
+      });
+
+      return;
+    }
+
+    // من 12 ظهرًا إلى 6 مساءً
+    if (hour >= 12 && hour < 18) {
+      setDayMessage({
+        show: true,
+        title:
+          "استمر يا بطل 🌤️",
+        message:
+          "أحسنت حتى الآن… أكمل مهامك بهدوء، فكل خطوة تقرّبك من هدفك ⭐",
+        icon: "🌤️",
+      });
+
+      return;
+    }
+
+    // من 6 مساءً إلى 10 مساءً
+    if (hour >= 18 && hour < 22) {
+      setDayMessage({
+        show: true,
+        title:
+          "مساء الإنجاز يا بطل 🌙",
+        message:
+          "راجع ما تعلمته اليوم، وأنهِ ما بقي لك لتبدأ غدًا وأنت مستعد ✨",
+        icon: "🌙",
+      });
+
+      return;
+    }
+
+    // من 10 مساءً إلى 5 صباحًا
+    setDayMessage({
+      show: true,
+      title:
+        "حان وقت الراحة يا بطل 🌙",
+      message:
+        "لقد أبدعت اليوم… نم مبكرًا، ونلتقي غدًا بطاقة جديدة بإذن الله 😴✨",
+      icon: "🌙",
+    });
+  };
+
+  updateDayMessage();
+
+  const timer =
+    window.setInterval(
+      updateDayMessage,
+      60 * 1000
+    );
+
+  return () =>
+    window.clearInterval(timer);
+}, []);
+
+  /*
+  /*
+ * تحميل الإعلانات.
+ */
+useEffect(() => {
+  async function loadAnnouncements() {
+    try {
+      setAnnouncementsLoading(true);
+
+      const response = await fetch(
+        "/api/public-announcements",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const responseText =
+        await response.text();
+
+      if (!responseText.trim()) {
+        console.warn(
+          "استجابة الإعلانات فارغة."
         );
 
         setAnnouncements([]);
-      } finally {
-        setAnnouncementsLoading(false);
+        return;
       }
-    }
 
-    void loadAnnouncements();
-  }, []);
+      let data: {
+        success?: boolean;
+        announcements?: AcademyAnnouncement[];
+      };
+
+      try {
+        data = JSON.parse(
+          responseText
+        );
+      } catch (parseError) {
+        console.error(
+          "استجابة الإعلانات ليست JSON صالحًا:",
+          responseText,
+          parseError
+        );
+
+        setAnnouncements([]);
+        return;
+      }
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        setAnnouncements([]);
+        return;
+      }
+
+      setAnnouncements(
+        Array.isArray(
+          data.announcements
+        )
+          ? data.announcements
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "تعذر تحميل نبض الأكاديمية:",
+        error
+      );
+
+      setAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(
+        false
+      );
+    }
+  }
+
+  void loadAnnouncements();
+}, []);
 
   /*
    * تحميل الأبطال المنشورين فقط.
@@ -297,59 +425,65 @@ export default function Home() {
 
         const loadedHeroes =
           snapshot.docs
-            .map((document) => {
-              const data =
-                document.data();
+            .map(
+              (
+                document
+              ) => {
+                const data =
+                  document.data();
 
-              return {
-                id: document.id,
+                return {
+                  id: document.id,
 
-                studentFirstName:
-                  typeof data.studentFirstName ===
-                  "string"
-                    ? data.studentFirstName
-                    : "بطل الأكاديمية",
+                  studentFirstName:
+                    typeof data.studentFirstName ===
+                    "string"
+                      ? data.studentFirstName
+                      : "بطل الأكاديمية",
 
-                title:
-                  typeof data.title ===
-                  "string"
-                    ? data.title
-                    : "بطل الأكاديمية",
+                  title:
+                    typeof data.title ===
+                    "string"
+                      ? data.title
+                      : "بطل الأكاديمية",
 
-                badge:
-                  typeof data.badge ===
-                  "string"
-                    ? data.badge
-                    : "",
+                  badge:
+                    typeof data.badge ===
+                    "string"
+                      ? data.badge
+                      : "",
 
-                achievementsCount:
-                  typeof data.achievementsCount ===
-                  "number"
-                    ? data.achievementsCount
-                    : 0,
+                  achievementsCount:
+                    typeof data.achievementsCount ===
+                    "number"
+                      ? data.achievementsCount
+                      : 0,
 
-                imageUrl:
-                  typeof data.imageUrl ===
-                  "string"
-                    ? data.imageUrl
-                    : "",
+                  imageUrl:
+                    typeof data.imageUrl ===
+                    "string"
+                      ? data.imageUrl
+                      : "",
 
-                photoConsent:
-                  data.photoConsent ===
-                  true,
+                  photoConsent:
+                    data.photoConsent ===
+                    true,
 
-                published:
-                  data.published ===
-                  true,
-              } satisfies AcademyHero;
-            })
+                  published:
+                    data.published ===
+                    true,
+                } satisfies AcademyHero;
+              }
+            )
             .filter(
               (hero) =>
                 hero.published &&
                 hero.photoConsent
             );
 
-        setHeroes(loadedHeroes);
+        setHeroes(
+          loadedHeroes
+        );
       } catch (error) {
         console.error(
           "تعذر تحميل أبطال الأكاديمية:",
@@ -367,57 +501,71 @@ export default function Home() {
    * تدوير بطاقة الأبطال.
    */
   useEffect(() => {
-    if (heroes.length <= 1) {
+    if (
+      heroes.length <= 1
+    ) {
       return;
     }
 
     const timer =
-      window.setInterval(() => {
-        setHeroIndex(
-          (current) =>
-            current + 1 >=
-            heroes.length
-              ? 0
-              : current + 1
-        );
-      }, 6000);
+      window.setInterval(
+        () => {
+          setHeroIndex(
+            (current) =>
+              current + 1 >=
+              heroes.length
+                ? 0
+                : current + 1
+          );
+        },
+        6000
+      );
 
     return () =>
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer
+      );
   }, [heroes.length]);
 
   /*
    * التاريخ.
    */
   useEffect(() => {
-  const updateToday = () => {
-    const formattedDate =
-      new Intl.DateTimeFormat(
-        "ar-SA",
-        {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-          timeZone: "Asia/Riyadh",
-        }
-      ).format(new Date());
+    const updateToday =
+      () => {
+        const formattedDate =
+          new Intl.DateTimeFormat(
+            "ar-SA",
+            {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+              timeZone:
+                "Asia/Riyadh",
+            }
+          ).format(
+            new Date()
+          );
 
-    setToday(formattedDate);
-  };
+        setToday(
+          formattedDate
+        );
+      };
 
-  updateToday();
-}, []);
+    updateToday();
+  }, []);
 
   function getAnnouncementPreview(
     message: string
   ) {
-    const firstLine = message
-      .split("\n")
-      .map((line) =>
-        line.trim()
-      )
-      .find(Boolean);
+    const firstLine =
+      message
+        .split("\n")
+        .map((line) =>
+          line.trim()
+        )
+        .find(Boolean);
 
     return firstLine || "";
   }
@@ -438,6 +586,158 @@ export default function Home() {
       dir="rtl"
     >
       <HomeworkReminder />
+
+      {/* رسالة المساء الذكية */}
+
+      {dayMessage.show && (
+        <section
+          aria-label="رسالة المساء"
+          style={{
+            maxWidth:
+              "1180px",
+            margin:
+              "14px auto 4px",
+            padding:
+              "13px 17px",
+            borderRadius:
+              "22px",
+            color: "#ffffff",
+            background:
+              "linear-gradient(135deg,#172554 0%,#1e3a8a 50%,#312e81 100%)",
+            boxShadow:
+              "0 10px 28px rgba(30,58,138,.18)",
+            display:
+              "flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "space-between",
+            gap: "14px",
+            flexWrap:
+              "wrap",
+            position:
+              "relative",
+            overflow:
+              "hidden",
+          }}
+        >
+          {/* قمر خلفي */}
+
+          <div
+            style={{
+              position:
+                "absolute",
+              width:
+                "130px",
+              height:
+                "130px",
+              borderRadius:
+                "50%",
+              background:
+                "rgba(255,255,255,.05)",
+              left:
+                "-35px",
+              top:
+                "-60px",
+              pointerEvents:
+                "none",
+            }}
+          />
+
+          <div
+            style={{
+              display:
+                "flex",
+              alignItems:
+                "center",
+              gap: "13px",
+              position:
+                "relative",
+            }}
+          >
+            <div
+              style={{
+                width:
+                  "48px",
+                height:
+                  "48px",
+                borderRadius:
+                  "16px",
+                background:
+                  "rgba(255,255,255,.12)",
+                display:
+                  "grid",
+                placeItems:
+                  "center",
+                fontSize:
+                  "28px",
+                flexShrink:
+                  0,
+              }}
+            >
+              {
+                dayMessage.icon
+              }
+            </div>
+
+            <div>
+              <strong
+                style={{
+                  display:
+                    "block",
+                  fontSize:
+                    "16px",
+                  fontWeight:
+                    900,
+                }}
+              >
+                {
+                  dayMessage.title
+                }
+              </strong>
+
+              <p
+                style={{
+                  margin:
+                    "3px 0 0",
+                  color:
+                    "#dbeafe",
+                  fontSize:
+                    "13px",
+                  fontWeight:
+                    700,
+                  lineHeight:
+                    1.7,
+                }}
+              >
+                {
+                  dayMessage.message
+                }
+              </p>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display:
+                "flex",
+              gap: "8px",
+              alignItems:
+                "center",
+              color:
+                "#fde68a",
+              fontSize:
+                "16px",
+              whiteSpace:
+                "nowrap",
+              position:
+                "relative",
+            }}
+          >
+            ✨ ⭐ ✨
+          </div>
+        </section>
+      )}
 
       {/* الهوية */}
 
@@ -485,43 +785,57 @@ export default function Home() {
 
       <section
         style={{
-          maxWidth: "1180px",
+          maxWidth:
+            "1180px",
           margin:
             "24px auto 18px",
           padding:
             "18px 22px",
-          borderRadius: "26px",
+          borderRadius:
+            "26px",
           background:
             "linear-gradient(135deg, #158057, #20a06d)",
           color: "white",
           boxShadow:
             "0 12px 30px rgba(25, 120, 80, 0.16)",
-          display: "flex",
-          alignItems: "center",
+          display:
+            "flex",
+          alignItems:
+            "center",
           justifyContent:
             "space-between",
           gap: "18px",
-          flexWrap: "wrap",
+          flexWrap:
+            "wrap",
         }}
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
+            display:
+              "flex",
+            alignItems:
+              "center",
             gap: "15px",
           }}
         >
           <div
             style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "20px",
+              width:
+                "64px",
+              height:
+                "64px",
+              borderRadius:
+                "20px",
               background:
                 "rgba(255,255,255,0.15)",
-              display: "grid",
-              placeItems: "center",
-              fontSize: "38px",
-              flexShrink: 0,
+              display:
+                "grid",
+              placeItems:
+                "center",
+              fontSize:
+                "38px",
+              flexShrink:
+                0,
             }}
           >
             🧒🏻
@@ -532,7 +846,8 @@ export default function Home() {
               style={{
                 fontSize:
                   "clamp(22px, 3vw, 31px)",
-                fontWeight: 900,
+                fontWeight:
+                  900,
               }}
             >
               السلام عليكم يا بطل 👋
@@ -542,8 +857,10 @@ export default function Home() {
               style={{
                 margin:
                   "5px 0 0",
-                opacity: 0.9,
-                lineHeight: 1.6,
+                opacity:
+                  0.9,
+                lineHeight:
+                  1.6,
               }}
             >
               فارس معك… جاهز
@@ -554,23 +871,33 @@ export default function Home() {
 
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
+            display:
+              "flex",
+            alignItems:
+              "center",
             gap: "12px",
-            flexWrap: "wrap",
+            flexWrap:
+              "wrap",
           }}
         >
           <span
             style={{
-              fontSize: "14px",
-              opacity: 0.9,
+              fontSize:
+                "14px",
+              opacity:
+                0.9,
             }}
           >
             {today ? (
-  <>🗓️ {today}</>
-) : (
-  <>🗓️ اليوم</>
-)}
+              <>
+                🗓️{" "}
+                {today}
+              </>
+            ) : (
+              <>
+                🗓️ اليوم
+              </>
+            )}
           </span>
 
           <Link
@@ -578,14 +905,16 @@ export default function Home() {
             style={{
               background:
                 "white",
-              color: "#126846",
+              color:
+                "#126846",
               textDecoration:
                 "none",
               padding:
                 "12px 18px",
               borderRadius:
                 "15px",
-              fontWeight: 900,
+              fontWeight:
+                900,
               whiteSpace:
                 "nowrap",
             }}
@@ -701,199 +1030,236 @@ export default function Home() {
           <span aria-hidden="true"></span>
           مباشر
         </span>
-      </section>
+        </section>
+      {/* شريط بطل الأكاديمية */}
 
-      {/* بطاقة الأبطال المختصرة */}
-
-      <section
+<section
+  style={{
+    maxWidth: "1180px",
+    margin: "14px auto",
+    padding: "11px 15px",
+    borderRadius: "18px",
+    background:
+      "linear-gradient(135deg,#ffffff,#f7fff9)",
+    border: "1px solid #dcece4",
+    boxShadow:
+      "0 6px 18px rgba(30,90,60,0.06)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    flexWrap: "wrap",
+  }}
+>
+  {featuredHero ? (
+    <>
+      <div
         style={{
-          maxWidth: "1180px",
-          margin:
-            "18px auto",
-          border:
-            "1px solid #dcece4",
-          borderRadius: "24px",
-          background:
-            "linear-gradient(135deg, #ffffff, #f7fff9)",
-          boxShadow:
-            "0 8px 24px rgba(30, 90, 60, 0.08)",
-          padding:
-            "16px 20px",
           display: "flex",
           alignItems: "center",
-          justifyContent:
-            "space-between",
-          gap: "15px",
-          flexWrap: "wrap",
+          gap: "11px",
+          minWidth: 0,
         }}
       >
-        {featuredHero ? (
-          <>
-            <div
+        <div
+          style={{
+            width: "46px",
+            height: "46px",
+            borderRadius: "14px",
+            overflow: "hidden",
+            background: "#e8f8ef",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            fontSize: "25px",
+          }}
+        >
+          {featuredHero.imageUrl ? (
+            <img
+              src={featuredHero.imageUrl}
+              alt=""
               style={{
-                display: "flex",
-                alignItems:
-                  "center",
-                gap: "13px",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
               }}
-            >
-              {featuredHero.imageUrl ? (
-                <img
-                  src={
-                    featuredHero.imageUrl
-                  }
-                  alt=""
-                  style={{
-                    width: "60px",
-                    height: "60px",
-                    borderRadius:
-                      "18px",
-                    objectFit:
-                      "cover",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width:
-                      "60px",
-                    height:
-                      "60px",
-                    borderRadius:
-                      "18px",
-                    background:
-                      "#e5f8ed",
-                    display:
-                      "grid",
-                    placeItems:
-                      "center",
-                    fontSize:
-                      "32px",
-                  }}
-                >
-                  🌟
-                </div>
-              )}
+            />
+          ) : (
+            "🌟"
+          )}
+        </div>
 
-              <div>
-                <small
-                  style={{
-                    color:
-                      "#7a6500",
-                    fontWeight:
-                      800,
-                  }}
-                >
-                  🌟 بطل الأكاديمية
-                </small>
-
-                <div
-                  style={{
-                    marginTop:
-                      "3px",
-                    fontSize:
-                      "19px",
-                    fontWeight:
-                      900,
-                    color:
-                      "#174c36",
-                  }}
-                >
-                  {
-                    featuredHero.studentFirstName
-                  }
-                  {" — "}
-                  {
-                    featuredHero.title
-                  }
-                </div>
-
-                <div
-                  style={{
-                    marginTop:
-                      "3px",
-                    color:
-                      "#68776f",
-                    fontSize:
-                      "14px",
-                  }}
-                >
-                  ⭐{" "}
-                  {
-                    featuredHero.achievementsCount
-                  }{" "}
-                  إنجازًا
-                  {featuredHero.badge
-                    ? ` • ${featuredHero.badge}`
-                    : ""}
-                </div>
-              </div>
-            </div>
-
-            <Link
-              href="/heroes"
+        <div
+          style={{
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
               style={{
-                textDecoration:
-                  "none",
-                color: "#14744d",
+                color: "#8a6700",
+                fontSize: "12px",
                 fontWeight: 900,
-                background:
-                  "#eaf9f0",
-                padding:
-                  "10px 15px",
-                borderRadius:
-                  "14px",
               }}
             >
-              شاهد جميع الأبطال ←
-            </Link>
-          </>
-        ) : (
-          <>
-            <div>
-              <strong
-                style={{
-                  display:
-                    "block",
-                  color:
-                    "#176c46",
-                  fontSize:
-                    "18px",
-                }}
-              >
-                🌟 أبطال أكاديمية
-                لغتي
-              </strong>
+              🌟 بطل الأكاديمية
+            </span>
 
+            {featuredHero.badge && (
               <span
                 style={{
-                  display:
-                    "block",
-                  marginTop:
-                    "4px",
-                  color:
-                    "#6f7f76",
+                  padding: "3px 8px",
+                  borderRadius: "999px",
+                  background: "#fff5c9",
+                  color: "#8a6700",
+                  fontSize: "11px",
+                  fontWeight: 900,
                 }}
               >
-                قريبًا نحتفي هنا
-                بإنجازات أبطالنا ✨
+                {featuredHero.badge}
               </span>
-            </div>
+            )}
+          </div>
 
-            <Link
-              href="/heroes"
+          <div
+            style={{
+              marginTop: "2px",
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
+              flexWrap: "wrap",
+              color: "#174c36",
+            }}
+          >
+            <strong
               style={{
-                textDecoration:
-                  "none",
-                color: "#14744d",
+                fontSize: "16px",
                 fontWeight: 900,
               }}
             >
-              اكتشف ركن الأبطال ←
-            </Link>
-          </>
-        )}
-      </section>
+              {featuredHero.studentFirstName}
+            </strong>
+
+            <span
+              style={{
+                color: "#9aa9a1",
+              }}
+            >
+              •
+            </span>
+
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: 800,
+              }}
+            >
+              {featuredHero.title}
+            </span>
+
+            <span
+              style={{
+                color: "#9aa9a1",
+              }}
+            >
+              •
+            </span>
+
+            <span
+              style={{
+                color: "#68776f",
+                fontSize: "13px",
+                fontWeight: 800,
+              }}
+            >
+              ⭐ {featuredHero.achievementsCount} إنجازًا
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <Link
+        href="/heroes"
+        style={{
+          textDecoration: "none",
+          color: "#14744d",
+          fontWeight: 900,
+          fontSize: "13px",
+          padding: "8px 12px",
+          borderRadius: "12px",
+          background: "#eaf9f0",
+          whiteSpace: "nowrap",
+        }}
+      >
+        شاهد الأبطال ←
+      </Link>
+    </>
+  ) : (
+    <>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+        }}
+      >
+        <div
+          style={{
+            width: "42px",
+            height: "42px",
+            borderRadius: "13px",
+            background: "#fff5c9",
+            display: "grid",
+            placeItems: "center",
+            fontSize: "23px",
+          }}
+        >
+          🌟
+        </div>
+
+        <div>
+          <strong
+            style={{
+              display: "block",
+              color: "#176c46",
+              fontSize: "15px",
+            }}
+          >
+            أبطال أكاديمية لغتي
+          </strong>
+
+          <span
+            style={{
+              color: "#6f7f76",
+              fontSize: "12px",
+            }}
+          >
+            قريبًا نحتفي هنا بإنجازات أبطالنا ✨
+          </span>
+        </div>
+      </div>
+
+      <Link
+        href="/heroes"
+        style={{
+          textDecoration: "none",
+          color: "#14744d",
+          fontWeight: 900,
+          fontSize: "13px",
+        }}
+      >
+        اكتشف الأبطال ←
+      </Link>
+    </>
+  )}
+</section>
 
       <AcademicJourney
         events={
@@ -902,6 +1268,10 @@ export default function Home() {
       />
 
       <ClassDiary />
+
+      <WeeklyGames />
+
+      <WeeklyPicks />
 
       {/* بوابات الأكاديمية */}
 
@@ -1021,47 +1391,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="quick-plan">
-        <div>
-          <span className="section-label">
-            خطتي اليوم
-          </span>
-
-          <h2>
-            خطوات صغيرة… وإنجاز
-            كبير
-          </h2>
-        </div>
-
-        <div className="plan-items">
-          <div className="plan-item">
-            <span>1</span>
-            <p>أقرأ درسي</p>
-          </div>
-
-          <div className="plan-line" />
-
-          <div className="plan-item">
-            <span>2</span>
-            <p>أتدرّب</p>
-          </div>
-
-          <div className="plan-line" />
-
-          <div className="plan-item">
-            <span>3</span>
-            <p>ألعب وأتحدى</p>
-          </div>
-
-          <div className="plan-line" />
-
-          <div className="plan-item">
-            <span>4</span>
-            <p>أكسب النجوم</p>
-          </div>
-        </div>
-      </section>
-
       <section className="sections-area">
         <div className="section-heading">
           <div>
@@ -1153,133 +1482,180 @@ export default function Home() {
           <span> ←</span>
         </Link>
       </section>
-{/* الهوية الرسمية للأكاديمية */}
 
-<section
-  style={{
-    maxWidth: "1180px",
-    margin: "14px auto 10px",
-    padding: "12px 16px",
-    borderRadius: "18px",
-    background:
-      "linear-gradient(135deg, #ffffff 0%, #eef9f4 100%)",
-    border: "1px solid #d4eade",
-    boxShadow:
-      "0 8px 22px rgba(23, 108, 70, 0.06)",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      flexWrap: "wrap",
-    }}
-  >
-    <div
-      style={{
-        width: "44px",
-        height: "44px",
-        borderRadius: "14px",
-        background:
-          "linear-gradient(135deg, #168a63, #0f7654)",
-        color: "white",
-        display: "grid",
-        placeItems: "center",
-        fontSize: "23px",
-        flexShrink: 0,
-      }}
-    >
-      🏫
-    </div>
+      {/* الهوية الرسمية للأكاديمية */}
 
-    <div
-      style={{
-        flex: 1,
-        minWidth: "220px",
-      }}
-    >
-      <div
+      <section
         style={{
-          color: "#168a63",
-          fontSize: "12px",
-          fontWeight: 900,
-          marginBottom: "3px",
+          maxWidth:
+            "1180px",
+          margin:
+            "14px auto 10px",
+          padding:
+            "12px 16px",
+          borderRadius:
+            "18px",
+          background:
+            "linear-gradient(135deg, #ffffff 0%, #eef9f4 100%)",
+          border:
+            "1px solid #d4eade",
+          boxShadow:
+            "0 8px 22px rgba(23, 108, 70, 0.06)",
         }}
       >
-        الهوية الرسمية
-      </div>
+        <div
+          style={{
+            display:
+              "flex",
+            alignItems:
+              "center",
+            gap: "12px",
+            flexWrap:
+              "wrap",
+          }}
+        >
+          <div
+            style={{
+              width:
+                "44px",
+              height:
+                "44px",
+              borderRadius:
+                "14px",
+              background:
+                "linear-gradient(135deg, #168a63, #0f7654)",
+              color:
+                "white",
+              display:
+                "grid",
+              placeItems:
+                "center",
+              fontSize:
+                "23px",
+              flexShrink:
+                0,
+            }}
+          >
+            🏫
+          </div>
 
-      <h2
-        style={{
-          margin: "0 0 4px",
-          color: "#174c3b",
-          fontSize:
-            "clamp(16px, 2.2vw, 19px)",
-          lineHeight: 1.5,
-        }}
-      >
-        ابتدائية ومتوسطة زيد بن الخطاب والشهداء
-      </h2>
+          <div
+            style={{
+              flex: 1,
+              minWidth:
+                "220px",
+            }}
+          >
+            <div
+              style={{
+                color:
+                  "#168a63",
+                fontSize:
+                  "12px",
+                fontWeight:
+                  900,
+                marginBottom:
+                  "3px",
+              }}
+            >
+              الهوية الرسمية
+            </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-          alignItems: "center",
-          color: "#64756d",
-          fontSize: "13px",
-          lineHeight: 1.6,
-        }}
-      >
-        <span>
-          📍 محايل عسير
-        </span>
+            <h2
+              style={{
+                margin:
+                  "0 0 4px",
+                color:
+                  "#174c3b",
+                fontSize:
+                  "clamp(16px, 2.2vw, 19px)",
+                lineHeight:
+                  1.5,
+              }}
+            >
+              ابتدائية ومتوسطة زيد بن الخطاب والشهداء
+            </h2>
 
-        <span>
-          👨‍🏫 بإشراف الأستاذ / إبراهيم أحمد
-        </span>
-      </div>
+            <div
+              style={{
+                display:
+                  "flex",
+                gap: "12px",
+                flexWrap:
+                  "wrap",
+                alignItems:
+                  "center",
+                color:
+                  "#64756d",
+                fontSize:
+                  "13px",
+                lineHeight:
+                  1.6,
+              }}
+            >
+              <span>
+                📍 محايل عسير
+              </span>
 
-      <a
-        href="mailto:t267707@asrb.moe.gov.sa"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          marginTop: "5px",
-          color: "#126b49",
-          textDecoration: "none",
-          fontWeight: 900,
-          fontSize: "13px",
-          direction: "ltr",
-        }}
-      >
-        ✉️ t267707@asrb.moe.gov.sa
-      </a>
-    </div>
+              <span>
+                👨‍🏫 بإشراف الأستاذ / إبراهيم أحمد
+              </span>
+            </div>
 
-    <div
-      style={{
-        padding: "7px 11px",
-        borderRadius: "999px",
-        background: "#fff7d6",
-        color: "#8a6500",
-        fontWeight: 900,
-        fontSize: "13px",
-        whiteSpace: "nowrap",
-      }}
-    >
-      📚 نتعلّم… نقرأ… نبدع
-    </div>
-  </div>
-</section>
+            <a
+              href="mailto:t267707@asrb.moe.gov.sa"
+              style={{
+                display:
+                  "inline-flex",
+                alignItems:
+                  "center",
+                gap: "6px",
+                marginTop:
+                  "5px",
+                color:
+                  "#126b49",
+                textDecoration:
+                  "none",
+                fontWeight:
+                  900,
+                fontSize:
+                  "13px",
+                direction:
+                  "ltr",
+              }}
+            >
+              ✉️ t267707@asrb.moe.gov.sa
+            </a>
+          </div>
+
+          <div
+            style={{
+              padding:
+                "7px 11px",
+              borderRadius:
+                "999px",
+              background:
+                "#fff7d6",
+              color:
+                "#8a6500",
+              fontWeight:
+                900,
+              fontSize:
+                "13px",
+              whiteSpace:
+                "nowrap",
+            }}
+          >
+            📚 نتعلّم… نقرأ… نبدع
+          </div>
+        </div>
+      </section>
+
       <footer className="academy-footer">
-  <span>
-    أكاديمية لغتي الرقمية © 2026
-  </span>
-</footer>
+        <span>
+          أكاديمية لغتي الرقمية © 2026
+        </span>
+      </footer>
     </main>
   );
 }

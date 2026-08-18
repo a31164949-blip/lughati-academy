@@ -1,27 +1,108 @@
-const units = [
+import Link from "next/link";
+
+type UnitItem = {
+  id: string;
+  number: number;
+  title: string;
+  subtitle: string;
+  icon: string;
+  description: string;
+  href: string;
+  background: string;
+  border: string;
+  status: "available" | "coming";
+};
+
+const units: UnitItem[] = [
+  
+   {
+  id: "unit-1",
+  number: 1,
+  title: "الوحدة الأولى",
+  subtitle: "أقاربي",
+  icon: "🤝",
+  description:
+    "نتعلم عن صلة الرحم، وبر الوالدين، والتعاون وتحمل المسؤولية.",
+  href: "/lessons/unit1",
+  background:
+    "linear-gradient(135deg,#e9fbf3,#ffffff)",
+  border: "#bce7d2",
+  status: "available",
+},
   {
-    title: "الوحدة الأولى",
-    subtitle: "آداب التعامل",
-    icon: "🤝",
-    href: "#",
-  },
-  {
+    id: "unit-2",
+    number: 2,
     title: "الوحدة الثانية",
     subtitle: "أصدقائي وجيراني",
-    icon: "👦",
+    icon: "👦🏻",
+    description:
+      "نقرأ ونتعلم عن الصداقة والجيرة والتعاون.",
     href: "#",
+    background:
+      "linear-gradient(135deg,#edf6ff,#ffffff)",
+    border: "#c8def6",
+    status: "coming",
   },
   {
+    id: "unit-3",
+    number: 3,
     title: "الوحدة الثالثة",
     subtitle: "وطني السعودية",
     icon: "🇸🇦",
+    description:
+      "نتعرف على وطننا ونقرأ نصوصًا جميلة عنه.",
     href: "#",
+    background:
+      "linear-gradient(135deg,#ecfdf5,#ffffff)",
+    border: "#bce7cf",
+    status: "coming",
   },
   {
+    id: "unit-4",
+    number: 4,
     title: "الوحدة الرابعة",
     subtitle: "محاصيل من بلادي",
     icon: "🌾",
+    description:
+      "نكتشف خيرات بلادنا ومحاصيلها من خلال القراءة والتعلم.",
     href: "#",
+    background:
+      "linear-gradient(135deg,#fff8dc,#ffffff)",
+    border: "#eddc9a",
+    status: "coming",
+  },
+];
+
+const lessonFeatures = [
+  {
+    icon: "📖",
+    title: "أقرأ",
+    text: "قراءة الدرس بطريقة واضحة ومتدرجة",
+  },
+  {
+    icon: "💡",
+    title: "أفهم",
+    text: "مفردات وفهم قرائي وأسئلة قصيرة",
+  },
+  {
+    icon: "✍️",
+    title: "إملائي",
+    text: "تدريب على الكلمات والمهارات الإملائية",
+  },
+  {
+    icon: "🖋️",
+    title: "خطي",
+    text: "تدريب منظم على الكتابة والخط",
+  },
+  {
+    icon: "🎯",
+    title: "أتدرب",
+    text: "أنشطة وتدريبات تساعدني على الإتقان",
+  },
+  {
+    icon: "🦸",
+    title: "تحدي فارس",
+    text: "تحدٍ ممتع في نهاية رحلتي مع الدرس",
   },
 ];
 
@@ -31,185 +112,534 @@ export default function LessonsPage() {
       dir="rtl"
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #ecfdf5 0%, #eff6ff 100%)",
-        padding: "32px 20px 60px",
+        background:
+          "linear-gradient(180deg,#edfdf5 0%,#f4f9ff 48%,#fffaf0 100%)",
+        padding: "26px 16px 60px",
         fontFamily: "Arial, sans-serif",
+        color: "#173b31",
       }}
     >
-      <section
+      <div
         style={{
-          maxWidth: "1100px",
+          maxWidth: 1120,
           margin: "0 auto",
         }}
       >
-        <header
+        {/* أعلى الصفحة */}
+
+        <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: "16px",
+            gap: 12,
             flexWrap: "wrap",
-            marginBottom: "32px",
+            marginBottom: 18,
           }}
         >
-          <div>
-            <p
-              style={{
-                color: "#0f766e",
-                fontSize: "18px",
-                fontWeight: "700",
-                margin: "0 0 8px",
-              }}
-            >
-              أكاديمية لغتي
-            </p>
-
-            <h1
-              style={{
-                color: "#0f172a",
-                fontSize: "42px",
-                margin: "0 0 10px",
-              }}
-            >
-              📚 دروسي
-            </h1>
-
-            <p
-              style={{
-                color: "#475569",
-                fontSize: "20px",
-                margin: 0,
-              }}
-            >
-              اختر الوحدة التي تريد أن تبدأ بها رحلتك التعليمية
-            </p>
-          </div>
-
-          <a
+          <Link
             href="/journey"
             style={{
               textDecoration: "none",
               background: "#ffffff",
-              color: "#0f766e",
-              padding: "12px 18px",
-              borderRadius: "14px",
-              border: "1px solid #ccfbf1",
-              fontWeight: "700",
-              boxShadow: "0 8px 20px rgba(15, 118, 110, 0.08)",
+              color: "#176c46",
+              border: "1px solid #cfe7dc",
+              borderRadius: 15,
+              padding: "11px 17px",
+              fontWeight: 900,
+              boxShadow:
+                "0 7px 18px rgba(30,90,65,.06)",
             }}
           >
-            العودة للرئيسية
-          </a>
-        </header>
+            ← العودة إلى رحلتي
+          </Link>
 
-        <div
+          <span
+            style={{
+              padding: "8px 14px",
+              borderRadius: 999,
+              background: "#ffffff",
+              border: "1px solid #dcebe4",
+              color: "#176c46",
+              fontWeight: 900,
+              fontSize: 13,
+            }}
+          >
+            📚 مقرر لغتي
+          </span>
+        </div>
+
+        {/* رأس المقرر */}
+
+        <section
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "22px",
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 32,
+            padding: "36px 22px",
+            marginBottom: 24,
+            background:
+              "linear-gradient(135deg,#147a55,#2eaf7b)",
+            color: "#ffffff",
+            boxShadow:
+              "0 16px 40px rgba(20,122,85,.17)",
           }}
         >
-          {units.map((unit) => (
-            <article
-              key={unit.title}
+          <div
+            style={{
+              position: "absolute",
+              top: 18,
+              left: 24,
+              fontSize: 30,
+              opacity: 0.35,
+            }}
+          >
+            ✨
+          </div>
+
+          <div
+            style={{
+              position: "absolute",
+              bottom: 18,
+              right: 24,
+              fontSize: 27,
+              opacity: 0.3,
+            }}
+          >
+            ⭐
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              flexWrap: "wrap",
+            }}
+          >
+            <div
               style={{
-                background: "#ffffff",
-                borderRadius: "24px",
-                padding: "28px",
-                boxShadow: "0 14px 35px rgba(15, 23, 42, 0.08)",
-                border: "1px solid #e2e8f0",
+                width: 82,
+                height: 82,
+                borderRadius: 25,
+                background:
+                  "rgba(255,255,255,.16)",
+                display: "grid",
+                placeItems: "center",
+                fontSize: 46,
+                flexShrink: 0,
               }}
             >
+              📚
+            </div>
+
+            <div>
               <div
                 style={{
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "18px",
-                  background: "#ecfdf5",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "32px",
-                  marginBottom: "20px",
+                  display: "inline-block",
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  background:
+                    "rgba(255,255,255,.15)",
+                  fontSize: 13,
+                  fontWeight: 900,
+                  marginBottom: 9,
                 }}
               >
-                {unit.icon}
+                رحلتي مع لغتي
               </div>
 
-              <h2
+              <h1
                 style={{
-                  color: "#0f766e",
-                  fontSize: "28px",
-                  margin: "0 0 10px",
+                  margin: 0,
+                  fontSize:
+                    "clamp(31px,5vw,45px)",
                 }}
               >
-                {unit.title}
-              </h2>
+                المقرر الدراسي
+              </h1>
 
               <p
                 style={{
-                  color: "#475569",
-                  fontSize: "18px",
-                  lineHeight: "1.8",
-                  margin: "0 0 22px",
+                  margin: "9px 0 0",
+                  maxWidth: 700,
+                  lineHeight: 1.9,
+                  opacity: 0.94,
+                  fontSize: 17,
                 }}
               >
-                {unit.subtitle}
+                أختار وحدتي، ثم أبدأ رحلتي
+                في القراءة والفهم والإملاء
+                والخط والتدريب والتحدي.
               </p>
+            </div>
+          </div>
+        </section>
 
-              <a
-                href={unit.href}
-                style={{
-                  display: "block",
-                  textAlign: "center",
-                  textDecoration: "none",
-                  background: "#059669",
-                  color: "#ffffff",
-                  padding: "14px 18px",
-                  borderRadius: "14px",
-                  fontSize: "17px",
-                  fontWeight: "700",
-                }}
-              >
-                الدخول إلى دروس الوحدة
-              </a>
-            </article>
-          ))}
+        {/* فارس */}
+
+        <section
+          style={{
+            marginBottom: 25,
+            padding: "17px 20px",
+            borderRadius: 23,
+            background:
+              "linear-gradient(135deg,#ffffff,#f0fbf5)",
+            border: "1px solid #d5ebe0",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            boxShadow:
+              "0 9px 25px rgba(30,90,65,.06)",
+          }}
+        >
+          <div
+            style={{
+              width: 57,
+              height: 57,
+              borderRadius: 18,
+              background: "#e5f8ed",
+              display: "grid",
+              placeItems: "center",
+              fontSize: 32,
+              flexShrink: 0,
+            }}
+          >
+            🦸
+          </div>
+
+          <div>
+            <strong
+              style={{
+                display: "block",
+                color: "#176c46",
+                fontSize: 17,
+              }}
+            >
+              فارس يقول:
+            </strong>
+
+            <p
+              style={{
+                margin: "4px 0 0",
+                color: "#64756d",
+                lineHeight: 1.7,
+              }}
+            >
+              لا تستعجل الوصول للنهاية…
+              أتقن كل محطة، وستجد تاجك في انتظارك 👑
+            </p>
+          </div>
+        </section>
+
+        {/* الوحدات */}
+
+        <div
+          style={{
+            marginBottom: 15,
+          }}
+        >
+          <h2
+            style={{
+              margin: "0 0 5px",
+              color: "#176c46",
+              fontSize: 27,
+            }}
+          >
+            🗺️ وحدات المقرر
+          </h2>
+
+          <p
+            style={{
+              margin: 0,
+              color: "#718078",
+            }}
+          >
+            اختر الوحدة التي تريد أن تبدأ بها
+          </p>
         </div>
 
         <section
           style={{
-            marginTop: "34px",
-            background: "#ffffff",
-            borderRadius: "20px",
-            padding: "22px",
-            border: "1px solid #dbeafe",
-            boxShadow: "0 10px 25px rgba(15, 23, 42, 0.06)",
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fit,minmax(240px,1fr))",
+            gap: 18,
           }}
         >
-          <h3
-            style={{
-              color: "#0f172a",
-              fontSize: "24px",
-              margin: "0 0 10px",
-            }}
-          >
-            ماذا ستجد داخل كل درس؟
-          </h3>
+          {units.map((unit) => {
+            const available =
+              unit.status === "available";
 
-          <p
+            return (
+              <article
+                key={unit.id}
+                style={{
+                  position: "relative",
+                  background:
+                    unit.background,
+                  border:
+                    `2px solid ${unit.border}`,
+                  borderRadius: 27,
+                  padding: 22,
+                  minHeight: 315,
+                  display: "flex",
+                  flexDirection: "column",
+                  boxShadow:
+                    "0 11px 28px rgba(35,75,60,.07)",
+                  overflow: "hidden",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 14,
+                    left: 14,
+                    minWidth: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    display: "grid",
+                    placeItems: "center",
+                    fontWeight: 900,
+                    color: "#176c46",
+                    boxShadow:
+                      "0 5px 12px rgba(0,0,0,.06)",
+                  }}
+                >
+                  {unit.number}
+                </span>
+
+                <div
+                  style={{
+                    width: 70,
+                    height: 70,
+                    borderRadius: 21,
+                    background: "#ffffff",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: 38,
+                    marginBottom: 17,
+                    boxShadow:
+                      "0 7px 17px rgba(0,0,0,.05)",
+                  }}
+                >
+                  {unit.icon}
+                </div>
+
+                <span
+                  style={{
+                    color: "#718078",
+                    fontSize: 13,
+                    fontWeight: 900,
+                  }}
+                >
+                  {unit.title}
+                </span>
+
+                <h3
+                  style={{
+                    margin: "5px 0 8px",
+                    color: "#174c3b",
+                    fontSize: 24,
+                  }}
+                >
+                  {unit.subtitle}
+                </h3>
+
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#65766e",
+                    lineHeight: 1.75,
+                    flex: 1,
+                  }}
+                >
+                  {unit.description}
+                </p>
+
+                {available ? (
+                  <a
+                    href={unit.href}
+                    style={{
+                      marginTop: 18,
+                      display: "block",
+                      textAlign: "center",
+                      textDecoration: "none",
+                      padding: "13px 15px",
+                      borderRadius: 15,
+                      background:
+                        "linear-gradient(135deg,#168a63,#0f7654)",
+                      color: "#ffffff",
+                      fontWeight: 900,
+                    }}
+                  >
+                    🚀 ابدأ الوحدة
+                  </a>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: 18,
+                      padding: "13px 15px",
+                      borderRadius: 15,
+                      background:
+                        "rgba(255,255,255,.75)",
+                      color: "#7a877f",
+                      textAlign: "center",
+                      fontWeight: 900,
+                      border:
+                        "1px dashed #d7dfdb",
+                    }}
+                  >
+                    🔒 تُفتح قريبًا
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </section>
+
+        {/* ماذا يوجد داخل الدرس */}
+
+        <section
+          style={{
+            marginTop: 28,
+            padding: 23,
+            borderRadius: 28,
+            background: "#ffffff",
+            border: "1px solid #dfece6",
+            boxShadow:
+              "0 10px 28px rgba(30,80,60,.06)",
+          }}
+        >
+          <div
             style={{
-              color: "#64748b",
-              fontSize: "17px",
-              lineHeight: "1.8",
-              margin: 0,
+              marginBottom: 17,
             }}
           >
-            شرح مبسط، قراءة، مفردات، تدريبات، أوراق عمل، ألعاب تعليمية،
-            وتقويم قصير لكل درس.
-          </p>
+            <h2
+              style={{
+                margin: "0 0 6px",
+                color: "#176c46",
+                fontSize: 25,
+              }}
+            >
+              ✨ ماذا سأجد داخل كل درس؟
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                color: "#708078",
+                lineHeight: 1.7,
+              }}
+            >
+              لكل درس رحلة قصيرة وواضحة تساعدني على الوصول إلى الإتقان.
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(160px,1fr))",
+              gap: 11,
+            }}
+          >
+            {lessonFeatures.map(
+              (feature) => (
+                <div
+                  key={feature.title}
+                  style={{
+                    padding: 15,
+                    borderRadius: 18,
+                    background: "#f8fbf9",
+                    border:
+                      "1px solid #e1ebe6",
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 30,
+                    }}
+                  >
+                    {feature.icon}
+                  </div>
+
+                  <strong
+                    style={{
+                      display: "block",
+                      marginTop: 6,
+                      color: "#176c46",
+                    }}
+                  >
+                    {feature.title}
+                  </strong>
+
+                  <small
+                    style={{
+                      display: "block",
+                      marginTop: 5,
+                      color: "#718078",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {feature.text}
+                  </small>
+                </div>
+              )
+            )}
+          </div>
         </section>
-      </section>
+
+        {/* الربط بالإنجاز */}
+
+        <section
+          style={{
+            marginTop: 20,
+            padding: "19px 21px",
+            borderRadius: 23,
+            background:
+              "linear-gradient(135deg,#fff7ce,#fffdf3)",
+            border: "2px solid #efd166",
+            display: "flex",
+            gap: 14,
+            alignItems: "center",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 38,
+              flexShrink: 0,
+            }}
+          >
+            👑
+          </span>
+
+          <div>
+            <strong
+              style={{
+                color: "#805c00",
+                fontSize: 18,
+              }}
+            >
+              إتقاني يصنع إنجازي
+            </strong>
+
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: "#776832",
+                lineHeight: 1.7,
+              }}
+            >
+              تقدمي في الدروس سيقودني إلى الألقاب
+              والتيجان والمكافآت في رحلتي.
+            </p>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

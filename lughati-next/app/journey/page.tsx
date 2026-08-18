@@ -1333,68 +1333,115 @@ useEffect(() => {
               </div>
             </Link>
 
-            <Link
-              href="/school-schedule"
-              style={{
-                textDecoration:
-                  "none",
-                color: "#17352a",
-                background:
-                  "linear-gradient(135deg, #edf6ff, #ffffff)",
-                border:
-                  "2px solid #b9d9f5",
-                borderRadius:
-                  "20px",
-                padding: "18px",
-                display: "flex",
-                alignItems:
-                  "center",
-                gap: "15px",
-                boxShadow:
-                  "0 6px 16px rgba(40, 90, 130, 0.07)",
-              }}
-            >
-              <span
-                style={{
-                  width: "55px",
-                  height: "55px",
-                  borderRadius:
-                    "17px",
-                  background:
-                    "#dceeff",
-                  display: "grid",
-                  placeItems:
-                    "center",
-                  fontSize: "30px",
-                  flexShrink: 0,
-                }}
-              >
-                📅
-              </span>
+     <Link
+  href="/school-schedule"
+  style={{
+    textDecoration: "none",
+    color: "#17352a",
+    background:
+      "linear-gradient(135deg, #edf6ff, #ffffff)",
+    border: "2px solid #b9d9f5",
+    borderRadius: "20px",
+    padding: "18px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    boxShadow:
+      "0 6px 16px rgba(40, 90, 130, 0.07)",
+  }}
+>
+  <span
+    style={{
+      width: "55px",
+      height: "55px",
+      borderRadius: "17px",
+      background: "#dceeff",
+      display: "grid",
+      placeItems: "center",
+      fontSize: "30px",
+      flexShrink: 0,
+    }}
+  >
+    📅
+  </span>
 
-              <div>
-                <strong
-                  style={{
-                    display: "block",
-                    fontSize: "20px",
-                    color: "#185b89",
-                    marginBottom:
-                      "5px",
-                  }}
-                >
-                  جدولي المدرسي
-                </strong>
+  <div>
+    <strong
+      style={{
+        display: "block",
+        fontSize: "20px",
+        color: "#185b89",
+        marginBottom: "5px",
+      }}
+    >
+      جدولي المدرسي
+    </strong>
 
-                <span
-                  style={{
-                    color: "#64748b",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  شاهد حصص الأسبوع كاملة في مكان واحد
-                </span>
-              </div>
-            </Link>
+    <span
+      style={{
+        color: "#64748b",
+        lineHeight: 1.6,
+      }}
+    >
+      شاهد حصص الأسبوع كاملة في مكان واحد
+    </span>
+  </div>
+</Link>
+
+<Link
+  href="/madrasati-bridge"
+  style={{
+    textDecoration: "none",
+    color: "#17352a",
+    background:
+      "linear-gradient(135deg, #fff7e8, #ffffff)",
+    border: "2px solid #f4d39a",
+    borderRadius: "20px",
+    padding: "18px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    boxShadow:
+      "0 6px 16px rgba(130, 90, 20, 0.07)",
+  }}
+>
+  <span
+    style={{
+      width: "55px",
+      height: "55px",
+      borderRadius: "17px",
+      background: "#fff0cf",
+      display: "grid",
+      placeItems: "center",
+      fontSize: "30px",
+      flexShrink: 0,
+    }}
+  >
+    🌉
+  </span>
+
+  <div>
+    <strong
+      style={{
+        display: "block",
+        fontSize: "20px",
+        color: "#9a6400",
+        marginBottom: "5px",
+      }}
+    >
+      جسر مدرستي
+    </strong>
+
+    <span
+      style={{
+        color: "#6f746f",
+        lineHeight: 1.6,
+      }}
+    >
+      أنجز مهامك في مدرستي ثم عد للأكاديمية
+    </span>
+  </div>
+</Link>
           </div>
         </section>
 

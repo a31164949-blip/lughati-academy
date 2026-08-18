@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  FieldValue,
+} from "firebase-admin/firestore";
+
+import { getFirebaseAdmin } from "../../../../firebase-admin";
 
 type CreateSubmissionRequest = {
   studentName?: string;
@@ -11,28 +16,21 @@ type CreateSubmissionRequest = {
   note?: string;
 };
 
+const PENDING_STATUS = "بانتظار المراجعة";
+
 export async function POST(request: Request) {
   try {
-    const appsScriptUrl = process.env.APPS_SCRIPT_URL?.trim();
-    const secretToken = process.env.SUBMISSIONS_SECRET_TOKEN?.trim();
-
-    if (!appsScriptUrl || !secretToken) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "إعدادات ربط المعرض غير مكتملة",
-        },
-        { status: 500 }
-      );
-    }
-
     const body = (await request.json()) as CreateSubmissionRequest;
 
     const studentName =
-      typeof body.studentName === "string" ? body.studentName.trim() : "";
+      typeof body.studentName === "string"
+        ? body.studentName.trim()
+        : "";
 
     const studentId =
-      typeof body.studentId === "string" ? body.studentId.trim() : "";
+      typeof body.studentId === "string"
+        ? body.studentId.trim()
+        : "";
 
     const title =
       typeof body.title === "string" && body.title.trim()
@@ -45,7 +43,9 @@ export async function POST(request: Request) {
         : "واجب إبداعي";
 
     const fileUrl =
-      typeof body.fileUrl === "string" ? body.fileUrl.trim() : "";
+      typeof body.fileUrl === "string"
+        ? body.fileUrl.trim()
+        : "";
 
     const consent =
       typeof body.consent === "string" && body.consent.trim()
@@ -53,12 +53,14 @@ export async function POST(request: Request) {
         : "نعم";
 
     const classroom =
-      typeof body.classroom === "string" ? body.classroom.trim() : "";
+      typeof body.classroom === "string"
+        ? body.classroom.trim()
+        : "";
 
     const note =
-      typeof body.note === "string" && body.note.trim()
+      typeof body.note === "string"
         ? body.note.trim()
-        : "نُشر تلقائيًا بعد اعتماد المعلم";
+        : "";
 
     if (!studentId || !fileUrl) {
       return NextResponse.json(
@@ -70,14 +72,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch(appsScriptUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify({
-        token: secretToken,
-        action: "create",
+    const { adminDb } = getFirebaseAdmin();
+
+   const submissionRef = await adminDb
+  .collection("studentWorks")
+  .add({
         studentName,
         studentId,
         title,
@@ -85,57 +84,18 @@ export async function POST(request: Request) {
         fileUrl,
         consent,
         classroom,
+
+        status: PENDING_STATUS,
         note,
-      }),
-      cache: "no-store",
-    });
 
-    const responseText = await response.text();
-    console.log("CREATE raw response:", {
-  status: response.status,
-  contentType: response.headers.get("content-type"),
-  startsWithJson: responseText.trim().startsWith("{"),
-  preview: responseText.trim().slice(0, 120),
-});
-
-    let result: {
-      success?: boolean;
-      message?: string;
-      [key: string]: unknown;
-    };
-try {
-    result = JSON.parse(responseText);
-
-console.log("CREATE Apps Script check:", {
-  status: response.status,
-  success: result.success,
-  message: result.message,
-});
-  
-} catch {
-  return NextResponse.json(
-    {
-      success: false,
-      message: "وصل رد غير صالح من خدمة المعرض",
-    },
-    { status: 502 }
-  );
-}
-
-
-    if (!response.ok || !result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message || "تعذر نشر العمل في المعرض",
-        },
-        { status: 502 }
-      );
-    }
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
 
     return NextResponse.json({
       success: true,
-      message: result.message || "تم نشر العمل في معرض الطلاب",
+      id: submissionRef.id,
+      message: "تم إرسال العمل للمعلم للمراجعة",
     });
   } catch (error) {
     console.error("CREATE SUBMISSION ERROR:", error);
@@ -146,7 +106,7 @@ console.log("CREATE Apps Script check:", {
         message:
           error instanceof Error
             ? error.message
-            : "حدث خطأ غير متوقع أثناء نشر العمل",
+            : "حدث خطأ غير متوقع أثناء إرسال العمل",
       },
       { status: 500 }
     );

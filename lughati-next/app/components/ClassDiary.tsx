@@ -304,7 +304,7 @@ export default function ClassDiary() {
 
         {/* تعلمنا اليوم */}
 
-        <article className="classDiary__highlight">
+        <article className="classDiary__highlight classDiary__highlight--learned">
           <span className="classDiary__highlightIcon">
             📚
           </span>
@@ -321,269 +321,252 @@ export default function ClassDiary() {
           </div>
         </article>
 
-        {/* نجوم اليوم */}
+      {/* نجوم اليوم */}
 
-        <article
-          className="classDiary__highlight"
+<article
+  className="classDiary__highlight classDiary__highlight--stars"
+  style={{
+    border:
+      stars.length > 0
+        ? "2px solid #f2d06b"
+        : undefined,
+    background:
+      stars.length > 0
+        ? "linear-gradient(135deg,#fffdf2,#ffffff)"
+        : undefined,
+    alignItems: "stretch",
+  }}
+>
+  {stars.length > 0 ? (
+    <div style={{ width: "100%" }}>
+      {/* رأس بطاقة النجوم */}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "10px",
+          marginBottom: "10px",
+        }}
+      >
+        <strong
           style={{
-            border:
-              stars.length > 0
-                ? "2px solid #f2d06b"
-                : undefined,
-
-            background:
-              stars.length > 0
-                ? "linear-gradient(135deg,#fffdf2,#ffffff)"
-                : undefined,
-
-            alignItems:
-              "stretch",
+            color: "#996800",
+            fontSize: "17px",
           }}
         >
-          {stars.length > 0 ? (
+          🌟 نجوم اليوم
+        </strong>
+
+        <span
+          style={{
+            background: "#fff1b8",
+            color: "#8b6500",
+            borderRadius: "999px",
+            padding: "4px 9px",
+            fontSize: "12px",
+            fontWeight: 900,
+          }}
+        >
+          {stars.length}{" "}
+          {stars.length === 1
+            ? "طالب"
+            : "طلاب"}
+        </span>
+      </div>
+
+      {/* عرض النجوم */}
+
+      <div
+        className={
+          stars.length <= 3
+            ? "classDiary__starsStatic"
+            : "classDiary__starsSlider"
+        }
+      >
+        <div
+          className={
+            stars.length <= 3
+              ? "classDiary__starsStaticTrack"
+              : "classDiary__starsMovingTrack"
+          }
+        >
+          {(stars.length <= 3
+            ? stars
+            : [...stars, ...stars]
+          ).map((star, index) => (
             <div
-              style={{
-                width: "100%",
-              }}
+              className="classDiary__starMiniCard"
+              key={`${star.studentId}-${index}`}
             >
-              {/* رأس بطاقة النجوم */}
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems:
-                    "center",
-                  justifyContent:
-                    "space-between",
-                  gap: "10px",
-                  marginBottom:
-                    "10px",
-                }}
-              >
-                <strong
-                  style={{
-                    color:
-                      "#996800",
-                    fontSize:
-                      "17px",
-                  }}
-                >
-                  🌟 نجوم اليوم
-                </strong>
-
-                <span
-                  style={{
-                    background:
-                      "#fff1b8",
-                    color:
-                      "#8b6500",
-                    borderRadius:
-                      "999px",
-                    padding:
-                      "4px 9px",
-                    fontSize:
-                      "12px",
-                    fontWeight:
-                      900,
-                  }}
-                >
-                  {stars.length}{" "}
-                  {stars.length === 1
-                    ? "طالب"
-                    : "طلاب"}
-                </span>
-              </div>
-
-              {/* شبكة النجوم */}
-
-              <div
-                style={{
-                  display:
-                    "grid",
-
-                  gridTemplateColumns:
-                    "repeat(5, minmax(0, 1fr))",
-
-                  gap:
-                    "8px",
-                }}
-              >
-                {stars.map(
-                  (
-                    star,
-                    index
-                  ) => (
-                    <div
-                      key={`${star.studentId}-${index}`}
-                      style={{
-                        minWidth:
-                          0,
-
-                        padding:
-                          "8px 5px",
-
-                        borderRadius:
-                          "16px",
-
-                        background:
-                          "#ffffff",
-
-                        border:
-                          "1px solid #f4dea0",
-
-                        textAlign:
-                          "center",
-
-                        boxShadow:
-                          "0 4px 10px rgba(170,125,15,0.06)",
-                      }}
-                    >
-                      {/* صورة الطالب */}
-
-                      <div
-                        style={{
-                          width:
-                            "48px",
-
-                          height:
-                            "48px",
-
-                          margin:
-                            "0 auto",
-
-                          borderRadius:
-                            "50%",
-
-                          display:
-                            "grid",
-
-                          placeItems:
-                            "center",
-
-                          overflow:
-                            "hidden",
-
-                          background:
-                            "#fff8d9",
-
-                          border:
-                            "2px solid #efc94e",
-
-                          fontSize:
-                            "27px",
-                        }}
-                      >
-                        {star.personalPhotoUrl ? (
-                          <img
-                            src={
-                              star.personalPhotoUrl
-                            }
-                            alt={
-                              star.studentName
-                            }
-                            style={{
-                              width:
-                                "100%",
-
-                              height:
-                                "100%",
-
-                              objectFit:
-                                "cover",
-                            }}
-                          />
-                        ) : (
-                          <span>
-                            {star.selectedAvatarIcon ||
-                              "👦🏻"}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* اسم الطالب */}
-
-                      <div
-                        style={{
-                          marginTop:
-                            "5px",
-
-                          color:
-                            "#173b31",
-
-                          fontWeight:
-                            900,
-
-                          fontSize:
-                            "12px",
-
-                          lineHeight:
-                            1.35,
-
-                          overflow:
-                            "hidden",
-
-                          textOverflow:
-                            "ellipsis",
-
-                          whiteSpace:
-                            "nowrap",
-                        }}
-                      >
-                        {
-                          star.studentName
-                        }
-                      </div>
-
-                      {/* الفصل */}
-
-                      {star.classroom && (
-                        <div
-                          style={{
-                            marginTop:
-                              "2px",
-
-                            color:
-                              "#9a8b64",
-
-                            fontSize:
-                              "10px",
-
-                            fontWeight:
-                              700,
-                          }}
-                        >
-                          {
-                            star.classroom
-                          }
-                        </div>
-                      )}
-                    </div>
-                  )
+              <div className="classDiary__starAvatar">
+                {star.personalPhotoUrl ? (
+                  <img
+                    src={star.personalPhotoUrl}
+                    alt={star.studentName}
+                  />
+                ) : (
+                  <span>
+                    {star.selectedAvatarIcon ||
+                      "👦🏻"}
+                  </span>
                 )}
               </div>
-            </div>
-          ) : (
-            <>
-              <span className="classDiary__highlightIcon">
-                🌟
-              </span>
 
-              <div>
-                <strong>
-                  نجوم اليوم
-                </strong>
-
-                <p>
-                  سيضيف المعلم هنا نجوم اليوم المميزين.
-                </p>
+              <div className="classDiary__starName">
+                {star.studentName}
               </div>
-            </>
-          )}
-        </article>
+
+              <div className="classDiary__starBadge">
+                ⭐
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .classDiary__starsStatic {
+          width: 100%;
+        }
+
+        .classDiary__starsStaticTrack {
+          display: grid;
+          grid-template-columns: repeat(
+            auto-fit,
+            minmax(100px, 1fr)
+          );
+          gap: 9px;
+        }
+
+        .classDiary__starsSlider {
+          width: 100%;
+          overflow: hidden;
+          position: relative;
+          padding: 3px 0;
+        }
+
+        .classDiary__starsMovingTrack {
+          display: flex;
+          width: max-content;
+          gap: 9px;
+          animation: starsMove 20s linear infinite;
+        }
+
+        .classDiary__starsSlider:hover
+          .classDiary__starsMovingTrack {
+          animation-play-state: paused;
+        }
+
+        .classDiary__starMiniCard {
+          position: relative;
+          flex: 0 0 104px;
+          min-height: 100px;
+          padding: 8px 7px;
+          border-radius: 17px;
+          background: #ffffff;
+          border: 1px solid #f4dea0;
+          text-align: center;
+          box-shadow: 0 4px 12px
+            rgba(170, 125, 15, 0.06);
+        }
+
+        .classDiary__starAvatar {
+          width: 42px;
+          height: 42px;
+          margin: 0 auto;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          background: #fff8d9;
+          border: 2px solid #efc94e;
+          font-size: 23px;
+        }
+
+        .classDiary__starAvatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .classDiary__starName {
+          margin-top: 5px;
+          color: #173b31;
+          font-weight: 900;
+          font-size: 11px;
+          line-height: 1.35;
+          min-height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow-wrap: anywhere;
+        }
+
+        .classDiary__starBadge {
+          position: absolute;
+          top: 5px;
+          left: 6px;
+          font-size: 12px;
+        }
+
+        @keyframes starsMove {
+          from {
+            transform: translateX(0);
+          }
+
+          to {
+            transform: translateX(50%);
+          }
+        }
+
+        @media (max-width: 600px) {
+          .classDiary__starMiniCard {
+            flex-basis: 92px;
+            min-height: 94px;
+          }
+
+          .classDiary__starAvatar {
+            width: 38px;
+            height: 38px;
+            font-size: 21px;
+          }
+
+          .classDiary__starsMovingTrack {
+            animation-duration: 17s;
+          }
+        }
+
+        @media (
+          prefers-reduced-motion: reduce
+        ) {
+          .classDiary__starsMovingTrack {
+            animation: none;
+          }
+        }
+      `}</style>
+    </div>
+  ) : (
+    <>
+      <span className="classDiary__highlightIcon">
+        🌟
+      </span>
+
+      <div>
+        <strong>نجوم اليوم</strong>
+        <small>
+          ستظهر هنا أسماء الطلاب
+          المميزين.
+        </small>
+      </div>
+    </>
+  )}
+</article>
 
         {/* رسالة المعلم */}
 
-        <article className="classDiary__highlight">
+       <article className="classDiary__highlight classDiary__highlight--message">
           <span className="classDiary__highlightIcon">
             💬
           </span>

@@ -1,68 +1,92 @@
 import { NextResponse } from "next/server";
 
-const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzwZWP3GlHZZ01jnMoLnnUbZUPhGUsR1i4dTodpcuH1CYhNqtoizdLQJckIrNXjZeg0lw/exec"
-
-const SECRET_TOKEN = "lughati-2026-review-8K7mP2";
+import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export async function GET() {
   try {
-    const url = new URL(APPS_SCRIPT_URL);
-    url.searchParams.set("token", SECRET_TOKEN);
+    const { adminDb } = getFirebaseAdmin();
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      cache: "no-store",
+    const snapshot = await adminDb
+      .collection("studentWorks")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const submissions = snapshot.docs.map((doc, index) => {
+      const data = doc.data();
+
+      let timestamp = "";
+
+      if (
+        data.createdAt &&
+        typeof data.createdAt.toDate === "function"
+      ) {
+        timestamp = data.createdAt
+          .toDate()
+          .toLocaleString("ar-SA");
+      }
+
+      return {
+        id: doc.id,
+
+        // مؤقتًا حتى نحدّث صفحة لوحة المعلم لاستخدام id بدل row
+        row: index + 2,
+
+        timestamp,
+
+        studentName:
+          typeof data.studentName === "string"
+            ? data.studentName
+            : "",
+
+        studentId:
+          typeof data.studentId === "string"
+            ? data.studentId
+            : "",
+
+        classroom:
+          typeof data.classroom === "string"
+            ? data.classroom
+            : "",
+
+        title:
+          typeof data.title === "string"
+            ? data.title
+            : "",
+
+        type:
+          typeof data.type === "string"
+            ? data.type
+            : "",
+
+        fileUrl:
+          typeof data.fileUrl === "string"
+            ? data.fileUrl
+            : "",
+
+        consent:
+          typeof data.consent === "string"
+            ? data.consent
+            : "",
+
+        status:
+          typeof data.status === "string"
+            ? data.status
+            : "بانتظار المراجعة",
+
+        note:
+          typeof data.note === "string"
+            ? data.note
+            : "",
+      };
     });
-
-    const responseText = await response.text();
-    console.log("Apps Script check:", {
-  status: response.status,
-  contentType: response.headers.get("content-type"),
-  length: responseText.length,
-  startsWithJson: responseText.trim().startsWith("{"),
-});
-
-    let result: {
-      success?: boolean;
-      message?: string;
-      submissions?: unknown[];
-    };
-
-    try {
-      result = JSON.parse(responseText);
-      console.log("CREATE Apps Script check:", {
-  status: response.status,
-  success: result.success,
-  message: result.message,
-});
-    } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "وصل رد غير صالح من خدمة Google",
-          submissions: [],
-        },
-        { status: 502 },
-      );
-    }
-
-    if (!response.ok || !result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: result.message || "تعذر جلب أعمال الطلاب",
-          submissions: [],
-        },
-        { status: 502 },
-      );
-    }
 
     return NextResponse.json({
       success: true,
-      submissions: result.submissions || [],
+      submissions,
     });
   } catch (error) {
+    console.error("GET SUBMISSIONS ERROR:", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -72,7 +96,7 @@ export async function GET() {
             : "حدث خطأ أثناء جلب أعمال الطلاب",
         submissions: [],
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
