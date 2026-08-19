@@ -254,10 +254,10 @@ export default function StudentSchoolSchedulePage() {
             {errorMessage}
           </p>
 <Link
-  href="/"
+  href="/journey"
   className="mt-6 inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
 >
-  ← العودة إلى الصفحة الرئيسية
+  ← العودة إلى رحلتي
 </Link>
         </div>
       </main>

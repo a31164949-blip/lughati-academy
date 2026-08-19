@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   doc,
@@ -256,9 +256,12 @@ farisMessage:
             الخطة الأسبوعية
           </h1>
 
-          <p className="mt-4 text-lg leading-8 text-slate-600">
-            {errorMessage}
-          </p>
+          <Link
+  href="/journey"
+  className="mt-6 inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
+>
+  ← العودة إلى رحلتي
+</Link>
         </div>
       </main>
     );
@@ -268,16 +271,16 @@ farisMessage:
     <main dir="rtl" className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 rounded-3xl bg-gradient-to-l from-emerald-600 to-emerald-500 p-7 text-white shadow-lg">
-          <a
+    <Link
   href="/journey"
-  className="inline-block mb-4 rounded-xl border border-emerald-200 bg-white px-4 py-3 font-bold no-underline"
-style={{
-  color: "#065f46",
-  fontSize: "16px",
-}}
+  className="mb-4 inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white px-4 py-3 font-bold no-underline"
+  style={{
+    color: "#065f46",
+    fontSize: "16px",
+  }}
 >
   ← العودة إلى رحلتي
-</a>
+</Link>
           <p className="font-bold text-emerald-50">
             أكاديمية لغتي الرقمية
           </p>
