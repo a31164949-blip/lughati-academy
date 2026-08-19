@@ -1,8 +1,6 @@
 "use client";
-
 import Link from "next/link";
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -31,21 +29,20 @@ export default function UnitOneReviewPage() {
     setMessage,
   ] = useState("");
 
-  const [
-    completed,
-    setCompleted,
-  ] = useState(false);
+const [
+  completed,
+  setCompleted,
+] = useState(() => {
+  if (typeof window === "undefined") {
+    return false;
+  }
 
-  useEffect(() => {
-    const saved =
-      localStorage.getItem(
-        REVIEW_STORAGE_KEY
-      );
-
-    if (saved === "true") {
-      setCompleted(true);
-    }
-  }, []);
+  return (
+    window.localStorage.getItem(
+      REVIEW_STORAGE_KEY
+    ) === "true"
+  );
+});
 
   const progress = useMemo(() => {
     if (completed) {

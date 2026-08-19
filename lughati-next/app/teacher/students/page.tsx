@@ -66,167 +66,219 @@ export default function StudentsPage() {
   const [classFilter, setClassFilter] =
     useState("الكل");
 
-  async function loadStudents() {
-    try {
-      setLoading(true);
-      setMessage("");
+ async function fetchStudentsData() {
+  const [
+    studentsSnapshot,
+    profilesSnapshot,
+  ] = await Promise.all([
+    getDocs(
+      collection(
+        db,
+        "students"
+      )
+    ),
+    getDocs(
+      collection(
+        db,
+        "studentCaseStudies"
+      )
+    ),
+  ]);
 
-      const [
-        studentsSnapshot,
-        profilesSnapshot,
-      ] = await Promise.all([
-        getDocs(collection(db, "students")),
-        getDocs(
-          collection(
-            db,
-            "studentCaseStudies"
-          )
-        ),
-      ]);
+  const loadedStudents =
+    studentsSnapshot.docs.map(
+      (studentDoc) => {
+        const data =
+          studentDoc.data();
 
-      const loadedStudents =
-        studentsSnapshot.docs.map(
-          (studentDoc) => {
-            const data =
-              studentDoc.data();
+        return {
+          id: studentDoc.id,
 
-            return {
-              id: studentDoc.id,
+          studentId: String(
+            data.studentId ??
+              studentDoc.id
+          ),
 
-              studentId: String(
-                data.studentId ??
-                  studentDoc.id
-              ),
+          studentName: String(
+            data.studentName ??
+              data.name ??
+              "طالب دون اسم"
+          ),
 
-              studentName: String(
-                data.studentName ??
-                  data.name ??
-                  "طالب دون اسم"
-              ),
+          classroom: String(
+            data.classroom ??
+              "غير محدد"
+          ),
 
-              classroom: String(
-                data.classroom ??
-                  "غير محدد"
-              ),
+          active:
+            data.active !== false &&
+            data.archived !== true,
 
-              active:
-                data.active !== false &&
-                data.archived !== true,
+          points: Number(
+            data.points ?? 0
+          ),
 
-              points: Number(
-                data.points ?? 0
-              ),
+          streakDays: Number(
+            data.streakDays ?? 0
+          ),
+        };
+      }
+    );
 
-              streakDays: Number(
-                data.streakDays ?? 0
-              ),
-            };
-          }
+  loadedStudents.sort(
+    (a, b) =>
+      a.studentName.localeCompare(
+        b.studentName,
+        "ar"
+      )
+  );
+
+  const loadedProfiles: Record<
+    string,
+    FamilyProfile
+  > = {};
+
+  profilesSnapshot.docs.forEach(
+    (profileDoc) => {
+      const data =
+        profileDoc.data();
+
+      const profileStudentId =
+        String(
+          data.studentId ??
+            profileDoc.id
         );
 
-      loadedStudents.sort((a, b) =>
-        a.studentName.localeCompare(
-          b.studentName,
-          "ar"
-        )
-      );
+      loadedProfiles[
+        profileStudentId
+      ] = {
+        studentId:
+          profileStudentId,
 
-      const loadedProfiles: Record<
-        string,
-        FamilyProfile
-      > = {};
+        studentName: String(
+          data.studentName ?? ""
+        ),
 
-      profilesSnapshot.docs.forEach(
-        (profileDoc) => {
-          const data =
-            profileDoc.data();
+        guardianRelation:
+          String(
+            data.guardianRelation ??
+              ""
+          ),
 
-          const profileStudentId =
-            String(
-              data.studentId ??
-                profileDoc.id
-            );
+        homeFollower: String(
+          data.homeFollower ?? ""
+        ),
 
-          loadedProfiles[
-            profileStudentId
-          ] = {
-            studentId:
-              profileStudentId,
+        homeReadingFrequency:
+          String(
+            data.homeReadingFrequency ??
+              ""
+          ),
 
-            studentName: String(
-              data.studentName ?? ""
-            ),
+        learningEnvironment:
+          String(
+            data.learningEnvironment ??
+              ""
+          ),
 
-            guardianRelation:
-              String(
-                data.guardianRelation ??
-                  ""
-              ),
+        strengths: String(
+          data.strengths ?? ""
+        ),
 
-            homeFollower: String(
-              data.homeFollower ?? ""
-            ),
+        interests: String(
+          data.interests ?? ""
+        ),
 
-            homeReadingFrequency:
-              String(
-                data.homeReadingFrequency ??
-                  ""
-              ),
+        supportNeeds: String(
+          data.supportNeeds ?? ""
+        ),
 
-            learningEnvironment:
-              String(
-                data.learningEnvironment ??
-                  ""
-              ),
+        readingLevel: String(
+          data.readingLevel ?? ""
+        ),
 
-            strengths: String(
-              data.strengths ?? ""
-            ),
+        writingLevel: String(
+          data.writingLevel ?? ""
+        ),
 
-            interests: String(
-              data.interests ?? ""
-            ),
+        motivation: String(
+          data.motivation ?? ""
+        ),
 
-            supportNeeds: String(
-              data.supportNeeds ?? ""
-            ),
+        preferredLearning:
+          String(
+            data.preferredLearning ??
+              ""
+          ),
 
-            readingLevel: String(
-              data.readingLevel ?? ""
-            ),
+        healthStatus: String(
+          data.healthStatus ?? ""
+        ),
 
-            writingLevel: String(
-              data.writingLevel ?? ""
-            ),
+        healthDetails: String(
+          data.healthDetails ?? ""
+        ),
 
-            motivation: String(
-              data.motivation ?? ""
-            ),
+        familyNotes: String(
+          data.familyNotes ?? ""
+        ),
 
-            preferredLearning:
-              String(
-                data.preferredLearning ??
-                  ""
-              ),
+        photoConsent: String(
+          data.photoConsent ?? ""
+        ),
+      };
+    }
+  );
 
-            healthStatus: String(
-              data.healthStatus ?? ""
-            ),
+  return {
+    loadedStudents,
+    loadedProfiles,
+  };
+}
 
-            healthDetails: String(
-              data.healthDetails ?? ""
-            ),
+async function loadStudents() {
+  try {
+    setLoading(true);
+    setMessage("");
 
-            familyNotes: String(
-              data.familyNotes ?? ""
-            ),
+    const {
+      loadedStudents,
+      loadedProfiles,
+    } =
+      await fetchStudentsData();
 
-            photoConsent: String(
-              data.photoConsent ?? ""
-            ),
-          };
-        }
-      );
+    setStudents(
+      loadedStudents
+    );
+
+    setProfiles(
+      loadedProfiles
+    );
+  } catch (error) {
+    console.error(error);
+
+    setMessage(
+      "❌ تعذر تحميل بيانات الطلاب."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialStudents() {
+    try {
+      const {
+        loadedStudents,
+        loadedProfiles,
+      } =
+        await fetchStudentsData();
+
+      if (!active) {
+        return;
+      }
 
       setStudents(
         loadedStudents
@@ -238,17 +290,24 @@ export default function StudentsPage() {
     } catch (error) {
       console.error(error);
 
-      setMessage(
-        "❌ تعذر تحميل بيانات الطلاب."
-      );
+      if (active) {
+        setMessage(
+          "❌ تعذر تحميل بيانات الطلاب."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     }
   }
 
-  useEffect(() => {
-    void loadStudents();
-  }, []);
+  void loadInitialStudents();
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   const activeStudents =
     students.filter(

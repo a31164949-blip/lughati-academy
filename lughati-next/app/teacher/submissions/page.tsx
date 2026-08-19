@@ -76,165 +76,204 @@ export default function SubmissionsPage() {
    * تحميل الأعمال مباشرة
    * من Firestore.
    */
-  const loadSubmissions =
-    useCallback(async () => {
-      try {
-        setLoading(true);
-        setLoadError("");
+ const fetchSubmissions =
+  useCallback(async () => {
+    const submissionsQuery =
+      query(
+        collection(
+          db,
+          "studentWorks"
+        ),
+        orderBy(
+          "createdAt",
+          "desc"
+        )
+      );
 
-        const submissionsQuery =
-          query(
-            collection(
-              db,
-              "studentWorks"
-            ),
-            orderBy(
-              "createdAt",
-              "desc"
-            )
-          );
+    const snapshot =
+      await getDocs(
+        submissionsQuery
+      );
 
-        const snapshot =
-          await getDocs(
-            submissionsQuery
-          );
+    const loaded: Submission[] =
+      snapshot.docs.map(
+        (document) => {
+          const data =
+            document.data();
 
-        const loaded: Submission[] =
-          snapshot.docs.map(
-            (document) => {
-              const data =
-                document.data();
+          const rawStatus =
+            typeof data.status ===
+              "string"
+              ? data.status
+              : PENDING_STATUS;
 
-              const rawStatus =
-                typeof data.status ===
-                  "string"
-                  ? data.status
-                  : PENDING_STATUS;
+          let status: WorkStatus =
+            PENDING_STATUS;
 
-              let status: WorkStatus =
-                PENDING_STATUS;
+          if (
+            rawStatus ===
+            APPROVED_STATUS
+          ) {
+            status =
+              APPROVED_STATUS;
+          } else if (
+            rawStatus ===
+            REJECTED_STATUS
+          ) {
+            status =
+              REJECTED_STATUS;
+          }
 
-              if (
-                rawStatus ===
-                APPROVED_STATUS
-              ) {
-                status =
-                  APPROVED_STATUS;
-              } else if (
-                rawStatus ===
-                REJECTED_STATUS
-              ) {
-                status =
-                  REJECTED_STATUS;
-              }
+          const rawWorkType =
+            typeof data.workType ===
+              "string"
+              ? data.workType
+              : "image";
 
-              const rawWorkType =
-                typeof data.workType ===
-                  "string"
-                  ? data.workType
-                  : "image";
+          let workType:
+            | "image"
+            | "audio"
+            | "video" =
+            "image";
 
-              let workType:
-                | "image"
-                | "audio"
-                | "video" =
-                "image";
+          if (
+            rawWorkType ===
+            "audio"
+          ) {
+            workType = "audio";
+          } else if (
+            rawWorkType ===
+            "video"
+          ) {
+            workType = "video";
+          }
 
-              if (
-                rawWorkType ===
-                "audio"
-              ) {
-                workType =
-                  "audio";
-              } else if (
-                rawWorkType ===
-                "video"
-              ) {
-                workType =
-                  "video";
-              }
+          return {
+            id: document.id,
 
-              return {
-                id: document.id,
+            studentId:
+              typeof data.studentId ===
+                "string"
+                ? data.studentId
+                : "",
 
-                studentId:
-                  typeof data.studentId ===
+            studentName:
+              typeof data.studentName ===
+                "string"
+                ? data.studentName
+                : "طالب",
+
+            classroom:
+              typeof data.classroom ===
+                "string"
+                ? data.classroom
+                : "",
+
+            title:
+              typeof data.title ===
+                "string"
+                ? data.title
+                : "عمل بلا عنوان",
+
+            workType,
+
+            fileUrl:
+              typeof data.fileUrl ===
+                "string"
+                ? data.fileUrl
+                : "",
+
+            note:
+              typeof data.teacherNote ===
+                "string"
+                ? data.teacherNote
+                : typeof data.note ===
                     "string"
-                    ? data.studentId
-                    : "",
+                  ? data.note
+                  : "",
 
-                studentName:
-                  typeof data.studentName ===
-                    "string"
-                    ? data.studentName
-                    : "طالب",
+            status,
 
-                classroom:
-                  typeof data.classroom ===
-                    "string"
-                    ? data.classroom
-                    : "",
+            approved:
+              data.approved === true,
 
-                title:
-                  typeof data.title ===
-                    "string"
-                    ? data.title
-                    : "عمل بلا عنوان",
+            publishedToGallery:
+              data.publishedToGallery ===
+              true,
 
-                workType,
+            createdAt:
+              data.createdAt ??
+              null,
+          };
+        }
+      );
 
-                fileUrl:
-                  typeof data.fileUrl ===
-                    "string"
-                    ? data.fileUrl
-                    : "",
+    return loaded;
+  }, []);
 
-                note:
-                  typeof data.teacherNote ===
-                    "string"
-                    ? data.teacherNote
-                    : typeof data.note ===
-                        "string"
-                      ? data.note
-                      : "",
+const loadSubmissions =
+  useCallback(async () => {
+    try {
+      setLoading(true);
+      setLoadError("");
 
-                status,
+      const loaded =
+        await fetchSubmissions();
 
-                approved:
-                  data.approved ===
-                  true,
+      setSubmissions(loaded);
+    } catch (error) {
+      console.error(
+        "تعذر تحميل أعمال الطلاب:",
+        error
+      );
 
-                publishedToGallery:
-                  data.publishedToGallery ===
-                  true,
+      setSubmissions([]);
 
-                createdAt:
-                  data.createdAt ??
-                  null,
-              };
-            }
-          );
+      setLoadError(
+        "تعذر تحميل أعمال الطلاب من الأكاديمية."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSubmissions]);
 
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialSubmissions() {
+    try {
+      const loaded =
+        await fetchSubmissions();
+
+      if (active) {
         setSubmissions(loaded);
-      } catch (error) {
-        console.error(
-          "تعذر تحميل أعمال الطلاب:",
-          error
-        );
+      }
+    } catch (error) {
+      console.error(
+        "تعذر تحميل أعمال الطلاب:",
+        error
+      );
 
+      if (active) {
         setSubmissions([]);
 
         setLoadError(
           "تعذر تحميل أعمال الطلاب من الأكاديمية."
         );
-      } finally {
+      }
+    } finally {
+      if (active) {
         setLoading(false);
       }
-    }, []);
+    }
+  }
 
-  useEffect(() => {
-    void loadSubmissions();
-  }, [loadSubmissions]);
+  void loadInitialSubmissions();
+
+  return () => {
+    active = false;
+  };
+}, [fetchSubmissions]);
 
   /*
    * إحصائيات الحالات.

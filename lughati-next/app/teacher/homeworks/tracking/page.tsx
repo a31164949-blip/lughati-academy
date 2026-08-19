@@ -128,153 +128,246 @@ export default function HomeworkTrackingPage() {
   useState<string | null>(null);
   const [awardingPointsCompletionId, setAwardingPointsCompletionId] =
   useState<string | null>(null);
+const fetchTrackingData = useCallback(async () => {
+  const [
+    studentsSnapshot,
+    homeworksSnapshot,
+    completionsSnapshot,
+  ] = await Promise.all([
+    getDocs(collection(db, "students")),
+    getDocs(collection(db, "homeworks")),
+    getDocs(collection(db, "homeworkCompletions")),
+  ]);
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const loadedStudents: Student[] =
+    studentsSnapshot.docs
+      .map((studentDocument) => {
+        const data =
+          studentDocument.data();
 
-      const [
-        studentsSnapshot,
-        homeworksSnapshot,
-        completionsSnapshot,
-      ] = await Promise.all([
-        getDocs(collection(db, "students")),
-        getDocs(collection(db, "homeworks")),
-        getDocs(collection(db, "homeworkCompletions")),
-      ]);
+        return {
+          id: studentDocument.id,
 
-      const loadedStudents: Student[] = studentsSnapshot.docs
-        .map((studentDocument) => {
-          const data = studentDocument.data();
+          studentId:
+            typeof data.studentId === "string"
+              ? data.studentId
+              : studentDocument.id,
 
-          return {
-            id: studentDocument.id,
-            studentId:
-              typeof data.studentId === "string"
-                ? data.studentId
-                : studentDocument.id,
-            studentName:
-              typeof data.studentName === "string"
-                ? data.studentName
-                : typeof data.name === "string"
+          studentName:
+            typeof data.studentName === "string"
+              ? data.studentName
+              : typeof data.name === "string"
                 ? data.name
                 : "طالب",
-            classroom:
-              typeof data.classroom === "string"
-                ? data.classroom
-                : "غير محدد",
-            active: data.active !== false,
-          };
-        })
-        .filter((student) => student.active)
-        .sort((first, second) =>
-          first.studentName.localeCompare(second.studentName, "ar")
-        );
 
-      const loadedHomeworks: Homework[] = homeworksSnapshot.docs
-        .map((homeworkDocument) => {
-          const data = homeworkDocument.data();
+          classroom:
+            typeof data.classroom === "string"
+              ? data.classroom
+              : "غير محدد",
 
-          return {
-            id: homeworkDocument.id,
-            title:
-              typeof data.title === "string"
-                ? data.title
-                : "واجب دون عنوان",
-            instructions:
-              typeof data.instructions === "string"
-                ? data.instructions
-                : "",
-            targetClass:
-              typeof data.targetClass === "string"
-                ? data.targetClass
-                : typeof data.classroom === "string"
+          active:
+            data.active !== false,
+        };
+      })
+      .filter(
+        (student) =>
+          student.active
+      )
+      .sort(
+        (first, second) =>
+          first.studentName.localeCompare(
+            second.studentName,
+            "ar"
+          )
+      );
+
+  const loadedHomeworks: Homework[] =
+    homeworksSnapshot.docs
+      .map((homeworkDocument) => {
+        const data =
+          homeworkDocument.data();
+
+        return {
+          id:
+            homeworkDocument.id,
+
+          title:
+            typeof data.title === "string"
+              ? data.title
+              : "واجب دون عنوان",
+
+          instructions:
+            typeof data.instructions === "string"
+              ? data.instructions
+              : "",
+
+          targetClass:
+            typeof data.targetClass === "string"
+              ? data.targetClass
+              : typeof data.classroom === "string"
                 ? data.classroom
                 : "الفصلان",
-            dueDate: data.dueDate ?? null,
-            published: data.published === true,
-            createdAtMilliseconds:
-              getMilliseconds(data.createdAt) ||
-              getMilliseconds(data.updatedAt),
-          };
-        })
-        .filter((homework) => homework.published)
-        .sort(
-          (first, second) =>
-            second.createdAtMilliseconds - first.createdAtMilliseconds
-        );
 
-      const loadedCompletions: Completion[] =
-        completionsSnapshot.docs.map((completionDocument) => {
-          const data = completionDocument.data();
+          dueDate:
+            data.dueDate ?? null,
+
+          published:
+            data.published === true,
+
+          createdAtMilliseconds:
+            getMilliseconds(
+              data.createdAt
+            ) ||
+            getMilliseconds(
+              data.updatedAt
+            ),
+        };
+      })
+      .filter(
+        (homework) =>
+          homework.published
+      )
+      .sort(
+        (first, second) =>
+          second.createdAtMilliseconds -
+          first.createdAtMilliseconds
+      );
+
+  const loadedCompletions:
+    Completion[] =
+      completionsSnapshot.docs.map(
+        (completionDocument) => {
+          const data =
+            completionDocument.data();
 
           const completedAtText =
-            typeof data.completedAtText === "string"
+            typeof data.completedAtText ===
+            "string"
               ? data.completedAtText
               : data.completedAt &&
-                typeof data.completedAt.toDate === "function"
-              ? data.completedAt
-                  .toDate()
-                  .toLocaleString("ar-SA")
-              : "";
+                  typeof data.completedAt
+                    .toDate === "function"
+                ? data.completedAt
+                    .toDate()
+                    .toLocaleString(
+                      "ar-SA"
+                    )
+                : "";
 
           return {
-            id: completionDocument.id,
+            id:
+              completionDocument.id,
+
             homeworkId:
               typeof data.homeworkId === "string"
                 ? data.homeworkId
                 : "",
+
             studentId:
               typeof data.studentId === "string"
                 ? data.studentId
                 : "",
+
             studentName:
               typeof data.studentName === "string"
                 ? data.studentName
                 : "طالب",
+
             classroom:
               typeof data.classroom === "string"
                 ? data.classroom
                 : "",
+
             completed:
               data.completed === true ||
               data.status === "completed",
-              teacherApproved: data.teacherApproved === true,
+
+            teacherApproved:
+              data.teacherApproved === true,
+
             completedAtText,
+
             pointsAwarded:
-  data.pointsAwarded === true,
+              data.pointsAwarded === true,
 
-pointsAwardedValue:
-  typeof data.pointsAwardedValue === "number"
-    ? data.pointsAwardedValue
-    : 0,
+            pointsAwardedValue:
+              typeof data.pointsAwardedValue ===
+              "number"
+                ? data.pointsAwardedValue
+                : 0,
           };
-        });
-
-      setStudents(loadedStudents);
-      setHomeworks(loadedHomeworks);
-      setCompletions(loadedCompletions);
-
-      setSelectedHomeworkId((current) => {
-        if (
-          current &&
-          loadedHomeworks.some((homework) => homework.id === current)
-        ) {
-          return current;
         }
+      );
 
-        return loadedHomeworks[0]?.id ?? "";
-      });
+  return {
+    loadedStudents,
+    loadedHomeworks,
+    loadedCompletions,
+  };
+}, []);
+
+const loadData =
+  useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const {
+        loadedStudents,
+        loadedHomeworks,
+        loadedCompletions,
+      } =
+        await fetchTrackingData();
+
+      setStudents(
+        loadedStudents
+      );
+
+      setHomeworks(
+        loadedHomeworks
+      );
+
+      setCompletions(
+        loadedCompletions
+      );
+
+      setSelectedHomeworkId(
+        (current) => {
+          if (
+            current &&
+            loadedHomeworks.some(
+              (homework) =>
+                homework.id ===
+                current
+            )
+          ) {
+            return current;
+          }
+
+          return (
+            loadedHomeworks[0]?.id ??
+            ""
+          );
+        }
+      );
     } catch (loadError) {
-      console.error(loadError);
-      setError("تعذر تحميل بيانات متابعة الواجبات. حاول مرة أخرى.");
+      console.error(
+        loadError
+      );
+
+      setError(
+        "تعذر تحميل بيانات متابعة الواجبات. حاول مرة أخرى."
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
-const approveHomeworkCompletion = async (completion: Completion) => {
-  if (!completion.completed || completion.teacherApproved) return;
+  }, [fetchTrackingData]);
+const approveHomeworkCompletion = async (
+  completion: Completion
+) => {
+  if (!completion.completed || completion.teacherApproved) {
+    return;
+  }
 
   try {
     setApprovingCompletionId(completion.id);
@@ -305,6 +398,7 @@ const approveHomeworkCompletion = async (completion: Completion) => {
     setApprovingCompletionId(null);
   }
 };
+
 const awardHomeworkPoints = async (
   completion: Completion,
   pointsValue: number
@@ -345,8 +439,7 @@ const awardHomeworkPoints = async (
         throw new Error("COMPLETION_NOT_FOUND");
       }
 
-      const completionData =
-        completionSnapshot.data();
+      const completionData = completionSnapshot.data();
 
       if (completionData.pointsAwarded === true) {
         throw new Error("POINTS_ALREADY_AWARDED");
@@ -356,7 +449,7 @@ const awardHomeworkPoints = async (
         reason: "إنجاز واجب معتمد",
         points: pointsValue,
         badge: "",
-        category: "واجب" as const,
+        category: "واجب",
         createdAt: new Date(),
         homeworkId: completion.homeworkId,
         completionId: completion.id,
@@ -392,23 +485,69 @@ const awardHomeworkPoints = async (
 
     if (
       pointsError instanceof Error &&
-      pointsError.message ===
-        "POINTS_ALREADY_AWARDED"
+      pointsError.message === "POINTS_ALREADY_AWARDED"
     ) {
       alert("تم منح نقاط هذا الواجب سابقًا.");
     } else {
-      alert(
-        "تعذر منح النقاط، حاول مرة أخرى."
-      );
+      alert("تعذر منح النقاط، حاول مرة أخرى.");
     }
   } finally {
     setAwardingPointsCompletionId(null);
   }
 };
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
 
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialData() {
+    try {
+      const {
+        loadedStudents,
+        loadedHomeworks,
+        loadedCompletions,
+      } = await fetchTrackingData();
+
+      if (!active) {
+        return;
+      }
+
+      setStudents(loadedStudents);
+      setHomeworks(loadedHomeworks);
+      setCompletions(loadedCompletions);
+
+      setSelectedHomeworkId((current) => {
+        if (
+          current &&
+          loadedHomeworks.some(
+            (homework) => homework.id === current
+          )
+        ) {
+          return current;
+        }
+
+        return loadedHomeworks[0]?.id ?? "";
+      });
+    } catch (loadError) {
+      console.error(loadError);
+
+      if (active) {
+        setError(
+          "تعذر تحميل بيانات متابعة الواجبات. حاول مرة أخرى."
+        );
+      }
+    } finally {
+      if (active) {
+        setLoading(false);
+      }
+    }
+  }
+
+  void loadInitialData();
+
+  return () => {
+    active = false;
+  };
+}, [fetchTrackingData]);
   const selectedHomework = useMemo(
     () =>
       homeworks.find(

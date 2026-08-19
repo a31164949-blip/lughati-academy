@@ -46,16 +46,15 @@ const todayName = dayNames[new Date().getDay()];
 
 const [openDay, setOpenDay] = useState<string | null>(todayName);
 const [completedDays, setCompletedDays] = useState<string[]>([]);
-const [studentId, setStudentId] = useState("");
 const [isSavingCompletion, setIsSavingCompletion] = useState(false);
 const [completionMessage, setCompletionMessage] = useState("");
-useEffect(() => {
-  const savedStudentId = window.localStorage.getItem("student-id");
-
-  if (savedStudentId) {
-    setStudentId(savedStudentId);
+const [studentId] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
   }
-}, []);
+
+  return window.localStorage.getItem("student-id") ?? "";
+});
 useEffect(() => {
   async function loadTodayCompletion() {
     if (!studentId) {

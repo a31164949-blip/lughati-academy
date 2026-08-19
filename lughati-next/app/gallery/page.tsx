@@ -297,7 +297,7 @@ function StudentIdentity({
     </div>
   );
 }
-
+const GALLERY_NOW = Date.now();
 function GalleryPageContent() {
   const searchParams =
     useSearchParams();
@@ -416,76 +416,77 @@ function GalleryPageContent() {
     void loadGalleryHighlights();
   }, []);
 
-  useEffect(() => {
-    async function loadGallery() {
-      try {
-        setLoading(true);
-        setNotebookLoading(
-          true
-        );
-        setError("");
+ useEffect(() => {
+  let active = true;
 
-        const response =
-          await fetch(
-            "/api/gallery",
-            {
-              cache:
-                "no-store",
-            }
-          );
+  fetch("/api/gallery", {
+    cache: "no-store",
+  })
+    .then(async (response) => {
+      const data =
+        (await response.json()) as GalleryResponse;
 
-        const data =
-          (await response.json()) as GalleryResponse;
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          throw new Error(
-            data.message ||
-              "تعذر تحميل المعرض"
-          );
-        }
-
-        setWorks(
-          Array.isArray(
-            data.works
-          )
-            ? data.works
-            : []
-        );
-
-        setNotebookItems(
-          Array.isArray(
-            data.notebooks
-          )
-            ? data.notebooks
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "تعذر تحميل المعرض:",
-          error
-        );
-
-        setWorks([]);
-        setNotebookItems(
-          []
-        );
-
-        setError(
-          "تعذر تحميل أعمال الطلاب حاليًا."
-        );
-      } finally {
-        setLoading(false);
-        setNotebookLoading(
-          false
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر تحميل المعرض"
         );
       }
-    }
 
-    void loadGallery();
-  }, []);
+      return data;
+    })
+    .then((data) => {
+      if (!active) {
+        return;
+      }
+
+      setWorks(
+        Array.isArray(data.works)
+          ? data.works
+          : []
+      );
+
+      setNotebookItems(
+        Array.isArray(data.notebooks)
+          ? data.notebooks
+          : []
+      );
+
+      setError("");
+    })
+    .catch((error) => {
+      console.error(
+        "تعذر تحميل المعرض:",
+        error
+      );
+
+      if (!active) {
+        return;
+      }
+
+      setWorks([]);
+      setNotebookItems([]);
+
+      setError(
+        "تعذر تحميل أعمال الطلاب حاليًا."
+      );
+    })
+    .finally(() => {
+      if (!active) {
+        return;
+      }
+
+      setLoading(false);
+      setNotebookLoading(false);
+    });
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   const approvedWorks =
     useMemo(
@@ -1227,17 +1228,14 @@ function GalleryPageContent() {
                           work.publishedAt
                         );
 
-                      const now =
-                        Date.now();
-
                       const isNewest =
                         Number.isFinite(
                           publishedTime
                         ) &&
-                        now -
+                        GALLERY_NOW -
                           publishedTime >=
                           0 &&
-                        now -
+                        GALLERY_NOW -
                           publishedTime <=
                           24 *
                             60 *

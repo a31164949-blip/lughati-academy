@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 
 type AcademicJourneyEvent = {
   id: string;
@@ -83,16 +86,10 @@ function getCompactCountdown(
 export default function AcademicJourney({
   events,
 }: AcademicJourneyProps) {
-  const [today, setToday] =
-    useState<Date | null>(null);
-
-  const [showAll, setShowAll] =
-    useState(false);
-
-  useEffect(() => {
-    setToday(new Date());
-  }, []);
-
+const [today] =
+  useState<Date>(() => new Date());
+const [showAll, setShowAll] =
+  useState(false);
   const currentIndex =
     useMemo(() => {
       if (!today) {

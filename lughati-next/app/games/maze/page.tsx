@@ -155,35 +155,34 @@ const maze: MazeCell[][] = [
 ];
 
 export default function PublicMazeGamePage() {
-  const startPosition =
-    useMemo<Position>(() => {
-      for (
-        let row = 0;
-        row < maze.length;
-        row++
-      ) {
-        for (
-          let col = 0;
-          col < maze[row].length;
-          col++
-        ) {
-          if (
-            maze[row][col].type ===
-            "start"
-          ) {
-            return {
-              row,
-              col,
-            };
-          }
-        }
+ const startPosition: Position = (() => {
+  for (
+    let row = 0;
+    row < maze.length;
+    row++
+  ) {
+    for (
+      let col = 0;
+      col < maze[row].length;
+      col++
+    ) {
+     if (
+  maze[row][col].type ===
+  "start"
+) {
+        return {
+          row,
+          col,
+        };
       }
+    }
+  }
 
-      return {
-        row: 1,
-        col: 1,
-      };
-    }, []);
+  return {
+    row: 0,
+    col: 0,
+  };
+})();
 
   const [
     position,

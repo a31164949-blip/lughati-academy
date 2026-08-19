@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -845,13 +845,17 @@ alert(
 }
   return (
     <main style={styles.page} dir="rtl">
-      <a href="/teacher/students" style={styles.backButton}>
-        ← العودة إلى الطلاب
-      </a>
-<a
+     <Link
+  href="/teacher/students"
+  style={styles.backButton}
+>
+  ← العودة إلى الطلاب
+</Link>
+
+<Link
   href={`/teacher/case-studies?studentId=${encodeURIComponent(
-  studentId
-)}`}
+    studentId
+  )}`}
   style={{
     display: "block",
     marginBottom: "14px",
@@ -866,7 +870,7 @@ alert(
   }}
 >
   📋 دراسة حالة الطالب
-</a>
+</Link>
       <section
 style={styles.profileInfo}>
         <div style={styles.avatar}>🧒</div>

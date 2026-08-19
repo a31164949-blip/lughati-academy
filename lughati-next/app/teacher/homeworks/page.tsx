@@ -53,56 +53,132 @@ export default function TeacherHomeworksPage() {
   const [error, setError] = useState("");
 const [selectedFile, setSelectedFile] = useState<File | null>(null);
 const [uploadingFile, setUploadingFile] = useState(false);
-  async function loadHomeworks() {
+async function fetchHomeworks() {
+  const homeworksQuery = query(
+    collection(db, "homeworks"),
+    orderBy("createdAt", "desc")
+  );
+
+  const snapshot =
+    await getDocs(homeworksQuery);
+
+  const loadedHomeworks: Homework[] =
+    snapshot.docs.map(
+      (homeworkDocument) => {
+        const data =
+          homeworkDocument.data();
+
+        return {
+          id:
+            homeworkDocument.id,
+
+          title:
+            data.title ||
+            "واجب دون عنوان",
+
+          homeworkType:
+            data.homeworkType ===
+            "creative"
+              ? "creative"
+              : data.homeworkType ===
+                  "madrasati"
+                ? "madrasati"
+                : "standard",
+
+          instructions:
+            data.instructions || "",
+
+          targetClass:
+            data.targetClass ||
+            "الفصلان",
+
+          dueDate:
+            data.dueDate || "",
+
+          published:
+            data.published === true,
+
+          resourceUrl:
+            typeof data.resourceUrl ===
+            "string"
+              ? data.resourceUrl
+              : "",
+
+          attachmentName:
+            typeof data.attachmentName ===
+            "string"
+              ? data.attachmentName
+              : "",
+
+          createdAt:
+            data.createdAt,
+        };
+      }
+    );
+
+  return loadedHomeworks;
+}
+
+async function loadHomeworks() {
+  try {
+    setLoading(true);
+    setError("");
+
+    const loadedHomeworks =
+      await fetchHomeworks();
+
+    setHomeworks(
+      loadedHomeworks
+    );
+  } catch (loadError) {
+    console.error(
+      loadError
+    );
+
+    setError(
+      "تعذر تحميل الواجبات من Firebase."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialHomeworks() {
     try {
-      setLoading(true);
-      setError("");
+      const loadedHomeworks =
+        await fetchHomeworks();
 
-      const homeworksQuery = query(
-        collection(db, "homeworks"),
-        orderBy("createdAt", "desc")
-      );
-
-      const snapshot = await getDocs(homeworksQuery);
-
-      const loadedHomeworks: Homework[] = snapshot.docs.map(
-        (homeworkDocument) => {
-          const data = homeworkDocument.data();
-
-          return {
-            id: homeworkDocument.id,
-            title: data.title || "واجب دون عنوان",
-            homeworkType:
-  data.homeworkType === "creative"
-    ? "creative"
-    : data.homeworkType === "madrasati"
-    ? "madrasati"
-    : "standard",
-            instructions: data.instructions || "",
-            targetClass: data.targetClass || "الفصلان",
-            dueDate: data.dueDate || "",
-            published: data.published === true,
-            resourceUrl:
-  typeof data.resourceUrl === "string" ? data.resourceUrl : "",
-attachmentName:
-  typeof data.attachmentName === "string" ? data.attachmentName : "",
-            createdAt: data.createdAt,
-          };
-        }
-      );
-
-      setHomeworks(loadedHomeworks);
+      if (active) {
+        setHomeworks(
+          loadedHomeworks
+        );
+      }
     } catch (loadError) {
-      console.error(loadError);
-      setError("تعذر تحميل الواجبات من Firebase.");
+      console.error(
+        loadError
+      );
+
+      if (active) {
+        setError(
+          "تعذر تحميل الواجبات من Firebase."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     }
   }
 
-  useEffect(() => {
-    loadHomeworks();
-  }, []);
+  void loadInitialHomeworks();
+
+  return () => {
+    active = false;
+  };
+}, []);
 async function uploadSelectedFile() {
   if (!selectedFile) {
     return null;

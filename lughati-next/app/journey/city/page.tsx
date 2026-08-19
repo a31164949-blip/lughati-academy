@@ -150,7 +150,8 @@ export default function AchievementCityPage() {
   const [loading, setLoading] =
     useState(true);
 
-  const [mounted, setMounted] =
+  const [mounted] =
+  useState(true);
     useState(false);
 
   const [showStages, setShowStages] =
@@ -163,40 +164,37 @@ export default function AchievementCityPage() {
     null
   );
 
-  const [
-    unitOneCompleted,
-    setUnitOneCompleted,
-  ] = useState(false);
+  const [unitOneCompleted] = useState(() => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const introCompleted =
+    window.localStorage.getItem(
+      UNIT1_INTRO_KEY
+    ) === "true";
+
+  const lessonTwoCompleted =
+    window.localStorage.getItem(
+      UNIT1_LESSON2_KEY
+    ) === "true";
+
+  const reviewCompleted =
+    window.localStorage.getItem(
+      UNIT1_REVIEW_KEY
+    ) === "true";
+
+  return (
+    introCompleted &&
+    lessonTwoCompleted &&
+    reviewCompleted
+  );
+});
 
   const [carStyle, setCarStyle] =
     useState<
       "blue" | "green" | "gold"
     >("blue");
-
-  useEffect(() => {
-    setMounted(true);
-
-    const introCompleted =
-      localStorage.getItem(
-        UNIT1_INTRO_KEY
-      ) === "true";
-
-    const lessonTwoCompleted =
-      localStorage.getItem(
-        UNIT1_LESSON2_KEY
-      ) === "true";
-
-    const reviewCompleted =
-      localStorage.getItem(
-        UNIT1_REVIEW_KEY
-      ) === "true";
-
-    setUnitOneCompleted(
-      introCompleted &&
-        lessonTwoCompleted &&
-        reviewCompleted
-    );
-  }, []);
 
   useEffect(() => {
     async function loadStudentPoints() {

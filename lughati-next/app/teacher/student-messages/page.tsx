@@ -46,48 +46,92 @@ export default function TeacherStudentMessagesPage() {
   const [feedback, setFeedback] =
     useState("");
 
-  async function loadMessages() {
+  async function fetchMessages() {
+  const q = query(
+    collection(
+      db,
+      "studentTeacherMessages"
+    ),
+    orderBy(
+      "createdAt",
+      "desc"
+    )
+  );
+
+  const snapshot =
+    await getDocs(q);
+
+  const items: StudentMessage[] =
+    snapshot.docs.map(
+      (item) => ({
+        id: item.id,
+        ...(item.data() as Omit<
+          StudentMessage,
+          "id"
+        >),
+      })
+    );
+
+  return items;
+}
+
+function buildReplyTexts(
+  items: StudentMessage[]
+) {
+  const initialReplies:
+    Record<string, string> = {};
+
+  items.forEach((item) => {
+    initialReplies[item.id] =
+      item.teacherReply || "";
+  });
+
+  return initialReplies;
+}
+
+async function loadMessages() {
+  try {
+    setLoading(true);
+    setFeedback("");
+
+    const items =
+      await fetchMessages();
+
+    setMessages(items);
+
+    setReplyTexts(
+      buildReplyTexts(items)
+    );
+  } catch (error) {
+    console.error(
+      "تعذر تحميل رسائل الطلاب:",
+      error
+    );
+
+    setFeedback(
+      "❌ تعذر تحميل رسائل الطلاب."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialMessages() {
     try {
-      setLoading(true);
-      setFeedback("");
+      const items =
+        await fetchMessages();
 
-      const q = query(
-        collection(
-          db,
-          "studentTeacherMessages"
-        ),
-        orderBy(
-          "createdAt",
-          "desc"
-        )
-      );
-
-      const snapshot =
-        await getDocs(q);
-
-      const items: StudentMessage[] =
-        snapshot.docs.map(
-          (item) => ({
-            id: item.id,
-            ...(item.data() as Omit<
-              StudentMessage,
-              "id"
-            >),
-          })
-        );
+      if (!active) {
+        return;
+      }
 
       setMessages(items);
 
-      const initialReplies:
-        Record<string, string> = {};
-
-      items.forEach((item) => {
-        initialReplies[item.id] =
-          item.teacherReply || "";
-      });
-
       setReplyTexts(
-        initialReplies
+        buildReplyTexts(items)
       );
     } catch (error) {
       console.error(
@@ -95,17 +139,24 @@ export default function TeacherStudentMessagesPage() {
         error
       );
 
-      setFeedback(
-        "❌ تعذر تحميل رسائل الطلاب."
-      );
+      if (active) {
+        setFeedback(
+          "❌ تعذر تحميل رسائل الطلاب."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     }
   }
 
-  useEffect(() => {
-    void loadMessages();
-  }, []);
+  void loadInitialMessages();
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   async function saveReply(
     item: StudentMessage

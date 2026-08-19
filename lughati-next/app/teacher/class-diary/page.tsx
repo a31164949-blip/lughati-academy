@@ -286,52 +286,79 @@ export default function TeacherClassDiaryPage() {
   /*
    * تحميل اليوميات.
    */
-  const loadPosts =
-    async () => {
-      try {
-        const diaryQuery =
-          query(
-            collection(
-              db,
-              "classDiary"
-            ),
-            orderBy(
-              "createdAt",
-              "desc"
-            )
-          );
+async function fetchPosts() {
+  const diaryQuery =
+    query(
+      collection(
+        db,
+        "classDiary"
+      ),
+      orderBy(
+        "createdAt",
+        "desc"
+      )
+    );
 
-        const snapshot =
-          await getDocs(
-            diaryQuery
-          );
+  const snapshot =
+    await getDocs(
+      diaryQuery
+    );
 
-        const items: DiaryPost[] =
-          snapshot.docs.map(
-            (item) => ({
-              id:
-                item.id,
+  const items: DiaryPost[] =
+    snapshot.docs.map(
+      (item) => ({
+        id: item.id,
 
-              ...(item.data() as Omit<
-                DiaryPost,
-                "id"
-              >),
-            })
-          );
+        ...(item.data() as Omit<
+          DiaryPost,
+          "id"
+        >),
+      })
+    );
 
+  return items;
+}
+
+const loadPosts =
+  async () => {
+    try {
+      const items =
+        await fetchPosts();
+
+      setPosts(items);
+    } catch (error) {
+      console.error(
+        "خطأ في تحميل يوميات الفصل:",
+        error
+      );
+    }
+  };
+
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialPosts() {
+    try {
+      const items =
+        await fetchPosts();
+
+      if (active) {
         setPosts(items);
-      } catch (error) {
-        console.error(
-          "خطأ في تحميل يوميات الفصل:",
-          error
-        );
       }
-    };
+    } catch (error) {
+      console.error(
+        "خطأ في تحميل يوميات الفصل:",
+        error
+      );
+    }
+  }
 
-  useEffect(() => {
-    void loadPosts();
-  }, []);
+  void loadInitialPosts();
 
+  return () => {
+    active = false;
+  };
+}, []);
   /*
    * إضافة طالب إلى نجوم اليوم.
    */

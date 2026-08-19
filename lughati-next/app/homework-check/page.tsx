@@ -25,9 +25,38 @@ type Homework = {
 };
 
 export default function HomeworkCheckPage() {
-  const [studentId, setStudentId] = useState("");
-  const [studentName, setStudentName] = useState("يا بطل");
-  const [classroom, setClassroom] = useState("");
+  const [studentId] = useState(() => {
+  if (typeof window === "undefined") {
+    return "student-demo";
+  }
+
+  return (
+    window.localStorage.getItem("student-id") ||
+    "student-demo"
+  );
+});
+
+const [studentName] = useState(() => {
+  if (typeof window === "undefined") {
+    return "يا بطل";
+  }
+
+  return (
+    window.localStorage.getItem("student-name") ||
+    "يا بطل"
+  );
+});
+
+const [classroom] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return (
+    window.localStorage.getItem("student-classroom") ||
+    ""
+  );
+});
 
   const [homework, setHomework] = useState<Homework | null>(null);
   const [loadingHomework, setLoadingHomework] = useState(true);
@@ -39,22 +68,13 @@ export default function HomeworkCheckPage() {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const savedStudentId =
-      localStorage.getItem("student-id") || "student-demo";
-
-    const savedStudentName =
-      localStorage.getItem("student-name") || "يا بطل";
-
-    const savedClassroom =
-      localStorage.getItem("student-classroom") || "";
-
-    setStudentId(savedStudentId);
-    setStudentName(savedStudentName);
-    setClassroom(savedClassroom);
-
-    loadLatestHomework(savedClassroom, savedStudentId, savedStudentName);
-  }, []);
+useEffect(() => {
+  void loadLatestHomework(
+    classroom,
+    studentId,
+    studentName
+  );
+}, [classroom, studentId, studentName]);
 
   async function loadLatestHomework(
     studentClassroom: string,

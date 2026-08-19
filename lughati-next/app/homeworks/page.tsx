@@ -109,12 +109,6 @@ function getClassroom(homework: Homework): string {
 
 export default function HomeworksPage() {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
-  const [student, setStudent] = useState<StudentData>({
-    id: "",
-    name: "",
-    classroom: "",
-    loggedIn: false,
-  });
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [readingStatusByHomework, setReadingStatusByHomework] =
@@ -125,7 +119,8 @@ const [solutionStatusByHomework, setSolutionStatusByHomework] =
 const [completionMethodByHomework, setCompletionMethodByHomework] =
   useState<Record<string, string>>({});
 const [loading, setLoading] = useState(true);
-  const [loadingCompletions, setLoadingCompletions] = useState(true);
+  const [loadingCompletions, setLoadingCompletions] =
+  useState(false);
   const [savingId, setSavingId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [messageByHomework, setMessageByHomework] = useState<
@@ -151,46 +146,76 @@ const [teacherNoteByHomework, setTeacherNoteByHomework] =
   useState<Record<string, string>>({});
   useState<Record<string, "pending" | "approved" | "rejected">>({});
   
-useEffect(() => {
-  const savedStudent = localStorage.getItem("lughatiStudent");
-  const savedLogin =
-    localStorage.getItem("lughatiStudentLoggedIn") === "true";
-
-  if (!savedStudent) {
-    setStudent({
+const [student] = useState(() => {
+  if (typeof window === "undefined") {
+    return {
       id: "",
       name: "",
       classroom: "",
       loggedIn: false,
-    });
-    return;
+    };
+  }
+
+  const savedStudent =
+    window.localStorage.getItem(
+      "lughatiStudent"
+    );
+
+  const savedLogin =
+    window.localStorage.getItem(
+      "lughatiStudentLoggedIn"
+    ) === "true";
+
+  if (!savedStudent) {
+    return {
+      id: "",
+      name: "",
+      classroom: "",
+      loggedIn: false,
+    };
   }
 
   try {
-    const parsedStudent = JSON.parse(savedStudent);
+    const parsedStudent =
+      JSON.parse(savedStudent);
 
-    setStudent({
+    return {
       id: String(
-        parsedStudent.id ?? parsedStudent.studentId ?? ""
+        parsedStudent.id ??
+          parsedStudent.studentId ??
+          ""
       ),
-      name: String(
-        parsedStudent.name ?? parsedStudent.studentName ?? ""
-      ),
-      classroom: String(parsedStudent.classroom ?? ""),
-      loggedIn:
-        savedLogin || parsedStudent.loggedIn === true,
-    });
-  } catch (error) {
-    console.error("تعذر قراءة بيانات الطالب:", error);
 
-    setStudent({
+      name: String(
+        parsedStudent.name ??
+          parsedStudent.studentName ??
+          ""
+      ),
+
+      classroom: String(
+        parsedStudent.classroom ??
+          ""
+      ),
+
+      loggedIn:
+        savedLogin ||
+        parsedStudent.loggedIn ===
+          true,
+    };
+  } catch (error) {
+    console.error(
+      "تعذر قراءة بيانات الطالب:",
+      error
+    );
+
+    return {
       id: "",
       name: "",
       classroom: "",
       loggedIn: false,
-    });
+    };
   }
-}, []);
+});
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "homeworks"),
@@ -214,107 +239,150 @@ useEffect(() => {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (!student.id) {
-      setCompletedIds(new Set());
-      setLoadingCompletions(false);
-      return;
-    }
+ useEffect(() => {
+  if (!student.id) {
+    return;
+  }
 
-    setLoadingCompletions(true);
+  const completionsQuery = query(
+    collection(db, "homeworkCompletions"),
+    where("studentId", "==", student.id)
+  );
 
-    const completionsQuery = query(
-      collection(db, "homeworkCompletions"),
-      where("studentId", "==", student.id)
-    );
-    
+  const unsubscribe = onSnapshot(
+    completionsQuery,
+    (snapshot) => {
+      const ids = new Set<string>();
 
-    const unsubscribe = onSnapshot(
-      completionsQuery,
-      (snapshot) => {
-        const ids = new Set<string>();
-        const readingStatuses: Record<
-  string,
-  "pending" | "approved" | "rejected"
-> = {};
+      const readingStatuses: Record<
+        string,
+        "pending" | "approved" | "rejected"
+      > = {};
 
-const solutionStatuses: Record<
-  string,
-  "pending" | "approved" | "rejected"
-> = {};
-const teacherNotes: Record<string, string> = {};
-const completionMethods: Record<string, string> = {};
-        snapshot.docs.forEach((completionDocument) => {
-          const data = completionDocument.data();
-          if (typeof data.homeworkId === "string") {
-  teacherNotes[data.homeworkId] =
-    typeof data.teacherNote === "string"
-      ? data.teacherNote
-      : "";
+      const solutionStatuses: Record<
+        string,
+        "pending" | "approved" | "rejected"
+      > = {};
 
-  completionMethods[data.homeworkId] =
-    typeof data.completionMethod === "string"
-      ? data.completionMethod
-      : "";
-}
-          if (typeof data.homeworkId === "string") {
-  teacherNotes[data.homeworkId] =
-    typeof data.teacherNote === "string"
-      ? data.teacherNote
-      : "";
-}
+      const teacherNotes: Record<
+        string,
+        string
+      > = {};
+
+      const completionMethods: Record<
+        string,
+        string
+      > = {};
+
+      snapshot.docs.forEach(
+        (completionDocument) => {
+          const data =
+            completionDocument.data();
+
+          if (
+            typeof data.homeworkId ===
+            "string"
+          ) {
+            teacherNotes[
+              data.homeworkId
+            ] =
+              typeof data.teacherNote ===
+              "string"
+                ? data.teacherNote
+                : "";
+
+            completionMethods[
+              data.homeworkId
+            ] =
+              typeof data.completionMethod ===
+              "string"
+                ? data.completionMethod
+                : "";
+          }
+
           const hasSolution =
-  typeof data.solutionUrl === "string" &&
-  data.solutionUrl.trim() !== "";
+            typeof data.solutionUrl ===
+              "string" &&
+            data.solutionUrl.trim() !== "";
 
-if (
-  hasSolution &&
-  typeof data.homeworkId === "string"
-) {
-  solutionStatuses[data.homeworkId] =
-    data.solutionStatus === "approved" ||
-    data.solutionStatus === "rejected"
-      ? data.solutionStatus
-      : "pending";
-}
-    const hasReadingAudio =
-  typeof data.readingAudioUrl === "string" &&
-  data.readingAudioUrl.trim() !== "";
+          if (
+            hasSolution &&
+            typeof data.homeworkId ===
+              "string"
+          ) {
+            solutionStatuses[
+              data.homeworkId
+            ] =
+              data.solutionStatus ===
+                "approved" ||
+              data.solutionStatus ===
+                "rejected"
+                ? data.solutionStatus
+                : "pending";
+          }
 
-if (
-  hasReadingAudio &&
-  typeof data.homeworkId === "string"
-) {
-  readingStatuses[data.homeworkId] =
-    data.readingStatus === "approved" ||
-    data.readingStatus === "rejected"
-      ? data.readingStatus
-      : "pending";
-}
+          const hasReadingAudio =
+            typeof data.readingAudioUrl ===
+              "string" &&
+            data.readingAudioUrl.trim() !== "";
+
+          if (
+            hasReadingAudio &&
+            typeof data.homeworkId ===
+              "string"
+          ) {
+            readingStatuses[
+              data.homeworkId
+            ] =
+              data.readingStatus ===
+                "approved" ||
+              data.readingStatus ===
+                "rejected"
+                ? data.readingStatus
+                : "pending";
+          }
 
           if (
             data.status === "completed" &&
-            typeof data.homeworkId === "string"
+            typeof data.homeworkId ===
+              "string"
           ) {
-            ids.add(data.homeworkId);
+            ids.add(
+              data.homeworkId
+            );
           }
-        });
-setSolutionStatusByHomework(solutionStatuses);
-        setCompletedIds(ids);
-        setReadingStatusByHomework(readingStatuses);
-        setSolutionStatusByHomework(solutionStatuses);
-        setTeacherNoteByHomework(teacherNotes);
-        setCompletionMethodByHomework(completionMethods);
-        setLoadingCompletions(false);
-      },
-      (error) => {
-        console.error(error);
-        setLoadingCompletions(false);
-      }
-    );
+        }
+      );
 
-    return unsubscribe;
-  }, [student.id]);
+      setCompletedIds(ids);
+
+      setReadingStatusByHomework(
+        readingStatuses
+      );
+
+      setSolutionStatusByHomework(
+        solutionStatuses
+      );
+
+      setTeacherNoteByHomework(
+        teacherNotes
+      );
+
+      setCompletionMethodByHomework(
+        completionMethods
+      );
+
+      setLoadingCompletions(false);
+    },
+    (error) => {
+      console.error(error);
+
+      setLoadingCompletions(false);
+    }
+  );
+
+  return unsubscribe;
+}, [student.id]);
 
   const publishedHomeworks = useMemo(() => {
     return homeworks

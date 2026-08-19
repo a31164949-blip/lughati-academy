@@ -28,98 +28,198 @@ export default function HomeworkReminder() {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkHomeworkReminder();
-  }, []);
+ 
 
-  async function checkHomeworkReminder() {
+ async function fetchHomeworkReminderData() {
+  const studentId =
+    localStorage.getItem("student-id") || "";
+
+  const savedStudentName =
+    localStorage.getItem("student-name") || "";
+
+  const classroom =
+    localStorage.getItem("student-classroom") || "";
+
+  if (
+    !studentId ||
+    !savedStudentName ||
+    !classroom
+  ) {
+    return {
+      studentName: savedStudentName,
+      homework: null as Homework | null,
+      visible: false,
+    };
+  }
+
+  const homeworksSnapshot =
+    await getDocs(
+      collection(db, "homeworks")
+    );
+
+  const suitableHomeworks: Homework[] =
+    homeworksSnapshot.docs
+      .map((homeworkDocument) => {
+        const data =
+          homeworkDocument.data();
+
+        return {
+          id: homeworkDocument.id,
+
+          title:
+            data.title ||
+            "واجب جديد",
+
+          instructions:
+            data.instructions ||
+            "",
+
+          targetClass:
+            data.targetClass ||
+            "الفصلان",
+
+          dueDate:
+            data.dueDate ||
+            "",
+
+          createdAt:
+            data.createdAt ||
+            null,
+
+          published:
+            data.published === true,
+
+          resourceUrl:
+            typeof data.resourceUrl ===
+            "string"
+              ? data.resourceUrl
+              : "",
+
+          attachmentName:
+            typeof data.attachmentName ===
+            "string"
+              ? data.attachmentName
+              : "",
+        };
+      })
+      .filter((item) => {
+        const suitableClass =
+          item.targetClass ===
+            "الفصلان" ||
+          item.targetClass ===
+            classroom;
+
+        return (
+          item.published &&
+          suitableClass
+        );
+      })
+      .sort((first, second) => {
+        const firstTime =
+          first.createdAt?.toMillis?.() ||
+          0;
+
+        const secondTime =
+          second.createdAt?.toMillis?.() ||
+          0;
+
+        return (
+          secondTime -
+          firstTime
+        );
+      });
+
+  const latestHomework =
+    suitableHomeworks[0] ||
+    null;
+
+  if (!latestHomework) {
+    return {
+      studentName:
+        savedStudentName,
+      homework:
+        null as Homework | null,
+      visible: false,
+    };
+  }
+
+  const completionId =
+    `${studentId}-${latestHomework.id}`;
+
+  const completionSnapshot =
+    await getDoc(
+      doc(
+        db,
+        "homeworkCompletions",
+        completionId
+      )
+    );
+
+  const alreadyCompleted =
+    completionSnapshot.exists() &&
+    completionSnapshot.data()
+      .completed === true;
+
+  return {
+    studentName:
+      savedStudentName,
+
+    homework:
+      alreadyCompleted
+        ? null
+        : latestHomework,
+
+    visible:
+      !alreadyCompleted,
+  };
+}
+
+useEffect(() => {
+  let active = true;
+
+  async function loadReminder() {
     try {
-      setLoading(true);
+      const result =
+        await fetchHomeworkReminderData();
 
-      const studentId = localStorage.getItem("student-id") || "";
-      const savedStudentName =
-        localStorage.getItem("student-name") || "";
-      const classroom =
-        localStorage.getItem("student-classroom") || "";
-
-      setStudentName(savedStudentName);
-
-      if (!studentId || !savedStudentName || !classroom) {
-        setVisible(false);
+      if (!active) {
         return;
       }
 
-      const homeworksSnapshot = await getDocs(
-        collection(db, "homeworks")
+      setStudentName(
+        result.studentName
       );
 
-      const suitableHomeworks: Homework[] =
-        homeworksSnapshot.docs
-          .map((homeworkDocument) => {
-            const data = homeworkDocument.data();
-
-            return {
-              id: homeworkDocument.id,
-              title: data.title || "واجب جديد",
-              instructions: data.instructions || "",
-              targetClass: data.targetClass || "الفصلان",
-              dueDate: data.dueDate || "",
-              createdAt: data.createdAt || null,
-              published: data.published === true,
-              resourceUrl:
-  typeof data.resourceUrl === "string" ? data.resourceUrl : "",
-attachmentName:
-  typeof data.attachmentName === "string" ? data.attachmentName : "",
-            };
-          })
-          .filter((item) => {
-            const suitableClass =
-              item.targetClass === "الفصلان" ||
-              item.targetClass === classroom;
-
-            return item.published && suitableClass;
-          })
-          .sort((first, second) => {
-            const firstTime =
-              first.createdAt?.toMillis?.() || 0;
-            const secondTime =
-              second.createdAt?.toMillis?.() || 0;
-
-            return secondTime - firstTime;
-          });
-
-      const latestHomework = suitableHomeworks[0] || null;
-
-      if (!latestHomework) {
-        setVisible(false);
-        return;
-      }
-
-      const completionId = `${studentId}-${latestHomework.id}`;
-
-      const completionSnapshot = await getDoc(
-        doc(db, "homeworkCompletions", completionId)
+      setHomework(
+        result.homework
       );
 
-      const alreadyCompleted =
-        completionSnapshot.exists() &&
-        completionSnapshot.data().completed === true;
-
-      if (alreadyCompleted) {
-        setVisible(false);
-        return;
-      }
-
-      setHomework(latestHomework);
-      setVisible(true);
+      setVisible(
+        result.visible
+      );
     } catch (error) {
-      console.error("تعذر فحص تنبيه الواجب:", error);
-      setVisible(false);
+      console.error(
+        "تعذر فحص تنبيه الواجب:",
+        error
+      );
+
+      if (active) {
+        setHomework(null);
+        setVisible(false);
+      }
     } finally {
-      setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     }
   }
 
+  void loadReminder();
+
+  return () => {
+    active = false;
+  };
+}, []);
   function openHomework() {
     window.location.href = "/homework-check";
   }

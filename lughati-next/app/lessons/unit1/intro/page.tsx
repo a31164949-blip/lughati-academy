@@ -93,21 +93,21 @@ export default function UnitOneIntroPage() {
     setMessage,
   ] = useState("");
 
-  const [
-    completed,
-    setCompleted,
-  ] = useState(false);
+ const [
+  completed,
+  setCompleted,
+] = useState(() => {
+  if (typeof window === "undefined") {
+    return false;
+  }
 
-  useEffect(() => {
-    const saved =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
+  const saved =
+    window.localStorage.getItem(
+      STORAGE_KEY
+    );
 
-    if (saved === "true") {
-      setCompleted(true);
-    }
-  }, []);
+  return saved === "true";
+});
 
   const progress =
     useMemo(() => {

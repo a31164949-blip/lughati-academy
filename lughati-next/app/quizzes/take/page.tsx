@@ -47,18 +47,25 @@ const quizId = searchParams.get("quizId");
   const [error, setError] = useState("");
   const [selectedQuiz, setSelectedQuiz] = useState<StudentQuiz | null>(null);
 const [answers, setAnswers] = useState<Record<number, string | number>>({});
-const [studentId, setStudentId] = useState("");
-const [studentName, setStudentName] = useState("");
-useEffect(() => {
-  const savedStudentId =
-    window.localStorage.getItem("student-id") ?? "";
+const [studentId] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
 
-  const savedStudentName =
-    window.localStorage.getItem("student-name") ?? "";
+  return (
+    window.localStorage.getItem("student-id") ?? ""
+  );
+});
 
-  setStudentId(savedStudentId);
-  setStudentName(savedStudentName);
-}, []);
+const [studentName] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return (
+    window.localStorage.getItem("student-name") ?? ""
+  );
+});
 function updateAnswer(questionId: number, answer: string | number) {
   setAnswers((current) => ({
     ...current,
@@ -157,55 +164,85 @@ alert(
   }
 }
 
-async function loadSelectedQuiz(quizId: string) {
-  try {
-    setLoading(true);
-    setError("");
+async function fetchSelectedQuiz(
+  selectedQuizId: string
+) {
+  const currentUser = auth.currentUser;
 
-    const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error(
+      "يجب تسجيل الدخول بحساب الطالب أولًا."
+    );
+  }
 
-    if (!currentUser) {
-      setSelectedQuiz(null);
-      setError("يجب تسجيل الدخول بحساب الطالب أولًا.");
-      return;
-    }
+  const idToken =
+    await currentUser.getIdToken();
 
-    const idToken = await currentUser.getIdToken();
-
-    const response = await fetch("/api/student-quizzes", {
+  const response = await fetch(
+    "/api/student-quizzes",
+    {
       method: "GET",
       headers: {
         Authorization: `Bearer ${idToken}`,
       },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      throw new Error(
-        data?.message || "تعذر تحميل الاختبار."
-      );
     }
+  );
 
-    const quizzes = Array.isArray(data.quizzes)
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data?.message ||
+        "تعذر تحميل الاختبار."
+    );
+  }
+
+  const loadedQuizzes =
+    Array.isArray(data.quizzes)
       ? (data.quizzes as StudentQuiz[])
       : [];
 
-    const selected = quizzes.find(
-      (quiz) => quiz.id === quizId
+  const selected =
+    loadedQuizzes.find(
+      (quiz) =>
+        quiz.id === selectedQuizId
     );
 
-    if (!selected) {
-      setSelectedQuiz(null);
-      setError("لم يتم العثور على الاختبار.");
-      return;
-    }
+  if (!selected) {
+    throw new Error(
+      "لم يتم العثور على الاختبار."
+    );
+  }
+
+  return selected;
+}
+
+async function loadSelectedQuiz(
+  selectedQuizId: string
+) {
+  try {
+    setLoading(true);
+    setError("");
+
+    const selected =
+      await fetchSelectedQuiz(
+        selectedQuizId
+      );
 
     setSelectedQuiz(selected);
   } catch (error) {
-    console.error("تعذر تحميل الاختبار:", error);
+    console.error(
+      "تعذر تحميل الاختبار:",
+      error
+    );
+
     setSelectedQuiz(null);
-    setError("تعذر تحميل الاختبار. حاول مرة أخرى.");
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : "تعذر تحميل الاختبار. حاول مرة أخرى."
+    );
   } finally {
     setLoading(false);
   }
@@ -214,9 +251,51 @@ async function loadSelectedQuiz(quizId: string) {
 
 
   useEffect(() => {
-    if (quizId) {
-  loadSelectedQuiz(quizId);
-  return;
+ if (quizId) {
+  let active = true;
+
+  async function loadInitialSelectedQuiz() {
+    try {
+      const selected =
+        await fetchSelectedQuiz(
+          quizId as string
+        );
+
+      if (!active) {
+        return;
+      }
+
+      setSelectedQuiz(selected);
+      setError("");
+    } catch (error) {
+      console.error(
+        "تعذر تحميل الاختبار:",
+        error
+      );
+
+      if (!active) {
+        return;
+      }
+
+      setSelectedQuiz(null);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "تعذر تحميل الاختبار. حاول مرة أخرى."
+      );
+    } finally {
+      if (active) {
+        setLoading(false);
+      }
+    }
+  }
+
+  void loadInitialSelectedQuiz();
+
+  return () => {
+    active = false;
+  };
 }
     async function loadPublishedQuizzes() {
   try {

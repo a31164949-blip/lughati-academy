@@ -107,166 +107,397 @@ const [dailyCompletions, setDailyCompletions] =
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setMessage("");
+ const fetchTrackingData = useCallback(async () => {
+  const [
+    studentsSnapshot,
+    homeworksSnapshot,
+    completionsSnapshot,
+    dailyCompletionsSnapshot,
+  ] = await Promise.all([
+    getDocs(collection(db, "students")),
+    getDocs(collection(db, "homeworks")),
+    getDocs(collection(db, "homeworkCompletions")),
+    getDocs(collection(db, "dailyCompletions")),
+  ]);
 
-      const [
-  studentsSnapshot,
-  homeworksSnapshot,
-  completionsSnapshot,
-  dailyCompletionsSnapshot,
-] = await Promise.all([
-  getDocs(collection(db, "students")),
-  getDocs(collection(db, "homeworks")),
-  getDocs(collection(db, "homeworkCompletions")),
-  getDocs(collection(db, "dailyCompletions")),
-]);
+  const loadedStudents: Student[] =
+    studentsSnapshot.docs
+      .map((studentDocument) => {
+        const data =
+          studentDocument.data();
 
-      const loadedStudents: Student[] = studentsSnapshot.docs
-        .map((studentDocument) => {
-          const data = studentDocument.data();
+        return {
+          id: studentDocument.id,
+
+          studentId:
+            data.studentId ||
+            studentDocument.id,
+
+          studentName:
+            data.studentName ||
+            "طالب",
+
+          classroom:
+            data.classroom || "",
+
+          active:
+            data.active !== false,
+        };
+      })
+      .filter(
+        (student) =>
+          student.active
+      )
+      .sort(
+        (first, second) =>
+          first.studentId.localeCompare(
+            second.studentId
+          )
+      );
+
+  const loadedHomeworks: Homework[] =
+    homeworksSnapshot.docs
+      .map((homeworkDocument) => {
+        const data =
+          homeworkDocument.data();
+
+        return {
+          id:
+            homeworkDocument.id,
+
+          title:
+            data.title ||
+            "واجب دون عنوان",
+
+          instructions:
+            data.instructions || "",
+
+          targetClass:
+            data.targetClass ||
+            "الفصلان",
+
+          dueDate:
+            data.dueDate || "",
+
+          published:
+            data.published === true,
+
+          createdAtMilliseconds:
+            data.createdAt?.toMillis?.() ||
+            data.updatedAt?.toMillis?.() ||
+            0,
+        };
+      })
+      .sort(
+        (first, second) =>
+          second.createdAtMilliseconds -
+          first.createdAtMilliseconds
+      );
+
+  const loadedCompletions: Completion[] =
+    completionsSnapshot.docs.map(
+      (completionDocument) => {
+        const data =
+          completionDocument.data();
+
+        return {
+          id:
+            completionDocument.id,
+
+          homeworkId:
+            data.homeworkId || "",
+
+          studentId:
+            data.studentId || "",
+
+          studentName:
+            data.studentName ||
+            "طالب",
+
+          classroom:
+            data.classroom || "",
+
+          completionMethod:
+            data.completionMethod ||
+            "",
+
+          completed:
+            data.completed === true ||
+            data.status ===
+              "completed",
+
+          completedAtText:
+            data.completedAtText ||
+            (data.completedAt &&
+            typeof data.completedAt
+              .toDate === "function"
+              ? data.completedAt
+                  .toDate()
+                  .toLocaleString(
+                    "ar-SA"
+                  )
+              : ""),
+
+          teacherReviewed:
+            data.teacherReviewed ===
+            true,
+
+          needsRevision:
+            data.needsRevision ===
+            true,
+
+          teacherNote:
+            typeof data.teacherNote ===
+            "string"
+              ? data.teacherNote
+              : "",
+
+          solutionUrl:
+            typeof data.solutionUrl ===
+            "string"
+              ? data.solutionUrl
+              : "",
+
+          solutionStatus:
+            data.solutionStatus ===
+              "approved" ||
+            data.solutionStatus ===
+              "rejected"
+              ? data.solutionStatus
+              : "pending",
+
+          readingAudioUrl:
+            typeof data.readingAudioUrl ===
+            "string"
+              ? data.readingAudioUrl
+              : "",
+
+          readingDurationSeconds:
+            typeof data.readingDurationSeconds ===
+            "number"
+              ? data.readingDurationSeconds
+              : 0,
+
+          readingReviewed:
+            data.readingReviewed ===
+            true,
+
+          readingStatus:
+            data.readingStatus ===
+              "approved" ||
+            data.readingStatus ===
+              "rejected"
+              ? data.readingStatus
+              : data.readingReviewed ===
+                  true
+                ? "approved"
+                : "pending",
+        };
+      }
+    );
+
+  const loadedDailyCompletions:
+    DailyCompletion[] =
+      dailyCompletionsSnapshot.docs.map(
+        (completionDocument) => {
+          const data =
+            completionDocument.data();
+
+          const completedAtText =
+            data.completedAt &&
+            typeof data.completedAt
+              .toDate === "function"
+              ? data.completedAt
+                  .toDate()
+                  .toLocaleString(
+                    "ar-SA"
+                  )
+              : "";
 
           return {
-            id: studentDocument.id,
-            studentId: data.studentId || studentDocument.id,
-            studentName: data.studentName || "طالب",
-            classroom: data.classroom || "",
-            active: data.active !== false,
-          };
-        })
-        .filter((student) => student.active)
-        .sort((first, second) =>
-          first.studentId.localeCompare(second.studentId)
-        );
+            id:
+              completionDocument.id,
 
-      const loadedHomeworks: Homework[] = homeworksSnapshot.docs
-        .map((homeworkDocument) => {
-          const data = homeworkDocument.data();
+            studentId:
+              typeof data.studentId ===
+              "string"
+                ? data.studentId
+                : "",
 
-          return {
-            id: homeworkDocument.id,
-            title: data.title || "واجب دون عنوان",
-            instructions: data.instructions || "",
-            targetClass: data.targetClass || "الفصلان",
-            dueDate: data.dueDate || "",
-            published: data.published === true,
-            createdAtMilliseconds:
-              data.createdAt?.toMillis?.() ||
-              data.updatedAt?.toMillis?.() ||
-              0,
-          };
-        })
-        .sort(
-          (first, second) =>
-            second.createdAtMilliseconds -
-            first.createdAtMilliseconds
-        );
+            day:
+              typeof data.day ===
+              "string"
+                ? data.day
+                : "",
 
-      const loadedCompletions: Completion[] =
-        completionsSnapshot.docs.map((completionDocument) => {
-          const data = completionDocument.data();
+            date:
+              typeof data.date ===
+              "string"
+                ? data.date
+                : "",
 
-          return {
-            id: completionDocument.id,
-            homeworkId: data.homeworkId || "",
-            studentId: data.studentId || "",
-            studentName: data.studentName || "طالب",
-            classroom: data.classroom || "",
-            completionMethod: data.completionMethod || "",
+            weekTitle:
+              typeof data.weekTitle ===
+              "string"
+                ? data.weekTitle
+                : "",
+
             completed:
-  data.completed === true || data.status === "completed",
-            completedAtText:
-  data.completedAtText ||
-  (data.completedAt &&
-  typeof data.completedAt.toDate === "function"
-    ? data.completedAt.toDate().toLocaleString("ar-SA")
-    : ""),
-            teacherReviewed: data.teacherReviewed === true,
-            needsRevision: data.needsRevision === true,
-teacherNote:
-  typeof data.teacherNote === "string"
-    ? data.teacherNote
-    : "",
-            solutionUrl:
-  typeof data.solutionUrl === "string"
-    ? data.solutionUrl
-    : "",
-    solutionStatus:
-  data.solutionStatus === "approved" ||
-  data.solutionStatus === "rejected"
-    ? data.solutionStatus
-    : "pending",
-    readingAudioUrl:
-  typeof data.readingAudioUrl === "string"
-    ? data.readingAudioUrl
-    : "",
+              data.completed === true,
 
-readingDurationSeconds:
-  typeof data.readingDurationSeconds === "number"
-    ? data.readingDurationSeconds
-    : 0,
-
-readingReviewed:
-  data.readingReviewed === true,
-  readingStatus:
-  data.readingStatus === "approved" ||
-  data.readingStatus === "rejected"
-    ? data.readingStatus
-    : data.readingReviewed === true
-      ? "approved"
-      : "pending",
+            completedAtText,
           };
-        });
-const loadedDailyCompletions: DailyCompletion[] =
-  dailyCompletionsSnapshot.docs.map((completionDocument) => {
-    const data = completionDocument.data();
+        }
+      );
 
-    const completedAtText =
-      data.completedAt &&
-      typeof data.completedAt.toDate === "function"
-        ? data.completedAt.toDate().toLocaleString("ar-SA")
-        : "";
+  return {
+    loadedStudents,
+    loadedHomeworks,
+    loadedCompletions,
+    loadedDailyCompletions,
+  };
+}, []);
 
-    return {
-      id: completionDocument.id,
-      studentId:
-        typeof data.studentId === "string" ? data.studentId : "",
-      day: typeof data.day === "string" ? data.day : "",
-      date: typeof data.date === "string" ? data.date : "",
-      weekTitle:
-        typeof data.weekTitle === "string" ? data.weekTitle : "",
-      completed: data.completed === true,
-      completedAtText,
-    };
-  });
-      setStudents(loadedStudents);
-      setHomeworks(loadedHomeworks);
-      setCompletions(loadedCompletions);
-      setDailyCompletions(loadedDailyCompletions);
+const loadData = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError("");
+    setMessage("");
 
-      setSelectedHomeworkId((currentId) => {
-        const currentStillExists = loadedHomeworks.some(
-          (homework) => homework.id === currentId
+    const {
+      loadedStudents,
+      loadedHomeworks,
+      loadedCompletions,
+      loadedDailyCompletions,
+    } = await fetchTrackingData();
+
+    setStudents(
+      loadedStudents
+    );
+
+    setHomeworks(
+      loadedHomeworks
+    );
+
+    setCompletions(
+      loadedCompletions
+    );
+
+    setDailyCompletions(
+      loadedDailyCompletions
+    );
+
+    setSelectedHomeworkId(
+      (currentId) => {
+        const currentStillExists =
+          loadedHomeworks.some(
+            (homework) =>
+              homework.id ===
+              currentId
+          );
+
+        if (
+          currentStillExists
+        ) {
+          return currentId;
+        }
+
+        return (
+          loadedHomeworks[0]?.id ||
+          ""
         );
+      }
+    );
+  } catch (loadError) {
+    console.error(
+      loadError
+    );
 
-        if (currentStillExists) return currentId;
+    setError(
+      "تعذر تحميل بيانات الطلاب والواجبات من Firebase."
+    );
+  } finally {
+    setLoading(false);
+  }
+}, [fetchTrackingData]);
 
-        return loadedHomeworks[0]?.id || "";
-      });
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialData() {
+    try {
+      const {
+        loadedStudents,
+        loadedHomeworks,
+        loadedCompletions,
+        loadedDailyCompletions,
+      } =
+        await fetchTrackingData();
+
+      if (!active) {
+        return;
+      }
+
+      setStudents(
+        loadedStudents
+      );
+
+      setHomeworks(
+        loadedHomeworks
+      );
+
+      setCompletions(
+        loadedCompletions
+      );
+
+      setDailyCompletions(
+        loadedDailyCompletions
+      );
+
+      setSelectedHomeworkId(
+        (currentId) => {
+          const currentStillExists =
+            loadedHomeworks.some(
+              (homework) =>
+                homework.id ===
+                currentId
+            );
+
+          if (
+            currentStillExists
+          ) {
+            return currentId;
+          }
+
+          return (
+            loadedHomeworks[0]?.id ||
+            ""
+          );
+        }
+      );
     } catch (loadError) {
-      console.error(loadError);
-      setError("تعذر تحميل بيانات الطلاب والواجبات من Firebase.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      console.error(
+        loadError
+      );
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+      if (active) {
+        setError(
+          "تعذر تحميل بيانات الطلاب والواجبات من Firebase."
+        );
+      }
+    } finally {
+      if (active) {
+        setLoading(false);
+      }
+    }
+  }
+
+  void loadInitialData();
+
+  return () => {
+    active = false;
+  };
+}, [fetchTrackingData]);
 
   const selectedHomework = useMemo(
     () =>

@@ -56,6 +56,93 @@ type StudentOption = {
   classroom: string;
 };
 
+async function fetchStudents() {
+  const snapshot = await getDocs(
+    collection(db, "students")
+  );
+
+  const loadedStudents: StudentOption[] =
+    snapshot.docs.map((studentDoc) => {
+      const data = studentDoc.data();
+
+      return {
+        id: studentDoc.id,
+
+        name:
+          typeof data.studentName === "string"
+            ? data.studentName
+            : typeof data.name === "string"
+              ? data.name
+              : `طالب ${studentDoc.id}`,
+
+        classroom:
+          typeof data.classroom === "string"
+            ? data.classroom
+            : "",
+      };
+    });
+
+  loadedStudents.sort((a, b) =>
+    a.name.localeCompare(b.name, "ar")
+  );
+
+  return loadedStudents;
+}
+
+async function fetchNotebookItems() {
+  const notebookQuery = query(
+    collection(db, "notebookGallery"),
+    orderBy("publishedAt", "desc")
+  );
+
+  const snapshot =
+    await getDocs(notebookQuery);
+
+  const loadedItems: NotebookItem[] =
+    snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+
+      return {
+        id: docSnap.id,
+
+        studentId:
+          typeof data.studentId === "string"
+            ? data.studentId
+            : "",
+
+        studentName:
+          typeof data.studentName === "string"
+            ? data.studentName
+            : "طالب",
+
+        category:
+          typeof data.category === "string"
+            ? data.category
+            : "",
+
+        note:
+          typeof data.note === "string"
+            ? data.note
+            : "",
+
+        imageUrl:
+          typeof data.imageUrl === "string"
+            ? data.imageUrl
+            : "",
+
+        badge:
+          typeof data.badge === "string"
+            ? data.badge
+            : "دفتر أنيق ✨",
+
+        isPublished:
+          data.isPublished !== false,
+      };
+    });
+
+  return loadedItems;
+}
+
 export default function NotebookGalleryTeacherPage() {
   const [studentId, setStudentId] =
     useState("");
@@ -66,8 +153,10 @@ export default function NotebookGalleryTeacherPage() {
   const [students, setStudents] =
     useState<StudentOption[]>([]);
 
-  const [studentsLoading, setStudentsLoading] =
-    useState(true);
+  const [
+    studentsLoading,
+    setStudentsLoading,
+  ] = useState(true);
 
   const [category, setCategory] =
     useState("");
@@ -78,11 +167,15 @@ export default function NotebookGalleryTeacherPage() {
   const [publishing, setPublishing] =
     useState(false);
 
-  const [publishMessage, setPublishMessage] =
-    useState("");
+  const [
+    publishMessage,
+    setPublishMessage,
+  ] = useState("");
 
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
+  const [
+    selectedFile,
+    setSelectedFile,
+  ] = useState<File | null>(null);
 
   const [previewUrl, setPreviewUrl] =
     useState("");
@@ -90,154 +183,58 @@ export default function NotebookGalleryTeacherPage() {
   const [items, setItems] =
     useState<NotebookItem[]>([]);
 
-  const [itemsLoading, setItemsLoading] =
-    useState(true);
+  const [
+    itemsLoading,
+    setItemsLoading,
+  ] = useState(true);
 
   const [updatingId, setUpdatingId] =
     useState<string | null>(null);
 
   useEffect(() => {
-    async function loadStudents() {
+    let active = true;
+
+    async function loadInitialStudents() {
       try {
-        setStudentsLoading(true);
+        const loadedStudents =
+          await fetchStudents();
 
-        const snapshot =
-          await getDocs(
-            collection(
-              db,
-              "students"
-            )
+        if (active) {
+          setStudents(
+            loadedStudents
           );
-
-        const loadedStudents: StudentOption[] =
-          snapshot.docs.map(
-            (studentDoc) => {
-              const data =
-                studentDoc.data();
-
-              return {
-                id: studentDoc.id,
-
-                name:
-                  typeof data.studentName ===
-                  "string"
-                    ? data.studentName
-                    : typeof data.name ===
-                        "string"
-                      ? data.name
-                      : `طالب ${studentDoc.id}`,
-
-                classroom:
-                  typeof data.classroom ===
-                  "string"
-                    ? data.classroom
-                    : "",
-              };
-            }
-          );
-
-        loadedStudents.sort(
-          (a, b) =>
-            a.name.localeCompare(
-              b.name,
-              "ar"
-            )
-        );
-
-        setStudents(
-          loadedStudents
-        );
+        }
       } catch (error) {
         console.error(
           "تعذر تحميل الطلاب:",
           error
         );
 
-        setStudents([]);
+        if (active) {
+          setStudents([]);
+        }
       } finally {
-        setStudentsLoading(false);
+        if (active) {
+          setStudentsLoading(false);
+        }
       }
     }
 
-    void loadStudents();
+    void loadInitialStudents();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function loadNotebookItems() {
     try {
       setItemsLoading(true);
 
-      const notebookQuery =
-        query(
-          collection(
-            db,
-            "notebookGallery"
-          ),
-          orderBy(
-            "publishedAt",
-            "desc"
-          )
-        );
+      const loadedItems =
+        await fetchNotebookItems();
 
-      const snapshot =
-        await getDocs(
-          notebookQuery
-        );
-
-      const loadedItems: NotebookItem[] =
-        snapshot.docs.map(
-          (docSnap) => {
-            const data =
-              docSnap.data();
-
-            return {
-              id: docSnap.id,
-
-              studentId:
-                typeof data.studentId ===
-                "string"
-                  ? data.studentId
-                  : "",
-
-              studentName:
-                typeof data.studentName ===
-                "string"
-                  ? data.studentName
-                  : "طالب",
-
-              category:
-                typeof data.category ===
-                "string"
-                  ? data.category
-                  : "",
-
-              note:
-                typeof data.note ===
-                "string"
-                  ? data.note
-                  : "",
-
-              imageUrl:
-                typeof data.imageUrl ===
-                "string"
-                  ? data.imageUrl
-                  : "",
-
-              badge:
-                typeof data.badge ===
-                "string"
-                  ? data.badge
-                  : "دفتر أنيق ✨",
-
-              isPublished:
-                data.isPublished !==
-                false,
-            };
-          }
-        );
-
-      setItems(
-        loadedItems
-      );
+      setItems(loadedItems);
     } catch (error) {
       console.error(
         "تعذر تحميل جماليات الدفاتر:",
@@ -251,16 +248,46 @@ export default function NotebookGalleryTeacherPage() {
   }
 
   useEffect(() => {
-    void loadNotebookItems();
+    let active = true;
+
+    async function loadInitialNotebookItems() {
+      try {
+        const loadedItems =
+          await fetchNotebookItems();
+
+        if (active) {
+          setItems(
+            loadedItems
+          );
+        }
+      } catch (error) {
+        console.error(
+          "تعذر تحميل جماليات الدفاتر:",
+          error
+        );
+
+        if (active) {
+          setItems([]);
+        }
+      } finally {
+        if (active) {
+          setItemsLoading(false);
+        }
+      }
+    }
+
+    void loadInitialNotebookItems();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function togglePublished(
     item: NotebookItem
   ) {
     try {
-      setUpdatingId(
-        item.id
-      );
+      setUpdatingId(item.id);
 
       const newValue =
         !item.isPublished;
@@ -277,24 +304,21 @@ export default function NotebookGalleryTeacherPage() {
         }
       );
 
-      setItems(
-        (current) =>
-          current.map(
-            (currentItem) =>
-              currentItem.id ===
-              item.id
-                ? {
-                    ...currentItem,
-                    isPublished:
-                      newValue,
-                  }
-                : currentItem
-          )
+      setItems((current) =>
+        current.map(
+          (currentItem) =>
+            currentItem.id ===
+            item.id
+              ? {
+                  ...currentItem,
+                  isPublished:
+                    newValue,
+                }
+              : currentItem
+        )
       );
     } catch (error) {
-      console.error(
-        error
-      );
+      console.error(error);
 
       window.alert(
         "تعذر تغيير حالة العمل."
@@ -317,9 +341,7 @@ export default function NotebookGalleryTeacherPage() {
     }
 
     try {
-      setUpdatingId(
-        item.id
-      );
+      setUpdatingId(item.id);
 
       await deleteDoc(
         doc(
@@ -329,22 +351,19 @@ export default function NotebookGalleryTeacherPage() {
         )
       );
 
-      setItems(
-        (current) =>
-          current.filter(
-            (currentItem) =>
-              currentItem.id !==
-              item.id
-          )
+      setItems((current) =>
+        current.filter(
+          (currentItem) =>
+            currentItem.id !==
+            item.id
+        )
       );
 
       window.alert(
         "✅ تم حذف العمل."
       );
     } catch (error) {
-      console.error(
-        error
-      );
+      console.error(error);
 
       window.alert(
         "تعذر حذف العمل."
@@ -470,9 +489,7 @@ export default function NotebookGalleryTeacherPage() {
 
       setPreviewUrl("");
     } catch (error) {
-      console.error(
-        error
-      );
+      console.error(error);
 
       setPublishMessage(
         "تعذر النشر، حاول مرة أخرى."
@@ -506,8 +523,7 @@ export default function NotebookGalleryTeacherPage() {
       <div
         style={{
           maxWidth: 900,
-          margin:
-            "0 auto",
+          margin: "0 auto",
         }}
       >
         <section
@@ -679,9 +695,7 @@ export default function NotebookGalleryTeacherPage() {
                 }}
               >
                 ✅ الطالب المختار:{" "}
-                {
-                  studentName
-                }
+                {studentName}
               </div>
             )}
 
@@ -752,14 +766,10 @@ export default function NotebookGalleryTeacherPage() {
                         6,
                     }}
                   >
-                    {
-                      item.icon
-                    }
+                    {item.icon}
                   </div>
 
-                  {
-                    item.label
-                  }
+                  {item.label}
                 </button>
               )
             )}
@@ -1010,9 +1020,7 @@ export default function NotebookGalleryTeacherPage() {
                     : "#a33a3a",
               }}
             >
-              {
-                publishMessage
-              }
+              {publishMessage}
             </div>
           )}
         </section>
@@ -1150,9 +1158,7 @@ export default function NotebookGalleryTeacherPage() {
                                   "#174c3b",
                               }}
                             >
-                              {
-                                item.studentName
-                              }
+                              {item.studentName}
                             </strong>
 
                             {item.studentId && (
@@ -1222,9 +1228,7 @@ export default function NotebookGalleryTeacherPage() {
                                 1.7,
                             }}
                           >
-                            {
-                              item.note
-                            }
+                            {item.note}
                           </p>
                         )}
 

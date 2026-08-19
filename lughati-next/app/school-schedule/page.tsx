@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -253,12 +253,12 @@ export default function StudentSchoolSchedulePage() {
           <p className="mt-4 text-lg leading-8 text-slate-600">
             {errorMessage}
           </p>
-<a
+<Link
   href="/"
   className="mt-6 inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
 >
   ← العودة إلى الصفحة الرئيسية
-</a>
+</Link>
         </div>
       </main>
     );

@@ -51,86 +51,136 @@ export default function TeacherGalleryPage() {
    * نعتمد الآن على workId
    * بدل row القديم الخاص بـ Google Sheets.
    */
-  async function loadHighlights() {
-    try {
-      const snapshot = await getDocs(
-        collection(db, "galleryHighlights")
-      );
-
-      const ids = snapshot.docs
-        .map((item) => {
-          const data = item.data();
-
-          return typeof data.workId === "string"
-            ? data.workId
-            : "";
-        })
-        .filter(Boolean);
-
-      setFeaturedIds(ids);
-    } catch (loadError) {
-      console.error(
-        "تعذر تحميل الأعمال المميزة:",
-        loadError
-      );
-    }
-  }
+  
 
   /*
    * تحميل الأعمال المنشورة
    * من API المعرض.
    */
-  async function loadGallery() {
-    try {
-      setLoading(true);
-      setError("");
+async function fetchGalleryWorks() {
+  const response = await fetch("/api/gallery", {
+    cache: "no-store",
+  });
 
-      const response = await fetch("/api/gallery", {
-        cache: "no-store",
-      });
+  const data = await response.json();
 
-      const data = await response.json();
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.message ||
+        "تعذر تحميل أعمال المعرض"
+    );
+  }
 
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message ||
-            "تعذر تحميل أعمال المعرض"
-        );
+  const incomingWorks: GalleryWork[] =
+    Array.isArray(data.works)
+      ? data.works
+      : Array.isArray(data.submissions)
+        ? data.submissions
+        : Array.isArray(data.items)
+          ? data.items
+          : [];
+
+  return incomingWorks.filter(
+    (work) =>
+      typeof work.id === "string" &&
+      work.id.trim() !== ""
+  );
+}
+
+async function fetchHighlightIds() {
+  const snapshot = await getDocs(
+    collection(db, "galleryHighlights")
+  );
+
+  return snapshot.docs
+    .map((item) => {
+      const data = item.data();
+
+      return typeof data.workId === "string"
+        ? data.workId
+        : "";
+    })
+    .filter(Boolean);
+}
+
+async function loadGallery() {
+  try {
+    setLoading(true);
+    setError("");
+
+    const incomingWorks =
+      await fetchGalleryWorks();
+
+    setWorks(incomingWorks);
+  } catch (loadError) {
+    console.error(loadError);
+
+    setError(
+      loadError instanceof Error
+        ? loadError.message
+        : "حدث خطأ أثناء تحميل المعرض"
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function loadHighlights() {
+  try {
+    const ids =
+      await fetchHighlightIds();
+
+    setFeaturedIds(ids);
+  } catch (loadError) {
+    console.error(
+      "تعذر تحميل الأعمال المميزة:",
+      loadError
+    );
+  }
+}
+
+useEffect(() => {
+  let active = true;
+
+  Promise.all([
+    fetchGalleryWorks(),
+    fetchHighlightIds(),
+  ])
+    .then(([incomingWorks, ids]) => {
+      if (!active) {
+        return;
       }
 
-      const incomingWorks: GalleryWork[] =
-        Array.isArray(data.works)
-          ? data.works
-          : Array.isArray(data.submissions)
-            ? data.submissions
-            : Array.isArray(data.items)
-              ? data.items
-              : [];
-
-      setWorks(
-        incomingWorks.filter(
-          (work) =>
-            typeof work.id === "string" &&
-            work.id.trim() !== ""
-        )
+      setWorks(incomingWorks);
+      setFeaturedIds(ids);
+      setError("");
+    })
+    .catch((loadError) => {
+      console.error(
+        "تعذر تحميل معرض المعلم:",
+        loadError
       );
-    } catch (loadError) {
-      console.error(loadError);
+
+      if (!active) {
+        return;
+      }
 
       setError(
         loadError instanceof Error
           ? loadError.message
           : "حدث خطأ أثناء تحميل المعرض"
       );
-    } finally {
-      setLoading(false);
-    }
-  }
+    })
+    .finally(() => {
+      if (active) {
+        setLoading(false);
+      }
+    });
 
-  useEffect(() => {
-    void loadGallery();
-    void loadHighlights();
-  }, []);
+  return () => {
+    active = false;
+  };
+}, []);
 
   /*
    * الأعمال الإبداعية.

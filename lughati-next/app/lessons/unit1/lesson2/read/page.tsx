@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -67,29 +66,23 @@ function completeReading() {
 }
 
 export default function LessonTwoReadingPage() {
-  const [
-    completed,
-    setCompleted,
-  ] = useState(false);
+const [
+  completed,
+  setCompleted,
+] = useState(() => {
+  return getProgress().includes(
+    "reading"
+  );
+});
+const [
+  showPlainText,
+  setShowPlainText,
+] = useState(false);
 
-  const [
-    showPlainText,
-    setShowPlainText,
-  ] = useState(false);
-
-  const [
-    focusMode,
-    setFocusMode,
-  ] = useState(false);
-
-  useEffect(() => {
-    setCompleted(
-      getProgress().includes(
-        "reading"
-      )
-    );
-  }, []);
-
+const [
+  focusMode,
+  setFocusMode,
+] = useState(false);
   function finishStation() {
     completeReading();
     setCompleted(true);

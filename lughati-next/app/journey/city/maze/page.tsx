@@ -123,22 +123,21 @@ export default function MazePage() {
     setMessage,
   ] = useState("");
 
-  const [
-    completed,
-    setCompleted,
-  ] = useState(false);
+ const [
+  completed,
+  setCompleted,
+] = useState(() => {
+  if (typeof window === "undefined") {
+    return false;
+  }
 
-  useEffect(() => {
-    const saved =
-      localStorage.getItem(
-        MAZE_COMPLETED_KEY
-      );
-
-    setCompleted(
-      saved === "true"
+  const saved =
+    window.localStorage.getItem(
+      MAZE_COMPLETED_KEY
     );
-  }, []);
 
+  return saved === "true";
+});
   const solvedCount =
     unlockedQuestions.length;
 

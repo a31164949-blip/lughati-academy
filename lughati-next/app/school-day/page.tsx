@@ -134,13 +134,7 @@ export default function SchoolDayPage() {
       }
     }
 
-    setStudentName(
-      loadedStudentName
-    );
-
-    setStudentClassroom(
-      loadedClassroom
-    );
+   
 
     async function loadSchedule() {
       try {
@@ -160,7 +154,13 @@ export default function SchoolDayPage() {
           await getDoc(
             scheduleReference
           );
+        setStudentName(
+  loadedStudentName
+);
 
+setStudentClassroom(
+  loadedClassroom
+);
         if (
           !snapshot.exists()
         ) {
@@ -267,167 +267,124 @@ export default function SchoolDayPage() {
       todayName,
     ]);
 
-  const activePeriod =
-    useMemo<ActivePeriodState>(
-      () => {
-        if (!schedule) {
-          return {
-            current: null,
-            next: null,
-            status:
-              "no-school-day",
-          };
-        }
+const activePeriod: ActivePeriodState = (() => {
+  if (!schedule) {
+    return {
+      current: null,
+      next: null,
+      status: "no-school-day",
+    };
+  }
 
-        if (
-          todayName ===
-            "الجمعة" ||
-          todayName ===
-            "السبت"
-        ) {
-          return {
-            current: null,
-            next: null,
-            status:
-              "no-school-day",
-          };
-        }
+  if (
+    todayName === "الجمعة" ||
+    todayName === "السبت"
+  ) {
+    return {
+      current: null,
+      next: null,
+      status: "no-school-day",
+    };
+  }
 
-        const periods =
-          schedule.periods;
+  const periods = schedule.periods;
 
-        if (
-          periods.length === 0
-        ) {
-          return {
-            current: null,
-            next: null,
-            status:
-              "no-school-day",
-          };
-        }
+  if (periods.length === 0) {
+    return {
+      current: null,
+      next: null,
+      status: "no-school-day",
+    };
+  }
 
-        const nowMinutes =
-          currentTime.getHours() *
-            60 +
-          currentTime.getMinutes();
+  const nowMinutes =
+    currentTime.getHours() * 60 +
+    currentTime.getMinutes();
 
-        const firstPeriod =
-          periods[0];
+  const firstPeriod = periods[0];
 
-        const lastPeriod =
-          periods[
-            periods.length - 1
-          ];
+  const lastPeriod =
+    periods[periods.length - 1];
 
-        if (
-          nowMinutes <
-          timeToMinutes(
-            firstPeriod.startTime
-          )
-        ) {
-          return {
-            current: null,
-            next: firstPeriod,
-            status:
-              "before-school",
-          };
-        }
+  if (
+    nowMinutes <
+    timeToMinutes(firstPeriod.startTime)
+  ) {
+    return {
+      current: null,
+      next: firstPeriod,
+      status: "before-school",
+    };
+  }
 
-        for (
-          let index = 0;
-          index <
-          periods.length;
-          index++
-        ) {
-          const period =
-            periods[index];
+  for (
+    let index = 0;
+    index < periods.length;
+    index++
+  ) {
+    const period = periods[index];
 
-          const start =
-            timeToMinutes(
-              period.startTime
-            );
+    const start =
+      timeToMinutes(period.startTime);
 
-          const end =
-            timeToMinutes(
-              period.endTime
-            );
+    const end =
+      timeToMinutes(period.endTime);
 
-          if (
-            nowMinutes >= start &&
-            nowMinutes < end
-          ) {
-            return {
-              current: period,
-              next:
-                index + 1 <
-                periods.length
-                  ? periods[
-                      index + 1
-                    ]
-                  : null,
-              status:
-                "during-period",
-            };
-          }
+    if (
+      nowMinutes >= start &&
+      nowMinutes < end
+    ) {
+      return {
+        current: period,
+        next:
+          index + 1 < periods.length
+            ? periods[index + 1]
+            : null,
+        status: "during-period",
+      };
+    }
 
-          if (
-            index + 1 <
-            periods.length
-          ) {
-            const nextPeriod =
-              periods[
-                index + 1
-              ];
+    if (
+      index + 1 < periods.length
+    ) {
+      const nextPeriod =
+        periods[index + 1];
 
-            const nextStart =
-              timeToMinutes(
-                nextPeriod.startTime
-              );
+      const nextStart =
+        timeToMinutes(
+          nextPeriod.startTime
+        );
 
-            if (
-              nowMinutes >= end &&
-              nowMinutes <
-                nextStart
-            ) {
-              return {
-                current: null,
-                next:
-                  nextPeriod,
-                status:
-                  "between-periods",
-              };
-            }
-          }
-        }
-
-        if (
-          nowMinutes >=
-          timeToMinutes(
-            lastPeriod.endTime
-          )
-        ) {
-          return {
-            current: null,
-            next: null,
-            status:
-              "after-school",
-          };
-        }
-
+      if (
+        nowMinutes >= end &&
+        nowMinutes < nextStart
+      ) {
         return {
           current: null,
-          next: null,
-          status:
-            "no-school-day",
+          next: nextPeriod,
+          status: "between-periods",
         };
-      },
-      [
-        schedule,
-        currentTime,
-        todayName,
-      ]
-    );
+      }
+    }
+  }
+
+  if (
+    nowMinutes >=
+    timeToMinutes(lastPeriod.endTime)
+  ) {
+    return {
+      current: null,
+      next: null,
+      status: "after-school",
+    };
+  }
+
+  return {
+    current: null,
+    next: null,
+    status: "no-school-day",
+  };
+})();
 
   function getSubject(
     periodId: number

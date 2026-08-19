@@ -22,19 +22,43 @@ const steps = [
 
 export default function StudentDiagnosticPage() {
   const [step, setStep] = useState(0);
-const [studentId, setStudentId] = useState("");
-const [studentName, setStudentName] = useState("");
-const [classroom, setClassroom] = useState("");
+const [studentId] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
 
-useEffect(() => {
-  const savedStudentId = localStorage.getItem("student-id") || "";
-  const savedStudentName = localStorage.getItem("student-name") || "";
-  const savedClassroom = localStorage.getItem("student-classroom") || "";
+  return (
+    window.localStorage.getItem(
+      "student-id"
+    ) || ""
+  );
+});
 
-  setStudentId(savedStudentId);
-  setStudentName(savedStudentName);
-  setClassroom(savedClassroom);
-}, []);
+const [studentName] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return (
+    window.localStorage.getItem(
+      "student-name"
+    ) || ""
+  );
+});
+
+const [classroom] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return (
+    window.localStorage.getItem(
+      "student-classroom"
+    ) || ""
+  );
+});
+
+
   const [formData, setFormData] = useState<FormData>({
     reading: "",
     spelling: "",

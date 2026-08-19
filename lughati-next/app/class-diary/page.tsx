@@ -32,7 +32,21 @@ export default function ClassDiaryPage() {
   const [loading, setLoading] =
     useState(true);
 
-  const [fromParent, setFromParent] =
+  const [fromParent] = useState(() => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  return (
+    params.get("from") ===
+    "parent"
+  );
+});
     useState(false);
 
   /*
@@ -40,18 +54,7 @@ export default function ClassDiaryPage() {
    * نقرأ الرابط من المتصفح فقط
    * حتى لا يتعطل npm run build.
    */
-  useEffect(() => {
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-    setFromParent(
-      params.get("from") ===
-        "parent"
-    );
-  }, []);
-
+  
   /*
    * تحميل اليوميات المنشورة.
    */

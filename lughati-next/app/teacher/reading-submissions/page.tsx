@@ -32,33 +32,59 @@ export default function ReadingSubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  async function loadSubmissions() {
+  async function fetchSubmissions() {
+  const q = query(
+    collection(db, "reading-submissions"),
+    orderBy("createdAt", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as ReadingSubmission[];
+}
+
+async function loadSubmissions() {
+  try {
+    setLoading(true);
+
+    const rows = await fetchSubmissions();
+
+    setSubmissions(rows);
+  } catch (error) {
+    console.error("فشل تحميل القراءات:", error);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  let active = true;
+
+  async function loadInitialSubmissions() {
     try {
-      setLoading(true);
+      const rows = await fetchSubmissions();
 
-      const q = query(
-        collection(db, "reading-submissions"),
-        orderBy("createdAt", "desc")
-      );
-
-      const snapshot = await getDocs(q);
-
-      const rows = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      })) as ReadingSubmission[];
-
-      setSubmissions(rows);
+      if (active) {
+        setSubmissions(rows);
+      }
     } catch (error) {
       console.error("فشل تحميل القراءات:", error);
     } finally {
-      setLoading(false);
+      if (active) {
+        setLoading(false);
+      }
     }
   }
 
-  useEffect(() => {
-    loadSubmissions();
-  }, []);
+  void loadInitialSubmissions();
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   async function updateStatus(
     submissionId: string,
