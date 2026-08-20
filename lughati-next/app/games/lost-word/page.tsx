@@ -19,6 +19,12 @@ type FoundWord = {
   cells: Cell[];
 };
 
+type GameScore = {
+  id: string;
+  playerName: string;
+  timeSeconds: number;
+};
+
 const targetWords = [
   "كتاب",
   "قلم",
@@ -145,6 +151,31 @@ export default function LostWordPage() {
 
   const [completed, setCompleted] =
     useState(false);
+
+  const [
+    playerName,
+    setPlayerName,
+  ] = useState("");
+
+  const [
+    savingScore,
+    setSavingScore,
+  ] = useState(false);
+
+  const [
+    scoreSaved,
+    setScoreSaved,
+  ] = useState(false);
+
+  const [
+    saveMessage,
+    setSaveMessage,
+  ] = useState("");
+
+  const [
+    topScores,
+    setTopScores,
+  ] = useState<GameScore[]>([]);
 
   const [
     message,
@@ -423,6 +454,82 @@ export default function LostWordPage() {
     setStartCell(null);
   }
 
+  async function saveScore() {
+    if (
+      savingScore ||
+      scoreSaved ||
+      !completed
+    ) {
+      return;
+    }
+
+    setSavingScore(true);
+    setSaveMessage("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/game-scores",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              gameId:
+                "lost-word",
+              playerName,
+              timeSeconds:
+                seconds,
+            }),
+          }
+        );
+
+      const data =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+          scores?: GameScore[];
+        };
+
+      if (
+        !response.ok ||
+        !data.ok
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر حفظ النتيجة."
+        );
+      }
+
+      setTopScores(
+        Array.isArray(
+          data.scores
+        )
+          ? data.scores
+          : []
+      );
+
+      setScoreSaved(true);
+
+      setSaveMessage(
+        "✅ تم تسجيل وقتك في لوحة الكلمة الضائعة."
+      );
+    } catch (error) {
+      console.error(
+        "Failed to save score:",
+        error
+      );
+
+      setSaveMessage(
+        "❌ تعذر تسجيل الوقت الآن. حاول مرة أخرى."
+      );
+    } finally {
+      setSavingScore(false);
+    }
+  }
+
   function restartGame() {
     setFoundWords([]);
     setSelectedCells([]);
@@ -431,6 +538,11 @@ export default function LostWordPage() {
     setSeconds(0);
     setStarted(false);
     setCompleted(false);
+    setPlayerName("");
+    setSavingScore(false);
+    setScoreSaved(false);
+    setSaveMessage("");
+    setTopScores([]);
     setMessage(
       "اسحب من أول حرف إلى آخر حرف في خط مستقيم."
     );
@@ -1123,7 +1235,21 @@ export default function LostWordPage() {
               </label>
 
               <input
+                value={
+                  playerName
+                }
+                onChange={(
+                  event
+                ) =>
+                  setPlayerName(
+                    event.target.value
+                  )
+                }
+                maxLength={30}
                 placeholder="اكتب اسمك إن رغبت"
+                disabled={
+                  scoreSaved
+                }
                 style={{
                   width:
                     "100%",
@@ -1137,9 +1263,221 @@ export default function LostWordPage() {
                     "1px solid #cbd5e1",
                   textAlign:
                     "right",
+                  background:
+                    scoreSaved
+                      ? "#f1f5f9"
+                      : "#ffffff",
                 }}
               />
+
+              <p
+                style={{
+                  margin:
+                    "8px 0 0",
+                  color:
+                    "#64748b",
+                  fontSize:
+                    "12px",
+                  lineHeight:
+                    1.7,
+                }}
+              >
+                إذا تركت الاسم فارغًا
+                سيظهر في اللوحة باسم
+                «متحدٍ مجهول».
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                void saveScore()
+              }
+              disabled={
+                savingScore ||
+                scoreSaved
+              }
+              style={{
+                width:
+                  "100%",
+                border:
+                  "none",
+                borderRadius:
+                  "15px",
+                padding:
+                  "13px",
+                background:
+                  scoreSaved
+                    ? "#16a34a"
+                    : savingScore
+                    ? "#94a3b8"
+                    : "#1d4ed8",
+                color:
+                  "#ffffff",
+                fontWeight:
+                  900,
+                cursor:
+                  savingScore ||
+                  scoreSaved
+                    ? "default"
+                    : "pointer",
+                marginBottom:
+                  "10px",
+              }}
+            >
+              {scoreSaved
+                ? "✅ تم تسجيل وقتك"
+                : savingScore
+                ? "⏳ جارٍ تسجيل الوقت..."
+                : "🏆 سجّل وقتي"}
+            </button>
+
+            {saveMessage && (
+              <div
+                style={{
+                  marginBottom:
+                    "12px",
+                  padding:
+                    "10px 12px",
+                  borderRadius:
+                    "13px",
+                  background:
+                    scoreSaved
+                      ? "#ecfdf5"
+                      : "#fff7ed",
+                  color:
+                    scoreSaved
+                      ? "#166534"
+                      : "#9a3412",
+                  fontSize:
+                    "13px",
+                  fontWeight:
+                    900,
+                }}
+              >
+                {saveMessage}
+              </div>
+            )}
+
+            {topScores.length >
+              0 && (
+              <div
+                style={{
+                  marginBottom:
+                    "12px",
+                  padding:
+                    "14px",
+                  borderRadius:
+                    "18px",
+                  background:
+                    "#f8fafc",
+                  border:
+                    "1px solid #e2e8f0",
+                  textAlign:
+                    "right",
+                }}
+              >
+                <strong
+                  style={{
+                    display:
+                      "block",
+                    marginBottom:
+                      "10px",
+                    color:
+                      "#312e81",
+                    textAlign:
+                      "center",
+                  }}
+                >
+                  ⚡ أسرع 3 أوقات
+                  في الكلمة الضائعة
+                </strong>
+
+                {topScores.map(
+                  (
+                    score,
+                    index
+                  ) => {
+                    const minutes =
+                      Math.floor(
+                        score.timeSeconds /
+                          60
+                      );
+
+                    const remaining =
+                      score.timeSeconds %
+                      60;
+
+                    const scoreTime =
+                      `${String(
+                        minutes
+                      ).padStart(
+                        2,
+                        "0"
+                      )}:${String(
+                        remaining
+                      ).padStart(
+                        2,
+                        "0"
+                      )}`;
+
+                    const medal =
+                      index === 0
+                        ? "🥇"
+                        : index === 1
+                        ? "🥈"
+                        : "🥉";
+
+                    return (
+                      <div
+                        key={
+                          score.id
+                        }
+                        style={{
+                          display:
+                            "flex",
+                          justifyContent:
+                            "space-between",
+                          alignItems:
+                            "center",
+                          gap:
+                            "10px",
+                          padding:
+                            "8px 4px",
+                          borderBottom:
+                            index <
+                            topScores.length -
+                              1
+                              ? "1px solid #e2e8f0"
+                              : "none",
+                          fontWeight:
+                            900,
+                          color:
+                            "#334155",
+                        }}
+                      >
+                        <span>
+                          {medal}{" "}
+                          {
+                            score.playerName
+                          }
+                        </span>
+
+                        <span
+                          style={{
+                            color:
+                              "#1d4ed8",
+                          }}
+                        >
+                          ⏱️{" "}
+                          {scoreTime}
+                        </span>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            )}
 
             <button
               type="button"
