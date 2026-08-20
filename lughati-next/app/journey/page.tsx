@@ -207,6 +207,15 @@ type StudentSmartFollowUp = {
 };
 
 export default function JourneyPage() {
+  const [studentName] = useState(() => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return (
+    window.localStorage.getItem("student-name") || ""
+  );
+});
   const [user, setUser] =
     useState<User | null>(null);
 
@@ -495,7 +504,7 @@ useEffect(() => {
           localStorage.getItem(
             "student-id"
           );
-
+ 
         if (
           !studentId ||
           studentId === "student-demo"
@@ -894,7 +903,9 @@ useEffect(() => {
                   fontSize: "23px",
                 }}
               >
-                أهلاً بك يا بطل!
+               {studentName
+  ? `أهلاً بك يا ${studentName} 🌟`
+  : "أهلاً بك يا بطل! 🌟"}
               </h2>
 
               <p

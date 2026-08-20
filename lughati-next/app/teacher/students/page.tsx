@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  doc,
   getDocs,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -13,7 +17,9 @@ type Student = {
   studentId: string;
   studentName: string;
   classroom: string;
+  loginCode: string;
   active: boolean;
+   archived: boolean;
   points: number;
   streakDays: number;
 };
@@ -63,6 +69,42 @@ export default function StudentsPage() {
   const [searchText, setSearchText] =
     useState("");
 
+    const [showAddStudent, setShowAddStudent] =
+  useState(false);
+
+  const [newStudentName, setNewStudentName] =
+  useState("");
+
+const [newStudentClassroom, setNewStudentClassroom] =
+  useState("الثاني أ");
+
+const [newLoginCode, setNewLoginCode] =
+  useState("");
+
+const [savingStudent, setSavingStudent] =
+  useState(false);
+
+const [editingStudent, setEditingStudent] =
+  useState<Student | null>(null);
+
+const [editStudentName, setEditStudentName] =
+  useState("");
+
+const [editStudentClassroom, setEditStudentClassroom] =
+  useState("الثاني أ");
+
+const [editLoginCode, setEditLoginCode] =
+  useState("");
+
+const [savingEdit, setSavingEdit] =
+  useState(false);
+
+const [showArchivedStudents, setShowArchivedStudents] =
+  useState(false);
+
+const [restoringStudentId, setRestoringStudentId] =
+  useState<string | null>(null);
+  
   const [classFilter, setClassFilter] =
     useState("الكل");
 
@@ -109,7 +151,12 @@ export default function StudentsPage() {
             data.classroom ??
               "غير محدد"
           ),
+         loginCode: String(
+  data.loginCode ?? ""
+),
 
+archived:
+  data.archived === true,
           active:
             data.active !== false &&
             data.archived !== true,
@@ -265,6 +312,405 @@ async function loadStudents() {
   }
 }
 
+
+async function handleAddStudent() {
+  const cleanName =
+    newStudentName.trim();
+
+  const cleanLoginCode =
+    newLoginCode.trim();
+
+  if (!cleanName) {
+    setMessage(
+      "❌ اكتب اسم الطالب كاملًا."
+    );
+    return;
+  }
+
+  if (!/^\d{4}$/.test(cleanLoginCode)) {
+    setMessage(
+      "❌ رقم الدخول يجب أن يكون آخر 4 أرقام من السجل المدني أو الإقامة."
+    );
+    return;
+  }
+
+  const loginCodeExists =
+    students.some(
+      (student) =>
+        student.loginCode === cleanLoginCode
+    );
+
+  if (loginCodeExists) {
+    setMessage(
+      "❌ رقم الدخول مستخدم لطالب آخر."
+    );
+    return;
+  }
+
+  const largestStudentNumber =
+    students.reduce(
+      (largest, student) => {
+        const match =
+          student.studentId.match(
+            /^student-(\d+)$/
+          );
+
+        if (!match) {
+          return largest;
+        }
+
+        return Math.max(
+          largest,
+          Number(match[1])
+        );
+      },
+      0
+    );
+
+  const nextStudentId =
+    `student-${String(
+      largestStudentNumber + 1
+    ).padStart(3, "0")}`;
+
+  try {
+    setSavingStudent(true);
+    setMessage("");
+
+    await setDoc(
+      doc(
+        db,
+        "students",
+        nextStudentId
+      ),
+      {
+        studentId:
+          nextStudentId,
+        studentName:
+          cleanName,
+        classroom:
+          newStudentClassroom,
+        loginCode:
+          cleanLoginCode,
+
+        active: true,
+        archived: false,
+        temporary: false,
+
+        points: 0,
+        stars: 0,
+        streakDays: 0,
+
+        badges: [],
+        attendanceHistory: [],
+        dailyTaskRewardKeys: [],
+        pointsHistory: [],
+        readingHistory: [],
+        spellingHistory: [],
+
+        journey: {
+          currentLevel: 1,
+          currentPath: "",
+          lastActivityAt: null,
+          lastCompletedDate: "",
+          streak: 0,
+          xp: 0,
+        },
+
+        selectedAvatar:
+          "boy-1",
+        selectedAvatarIcon:
+          "👦🏻",
+        selectedAvatarName:
+          "الفارس الصغير",
+
+        teacherMessage: "",
+        teacherMessageUpdatedAt:
+          null,
+
+        createdAt:
+          serverTimestamp(),
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    setNewStudentName("");
+    setNewStudentClassroom(
+      "الثاني أ"
+    );
+    setNewLoginCode("");
+    setShowAddStudent(false);
+
+    setMessage(
+      `✅ تمت إضافة ${cleanName} بنجاح.`
+    );
+
+    await loadStudents();
+  } catch (error) {
+    console.error(
+      "تعذر إضافة الطالب:",
+      error
+    );
+
+    setMessage(
+      "❌ تعذر إضافة الطالب."
+    );
+  } finally {
+    setSavingStudent(false);
+  }
+}
+
+function openEditStudent(
+  student: Student
+) {
+  setEditingStudent(student);
+  setEditStudentName(
+    student.studentName
+  );
+  setEditStudentClassroom(
+    student.classroom
+  );
+  setEditLoginCode(
+    student.loginCode
+  );
+  setMessage("");
+}
+
+async function handleSaveStudentEdit() {
+  if (!editingStudent) {
+    return;
+  }
+
+  const cleanName =
+    editStudentName.trim();
+
+  const cleanLoginCode =
+    editLoginCode.trim();
+
+  if (!cleanName) {
+    setMessage(
+      "❌ اكتب اسم الطالب كاملًا."
+    );
+    return;
+  }
+
+  if (!/^\d{4}$/.test(cleanLoginCode)) {
+    setMessage(
+      "❌ رقم الدخول يجب أن يتكون من 4 أرقام."
+    );
+    return;
+  }
+
+  const duplicateLoginCode =
+    students.some(
+      (student) =>
+        student.id !==
+          editingStudent.id &&
+        student.loginCode ===
+          cleanLoginCode
+    );
+
+  if (duplicateLoginCode) {
+    setMessage(
+      "❌ رقم الدخول مستخدم لطالب آخر."
+    );
+    return;
+  }
+
+  try {
+    setSavingEdit(true);
+    setMessage("");
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        editingStudent.id
+      ),
+      {
+        studentName:
+          cleanName,
+        classroom:
+          editStudentClassroom,
+        loginCode:
+          cleanLoginCode,
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    setEditingStudent(null);
+
+    setMessage(
+      `✅ تم تحديث بيانات ${cleanName} بنجاح.`
+    );
+
+    await loadStudents();
+  } catch (error) {
+    console.error(
+      "تعذر تعديل الطالب:",
+      error
+    );
+
+    setMessage(
+      "❌ تعذر حفظ تعديلات الطالب."
+    );
+  } finally {
+    setSavingEdit(false);
+  }
+}
+
+async function handleMoveStudent(
+  student: Student
+) {
+  const targetClassroom =
+    student.classroom === "الثاني أ"
+      ? "الثاني ب"
+      : "الثاني أ";
+
+  const confirmed =
+    window.confirm(
+      `هل تريد نقل الطالب:\n${student.studentName}\n\nمن ${student.classroom} إلى ${targetClassroom}؟`
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setMessage("");
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+        classroom:
+          targetClassroom,
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    setMessage(
+      `✅ تم نقل ${student.studentName} إلى ${targetClassroom} بنجاح.`
+    );
+
+    await loadStudents();
+  } catch (error) {
+    console.error(
+      "تعذر نقل الطالب:",
+      error
+    );
+
+    setMessage(
+      "❌ تعذر نقل الطالب. حاول مرة أخرى."
+    );
+  }
+}
+
+async function handleArchiveStudent(
+  student: Student
+) {
+  const confirmed =
+    window.confirm(
+      `هل تريد أرشفة الطالب:\n${student.studentName}؟\n\nسيختفي من قائمة الطلاب، ولكن لن تُحذف بياناته ويمكن استعادته لاحقًا.`
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setMessage("");
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+        active: false,
+        archived: true,
+        archivedAt:
+          serverTimestamp(),
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    setMessage(
+      `✅ تمت أرشفة ${student.studentName} بأمان.`
+    );
+
+    await loadStudents();
+  } catch (error) {
+    console.error(
+      "تعذر أرشفة الطالب:",
+      error
+    );
+
+    setMessage(
+      "❌ تعذر أرشفة الطالب. حاول مرة أخرى."
+    );
+  }
+}
+
+async function handleRestoreStudent(
+  student: Student
+) {
+  const confirmed =
+    window.confirm(
+      `هل تريد استعادة الطالب:\n${student.studentName}؟\n\nسيعود إلى قائمة الطلاب النشطين مع الاحتفاظ بجميع بياناته وسجلاته السابقة.`
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setRestoringStudentId(student.id);
+    setMessage("");
+
+    await updateDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      ),
+      {
+        active: true,
+        archived: false,
+        archivedAt: null,
+        restoredAt:
+          serverTimestamp(),
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    setMessage(
+      `✅ تمت استعادة ${student.studentName} بنجاح.`
+    );
+
+    await loadStudents();
+  } catch (error) {
+    console.error(
+      "تعذر استعادة الطالب:",
+      error
+    );
+
+    setMessage(
+      "❌ تعذر استعادة الطالب. حاول مرة أخرى."
+    );
+  } finally {
+    setRestoringStudentId(null);
+  }
+}
+
 useEffect(() => {
   let active = true;
 
@@ -312,6 +758,11 @@ useEffect(() => {
   const activeStudents =
     students.filter(
       (student) => student.active
+    );
+
+  const archivedStudents =
+    students.filter(
+      (student) => student.archived
     );
 
   const classrooms =
@@ -395,43 +846,69 @@ useEffect(() => {
       dir="rtl"
       style={styles.page}
     >
-      <section
-        style={styles.header}
-      >
-        <div>
-          <p
-            style={styles.eyebrow}
-          >
-            أكاديمية لغتي الرقمية
-          </p>
+     <section style={styles.header}>
+  <div>
+    <p style={styles.eyebrow}>
+      أكاديمية لغتي الرقمية
+    </p>
 
-          <h1
-            style={styles.title}
-          >
-            👨‍🎓 إدارة الطلاب
-          </h1>
+    <h1 style={styles.title}>
+      👨‍🎓 إدارة الطلاب
+    </h1>
 
-          <p
-            style={styles.subtitle}
-          >
-            متابعة الطلاب والفصول
-            والنقاط وملفات الطالب
-            والأسرة.
-          </p>
-        </div>
+    <p style={styles.subtitle}>
+      متابعة الطلاب والفصول
+      والنقاط وملفات الطالب
+      والأسرة.
+    </p>
+  </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            void loadStudents()
-          }
-          style={
-            styles.refreshButton
-          }
-        >
-          🔄 تحديث
-        </button>
-      </section>
+  <div
+    style={{
+      display: "flex",
+      gap: "10px",
+      flexWrap: "wrap",
+    }}
+  >
+    <button
+      type="button"
+      onClick={() =>
+        setShowArchivedStudents(true)
+      }
+      style={{
+        ...styles.refreshButton,
+        background: "#f1f5f9",
+        color: "#475569",
+      }}
+    >
+      📦 الطلاب المؤرشفون ({archivedStudents.length})
+    </button>
+
+    <button
+      type="button"
+      onClick={() =>
+        setShowAddStudent(true)
+      }
+      style={{
+        ...styles.refreshButton,
+        background: "#fef3c7",
+        color: "#92400e",
+      }}
+    >
+      ➕ إضافة طالب
+    </button>
+
+    <button
+      type="button"
+      onClick={() =>
+        void loadStudents()
+      }
+      style={styles.refreshButton}
+    >
+      🔄 تحديث
+    </button>
+  </div>
+</section>
 
       <section
         style={styles.statsGrid}
@@ -646,12 +1123,10 @@ useEffect(() => {
                             hasProfile
                               ? "#ecfdf5"
                               : "#f8fafc",
-
                           color:
                             hasProfile
                               ? "#166534"
                               : "#64748b",
-
                           borderColor:
                             hasProfile
                               ? "#86efac"
@@ -662,6 +1137,66 @@ useEffect(() => {
                           ? "👨‍👩‍👦 ملف الطالب والأسرة"
                           : "⏳ لم تعبئ الأسرة الملف"}
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openEditStudent(
+                            student
+                          )
+                        }
+                        style={{
+                          ...styles.profileButton,
+                          background:
+                            "#eff6ff",
+                          color:
+                            "#1d4ed8",
+                          borderColor:
+                            "#93c5fd",
+                        }}
+                      >
+                        ✏️ تعديل
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleMoveStudent(
+                            student
+                          )
+                        }
+                        style={{
+                          ...styles.profileButton,
+                          background:
+                            "#fff7ed",
+                          color:
+                            "#c2410c",
+                          borderColor:
+                            "#fdba74",
+                        }}
+                      >
+                        🔄 نقل
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleArchiveStudent(
+                            student
+                          )
+                        }
+                        style={{
+                          ...styles.profileButton,
+                          background:
+                            "#fef2f2",
+                          color:
+                            "#b91c1c",
+                          borderColor:
+                            "#fca5a5",
+                        }}
+                      >
+                        📦 أرشفة
+                      </button>
                     </div>
                   </article>
                 );
@@ -669,8 +1204,548 @@ useEffect(() => {
             )}
           </div>
         )}
+        
       </section>
+      {showArchivedStudents && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() =>
+            setShowArchivedStudents(false)
+          }
+        >
+          <div
+            style={{
+              ...styles.modal,
+              maxWidth: "850px",
+            }}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div style={styles.modalHeader}>
+              <div>
+                <p style={styles.modalEyebrow}>
+                  👨‍🎓 إدارة الطلاب
+                </p>
+                <h2 style={styles.modalTitle}>
+                  📦 الطلاب المؤرشفون
+                </h2>
+                <p style={styles.modalMeta}>
+                  {archivedStudents.length} طالب مؤرشف
+                </p>
+              </div>
 
+              <button
+                type="button"
+                onClick={() =>
+                  setShowArchivedStudents(false)
+                }
+                style={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+
+            {archivedStudents.length === 0 ? (
+              <div style={styles.empty}>
+                لا يوجد طلاب مؤرشفون حاليًا.
+              </div>
+            ) : (
+              <div
+                style={{
+                  ...styles.list,
+                  background: "#ffffff",
+                }}
+              >
+                {archivedStudents.map(
+                  (student) => (
+                    <article
+                      key={student.id}
+                      style={styles.studentCard}
+                    >
+                      <div style={styles.studentMain}>
+                        <div
+                          style={{
+                            ...styles.avatar,
+                            background: "#64748b",
+                          }}
+                        >
+                          {student.studentName.charAt(0)}
+                        </div>
+
+                        <div>
+                          <strong
+                            style={{
+                              color: "#163b32",
+                              fontSize: "17px",
+                            }}
+                          >
+                            {student.studentName}
+                          </strong>
+
+                          <p style={styles.studentMeta}>
+                            {student.classroom} •{" "}
+                            {student.studentId}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={styles.studentActions}>
+                        <div style={styles.details}>
+                          <span>
+                            🔥 {student.streakDays} أيام
+                          </span>
+                          <span>
+                            ⭐ {student.points} نقطة
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleRestoreStudent(
+                              student
+                            )
+                          }
+                          disabled={
+                            restoringStudentId === student.id
+                          }
+                          style={{
+                            ...styles.profileButton,
+                            background: "#ecfdf5",
+                            color: "#166534",
+                            borderColor: "#86efac",
+                            opacity:
+                              restoringStudentId === student.id
+                                ? 0.65
+                                : 1,
+                            cursor:
+                              restoringStudentId === student.id
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          {restoringStudentId === student.id
+                            ? "⏳ جارٍ الاستعادة..."
+                            : "♻️ استعادة الطالب"}
+                        </button>
+                      </div>
+                    </article>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {editingStudent && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() =>
+            setEditingStudent(null)
+          }
+        >
+          <div
+            style={{
+              ...styles.modal,
+              maxWidth: "520px",
+            }}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div
+              style={styles.modalHeader}
+            >
+              <div>
+                <p
+                  style={
+                    styles.modalEyebrow
+                  }
+                >
+                  👨‍🎓 إدارة الطلاب
+                </p>
+
+                <h2
+                  style={
+                    styles.modalTitle
+                  }
+                >
+                  ✏️ تعديل بيانات الطالب
+                </h2>
+
+                <p
+                  style={
+                    styles.modalMeta
+                  }
+                >
+                  {
+                    editingStudent.studentId
+                  }
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setEditingStudent(null)
+                }
+                style={
+                  styles.closeButton
+                }
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: "20px",
+                display: "grid",
+                gap: "16px",
+              }}
+            >
+              <label>
+                <strong>
+                  اسم الطالب الكامل
+                </strong>
+
+                <input
+                  value={
+                    editStudentName
+                  }
+                  onChange={(event) =>
+                    setEditStudentName(
+                      event.target.value
+                    )
+                  }
+                  style={{
+                    ...styles.input,
+                    width: "100%",
+                    marginTop: "8px",
+                    boxSizing:
+                      "border-box",
+                  }}
+                />
+              </label>
+
+              <label>
+                <strong>
+                  الفصل
+                </strong>
+
+                <select
+                  value={
+                    editStudentClassroom
+                  }
+                  onChange={(event) =>
+                    setEditStudentClassroom(
+                      event.target.value
+                    )
+                  }
+                  style={{
+                    ...styles.select,
+                    width: "100%",
+                    marginTop: "8px",
+                  }}
+                >
+                  <option value="الثاني أ">
+                    الثاني أ
+                  </option>
+
+                  <option value="الثاني ب">
+                    الثاني ب
+                  </option>
+                </select>
+              </label>
+
+              <label>
+                <strong>
+                  رقم الدخول
+                </strong>
+
+                <input
+                  value={
+                    editLoginCode
+                  }
+                  onChange={(event) =>
+                    setEditLoginCode(
+                      event.target.value
+                        .replace(
+                          /\D/g,
+                          ""
+                        )
+                        .slice(0, 4)
+                    )
+                  }
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="آخر 4 أرقام"
+                  style={{
+                    ...styles.input,
+                    width: "100%",
+                    marginTop: "8px",
+                    boxSizing:
+                      "border-box",
+                  }}
+                />
+
+                <small
+                  style={{
+                    display: "block",
+                    marginTop: "6px",
+                    color: "#64748b",
+                  }}
+                >
+                  تغيير رقم الدخول لا
+                  يغيّر رقم الطالب أو
+                  سجلاته السابقة.
+                </small>
+              </label>
+
+              <div
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  background: "#f8fafc",
+                  color: "#64748b",
+                  fontSize: "14px",
+                }}
+              >
+                🔒 رقم الطالب الداخلي:{" "}
+                <strong>
+                  {
+                    editingStudent.studentId
+                  }
+                </strong>{" "}
+                لن يتغير.
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void handleSaveStudentEdit()
+                }
+                disabled={
+                  savingEdit
+                }
+                style={{
+                  border: "none",
+                  borderRadius: "14px",
+                  padding: "14px",
+                  background: "#166534",
+                  color: "#ffffff",
+                  fontSize: "16px",
+                  fontWeight: 900,
+                  cursor:
+                    savingEdit
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    savingEdit
+                      ? 0.65
+                      : 1,
+                }}
+              >
+                {savingEdit
+                  ? "جارٍ حفظ التعديلات... ⏳"
+                  : "✅ حفظ التعديلات"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddStudent && (
+  <div
+    style={styles.modalOverlay}
+    onClick={() =>
+      setShowAddStudent(false)
+    }
+  >
+    <div
+      style={{
+        ...styles.modal,
+        maxWidth: "520px",
+      }}
+      onClick={(event) =>
+        event.stopPropagation()
+      }
+    >
+      <div
+        style={styles.modalHeader}
+      >
+        <div>
+          <p
+            style={
+              styles.modalEyebrow
+            }
+          >
+            👨‍🎓 إدارة الطلاب
+          </p>
+
+          <h2
+            style={
+              styles.modalTitle
+            }
+          >
+            ➕ إضافة طالب جديد
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            setShowAddStudent(false)
+          }
+          style={
+            styles.closeButton
+          }
+        >
+          ✕
+        </button>
+      </div>
+
+      <div
+        style={{
+          padding: "20px",
+          display: "grid",
+          gap: "16px",
+        }}
+      >
+        <label>
+          <strong>
+            اسم الطالب الكامل
+          </strong>
+
+          <input
+            value={
+              newStudentName
+            }
+            onChange={(event) =>
+              setNewStudentName(
+                event.target.value
+              )
+            }
+            placeholder="اكتب الاسم كاملًا"
+            style={{
+              ...styles.input,
+              width: "100%",
+              marginTop: "8px",
+              boxSizing:
+                "border-box",
+            }}
+          />
+        </label>
+
+        <label>
+          <strong>
+            الفصل
+          </strong>
+
+          <select
+            value={
+              newStudentClassroom
+            }
+            onChange={(event) =>
+              setNewStudentClassroom(
+                event.target.value
+              )
+            }
+            style={{
+              ...styles.select,
+              width: "100%",
+              marginTop: "8px",
+            }}
+          >
+            <option value="الثاني أ">
+              الثاني أ
+            </option>
+
+            <option value="الثاني ب">
+              الثاني ب
+            </option>
+          </select>
+        </label>
+
+        <label>
+          <strong>
+            رقم الدخول
+          </strong>
+
+          <input
+            value={
+              newLoginCode
+            }
+            onChange={(event) =>
+              setNewLoginCode(
+                event.target.value
+                  .replace(
+                    /\D/g,
+                    ""
+                  )
+                  .slice(0, 4)
+              )
+            }
+            inputMode="numeric"
+            placeholder="آخر 4 أرقام"
+            maxLength={4}
+            style={{
+              ...styles.input,
+              width: "100%",
+              marginTop: "8px",
+              boxSizing:
+                "border-box",
+            }}
+          />
+
+          <small
+            style={{
+              display: "block",
+              marginTop: "6px",
+              color: "#64748b",
+            }}
+          >
+            آخر أربعة أرقام من
+            السجل المدني أو الإقامة.
+          </small>
+        </label>
+
+        <button
+          type="button"
+          onClick={() =>
+            void handleAddStudent()
+          }
+          disabled={
+            savingStudent
+          }
+          style={{
+            border: "none",
+            borderRadius: "14px",
+            padding: "14px",
+            background: "#166534",
+            color: "#ffffff",
+            fontSize: "16px",
+            fontWeight: 900,
+            cursor:
+              savingStudent
+                ? "not-allowed"
+                : "pointer",
+            opacity:
+              savingStudent
+                ? 0.65
+                : 1,
+          }}
+        >
+          {savingStudent
+            ? "جارٍ إضافة الطالب... ⏳"
+            : "✅ حفظ الطالب"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {selectedStudent && (
         <div
           style={
