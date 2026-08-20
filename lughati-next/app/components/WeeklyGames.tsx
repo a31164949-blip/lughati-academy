@@ -1,84 +1,250 @@
 "use client";
 
 import Link from "next/link";
+import {
+  useRef,
+  useState,
+} from "react";
 
 type WeeklyGame = {
   id: string;
   title: string;
+  shortTitle: string;
   description: string;
   icon: string;
   href: string;
-  badge: string;
   skill: string;
-  color: string;
-  lightColor: string;
-  featured?: boolean;
-  locked?: boolean;
+  background: string;
+  available: boolean;
+  audience: string;
 };
 
 const weeklyGames: WeeklyGame[] = [
   {
     id: "maze",
     title: "متاهة لغتي",
+    shortTitle: "اعثر على الكنز",
     description:
-      "اعبر المتاهة، وافتح الأبواب بالإجابات الصحيحة حتى تصل إلى كنز لغتي.",
+      "اعبر المتاهة وافتح الأبواب بالإجابات الصحيحة حتى تصل إلى كنز لغتي.",
     icon: "🌀",
     href: "/games/maze",
-    badge: "تحدي هذا الأسبوع",
     skill: "قراءة • تركيز • مفردات",
-    color: "#7357d9",
-    lightColor: "#f1edff",
-    featured: true,
+    background:
+      "linear-gradient(135deg,#6d28d9 0%,#7c3aed 48%,#2563eb 100%)",
+    available: true,
+    audience: "للجميع",
   },
   {
-    id: "letter-bridge",
-    title: "جسر الحروف",
+    id: "crosswords",
+    title: "الكلمات المتقاطعة",
+    shortTitle: "حلّ الشبكة",
     description:
-      "اختر الحرف أو الحركة الصحيحة لتساعد فارس على عبور الجسر خطوة بعد خطوة.",
-    icon: "🌉",
-    href: "/games/letter-bridge",
-    badge: "اللعبة القادمة",
-    skill: "الحروف • الحركات",
-    color: "#1584b8",
-    lightColor: "#eaf8ff",
-    locked: true,
+      "اكتشف الكلمات من خلال التلميحات وأكمل الشبكة بأسرع وقت.",
+    icon: "✏️",
+    href: "/games/crosswords",
+    skill: "مفردات • إملاء • تفكير",
+    background:
+      "linear-gradient(135deg,#b45309 0%,#ea580c 52%,#f59e0b 100%)",
+    available: false,
+    audience: "للجميع",
   },
   {
-    id: "missing-box",
-    title: "الصندوق المفقود",
+    id: "lost-word",
+    title: "الكلمة الضائعة",
+    shortTitle: "ابحث واكتشف",
     description:
-      "اكتشف الحرف أو المقطع المفقود وأكمل الكلمات قبل انتهاء التحدي.",
-    icon: "🎁",
-    href: "/games/missing-box",
-    badge: "قريبًا",
-    skill: "مقاطع • كلمات • إملاء",
-    color: "#d77a17",
-    lightColor: "#fff5e7",
-    locked: true,
+      "ابحث عن الكلمات المختبئة بين الحروف واكتشفها قبل الجميع.",
+    icon: "🔎",
+    href: "/games/lost-word",
+    skill: "قراءة • تركيز • سرعة",
+    background:
+      "linear-gradient(135deg,#0f766e 0%,#0891b2 52%,#2563eb 100%)",
+    available: false,
+    audience: "للجميع",
+  },
+  {
+    id: "picture-story",
+    title: "ترتيب الصور",
+    shortTitle: "اصنع القصة",
+    description:
+      "رتب الصور بالتسلسل الصحيح ثم اكتشف القصة التي تحكيها.",
+    icon: "🧩",
+    href: "/games/picture-story",
+    skill: "تسلسل • تعبير • فهم",
+    background:
+      "linear-gradient(135deg,#be123c 0%,#e11d48 52%,#fb7185 100%)",
+    available: false,
+    audience: "للصغار والعائلة",
+  },
+  {
+    id: "family-challenge",
+    title: "التحدي العائلي",
+    shortTitle: "من سيفوز؟",
+    description:
+      "تحديات ممتعة تجمع الطفل وأسرته في منافسة سريعة ومليئة بالمرح.",
+    icon: "👨‍👩‍👧",
+    href: "/games/family-challenge",
+    skill: "مرح • منافسة • تعاون",
+    background:
+      "linear-gradient(135deg,#166534 0%,#15803d 52%,#22c55e 100%)",
+    available: false,
+    audience: "للعائلة",
+  },
+  {
+    id: "detective",
+    title: "المحقق",
+    shortTitle: "حلّ القضية",
+    description:
+      "اقرأ الأدلة، اربط التفاصيل، واكتشف الحل قبل انتهاء الوقت.",
+    icon: "🕵️‍♂️",
+    href: "/games/detective",
+    skill: "استنتاج • ملاحظة • ذكاء",
+    background:
+      "linear-gradient(135deg,#172554 0%,#1e3a8a 52%,#334155 100%)",
+    available: false,
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "thirty-seconds",
+    title: "كلمة في 30 ثانية",
+    shortTitle: "سابق الزمن",
+    description:
+      "كوّن أكبر عدد من الكلمات الصحيحة قبل أن تنتهي الثلاثون ثانية.",
+    icon: "⏱️",
+    href: "/games/30-seconds",
+    skill: "سرعة • مفردات • تركيز",
+    background:
+      "linear-gradient(135deg,#9f1239 0%,#be123c 48%,#e11d48 100%)",
+    available: false,
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "error-hunter",
+    title: "صائد الأخطاء",
+    shortTitle: "اكتشف الخطأ",
+    description:
+      "هناك أخطاء مخفية أمامك؛ اكتشفها وصححها بأسرع وقت ممكن.",
+    icon: "🎯",
+    href: "/games/error-hunter",
+    skill: "إملاء • ملاحظة • سرعة",
+    background:
+      "linear-gradient(135deg,#075985 0%,#0369a1 50%,#0ea5e9 100%)",
+    available: false,
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "genius",
+    title: "تحدي العباقرة",
+    shortTitle: "هل أنت جاهز؟",
+    description:
+      "أسئلة متدرجة تختبر المعرفة واللغة وسرعة التفكير حتى السؤال الأخير.",
+    icon: "🧠",
+    href: "/games/genius",
+    skill: "معرفة • لغة • سرعة",
+    background:
+      "linear-gradient(135deg,#854d0e 0%,#a16207 50%,#ca8a04 100%)",
+    available: false,
+    audience: "للكبار والعائلة",
   },
 ];
 
 export default function WeeklyGames() {
-  const featuredGame =
-    weeklyGames.find(
-      (game) => game.featured
-    ) ?? weeklyGames[0];
-
-  const otherGames =
-    weeklyGames.filter(
-      (game) =>
-        game.id !== featuredGame.id
+  const sliderRef =
+    useRef<HTMLDivElement | null>(
+      null
     );
+
+  const [
+    activeGame,
+    setActiveGame,
+  ] = useState("maze");
+
+  function scrollCards(
+    direction:
+      | "next"
+      | "previous"
+  ) {
+    if (!sliderRef.current) {
+      return;
+    }
+
+    const amount =
+      Math.min(
+        sliderRef.current.clientWidth *
+          0.72,
+        430
+      );
+
+    sliderRef.current.scrollBy({
+      left:
+        direction === "next"
+          ? -amount
+          : amount,
+      behavior: "smooth",
+    });
+  }
 
   return (
     <section
       dir="rtl"
       style={{
         maxWidth: "1180px",
-        margin: "28px auto",
+        margin: "30px auto",
       }}
     >
-      {/* رأس الركن */}
+      <style>{`
+        .lughati-games-slider {
+          scrollbar-width: none;
+          scroll-padding-inline: 12px;
+        }
+
+        .lughati-games-slider::-webkit-scrollbar {
+          display: none;
+        }
+
+        .lughati-cinema-card {
+          transition:
+            transform .28s ease,
+            box-shadow .28s ease,
+            opacity .28s ease;
+        }
+
+        .lughati-cinema-card-active {
+          transform:
+            translateY(-8px)
+            scale(1.015);
+        }
+
+        @media (hover: hover) {
+          .lughati-cinema-card:hover {
+            transform:
+              translateY(-8px)
+              scale(1.015);
+          }
+        }
+
+        @media (max-width: 640px) {
+          .lughati-cinema-card {
+            width: 82vw !important;
+            min-width: 82vw !important;
+          }
+        }
+
+        @media (
+          prefers-reduced-motion:
+          reduce
+        ) {
+          .lughati-cinema-card {
+            transition: none;
+          }
+
+          .lughati-cinema-card-active {
+            transform: none;
+          }
+        }
+      `}</style>
+
+      {/* رأس القسم */}
 
       <div
         style={{
@@ -105,7 +271,7 @@ export default function WeeklyGames() {
               fontWeight: 900,
             }}
           >
-            🎮 ألعاب لغتي
+            🎮 ألعاب وتحديات
           </span>
 
           <h2
@@ -113,11 +279,11 @@ export default function WeeklyGames() {
               margin: "8px 0 3px",
               color: "#174c3b",
               fontSize:
-                "clamp(26px,4vw,35px)",
+                "clamp(27px,4vw,36px)",
               lineHeight: 1.4,
             }}
           >
-            تحدي جديد كل أسبوع ✨
+            اختر مغامرتك 🎬
           </h2>
 
           <p
@@ -128,510 +294,551 @@ export default function WeeklyGames() {
               fontWeight: 700,
             }}
           >
-            لعبة تعليمية مختلفة كل
-            أسبوع؛ تعلّم، العب، وتحدَّ
-            نفسك.
+            للصغار والكبار والعائلة…
+            اختر التحدي وحاول تسجيل
+            أسرع وقت.
           </p>
         </div>
 
-        <Link
-          href="/games"
+        <div
           style={{
-            textDecoration: "none",
-            padding: "11px 17px",
-            borderRadius: "15px",
-            background: "#eef8f3",
-            color: "#14704b",
-            border:
-              "1px solid #d3eade",
-            fontWeight: 900,
-            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            gap: "9px",
+            flexWrap: "wrap",
           }}
         >
-          🎮 جميع الألعاب ←
-        </Link>
+          <button
+            type="button"
+            onClick={() =>
+              scrollCards(
+                "previous"
+              )
+            }
+            aria-label="السابق"
+            style={arrowButton}
+          >
+            →
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              scrollCards("next")
+            }
+            aria-label="التالي"
+            style={arrowButton}
+          >
+            ←
+          </button>
+
+          <Link
+            href="/games"
+            style={{
+              textDecoration: "none",
+              padding: "11px 16px",
+              borderRadius: "15px",
+              background: "#eef8f3",
+              color: "#14704b",
+              border:
+                "1px solid #d3eade",
+              fontWeight: 900,
+              whiteSpace: "nowrap",
+            }}
+          >
+            🎮 جميع الألعاب
+          </Link>
+        </div>
       </div>
 
-      {/* شريط التحديث الأسبوعي */}
+      {/* شريط أسرع المتحدّين */}
 
       <div
-        style={{
-          marginBottom: "14px",
-          padding: "11px 15px",
-          borderRadius: "18px",
-          background:
-            "linear-gradient(135deg,#f7fbff,#f4fff8)",
-          border:
-            "1px solid #dcece6",
-          color: "#49675c",
-          fontWeight: 800,
-          fontSize: "13px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          flexWrap: "wrap",
-        }}
-      >
-        <span>🗓️</span>
-
-        <span>
-          يتم اختيار لعبة أو تحدٍ
-          جديد كل أسبوع حتى تبقى
-          رحلة التعلم ممتعة ومتجددة.
-        </span>
-      </div>
-
-      {/* اللعبة الرئيسية */}
-
-      <article
         style={{
           position: "relative",
           overflow: "hidden",
-          borderRadius: "34px",
-          padding: "27px",
+          marginBottom: "20px",
+          borderRadius: "22px",
           background:
-            "linear-gradient(135deg,#6d4bd8 0%,#7658df 48%,#4d86db 100%)",
-          color: "white",
+            "linear-gradient(135deg,#172554 0%,#312e81 48%,#581c87 100%)",
+          color: "#ffffff",
+          padding: "15px 18px",
           boxShadow:
-            "0 18px 42px rgba(90,70,190,.22)",
+            "0 10px 26px rgba(49,46,129,.18)",
         }}
       >
-        {/* دوائر خلفية */}
-
         <div
           style={{
             position: "absolute",
-            width: "230px",
-            height: "230px",
+            width: "120px",
+            height: "120px",
             borderRadius: "50%",
             background:
               "rgba(255,255,255,.07)",
-            top: "-110px",
-            left: "-70px",
+            top: "-65px",
+            left: "-25px",
           }}
         />
 
         <div
-          style={{
-            position: "absolute",
-            width: "170px",
-            height: "170px",
-            borderRadius: "50%",
-            background:
-              "rgba(255,226,104,.09)",
-            bottom: "-90px",
-            right: "17%",
-          }}
-        />
-
-        <div
-          className="weekly-game-featured"
           style={{
             position: "relative",
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(0,1.45fr) minmax(220px,.7fr)",
-            gap: "24px",
-            alignItems: "center",
-          }}
-        >
-          {/* النص */}
-
-          <div>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 13px",
-                marginBottom: "13px",
-                borderRadius: "999px",
-                background: "#ffe887",
-                color: "#6b4a00",
-                fontWeight: 900,
-                fontSize: "13px",
-                boxShadow:
-                  "0 4px 12px rgba(0,0,0,.08)",
-              }}
-            >
-              🔥 {featuredGame.badge}
-            </span>
-
-            <h3
-              style={{
-                margin: 0,
-                fontSize:
-                  "clamp(30px,5vw,44px)",
-                lineHeight: 1.4,
-              }}
-            >
-              {featuredGame.icon}{" "}
-              {featuredGame.title}
-            </h3>
-
-            <p
-              style={{
-                maxWidth: "680px",
-                margin: "12px 0 0",
-                color:
-                  "rgba(255,255,255,.92)",
-                lineHeight: 1.95,
-                fontSize: "16px",
-                fontWeight: 700,
-              }}
-            >
-              {featuredGame.description}
-            </p>
-
-            {/* المهارات */}
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                flexWrap: "wrap",
-                marginTop: "17px",
-              }}
-            >
-              <span
-                style={{
-                  padding: "7px 12px",
-                  borderRadius: "999px",
-                  background:
-                    "rgba(255,255,255,.14)",
-                  border:
-                    "1px solid rgba(255,255,255,.22)",
-                  fontSize: "13px",
-                  fontWeight: 800,
-                }}
-              >
-                🧠 {featuredGame.skill}
-              </span>
-
-              <span
-                style={{
-                  padding: "7px 12px",
-                  borderRadius: "999px",
-                  background:
-                    "rgba(255,255,255,.14)",
-                  border:
-                    "1px solid rgba(255,255,255,.22)",
-                  fontSize: "13px",
-                  fontWeight: 800,
-                }}
-              >
-                👨‍👩‍👧 متاح للجميع
-              </span>
-
-              <span
-                style={{
-                  padding: "7px 12px",
-                  borderRadius: "999px",
-                  background:
-                    "rgba(255,255,255,.14)",
-                  border:
-                    "1px solid rgba(255,255,255,.22)",
-                  fontSize: "13px",
-                  fontWeight: 800,
-                }}
-              >
-                ⚡ خفيف وسريع
-              </span>
-            </div>
-
-            <Link
-              href={featuredGame.href}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                marginTop: "21px",
-                padding: "14px 21px",
-                borderRadius: "17px",
-                background: "white",
-                color: "#6041c2",
-                textDecoration: "none",
-                fontWeight: 900,
-                boxShadow:
-                  "0 8px 20px rgba(40,30,100,.16)",
-              }}
-            >
-              🎮 ابدأ التحدي الآن
-              <span>←</span>
-            </Link>
-          </div>
-
-          {/* الرسم */}
-
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <div
-              className="weekly-game-orb"
-              style={{
-                position: "relative",
-                width: "195px",
-                height: "195px",
-                borderRadius: "50%",
-                display: "grid",
-                placeItems: "center",
-                background:
-                  "rgba(255,255,255,.12)",
-                border:
-                  "1px solid rgba(255,255,255,.18)",
-                boxShadow:
-                  "inset 0 0 35px rgba(255,255,255,.08), 0 16px 35px rgba(40,30,100,.16)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "90px",
-                }}
-              >
-                🌀
-              </div>
-
-              <span
-                style={{
-                  position: "absolute",
-                  top: "17px",
-                  right: "14px",
-                  fontSize: "28px",
-                }}
-              >
-                ⭐
-              </span>
-
-              <span
-                style={{
-                  position: "absolute",
-                  bottom: "18px",
-                  left: "16px",
-                  fontSize: "27px",
-                }}
-              >
-                🏆
-              </span>
-
-              <span
-                style={{
-                  position: "absolute",
-                  bottom: "14px",
-                  right: "21px",
-                  fontSize: "24px",
-                }}
-              >
-                🚪
-              </span>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      {/* الألعاب القادمة */}
-
-      <div
-        style={{
-          marginTop: "15px",
-        }}
-      >
-        <div
-          style={{
-            marginBottom: "10px",
+            zIndex: 2,
             display: "flex",
             alignItems: "center",
             justifyContent:
               "space-between",
-            gap: "12px",
+            gap: "14px",
             flexWrap: "wrap",
           }}
         >
-          <strong
+          <div
             style={{
-              color: "#315c4d",
-              fontSize: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "11px",
             }}
           >
-            🚀 ألعاب قادمة
-          </strong>
+            <div
+              style={{
+                width: "45px",
+                height: "45px",
+                borderRadius: "15px",
+                display: "grid",
+                placeItems: "center",
+                background:
+                  "rgba(255,255,255,.14)",
+                fontSize: "24px",
+              }}
+            >
+              ⚡
+            </div>
+
+            <div>
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "16px",
+                }}
+              >
+                أسرع المتحدّين
+              </strong>
+
+              <span
+                style={{
+                  display: "block",
+                  marginTop: "2px",
+                  color:
+                    "rgba(255,255,255,.75)",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                }}
+              >
+                هل تستطيع كسر الرقم؟
+                👀
+              </span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: "9px 14px",
+              borderRadius: "999px",
+              background:
+                "rgba(255,255,255,.12)",
+              border:
+                "1px solid rgba(255,255,255,.16)",
+              fontSize: "13px",
+              fontWeight: 900,
+            }}
+          >
+            🏆 كن أول من يسجل رقمًا
+            قياسيًا
+          </div>
 
           <span
             style={{
-              color: "#7b8982",
-              fontSize: "12px",
+              color:
+                "rgba(255,255,255,.72)",
+              fontSize: "11px",
               fontWeight: 700,
             }}
           >
-            كل لعبة تدرب مهارة مختلفة
+            الاسم اختياري
           </span>
         </div>
+      </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(250px,1fr))",
-            gap: "14px",
-          }}
-        >
-          {otherGames.map(
-            (game) => (
+      {/* البطاقات */}
+
+      <div
+        ref={sliderRef}
+        className="lughati-games-slider"
+        style={{
+          display: "flex",
+          gap: "18px",
+          overflowX: "auto",
+          scrollSnapType:
+            "x mandatory",
+          padding:
+            "12px 12px 34px",
+          WebkitOverflowScrolling:
+            "touch",
+        }}
+      >
+        {weeklyGames.map(
+          (game) => {
+            const active =
+              activeGame === game.id;
+
+            const card = (
               <article
-                key={game.id}
+                className={`lughati-cinema-card ${
+                  active
+                    ? "lughati-cinema-card-active"
+                    : ""
+                }`}
+                onMouseEnter={() =>
+                  setActiveGame(
+                    game.id
+                  )
+                }
+                onClick={() =>
+                  setActiveGame(
+                    game.id
+                  )
+                }
                 style={{
                   position: "relative",
-                  padding: "18px",
-                  borderRadius: "24px",
-                  background: "white",
-                  border:
-                    "1px solid #e3ece7",
-                  boxShadow:
-                    "0 8px 20px rgba(30,90,60,.06)",
                   overflow: "hidden",
+                  width: "340px",
+                  minWidth: "340px",
+                  height: "405px",
+                  scrollSnapAlign:
+                    "start",
+                  borderRadius: "30px",
+                  background:
+                    game.background,
+                  color: "#ffffff",
+                  padding: "23px",
+                  boxSizing:
+                    "border-box",
+                  boxShadow:
+                    active
+                      ? "0 24px 52px rgba(30,50,90,.25)"
+                      : "0 13px 28px rgba(30,50,90,.13)",
+                  opacity:
+                    game.available
+                      ? 1
+                      : 0.88,
+                  cursor:
+                    game.available
+                      ? "pointer"
+                      : "default",
                 }}
               >
+                {/* زخارف الخلفية */}
+
                 <div
                   style={{
+                    position:
+                      "absolute",
+                    width: "190px",
+                    height: "190px",
+                    borderRadius:
+                      "50%",
+                    background:
+                      "rgba(255,255,255,.10)",
+                    top: "-72px",
+                    left: "-55px",
+                  }}
+                />
+
+                <div
+                  style={{
+                    position:
+                      "absolute",
+                    width: "135px",
+                    height: "135px",
+                    borderRadius:
+                      "50%",
+                    background:
+                      "rgba(255,255,255,.08)",
+                    bottom: "-40px",
+                    right: "-25px",
+                  }}
+                />
+
+                <div
+                  style={{
+                    position:
+                      "relative",
+                    zIndex: 2,
+                    height: "100%",
                     display: "flex",
-                    alignItems: "center",
-                    gap: "13px",
+                    flexDirection:
+                      "column",
                   }}
                 >
-                  <div
-                    style={{
-                      width: "60px",
-                      height: "60px",
-                      borderRadius: "19px",
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                      fontSize: "32px",
-                      background:
-                        game.lightColor,
-                    }}
-                  >
-                    {game.icon}
-                  </div>
+                  {/* أعلى البطاقة */}
 
                   <div
                     style={{
-                      flex: 1,
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems:
+                        "center",
+                      gap: "8px",
                     }}
                   >
                     <span
                       style={{
-                        color: game.color,
-                        fontSize: "12px",
+                        background:
+                          game.available
+                            ? "#fde68a"
+                            : "rgba(255,255,255,.16)",
+                        color:
+                          game.available
+                            ? "#713f12"
+                            : "#ffffff",
+                        border:
+                          "1px solid rgba(255,255,255,.16)",
+                        padding:
+                          "8px 11px",
+                        borderRadius:
+                          "999px",
+                        fontSize:
+                          "11px",
+                        fontWeight: 900,
+                        whiteSpace:
+                          "nowrap",
+                      }}
+                    >
+                      ⚡ خُض التحدي وسجّل
+                      وقتك
+                    </span>
+
+                    <span
+                      style={{
+                        fontSize: "29px",
+                      }}
+                    >
+                      {game.icon}
+                    </span>
+                  </div>
+
+                  {/* محتوى البطاقة */}
+
+                  <div
+                    style={{
+                      marginTop: "auto",
+                      marginBottom:
+                        "auto",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "66px",
+                        marginBottom:
+                          "10px",
+                        filter:
+                          "drop-shadow(0 12px 16px rgba(0,0,0,.14))",
+                      }}
+                    >
+                      {game.icon}
+                    </div>
+
+                    <p
+                      style={{
+                        margin:
+                          "0 0 4px",
+                        opacity: 0.84,
+                        fontSize:
+                          "13px",
                         fontWeight: 900,
                       }}
                     >
-                      {game.locked
-                        ? "🔒 "
-                        : "✨ "}
-                      {game.badge}
-                    </span>
+                      {game.title}
+                    </p>
 
                     <h3
                       style={{
-                        margin: "3px 0",
-                        color: "#243d34",
-                        fontSize: "18px",
+                        margin:
+                          "0 0 10px",
+                        fontSize:
+                          "28px",
+                        lineHeight:
+                          1.25,
                       }}
                     >
-                      {game.title}
+                      {game.shortTitle}
                     </h3>
 
                     <p
                       style={{
                         margin: 0,
-                        color: "#708078",
-                        fontSize: "13px",
-                        lineHeight: 1.65,
+                        lineHeight: 1.75,
+                        fontSize:
+                          "13px",
+                        opacity: 0.92,
                       }}
                     >
-                      {game.skill}
+                      {
+                        game.description
+                      }
                     </p>
                   </div>
-                </div>
 
-                <p
-                  style={{
-                    margin:
-                      "13px 0 0",
-                    color: "#687870",
-                    fontSize: "13px",
-                    lineHeight: 1.75,
-                  }}
-                >
-                  {game.description}
-                </p>
+                  {/* أسفل البطاقة */}
 
-                <div
-                  style={{
-                    marginTop: "13px",
-                    padding: "9px 11px",
-                    borderRadius: "13px",
-                    background:
-                      game.lightColor,
-                    color: game.color,
-                    textAlign: "center",
-                    fontSize: "12px",
-                    fontWeight: 900,
-                  }}
-                >
-                  🔒 سنفتحها في تحدٍ
-                  قادم
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "6px",
+                        flexWrap: "wrap",
+                        marginBottom:
+                          "10px",
+                      }}
+                    >
+                      <span
+                        style={miniBadge}
+                      >
+                        🧠 {game.skill}
+                      </span>
+
+                      <span
+                        style={miniBadge}
+                      >
+                        👥 {game.audience}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems:
+                          "center",
+                        justifyContent:
+                          "space-between",
+                        gap: "8px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize:
+                            "11px",
+                          fontWeight: 900,
+                          opacity: 0.86,
+                        }}
+                      >
+                        {game.available
+                          ? "🟢 متاحة الآن"
+                          : "🔒 قريبًا"}
+                      </span>
+
+                      <span
+                        style={{
+                          background:
+                            "#ffffff",
+                          color:
+                            game.available
+                              ? "#4c1d95"
+                              : "#64748b",
+                          padding:
+                            "10px 13px",
+                          borderRadius:
+                            "14px",
+                          fontSize:
+                            "13px",
+                          fontWeight:
+                            900,
+                          boxShadow:
+                            "0 7px 18px rgba(0,0,0,.13)",
+                        }}
+                      >
+                        {game.available
+                          ? "ابدأ 🎮"
+                          : "قريبًا"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </article>
-            )
-          )}
-        </div>
+            );
+
+            if (!game.available) {
+              return (
+                <div
+                  key={game.id}
+                  style={{
+                    flex: "0 0 auto",
+                  }}
+                >
+                  {card}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={game.id}
+                href={game.href}
+                style={{
+                  flex: "0 0 auto",
+                  textDecoration:
+                    "none",
+                }}
+              >
+                {card}
+              </Link>
+            );
+          }
+        )}
       </div>
 
-      <style jsx>{`
-        .weekly-game-orb {
-          animation:
-            weeklyGameFloat
-            4s
-            ease-in-out
-            infinite;
-        }
-
-        @keyframes weeklyGameFloat {
-          0%,
-          100% {
-            transform:
-              translateY(0);
-          }
-
-          50% {
-            transform:
-              translateY(-7px);
-          }
-        }
-
-        @media (
-          max-width: 760px
-        ) {
-          .weekly-game-featured {
-            grid-template-columns:
-              1fr !important;
-          }
-        }
-
-        @media (
-          prefers-reduced-motion:
-          reduce
-        ) {
-          .weekly-game-orb {
-            animation: none;
-          }
-        }
-      `}</style>
+      <div
+        style={{
+          marginTop: "-10px",
+          textAlign: "center",
+          color: "#708078",
+          fontSize: "12px",
+          fontWeight: 800,
+        }}
+      >
+        ← اسحب لاكتشاف تحديات
+        الصغار والكبار والعائلة →
+      </div>
     </section>
   );
 }
+
+const miniBadge:
+  React.CSSProperties = {
+    padding: "6px 8px",
+    borderRadius: "999px",
+    background:
+      "rgba(255,255,255,.13)",
+    border:
+      "1px solid rgba(255,255,255,.16)",
+    color: "#ffffff",
+    fontSize: "10px",
+    fontWeight: 800,
+  };
+
+const arrowButton:
+  React.CSSProperties = {
+    width: "46px",
+    height: "46px",
+    border:
+      "1px solid #d3eade",
+    borderRadius: "50%",
+    background: "#ffffff",
+    color: "#176d4c",
+    fontSize: "21px",
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow:
+      "0 8px 18px rgba(30,90,60,.08)",
+  };
