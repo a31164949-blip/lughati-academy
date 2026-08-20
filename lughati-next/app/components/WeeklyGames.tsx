@@ -59,7 +59,7 @@ const weeklyGames: WeeklyGame[] = [
     skill: "قراءة • تركيز • سرعة",
     background:
       "linear-gradient(135deg,#0f766e 0%,#0891b2 52%,#2563eb 100%)",
-    available: false,
+    available: true,
     audience: "للجميع",
   },
   {
