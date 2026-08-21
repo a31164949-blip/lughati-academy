@@ -151,6 +151,10 @@ export default function LostWordPage() {
 
   const [completed, setCompleted] =
     useState(false);
+    const [
+  showCompletedModal,
+  setShowCompletedModal,
+] = useState(true);
 
   const [
     playerName,
@@ -442,7 +446,7 @@ export default function LostWordPage() {
       );
       return;
     }
-
+setShowCompletedModal(true);
     setMessage(
       `✅ رائع! اكتشفت كلمة «${matchedWord}».`
     );
@@ -532,6 +536,7 @@ export default function LostWordPage() {
 
   function restartGame() {
     setFoundWords([]);
+    setShowCompletedModal(true);
     setSelectedCells([]);
     setStartCell(null);
     setIsSelecting(false);
@@ -1123,7 +1128,8 @@ export default function LostWordPage() {
         </section>
       </div>
 
-      {completed && (
+      {completed &&
+  showCompletedModal && (
         <div
           style={{
             position:
@@ -1503,6 +1509,25 @@ export default function LostWordPage() {
                   "pointer",
               }}
             >
+              <button
+  type="button"
+  onClick={() =>
+    setShowCompletedModal(false)
+  }
+  style={{
+    width: "100%",
+    border: "1px solid #cbd5e1",
+    borderRadius: "15px",
+    padding: "13px",
+    background: "#ffffff",
+    color: "#475569",
+    fontWeight: 900,
+    cursor: "pointer",
+    marginBottom: "10px",
+  }}
+>
+  ✖ إغلاق
+</button>
               🔄 حاول كسر وقتك
             </button>
           </div>
