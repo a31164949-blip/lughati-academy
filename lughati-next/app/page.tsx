@@ -54,8 +54,11 @@ type AcademyHero = {
   imageUrl: string;
   photoConsent: boolean;
   published: boolean;
+  weeklyTrack:
+    | "achievement"
+    | "progress"
+    | "commitment";
 };
-
 type DayMessage = {
   show: boolean;
   title: string;
@@ -226,11 +229,7 @@ export default function Home() {
   ] =
     useState<AcademyHero[]>([]);
 
-  const [
-    heroIndex,
-    setHeroIndex,
-  ] =
-    useState(0);
+  
 
   /*
    * رسالة الوقت الذكية.
@@ -472,6 +471,12 @@ useEffect(() => {
                   published:
                     data.published ===
                     true,
+                    weeklyTrack:
+  data.weeklyTrack === "progress"
+    ? "progress"
+    : data.weeklyTrack === "commitment"
+    ? "commitment"
+    : "achievement",
                 } satisfies AcademyHero;
               }
             )
@@ -497,35 +502,6 @@ useEffect(() => {
     void loadHeroes();
   }, []);
 
-  /*
-   * تدوير بطاقة الأبطال.
-   */
-  useEffect(() => {
-    if (
-      heroes.length <= 1
-    ) {
-      return;
-    }
-
-    const timer =
-      window.setInterval(
-        () => {
-          setHeroIndex(
-            (current) =>
-              current + 1 >=
-              heroes.length
-                ? 0
-                : current + 1
-          );
-        },
-        6000
-      );
-
-    return () =>
-      window.clearInterval(
-        timer
-      );
-  }, [heroes.length]);
 
   /*
    * التاريخ.
@@ -570,15 +546,20 @@ useEffect(() => {
     return firstLine || "";
   }
 
-  const featuredHero =
-    heroes.length > 0
-      ? heroes[
-          Math.min(
-            heroIndex,
-            heroes.length - 1
-          )
-        ]
-      : null;
+  const weeklyHeroes =
+  [...heroes].sort((a, b) => {
+    const order = {
+      achievement: 0,
+      progress: 1,
+      commitment: 2,
+    };
+
+    return (
+      order[a.weeklyTrack] -
+      order[b.weeklyTrack]
+    );
+  });
+
 
   return (
     <main
@@ -1037,283 +1018,349 @@ useEffect(() => {
   style={{
     maxWidth: "1180px",
     margin: "14px auto",
-    padding: "14px 16px",
-    borderRadius: "20px",
+    padding: "17px",
+    borderRadius: "22px",
     background:
       "linear-gradient(135deg,#ffffff 0%,#f6fff9 55%,#fffaf0 100%)",
     border: "1px solid #dcece4",
     boxShadow:
-      "0 8px 22px rgba(30,90,60,0.07)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "14px",
-    flexWrap: "wrap",
+      "0 9px 24px rgba(30,90,60,0.07)",
     position: "relative",
     overflow: "hidden",
   }}
 >
+  {/* زخرفة */}
+
   <div
     style={{
       position: "absolute",
-      width: "120px",
-      height: "120px",
+      width: "150px",
+      height: "150px",
       borderRadius: "50%",
       background:
         "rgba(255,214,64,.08)",
-      left: "-45px",
-      top: "-55px",
+      left: "-55px",
+      top: "-70px",
       pointerEvents: "none",
     }}
   />
 
-  {featuredHero ? (
-    <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "13px",
-          minWidth: 0,
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        <div
-          style={{
-            width: "54px",
-            height: "54px",
-            borderRadius: "17px",
-            overflow: "hidden",
-            background:
-              "linear-gradient(135deg,#fff4c7,#e8f8ef)",
-            border:
-              "2px solid #f5d76e",
-            display: "grid",
-            placeItems: "center",
-            flexShrink: 0,
-            fontSize: "28px",
-            boxShadow:
-              "0 6px 15px rgba(138,103,0,.10)",
-          }}
-        >
-          {featuredHero.imageUrl ? (
-            <img
-              src={featuredHero.imageUrl}
-              alt=""
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-              }}
-            />
-          ) : (
-            "🏆"
-          )}
-        </div>
+  {/* رأس الشريط */}
 
-        <div
-          style={{
-            minWidth: 0,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "7px",
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              style={{
-                color: "#176c46",
-                fontSize: "13px",
-                fontWeight: 900,
-              }}
-            >
-              🏆 أبطال الأكاديمية في أسبوع
-            </span>
-
-            {featuredHero.badge && (
-              <span
-                style={{
-                  padding: "4px 9px",
-                  borderRadius: "999px",
-                  background: "#fff4c7",
-                  color: "#8a6700",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                }}
-              >
-                ✨ {featuredHero.badge}
-              </span>
-            )}
-          </div>
-
-          <div
-            style={{
-              marginTop: "4px",
-              display: "flex",
-              gap: "7px",
-              alignItems: "center",
-              flexWrap: "wrap",
-              color: "#174c36",
-            }}
-          >
-            <strong
-              style={{
-                fontSize: "17px",
-                fontWeight: 900,
-              }}
-            >
-              {featuredHero.studentFirstName}
-            </strong>
-
-            <span
-              style={{
-                color: "#a9b5ae",
-              }}
-            >
-              •
-            </span>
-
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: 800,
-              }}
-            >
-              {featuredHero.title}
-            </span>
-
-            <span
-              style={{
-                color: "#a9b5ae",
-              }}
-            >
-              •
-            </span>
-
-            <span
-              style={{
-                color: "#7a6a25",
-                fontSize: "13px",
-                fontWeight: 900,
-              }}
-            >
-              {featuredHero.achievementsCount > 0 && (
-  <span
+  <div
     style={{
-      color: "#7a6a25",
-      fontSize: "13px",
-      fontWeight: 900,
+      position: "relative",
+      zIndex: 2,
+      display: "flex",
+      alignItems: "center",
+      justifyContent:
+        "space-between",
+      gap: "12px",
+      flexWrap: "wrap",
+      marginBottom:
+        weeklyHeroes.length > 0
+          ? "14px"
+          : 0,
     }}
   >
-    ⭐ {featuredHero.achievementsCount} إنجازًا
-  </span>
-)}
-            </span>
-          </div>
-
-          <div
-            style={{
-              marginTop: "5px",
-              color: "#76867e",
-              fontSize: "12px",
-              fontWeight: 700,
-            }}
-          >
-            ✨ نحتفي كل أسبوع بجهود أبطالنا وتقدمهم وإنجازاتهم
-          </div>
-        </div>
-      </div>
-
-      <Link
-        href="/heroes"
-        style={{
-          textDecoration: "none",
-          color: "#14744d",
-          fontWeight: 900,
-          fontSize: "13px",
-          padding: "9px 13px",
-          borderRadius: "13px",
-          background: "#eaf9f0",
-          border: "1px solid #d4ecdf",
-          whiteSpace: "nowrap",
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        اكتشف أبطال الأسبوع ←
-      </Link>
-    </>
-  ) : (
-    <>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "11px",
+      }}
+    >
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          position: "relative",
-          zIndex: 2,
+          width: "48px",
+          height: "48px",
+          borderRadius: "15px",
+          display: "grid",
+          placeItems: "center",
+          background:
+            "linear-gradient(135deg,#fff4c7,#fff9e6)",
+          border:
+            "1px solid #f5dfa0",
+          fontSize: "26px",
+          flexShrink: 0,
         }}
       >
-        <div
-          style={{
-            width: "50px",
-            height: "50px",
-            borderRadius: "16px",
-            background:
-              "linear-gradient(135deg,#fff4c7,#fff9e6)",
-            display: "grid",
-            placeItems: "center",
-            fontSize: "27px",
-            border:
-              "1px solid #f5dfa0",
-          }}
-        >
-          🏆
-        </div>
-
-        <div>
-          <strong
-            style={{
-              display: "block",
-              color: "#176c46",
-              fontSize: "16px",
-              fontWeight: 900,
-            }}
-          >
-            أبطال الأكاديمية في أسبوع
-          </strong>
-
-          <span
-            style={{
-              color: "#6f7f76",
-              fontSize: "12px",
-              fontWeight: 700,
-            }}
-          >
-            ✨ نحتفي كل أسبوع بجهود أبطالنا وتقدمهم وإنجازاتهم
-          </span>
-        </div>
+        🏆
       </div>
 
-      <Link
-        href="/heroes"
-        style={{
-          textDecoration: "none",
-          color: "#14744d",
-          fontWeight: 900,
-          fontSize: "13px",
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        اكتشف الأبطال ←
-      </Link>
-    </>
+      <div>
+        <strong
+          style={{
+            display: "block",
+            color: "#176c46",
+            fontSize: "16px",
+            fontWeight: 900,
+          }}
+        >
+          أبطال الأكاديمية في أسبوع
+        </strong>
+
+        <span
+          style={{
+            display: "block",
+            marginTop: "2px",
+            color: "#718078",
+            fontSize: "12px",
+            fontWeight: 700,
+          }}
+        >
+          ✨ نحتفي بالإنجاز والتطور
+          والالتزام
+        </span>
+      </div>
+    </div>
+
+    <Link
+      href="/heroes"
+      style={{
+        textDecoration: "none",
+        color: "#14744d",
+        fontWeight: 900,
+        fontSize: "13px",
+        padding: "9px 13px",
+        borderRadius: "13px",
+        background: "#eaf9f0",
+        border:
+          "1px solid #d4ecdf",
+        whiteSpace: "nowrap",
+      }}
+    >
+      اكتشف أبطال الأسبوع ←
+    </Link>
+  </div>
+
+  {/* الأبطال الثلاثة */}
+
+  {weeklyHeroes.length > 0 ? (
+    <div
+      style={{
+        position: "relative",
+        zIndex: 2,
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit,minmax(220px,1fr))",
+        gap: "10px",
+      }}
+    >
+      {weeklyHeroes
+        .slice(0, 3)
+        .map((hero) => {
+          const track =
+            hero.weeklyTrack ===
+            "achievement"
+              ? {
+                  icon: "🥇",
+                  label:
+                    "الأكثر إنجازًا",
+                  background:
+                    "#fffaf0",
+                  border:
+                    "#f3df9a",
+                  accent:
+                    "#8a6700",
+                }
+              : hero.weeklyTrack ===
+                "progress"
+              ? {
+                  icon: "🌱",
+                  label:
+                    "الأكثر تطورًا",
+                  background:
+                    "#f0fdf4",
+                  border:
+                    "#bbf7d0",
+                  accent:
+                    "#15803d",
+                }
+              : {
+                  icon: "⭐",
+                  label:
+                    "الأكثر التزامًا",
+                  background:
+                    "#eff6ff",
+                  border:
+                    "#bfdbfe",
+                  accent:
+                    "#1d4ed8",
+                };
+
+          return (
+            <article
+              key={hero.id}
+              style={{
+                display: "flex",
+                alignItems:
+                  "center",
+                gap: "11px",
+                padding: "11px",
+                borderRadius:
+                  "17px",
+                background:
+                  track.background,
+                border: `1px solid ${track.border}`,
+                minWidth: 0,
+              }}
+            >
+              {/* الأفاتار */}
+
+              <div
+                style={{
+                  width: "54px",
+                  height: "54px",
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  display: "grid",
+                  placeItems:
+                    "center",
+                  background:
+                    "#ffffff",
+                  border:
+                    "3px solid #ffffff",
+                  boxShadow:
+                    "0 5px 13px rgba(30,90,60,.12)",
+                  flexShrink: 0,
+                  fontSize: "27px",
+                }}
+              >
+                {hero.imageUrl ? (
+                  <img
+                    src={
+                      hero.imageUrl
+                    }
+                    alt=""
+                    style={{
+                      width:
+                        "100%",
+                      height:
+                        "100%",
+                      objectFit:
+                        "cover",
+                    }}
+                  />
+                ) : (
+                  track.icon
+                )}
+              </div>
+
+              {/* بيانات البطل */}
+
+              <div
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    gap: "5px",
+                    flexWrap:
+                      "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize:
+                        "15px",
+                    }}
+                  >
+                    {track.icon}
+                  </span>
+
+                  <span
+                    style={{
+                      color:
+                        track.accent,
+                      fontSize:
+                        "11px",
+                      fontWeight:
+                        900,
+                    }}
+                  >
+                    {track.label}
+                  </span>
+                </div>
+
+                <strong
+                  style={{
+                    display:
+                      "block",
+                    marginTop:
+                      "2px",
+                    color:
+                      "#174c36",
+                    fontSize:
+                      "16px",
+                    fontWeight:
+                      900,
+                  }}
+                >
+                  {
+                    hero.studentFirstName
+                  }
+                </strong>
+
+                <span
+                  style={{
+                    display:
+                      "block",
+                    marginTop:
+                      "1px",
+                    color:
+                      "#64756d",
+                    fontSize:
+                      "12px",
+                    fontWeight:
+                      800,
+                  }}
+                >
+                  {hero.title}
+                </span>
+
+                {hero.badge && (
+                  <span
+                    style={{
+                      display:
+                        "inline-flex",
+                      marginTop:
+                        "4px",
+                      color:
+                        track.accent,
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                    }}
+                  >
+                    ✨ {hero.badge}
+                  </span>
+                )}
+              </div>
+            </article>
+          );
+        })}
+    </div>
+  ) : (
+    <div
+      style={{
+        position: "relative",
+        zIndex: 2,
+        padding: "9px 0 2px",
+        color: "#6f7f76",
+        fontSize: "13px",
+        fontWeight: 700,
+      }}
+    >
+      🌟 قريبًا نحتفي هنا بأبطال
+      هذا الأسبوع.
+    </div>
   )}
 </section>
 
