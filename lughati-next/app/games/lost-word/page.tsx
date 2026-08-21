@@ -9,6 +9,13 @@ import {
   useState,
 } from "react";
 
+import {
+  doc,
+  getDoc,
+} from "firebase/firestore";
+
+import { db } from "../../../firebase";
+
 type Cell = {
   row: number;
   col: number;
@@ -25,7 +32,7 @@ type GameScore = {
   timeSeconds: number;
 };
 
-const targetWords = [
+const fallbackTargetWords = [
   "كتاب",
   "قلم",
   "مدرسة",
@@ -34,7 +41,7 @@ const targetWords = [
   "نور",
 ];
 
-const grid = [
+const fallbackGrid = [
   ["ك", "ت", "ا", "ب", "س", "ن", "و", "ر"],
   ["م", "د", "ر", "س", "ة", "ق", "ل", "م"],
   ["ع", "ل", "م", "ب", "ا", "ب", "ت", "ي"],
@@ -121,6 +128,354 @@ function buildLine(
 }
 
 export default function LostWordPage() {
+
+  const [
+    lostWordWords,
+    setLostWordWords,
+  ] = useState<string[]>([]);
+
+  const [
+    wordsLoading,
+    setWordsLoading,
+  ] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLostWordWords() {
+      try {
+        setWordsLoading(true);
+
+        const snapshot =
+          await getDoc(
+            doc(
+              db,
+              "gameSettings",
+              "weekly"
+            )
+          );
+
+        if (
+          !active ||
+          !snapshot.exists()
+        ) {
+          return;
+        }
+
+        const data =
+          snapshot.data();
+
+        const rawWords =
+          typeof data.lostWordWords ===
+          "string"
+            ? data.lostWordWords
+            : "";
+
+        const parsedWords =
+          rawWords
+            .split(/[\n،,]+/)
+            .map((word) =>
+              word
+                .replace(/\s+/g, "")
+                .trim()
+            )
+            .filter(Boolean);
+
+        setLostWordWords(parsedWords);
+      } catch (error) {
+        console.error(
+          "تعذر تحميل كلمات الكلمة الضائعة:",
+          error
+        );
+
+        setLostWordWords([]);
+      } finally {
+        if (active) {
+          setWordsLoading(false);
+        }
+      }
+    }
+
+    void loadLostWordWords();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const targetWords =
+    useMemo<string[]>(() => {
+      if (
+        wordsLoading ||
+        lostWordWords.length < 3
+      ) {
+        return fallbackTargetWords;
+      }
+
+      const cleanedWords =
+        Array.from(
+          new Set(
+            lostWordWords
+              .map((word) =>
+                word
+                  .replace(/\s+/g, "")
+                  .trim()
+              )
+              .filter(
+                (word) =>
+                  word.length >= 2 &&
+                  word.length <= 8
+              )
+          )
+        );
+
+      return cleanedWords.length >= 3
+        ? cleanedWords.slice(0, 6)
+        : fallbackTargetWords;
+    }, [
+      lostWordWords,
+      wordsLoading,
+    ]);
+
+  const grid =
+    useMemo<string[][]>(() => {
+      if (
+        targetWords ===
+        fallbackTargetWords
+      ) {
+        return fallbackGrid;
+      }
+
+      const rows = 8;
+      const cols = 8;
+
+      const fillerLetters = [
+        "ا",
+        "ب",
+        "ت",
+        "ث",
+        "ج",
+        "ح",
+        "د",
+        "ر",
+        "س",
+        "ش",
+        "ع",
+        "ف",
+        "ق",
+        "ك",
+        "ل",
+        "م",
+        "ن",
+        "ه",
+        "و",
+        "ي",
+      ];
+
+      const board =
+        Array.from(
+          { length: rows },
+          () =>
+            Array.from(
+              { length: cols },
+              () => ""
+            )
+        );
+
+      const directions: Array<
+        [number, number]
+      > = [
+        [0, 1],
+        [1, 0],
+        [1, 1],
+        [1, -1],
+      ];
+
+      /*
+       * مولّد أرقام حتمي يعتمد على كلمات الأسبوع.
+       * بهذه الطريقة لا نستخدم Math.random داخل useMemo،
+       * وتبقى الشبكة ثابتة لنفس مجموعة الكلمات.
+       */
+      const seedText =
+        targetWords.join("|");
+
+   function deterministicNumber(
+  key: string,
+  max: number
+) {
+  let hash = 2166136261;
+
+  for (
+    let index = 0;
+    index < key.length;
+    index++
+  ) {
+    hash =
+      Math.imul(
+        hash ^
+          key.charCodeAt(index),
+        16777619
+      );
+  }
+
+  const positiveHash =
+    hash >>> 0;
+
+  return max > 0
+    ? positiveHash % max
+    : 0;
+}
+
+      function canPlaceWord(
+        word: string,
+        row: number,
+        col: number,
+        rowStep: number,
+        colStep: number
+      ) {
+        const endRow =
+          row +
+          rowStep *
+            (word.length - 1);
+
+        const endCol =
+          col +
+          colStep *
+            (word.length - 1);
+
+        if (
+          endRow < 0 ||
+          endRow >= rows ||
+          endCol < 0 ||
+          endCol >= cols
+        ) {
+          return false;
+        }
+
+        for (
+          let index = 0;
+          index < word.length;
+          index++
+        ) {
+          const current =
+            board[
+              row +
+                rowStep * index
+            ][
+              col +
+                colStep * index
+            ];
+
+          if (
+            current &&
+            current !==
+              word[index]
+          ) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function placeWord(
+        word: string
+      ) {
+        for (
+          let attempt = 0;
+          attempt < 200;
+          attempt++
+        ) {
+          const [
+            rowStep,
+            colStep,
+          ] =
+            directions[
+              deterministicNumber(
+  `${seedText}-${word}-${attempt}-direction`,
+  directions.length
+
+              )
+            ];
+
+          const row =
+  deterministicNumber(
+    `${seedText}-${word}-${attempt}-row`,
+    rows
+  );
+
+const col =
+  deterministicNumber(
+    `${seedText}-${word}-${attempt}-col`,
+    cols
+  );;
+
+          if (
+            !canPlaceWord(
+              word,
+              row,
+              col,
+              rowStep,
+              colStep
+            )
+          ) {
+            continue;
+          }
+
+          for (
+            let index = 0;
+            index < word.length;
+            index++
+          ) {
+            board[
+              row +
+                rowStep * index
+            ][
+              col +
+                colStep * index
+            ] =
+              word[index];
+          }
+
+          return true;
+        }
+
+        return false;
+      }
+
+      for (
+        const word of targetWords
+      ) {
+        if (!placeWord(word)) {
+          return fallbackGrid;
+        }
+      }
+
+      for (
+        let row = 0;
+        row < rows;
+        row++
+      ) {
+        for (
+          let col = 0;
+          col < cols;
+          col++
+        ) {
+          if (!board[row][col]) {
+            board[row][col] =
+              fillerLetters[
+                deterministicNumber(
+  `${seedText}-${row}-${col}-filler`,
+  fillerLetters.length
+)
+              ];
+          }
+        }
+      }
+
+      return board;
+    }, [targetWords]);
+
   const [
     foundWords,
     setFoundWords,
