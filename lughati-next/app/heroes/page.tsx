@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
@@ -263,12 +263,12 @@ export default function HeroesPage() {
               </p>
             </div>
 
-    <a
-  href="/journey"
-  className="inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
+<Link
+  href="/"
+  className="inline-flex items-center justify-center rounded-2xl bg-emerald-..."
 >
-  ← العودة إلى رحلتي
-</a>
+  ← العودة إلى الرئيسية
+</Link>
           </div>
         </header>
 
