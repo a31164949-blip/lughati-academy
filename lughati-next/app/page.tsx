@@ -1031,47 +1031,70 @@ useEffect(() => {
           مباشر
         </span>
         </section>
-      {/* شريط بطل الأكاديمية */}
+{/* أبطال الأكاديمية في أسبوع */}
 
 <section
   style={{
     maxWidth: "1180px",
     margin: "14px auto",
-    padding: "11px 15px",
-    borderRadius: "18px",
+    padding: "14px 16px",
+    borderRadius: "20px",
     background:
-      "linear-gradient(135deg,#ffffff,#f7fff9)",
+      "linear-gradient(135deg,#ffffff 0%,#f6fff9 55%,#fffaf0 100%)",
     border: "1px solid #dcece4",
     boxShadow:
-      "0 6px 18px rgba(30,90,60,0.06)",
+      "0 8px 22px rgba(30,90,60,0.07)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "12px",
+    gap: "14px",
     flexWrap: "wrap",
+    position: "relative",
+    overflow: "hidden",
   }}
 >
+  <div
+    style={{
+      position: "absolute",
+      width: "120px",
+      height: "120px",
+      borderRadius: "50%",
+      background:
+        "rgba(255,214,64,.08)",
+      left: "-45px",
+      top: "-55px",
+      pointerEvents: "none",
+    }}
+  />
+
   {featuredHero ? (
     <>
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "11px",
+          gap: "13px",
           minWidth: 0,
+          position: "relative",
+          zIndex: 2,
         }}
       >
         <div
           style={{
-            width: "46px",
-            height: "46px",
-            borderRadius: "14px",
+            width: "54px",
+            height: "54px",
+            borderRadius: "17px",
             overflow: "hidden",
-            background: "#e8f8ef",
+            background:
+              "linear-gradient(135deg,#fff4c7,#e8f8ef)",
+            border:
+              "2px solid #f5d76e",
             display: "grid",
             placeItems: "center",
             flexShrink: 0,
-            fontSize: "25px",
+            fontSize: "28px",
+            boxShadow:
+              "0 6px 15px rgba(138,103,0,.10)",
           }}
         >
           {featuredHero.imageUrl ? (
@@ -1085,7 +1108,7 @@ useEffect(() => {
               }}
             />
           ) : (
-            "🌟"
+            "🏆"
           )}
         </div>
 
@@ -1104,35 +1127,35 @@ useEffect(() => {
           >
             <span
               style={{
-                color: "#8a6700",
-                fontSize: "12px",
+                color: "#176c46",
+                fontSize: "13px",
                 fontWeight: 900,
               }}
             >
-              🌟 بطل الأكاديمية
+              🏆 أبطال الأكاديمية في أسبوع
             </span>
 
             {featuredHero.badge && (
               <span
                 style={{
-                  padding: "3px 8px",
+                  padding: "4px 9px",
                   borderRadius: "999px",
-                  background: "#fff5c9",
+                  background: "#fff4c7",
                   color: "#8a6700",
                   fontSize: "11px",
                   fontWeight: 900,
                 }}
               >
-                {featuredHero.badge}
+                ✨ {featuredHero.badge}
               </span>
             )}
           </div>
 
           <div
             style={{
-              marginTop: "2px",
+              marginTop: "4px",
               display: "flex",
-              gap: "6px",
+              gap: "7px",
               alignItems: "center",
               flexWrap: "wrap",
               color: "#174c36",
@@ -1140,7 +1163,7 @@ useEffect(() => {
           >
             <strong
               style={{
-                fontSize: "16px",
+                fontSize: "17px",
                 fontWeight: 900,
               }}
             >
@@ -1149,7 +1172,7 @@ useEffect(() => {
 
             <span
               style={{
-                color: "#9aa9a1",
+                color: "#a9b5ae",
               }}
             >
               •
@@ -1166,7 +1189,7 @@ useEffect(() => {
 
             <span
               style={{
-                color: "#9aa9a1",
+                color: "#a9b5ae",
               }}
             >
               •
@@ -1174,13 +1197,24 @@ useEffect(() => {
 
             <span
               style={{
-                color: "#68776f",
+                color: "#7a6a25",
                 fontSize: "13px",
-                fontWeight: 800,
+                fontWeight: 900,
               }}
             >
               ⭐ {featuredHero.achievementsCount} إنجازًا
             </span>
+          </div>
+
+          <div
+            style={{
+              marginTop: "5px",
+              color: "#76867e",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+          >
+            ✨ نحتفي كل أسبوع بجهود أبطالنا وتقدمهم وإنجازاتهم
           </div>
         </div>
       </div>
@@ -1192,13 +1226,16 @@ useEffect(() => {
           color: "#14744d",
           fontWeight: 900,
           fontSize: "13px",
-          padding: "8px 12px",
-          borderRadius: "12px",
+          padding: "9px 13px",
+          borderRadius: "13px",
           background: "#eaf9f0",
+          border: "1px solid #d4ecdf",
           whiteSpace: "nowrap",
+          position: "relative",
+          zIndex: 2,
         }}
       >
-        شاهد الأبطال ←
+        اكتشف أبطال الأسبوع ←
       </Link>
     </>
   ) : (
@@ -1207,21 +1244,26 @@ useEffect(() => {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "10px",
+          gap: "12px",
+          position: "relative",
+          zIndex: 2,
         }}
       >
         <div
           style={{
-            width: "42px",
-            height: "42px",
-            borderRadius: "13px",
-            background: "#fff5c9",
+            width: "50px",
+            height: "50px",
+            borderRadius: "16px",
+            background:
+              "linear-gradient(135deg,#fff4c7,#fff9e6)",
             display: "grid",
             placeItems: "center",
-            fontSize: "23px",
+            fontSize: "27px",
+            border:
+              "1px solid #f5dfa0",
           }}
         >
-          🌟
+          🏆
         </div>
 
         <div>
@@ -1229,19 +1271,21 @@ useEffect(() => {
             style={{
               display: "block",
               color: "#176c46",
-              fontSize: "15px",
+              fontSize: "16px",
+              fontWeight: 900,
             }}
           >
-            أبطال أكاديمية لغتي
+            أبطال الأكاديمية في أسبوع
           </strong>
 
           <span
             style={{
               color: "#6f7f76",
               fontSize: "12px",
+              fontWeight: 700,
             }}
           >
-            قريبًا نحتفي هنا بإنجازات أبطالنا ✨
+            ✨ نحتفي كل أسبوع بجهود أبطالنا وتقدمهم وإنجازاتهم
           </span>
         </div>
       </div>
@@ -1253,6 +1297,8 @@ useEffect(() => {
           color: "#14744d",
           fontWeight: 900,
           fontSize: "13px",
+          position: "relative",
+          zIndex: 2,
         }}
       >
         اكتشف الأبطال ←
