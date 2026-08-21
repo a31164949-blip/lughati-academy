@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -17,6 +18,14 @@ type WeeklyGame = {
   background: string;
   available: boolean;
   audience: string;
+  leaderboardMode?: "time" | "wins";
+  competitionLabel?: string;
+};
+
+type GameScore = {
+  id: string;
+  playerName: string;
+  timeSeconds: number;
 };
 
 const weeklyGames: WeeklyGame[] = [
@@ -146,6 +155,22 @@ const weeklyGames: WeeklyGame[] = [
     available: false,
     audience: "للكبار والعائلة",
   },
+  {
+    id: "lughati-kingdom",
+    title: "مملكة لغتي",
+    shortTitle: "خطّط… تحرّك… وانتصر",
+    description:
+      "لعبة استراتيجية لغوية مستوحاة من الشطرنج؛ حرّك قطعك، واجتز تحديات لغتي، وحقق الانتصار.",
+    icon: "♟️",
+    href: "/games/lughati-kingdom",
+    skill: "استراتيجية • لغة • تفكير",
+    background:
+      "linear-gradient(135deg,#111827 0%,#312e81 52%,#7c3aed 100%)",
+    available: false,
+    audience: "للصغار والكبار والعائلة",
+    leaderboardMode: "wins",
+    competitionLabel: "🏆 خُض التحدي وسجّل انتصارك",
+  },
 ];
 
 export default function WeeklyGames() {
@@ -158,6 +183,115 @@ export default function WeeklyGames() {
     activeGame,
     setActiveGame,
   ] = useState("maze");
+
+  const [
+    scoreState,
+    setScoreState,
+  ] = useState<{
+    gameId: string;
+    scores: GameScore[];
+    error: boolean;
+  } | null>(null);
+
+  const activeGameData =
+    weeklyGames.find(
+      (game) =>
+        game.id === activeGame
+    ) ?? weeklyGames[0];
+
+  useEffect(() => {
+    const game =
+      weeklyGames.find(
+        (item) =>
+          item.id === activeGame
+      );
+
+    if (
+      !game ||
+      !game.available ||
+      game.leaderboardMode ===
+        "wins"
+    ) {
+      return;
+    }
+
+    const controller =
+      new AbortController();
+
+    async function loadScores() {
+      try {
+        const response =
+          await fetch(
+            `/api/game-scores?gameId=${encodeURIComponent(
+              game.id
+            )}`,
+            {
+              cache: "no-store",
+              signal:
+                controller.signal,
+            }
+          );
+
+        const data =
+          (await response.json()) as {
+            ok?: boolean;
+            scores?: GameScore[];
+          };
+
+        if (
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        setScoreState({
+          gameId: game.id,
+          scores:
+            response.ok &&
+            data.ok &&
+            Array.isArray(
+              data.scores
+            )
+              ? data.scores
+              : [],
+          error:
+            !response.ok ||
+            !data.ok,
+        });
+      } catch {
+        if (
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        setScoreState({
+          gameId: game.id,
+          scores: [],
+          error: true,
+        });
+      }
+    }
+
+    void loadScores();
+
+    return () => {
+      controller.abort();
+    };
+  }, [activeGame]);
+
+  const activeScores =
+    scoreState?.gameId ===
+    activeGame
+      ? scoreState.scores
+      : [];
+
+  const scoresLoading =
+    activeGameData.available &&
+    activeGameData.leaderboardMode !==
+      "wins" &&
+    scoreState?.gameId !==
+      activeGame;
 
   function scrollCards(
     direction:
@@ -295,8 +429,8 @@ export default function WeeklyGames() {
             }}
           >
             للصغار والكبار والعائلة…
-            اختر التحدي وحاول تسجيل
-            أسرع وقت.
+            اختر التحدي، سجّل وقتك أو
+            انتصارك، ونافس على الصدارة.
           </p>
         </div>
 
@@ -421,7 +555,10 @@ export default function WeeklyGames() {
                   fontSize: "16px",
                 }}
               >
-                أسرع المتحدّين
+                {activeGameData.leaderboardMode ===
+                "wins"
+                  ? "أبطال مملكة لغتي"
+                  : `أسرع المتحدّين — ${activeGameData.title}`}
               </strong>
 
               <span
@@ -434,26 +571,98 @@ export default function WeeklyGames() {
                   fontWeight: 700,
                 }}
               >
-                هل تستطيع كسر الرقم؟
-                👀
+                {activeGameData.leaderboardMode ===
+                "wins"
+                  ? "كم انتصارًا تستطيع تحقيقه؟ 👑"
+                  : "هل تستطيع كسر الرقم؟ 👀"}
               </span>
             </div>
           </div>
 
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent:
+                "center",
+              gap: "8px",
+              flexWrap: "wrap",
               padding: "9px 14px",
-              borderRadius: "999px",
+              borderRadius: "16px",
               background:
                 "rgba(255,255,255,.12)",
               border:
                 "1px solid rgba(255,255,255,.16)",
               fontSize: "13px",
               fontWeight: 900,
+              minHeight: "38px",
             }}
           >
-            🏆 كن أول من يسجل رقمًا
-            قياسيًا
+            {!activeGameData.available ? (
+              <span>
+                🔒 هذه المغامرة ستفتح
+                قريبًا
+              </span>
+            ) : activeGameData.leaderboardMode ===
+              "wins" ? (
+              <span>
+                👑 الانتصارات وسلسلة
+                الفوز ستظهر هنا
+              </span>
+            ) : scoresLoading ? (
+              <span>
+                ⏳ جارٍ تحميل أسرع
+                الأوقات...
+              </span>
+            ) : scoreState?.gameId ===
+                activeGame &&
+              scoreState.error ? (
+              <span>
+                ⚠️ تعذر تحميل لوحة
+                الأوقات الآن
+              </span>
+            ) : activeScores.length ===
+              0 ? (
+              <span>
+                🏆 كن أول من يسجل
+                رقمًا قياسيًا
+              </span>
+            ) : (
+              activeScores.map(
+                (score, index) => (
+                  <span
+                    key={score.id}
+                    style={{
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      gap: "5px",
+                      padding:
+                        "6px 9px",
+                      borderRadius:
+                        "999px",
+                      background:
+                        "rgba(255,255,255,.10)",
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    {index === 0
+                      ? "🥇"
+                      : index === 1
+                      ? "🥈"
+                      : "🥉"}{" "}
+                    {score.playerName}{" "}
+                    <strong>
+                      {formatTime(
+                        score.timeSeconds
+                      )}
+                    </strong>
+                  </span>
+                )
+              )
+            )}
           </div>
 
           <span
@@ -615,8 +824,8 @@ export default function WeeklyGames() {
                           "nowrap",
                       }}
                     >
-                      ⚡ خُض التحدي وسجّل
-                      وقتك
+                      {game.competitionLabel ??
+                        "⚡ خُض التحدي وسجّل وقتك"}
                     </span>
 
                     <span
@@ -812,6 +1021,30 @@ export default function WeeklyGames() {
       </div>
     </section>
   );
+}
+
+function formatTime(
+  totalSeconds: number
+) {
+  const minutes =
+    Math.floor(
+      totalSeconds / 60
+    );
+
+  const seconds =
+    totalSeconds % 60;
+
+  return `${String(
+    minutes
+  ).padStart(
+    2,
+    "0"
+  )}:${String(
+    seconds
+  ).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 const miniBadge:
