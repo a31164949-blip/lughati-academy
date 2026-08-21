@@ -17,8 +17,15 @@ import { db } from "../../../firebase";
 
 type GameId =
   | "maze"
+  | "crosswords"
   | "lost-word"
-  | "crosswords";
+  | "picture-story"
+  | "family-challenge"
+  | "detective"
+  | "thirty-seconds"
+  | "error-hunter"
+  | "genius"
+  | "lughati-kingdom";
 
 type GamesSettings = {
   weeklyGameId: GameId;
@@ -50,20 +57,15 @@ const GAME_OPTIONS: {
   title: string;
   icon: string;
   description: string;
+  audience: string;
 }[] = [
   {
     id: "maze",
-    title: "المتاهة",
+    title: "متاهة لغتي",
     icon: "🌀",
     description:
-      "متاحة دائمًا للطلاب، ويتم تحديث كلماتها أسبوعيًا.",
-  },
-  {
-    id: "lost-word",
-    title: "الكلمة الضائعة",
-    icon: "🔎",
-    description:
-      "تحدي البحث بين الحروف واكتشاف الكلمات بأسرع وقت.",
+      "تحدٍ تعليمي للقراءة والتركيز والمفردات، وتبقى متاحة دائمًا للطلاب.",
+    audience: "للجميع",
   },
   {
     id: "crosswords",
@@ -71,6 +73,71 @@ const GAME_OPTIONS: {
     icon: "✏️",
     description:
       "تحدي مفردات وإملاء وتفكير في شبكة الكلمات.",
+    audience: "للجميع",
+  },
+  {
+    id: "lost-word",
+    title: "الكلمة الضائعة",
+    icon: "🔎",
+    description:
+      "ابحث عن الكلمات المختبئة بين الحروف واكتشفها بأسرع وقت.",
+    audience: "للجميع",
+  },
+  {
+    id: "picture-story",
+    title: "ترتيب الصور",
+    icon: "🧩",
+    description:
+      "رتّب الصور بالتسلسل الصحيح واكتشف القصة.",
+    audience: "للصغار والعائلة",
+  },
+  {
+    id: "family-challenge",
+    title: "التحدي العائلي",
+    icon: "👨‍👩‍👧",
+    description:
+      "تحديات ممتعة تجمع الطفل وأسرته في منافسة سريعة.",
+    audience: "للعائلة",
+  },
+  {
+    id: "detective",
+    title: "المحقق",
+    icon: "🕵️‍♂️",
+    description:
+      "اقرأ الأدلة واربط التفاصيل واكتشف الحل.",
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "thirty-seconds",
+    title: "كلمة في 30 ثانية",
+    icon: "⏱️",
+    description:
+      "كوّن أكبر عدد من الكلمات الصحيحة قبل انتهاء الوقت.",
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "error-hunter",
+    title: "صائد الأخطاء",
+    icon: "🎯",
+    description:
+      "اكتشف الأخطاء المخفية وصححها بأسرع وقت.",
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "genius",
+    title: "تحدي العباقرة",
+    icon: "🧠",
+    description:
+      "أسئلة متدرجة تختبر المعرفة واللغة وسرعة التفكير.",
+    audience: "للكبار والعائلة",
+  },
+  {
+    id: "lughati-kingdom",
+    title: "مملكة لغتي",
+    icon: "♟️",
+    description:
+      "لعبة استراتيجية لغوية مستوحاة من الشطرنج.",
+    audience: "للصغار والكبار والعائلة",
   },
 ];
 
@@ -79,6 +146,14 @@ function getGameInfo(id: GameId) {
     GAME_OPTIONS.find(
       (item) => item.id === id
     ) ?? GAME_OPTIONS[0]
+  );
+}
+
+function isGameId(
+  value: unknown
+): value is GameId {
+  return GAME_OPTIONS.some(
+    (game) => game.id === value
   );
 }
 
@@ -150,13 +225,6 @@ export default function TeacherGamesPage() {
 
         const data =
           snapshot.data();
-
-        const isGameId = (
-          value: unknown
-        ): value is GameId =>
-          value === "maze" ||
-          value === "lost-word" ||
-          value === "crosswords";
 
         setSettings({
           weeklyGameId:
@@ -325,8 +393,8 @@ export default function TeacherGamesPage() {
               </h1>
 
               <p className="mt-3 max-w-3xl leading-8 text-white/90">
-                حدّد لعبة الأسبوع، تحدي العائلة، وكلمات الألعاب
-                من مكان واحد دون تعديل ملفات البرمجة كل أسبوع.
+                تحكم في الألعاب العشر من مكان واحد، وحدد لعبة الأسبوع
+                وتحدي العائلة دون تعديل الكود كل أسبوع.
               </p>
             </div>
 
@@ -396,7 +464,8 @@ export default function TeacherGamesPage() {
                     value={game.id}
                   >
                     {game.icon}{" "}
-                    {game.title}
+                    {game.title} —{" "}
+                    {game.audience}
                   </option>
                 )
               )}
@@ -432,7 +501,8 @@ export default function TeacherGamesPage() {
                     value={game.id}
                   >
                     {game.icon}{" "}
-                    {game.title}
+                    {game.title} —{" "}
+                    {game.audience}
                   </option>
                 )
               )}
@@ -442,6 +512,45 @@ export default function TeacherGamesPage() {
               {familyGame.description}
             </p>
           </article>
+        </section>
+
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-2xl font-black text-slate-800">
+              🎬 مكتبة ألعاب الأكاديمية
+            </h2>
+
+            <p className="mt-2 text-slate-500">
+              جميع الألعاب الظاهرة في ساحة التحديات موجودة الآن داخل لوحة الإدارة.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {GAME_OPTIONS.map(
+              (game) => (
+                <article
+                  key={game.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="text-3xl">
+                    {game.icon}
+                  </div>
+
+                  <h3 className="mt-2 font-black text-slate-800">
+                    {game.title}
+                  </h3>
+
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    {game.audience}
+                  </p>
+
+                  <p className="mt-2 text-sm leading-7 text-slate-600">
+                    {game.description}
+                  </p>
+                </article>
+              )
+            )}
+          </div>
         </section>
 
         <section className="mb-6 grid gap-4 md:grid-cols-2">
@@ -481,8 +590,8 @@ export default function TeacherGamesPage() {
             </h2>
 
             <p className="mt-2 leading-7 text-slate-500">
-              اكتب الكلمات مفصولة بفاصلة أو كل كلمة في سطر.
-              سنربط كل لعبة بهذه البيانات في الخطوة التالية.
+              هذه الحقول مرتبطة حاليًا بالألعاب الثلاث الأولى،
+              وسنضيف محررات خاصة لبقية الألعاب عندما ننفذ محتواها.
             </p>
           </div>
 
