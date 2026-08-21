@@ -3,12 +3,20 @@
 import Link from "next/link";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
+import {
+  doc,
+  getDoc,
+} from "firebase/firestore";
+
+import { db } from "../../firebase";
+
 type WeeklyGame = {
-  id: string;
+  id: GameId;
   title: string;
   shortTitle: string;
   description: string;
@@ -28,7 +36,60 @@ type GameScore = {
   timeSeconds: number;
 };
 
-const weeklyGames: WeeklyGame[] = [
+type GameId =
+  | "maze"
+  | "crosswords"
+  | "lost-word"
+  | "picture-story"
+  | "family-challenge"
+  | "detective"
+  | "thirty-seconds"
+  | "error-hunter"
+  | "genius"
+  | "lughati-kingdom";
+
+type WeeklyGamesSettings = {
+  weeklyGameId: GameId;
+  familyGameId: GameId;
+  mazeAlwaysOpen: boolean;
+  familyChallengeEnabled: boolean;
+};
+
+const DEFAULT_GAME_SETTINGS: WeeklyGamesSettings = {
+  weeklyGameId: "lost-word",
+  familyGameId: "crosswords",
+  mazeAlwaysOpen: true,
+  familyChallengeEnabled: true,
+};
+
+function isGameId(
+  value: unknown
+): value is GameId {
+  return (
+    value === "maze" ||
+    value === "crosswords" ||
+    value === "lost-word" ||
+    value === "picture-story" ||
+    value === "family-challenge" ||
+    value === "detective" ||
+    value === "thirty-seconds" ||
+    value === "error-hunter" ||
+    value === "genius" ||
+    value === "lughati-kingdom"
+  );
+}
+
+function getRiyadhWeekday() {
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      weekday: "short",
+      timeZone: "Asia/Riyadh",
+    }
+  ).format(new Date());
+}
+
+const baseWeeklyGames: WeeklyGame[] = [
   {
     id: "maze",
     title: "متاهة لغتي",
@@ -180,15 +241,140 @@ export default function WeeklyGames() {
     );
 
   const [
+    gameSettings,
+    setGameSettings,
+  ] =
+    useState<WeeklyGamesSettings>(
+      DEFAULT_GAME_SETTINGS
+    );
+
+  const [
+    settingsLoading,
+    setSettingsLoading,
+  ] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadGameSettings() {
+      try {
+        const snapshot =
+          await getDoc(
+            doc(
+              db,
+              "gameSettings",
+              "weekly"
+            )
+          );
+
+        if (
+          !active ||
+          !snapshot.exists()
+        ) {
+          return;
+        }
+
+        const data =
+          snapshot.data();
+
+        setGameSettings({
+          weeklyGameId:
+            isGameId(
+              data.weeklyGameId
+            )
+              ? data.weeklyGameId
+              : DEFAULT_GAME_SETTINGS.weeklyGameId,
+
+          familyGameId:
+            isGameId(
+              data.familyGameId
+            )
+              ? data.familyGameId
+              : DEFAULT_GAME_SETTINGS.familyGameId,
+
+          mazeAlwaysOpen:
+            typeof data.mazeAlwaysOpen ===
+            "boolean"
+              ? data.mazeAlwaysOpen
+              : true,
+
+          familyChallengeEnabled:
+            typeof data.familyChallengeEnabled ===
+            "boolean"
+              ? data.familyChallengeEnabled
+              : true,
+        });
+      } catch (error) {
+        console.error(
+          "تعذر تحميل إعدادات ساحة التحديات:",
+          error
+        );
+      } finally {
+        if (active) {
+          setSettingsLoading(false);
+        }
+      }
+    }
+
+    void loadGameSettings();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const riyadhWeekday =
+    getRiyadhWeekday();
+
+  const isFamilyDay =
+    riyadhWeekday === "Thu" ||
+    riyadhWeekday === "Fri";
+
+  const weeklyGames =
+    useMemo(
+      () =>
+        baseWeeklyGames.map(
+          (game) => {
+            const mazeOpen =
+              game.id === "maze" &&
+              gameSettings.mazeAlwaysOpen;
+
+            const weeklyOpen =
+              !isFamilyDay &&
+              game.id ===
+                gameSettings.weeklyGameId;
+
+            const familyOpen =
+              isFamilyDay &&
+              gameSettings.familyChallengeEnabled &&
+              game.id ===
+                gameSettings.familyGameId;
+
+            return {
+              ...game,
+              available:
+                mazeOpen ||
+                weeklyOpen ||
+                familyOpen,
+            };
+          }
+        ),
+      [
+        gameSettings,
+        isFamilyDay,
+      ]
+    );
+
+  const [
     activeGame,
     setActiveGame,
-  ] = useState("maze");
+  ] = useState<GameId>("maze");
 
   const [
     scoreState,
     setScoreState,
   ] = useState<{
-    gameId: string;
+    gameId: GameId;
     scores: GameScore[];
     error: boolean;
   } | null>(null);
@@ -198,6 +384,55 @@ export default function WeeklyGames() {
       (game) =>
         game.id === activeGame
     ) ?? weeklyGames[0];
+
+  function getAvailabilityLabel(
+    game: WeeklyGame
+  ) {
+    if (game.available) {
+      if (
+        game.id === "maze" &&
+        gameSettings.mazeAlwaysOpen
+      ) {
+        return "🟢 متاحة دائمًا";
+      }
+
+      if (
+        isFamilyDay &&
+        game.id ===
+          gameSettings.familyGameId
+      ) {
+        return "👨‍👩‍👧‍👦 تحدي العائلة الآن";
+      }
+
+      if (
+        !isFamilyDay &&
+        game.id ===
+          gameSettings.weeklyGameId
+      ) {
+        return "⚡ لعبة هذا الأسبوع";
+      }
+
+      return "🟢 متاحة الآن";
+    }
+
+    if (
+      isFamilyDay &&
+      game.id ===
+        gameSettings.weeklyGameId
+    ) {
+      return "🔒 تعود بعد تحدي العائلة";
+    }
+
+    if (
+      !isFamilyDay &&
+      game.id ===
+        gameSettings.familyGameId
+    ) {
+      return "🔒 تحدي الخميس والجمعة";
+    }
+
+    return "🔒 مغلقة هذا الأسبوع";
+  }
 
   useEffect(() => {
     const game =
@@ -279,7 +514,7 @@ export default function WeeklyGames() {
     return () => {
       controller.abort();
     };
-  }, [activeGame]);
+  }, [activeGame, weeklyGames]);
 
   const activeScores =
     scoreState?.gameId ===
@@ -433,6 +668,60 @@ export default function WeeklyGames() {
             اختر التحدي، سجّل وقتك أو
             انتصارك، ونافس على الصدارة.
           </p>
+
+          <div
+            style={{
+              marginTop: "8px",
+              display: "flex",
+              gap: "7px",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <span
+              style={{
+                padding: "6px 9px",
+                borderRadius: "999px",
+                background: "#eef8f3",
+                color: "#176d4c",
+                fontSize: "11px",
+                fontWeight: 900,
+              }}
+            >
+              🌀 المتاهة متاحة دائمًا
+            </span>
+
+            <span
+              style={{
+                padding: "6px 9px",
+                borderRadius: "999px",
+                background: isFamilyDay
+                  ? "#fff4dc"
+                  : "#eef2ff",
+                color: isFamilyDay
+                  ? "#a45d00"
+                  : "#4338ca",
+                fontSize: "11px",
+                fontWeight: 900,
+              }}
+            >
+              {isFamilyDay
+                ? "👨‍👩‍👧‍👦 الخميس والجمعة: تحدي العائلة"
+                : "⚡ لعبة الأسبوع مفتوحة"}
+            </span>
+
+            {settingsLoading && (
+              <span
+                style={{
+                  color: "#718078",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                }}
+              >
+                ⏳ تحديث حالة الألعاب...
+              </span>
+            )}
+          </div>
         </div>
 
         <div
@@ -601,8 +890,8 @@ export default function WeeklyGames() {
           >
             {!activeGameData.available ? (
               <span>
-                🔒 هذه المغامرة ستفتح
-                قريبًا
+                🔒 هذه المغامرة مغلقة
+                هذا الأسبوع
               </span>
             ) : activeGameData.leaderboardMode ===
               "wins" ? (
@@ -943,9 +1232,9 @@ export default function WeeklyGames() {
                           opacity: 0.86,
                         }}
                       >
-                        {game.available
-                          ? "🟢 متاحة الآن"
-                          : "🔒 قريبًا"}
+                        {getAvailabilityLabel(
+                          game
+                        )}
                       </span>
 
                       <span
@@ -970,7 +1259,7 @@ export default function WeeklyGames() {
                       >
                         {game.available
                           ? "ابدأ 🎮"
-                          : "قريبًا"}
+                          : "مغلقة"}
                       </span>
                     </div>
                   </div>
