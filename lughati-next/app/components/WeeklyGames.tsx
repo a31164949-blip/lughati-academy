@@ -329,7 +329,9 @@ export default function WeeklyGames() {
   const isFamilyDay =
     riyadhWeekday === "Thu" ||
     riyadhWeekday === "Fri";
-
+const familyModeActive =
+  isFamilyDay &&
+  gameSettings.familyChallengeEnabled;
   const weeklyGames =
     useMemo(
       () =>
@@ -340,15 +342,14 @@ export default function WeeklyGames() {
               gameSettings.mazeAlwaysOpen;
 
             const weeklyOpen =
-              !isFamilyDay &&
-              game.id ===
-                gameSettings.weeklyGameId;
+  !familyModeActive &&
+  game.id ===
+    gameSettings.weeklyGameId;
 
-            const familyOpen =
-              isFamilyDay &&
-              gameSettings.familyChallengeEnabled &&
-              game.id ===
-                gameSettings.familyGameId;
+const familyOpen =
+  familyModeActive &&
+  game.id ===
+    gameSettings.familyGameId;
 
             return {
               ...game,
@@ -361,7 +362,7 @@ export default function WeeklyGames() {
         ),
       [
         gameSettings,
-        isFamilyDay,
+        familyModeActive,
       ]
     );
 
