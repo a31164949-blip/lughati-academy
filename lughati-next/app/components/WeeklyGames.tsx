@@ -214,6 +214,7 @@ export default function WeeklyGames() {
     ) {
       return;
     }
+    const gameId = game.id;
 
     const controller =
       new AbortController();
@@ -223,7 +224,7 @@ export default function WeeklyGames() {
         const response =
           await fetch(
             `/api/game-scores?gameId=${encodeURIComponent(
-              game.id
+              gameId
             )}`,
             {
               cache: "no-store",
@@ -245,7 +246,7 @@ export default function WeeklyGames() {
         }
 
         setScoreState({
-          gameId: game.id,
+          gameId,
           scores:
             response.ok &&
             data.ok &&
@@ -266,7 +267,7 @@ export default function WeeklyGames() {
         }
 
         setScoreState({
-          gameId: game.id,
+          gameId,
           scores: [],
           error: true,
         });
