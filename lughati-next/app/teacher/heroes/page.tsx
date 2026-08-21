@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   collection,
   doc,
@@ -8,16 +13,24 @@ import {
   getDocs,
   serverTimestamp,
   setDoc,
+  writeBatch,
 } from "firebase/firestore";
+
 import { db } from "../../../firebase";
 
-type HeroCategory =
+type WeeklyHeroTrack =
+  | "achievement"
+  | "progress"
+  | "commitment";
+
+type LegacyHeroCategory =
   | "reading"
   | "spelling"
   | "progress"
   | "commitment"
   | "creativity"
-  | "notebook";
+  | "notebook"
+  | "achievement";
 
 type StudentOption = {
   id: string;
@@ -31,7 +44,10 @@ type SavedHero = {
   studentId: string;
   studentFirstName: string;
   classroom: string;
-  category: HeroCategory;
+  category: LegacyHeroCategory;
+  weeklyTrack: WeeklyHeroTrack;
+  weekKey: string;
+  weekLabel: string;
   title: string;
   badge: string;
   imageUrl: string;
@@ -42,60 +58,69 @@ type SavedHero = {
   published: boolean;
 };
 
-const categoryOptions: {
-  key: HeroCategory;
+const weeklyTrackOptions: {
+  key: WeeklyHeroTrack;
   label: string;
   icon: string;
+  defaultTitle: string;
+  defaultBadge: string;
+  description: string;
 }[] = [
   {
-    key: "reading",
-    label: "ملك القراءة",
-    icon: "📖",
-  },
-  {
-    key: "spelling",
-    label: "ملك الإملاء",
-    icon: "✍️",
+    key: "achievement",
+    label: "الأكثر إنجازًا",
+    icon: "🥇",
+    defaultTitle: "بطل الإنجاز",
+    defaultBadge: "الأكثر إنجازًا هذا الأسبوع",
+    description:
+      "للطالب الذي حقق إنجازات ونقاطًا مميزة خلال الأسبوع.",
   },
   {
     key: "progress",
     label: "الأكثر تطورًا",
     icon: "🌱",
+    defaultTitle: "بطل التطور",
+    defaultBadge: "الأكثر تطورًا هذا الأسبوع",
+    description:
+      "للطالب الذي أظهر تحسنًا واضحًا مقارنة بمستواه السابق.",
   },
   {
     key: "commitment",
     label: "الأكثر التزامًا",
-    icon: "🔥",
-  },
-  {
-    key: "creativity",
-    label: "المبدع",
-    icon: "🎨",
-  },
-  {
-    key: "notebook",
-    label: "دفتر أنيق",
-    icon: "✨",
+    icon: "⭐",
+    defaultTitle: "بطل الالتزام",
+    defaultBadge: "الأكثر التزامًا هذا الأسبوع",
+    description:
+      "للطالب الأكثر مواظبة على التعلم والقراءة والواجبات.",
   },
 ];
 
-function firstNameOnly(fullName: string) {
-  const trimmed = fullName.trim();
+function firstNameOnly(
+  fullName: string
+) {
+  const trimmed =
+    fullName.trim();
 
   if (!trimmed) {
     return "بطل الأكاديمية";
   }
 
-  return trimmed.split(/\s+/)[0] || trimmed;
+  return (
+    trimmed.split(/\s+/)[0] ||
+    trimmed
+  );
 }
 
-function getHeroCategory(value: unknown): HeroCategory {
+function getLegacyCategory(
+  value: unknown
+): LegacyHeroCategory {
   if (
     value === "spelling" ||
     value === "progress" ||
     value === "commitment" ||
     value === "creativity" ||
-    value === "notebook"
+    value === "notebook" ||
+    value === "achievement"
   ) {
     return value;
   }
@@ -103,122 +128,369 @@ function getHeroCategory(value: unknown): HeroCategory {
   return "reading";
 }
 
+function getWeeklyTrack(
+  value: unknown,
+  legacyCategory?: unknown
+): WeeklyHeroTrack {
+  if (
+    value === "achievement" ||
+    value === "progress" ||
+    value === "commitment"
+  ) {
+    return value;
+  }
+
+  if (
+    legacyCategory === "progress"
+  ) {
+    return "progress";
+  }
+
+  if (
+    legacyCategory ===
+    "commitment"
+  ) {
+    return "commitment";
+  }
+
+  return "achievement";
+}
+
+function getRiyadhDateParts() {
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "short",
+        timeZone: "Asia/Riyadh",
+      }
+    ).formatToParts(
+      new Date()
+    );
+
+  const get = (
+    type: Intl.DateTimeFormatPartTypes
+  ) =>
+    parts.find(
+      (part) =>
+        part.type === type
+    )?.value ?? "";
+
+  return {
+    year:
+      Number(get("year")),
+    month:
+      Number(get("month")),
+    day:
+      Number(get("day")),
+    weekday:
+      get("weekday"),
+  };
+}
+
+function getCurrentWeekInfo() {
+  const riyadh =
+    getRiyadhDateParts();
+
+  const weekdayIndex:
+    Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+
+  const currentIndex =
+    weekdayIndex[
+      riyadh.weekday
+    ] ?? 0;
+
+  const currentUtc =
+    new Date(
+      Date.UTC(
+        riyadh.year,
+        riyadh.month - 1,
+        riyadh.day
+      )
+    );
+
+  const start =
+    new Date(currentUtc);
+
+  start.setUTCDate(
+    currentUtc.getUTCDate() -
+      currentIndex
+  );
+
+  const end =
+    new Date(start);
+
+  end.setUTCDate(
+    start.getUTCDate() + 6
+  );
+
+  const ymd = (
+    date: Date
+  ) =>
+    [
+      date.getUTCFullYear(),
+      String(
+        date.getUTCMonth() + 1
+      ).padStart(2, "0"),
+      String(
+        date.getUTCDate()
+      ).padStart(2, "0"),
+    ].join("-");
+
+  const arabicFormatter =
+    new Intl.DateTimeFormat(
+      "ar-SA",
+      {
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+      }
+    );
+
+  return {
+    key: ymd(start),
+    label: `${arabicFormatter.format(
+      start
+    )} — ${arabicFormatter.format(
+      end
+    )}`,
+  };
+}
+
 export default function TeacherHeroesPage() {
-  const [students, setStudents] =
-    useState<StudentOption[]>([]);
+  const currentWeek =
+    useMemo(
+      () =>
+        getCurrentWeekInfo(),
+      []
+    );
 
-  const [savedHeroes, setSavedHeroes] =
-    useState<SavedHero[]>([]);
+  const [
+    students,
+    setStudents,
+  ] =
+    useState<StudentOption[]>(
+      []
+    );
 
-  const [selectedStudentId, setSelectedStudentId] =
-    useState("");
+  const [
+    savedHeroes,
+    setSavedHeroes,
+  ] =
+    useState<SavedHero[]>(
+      []
+    );
 
-  const [category, setCategory] =
-    useState<HeroCategory>("reading");
+  const [
+    selectedStudentId,
+    setSelectedStudentId,
+  ] = useState("");
 
-  const [customTitle, setCustomTitle] =
-    useState("ملك القراءة");
+  const [
+    weeklyTrack,
+    setWeeklyTrack,
+  ] =
+    useState<WeeklyHeroTrack>(
+      "achievement"
+    );
 
-  const [badge, setBadge] =
-    useState("");
+  const [
+    customTitle,
+    setCustomTitle,
+  ] =
+    useState(
+      "بطل الإنجاز"
+    );
 
-  const [imageUrl, setImageUrl] =
-    useState("");
+  const [
+    badge,
+    setBadge,
+  ] =
+    useState(
+      "الأكثر إنجازًا هذا الأسبوع"
+    );
 
-  const [achievementsCount, setAchievementsCount] =
-    useState(0);
+  const [
+    imageUrl,
+    setImageUrl,
+  ] = useState("");
 
-  const [readingCount, setReadingCount] =
-    useState(0);
+  const [
+    achievementsCount,
+    setAchievementsCount,
+  ] = useState(0);
 
-  const [spellingCount, setSpellingCount] =
-    useState(0);
+  const [
+    readingCount,
+    setReadingCount,
+  ] = useState(0);
 
-  const [published, setPublished] =
-    useState(false);
+  const [
+    spellingCount,
+    setSpellingCount,
+  ] = useState(0);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [
+    published,
+    setPublished,
+  ] = useState(false);
 
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const [statusMessage, setStatusMessage] =
-    useState("");
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  const [
+    statusMessage,
+    setStatusMessage,
+  ] = useState("");
 
   async function loadSavedHeroes() {
-    const heroesSnapshot = await getDocs(
-      collection(db, "academyHeroes")
+    const heroesSnapshot =
+      await getDocs(
+        collection(
+          db,
+          "academyHeroes"
+        )
+      );
+
+    const loadedHeroes:
+      SavedHero[] =
+      heroesSnapshot.docs.map(
+        (heroDoc) => {
+          const data =
+            heroDoc.data();
+
+          const category =
+            getLegacyCategory(
+              data.category
+            );
+
+          return {
+            id:
+              heroDoc.id,
+
+            studentId:
+              typeof data.studentId ===
+              "string"
+                ? data.studentId
+                : "",
+
+            studentFirstName:
+              typeof data.studentFirstName ===
+              "string"
+                ? data.studentFirstName
+                : "بطل الأكاديمية",
+
+            classroom:
+              typeof data.classroom ===
+              "string"
+                ? data.classroom
+                : "",
+
+            category,
+
+            weeklyTrack:
+              getWeeklyTrack(
+                data.weeklyTrack,
+                data.category
+              ),
+
+            weekKey:
+              typeof data.weekKey ===
+              "string"
+                ? data.weekKey
+                : "",
+
+            weekLabel:
+              typeof data.weekLabel ===
+              "string"
+                ? data.weekLabel
+                : "",
+
+            title:
+              typeof data.title ===
+              "string"
+                ? data.title
+                : "بطل الأكاديمية",
+
+            badge:
+              typeof data.badge ===
+              "string"
+                ? data.badge
+                : "",
+
+            imageUrl:
+              typeof data.imageUrl ===
+              "string"
+                ? data.imageUrl
+                : "",
+
+            achievementsCount:
+              typeof data.achievementsCount ===
+              "number"
+                ? data.achievementsCount
+                : 0,
+
+            readingCount:
+              typeof data.readingCount ===
+              "number"
+                ? data.readingCount
+                : 0,
+
+            spellingCount:
+              typeof data.spellingCount ===
+              "number"
+                ? data.spellingCount
+                : 0,
+
+            photoConsent:
+              data.photoConsent ===
+              true,
+
+            published:
+              data.published ===
+              true,
+          };
+        }
+      );
+
+    loadedHeroes.sort(
+      (a, b) => {
+        if (
+          a.weekKey !==
+          b.weekKey
+        ) {
+          return b.weekKey.localeCompare(
+            a.weekKey
+          );
+        }
+
+        return a.weeklyTrack.localeCompare(
+          b.weeklyTrack
+        );
+      }
     );
 
-    const loadedHeroes: SavedHero[] =
-      heroesSnapshot.docs.map((heroDoc) => {
-        const data = heroDoc.data();
-
-        return {
-          id: heroDoc.id,
-
-          studentId:
-            typeof data.studentId === "string"
-              ? data.studentId
-              : "",
-
-          studentFirstName:
-            typeof data.studentFirstName === "string"
-              ? data.studentFirstName
-              : "بطل الأكاديمية",
-
-          classroom:
-            typeof data.classroom === "string"
-              ? data.classroom
-              : "",
-
-          category:
-            getHeroCategory(data.category),
-
-          title:
-            typeof data.title === "string"
-              ? data.title
-              : "بطل الأكاديمية",
-
-          badge:
-            typeof data.badge === "string"
-              ? data.badge
-              : "",
-
-          imageUrl:
-            typeof data.imageUrl === "string"
-              ? data.imageUrl
-              : "",
-
-          achievementsCount:
-            typeof data.achievementsCount === "number"
-              ? data.achievementsCount
-              : 0,
-
-          readingCount:
-            typeof data.readingCount === "number"
-              ? data.readingCount
-              : 0,
-
-          spellingCount:
-            typeof data.spellingCount === "number"
-              ? data.spellingCount
-              : 0,
-
-          photoConsent:
-            data.photoConsent === true,
-
-          published:
-            data.published === true,
-        };
-      });
-
-    loadedHeroes.sort((a, b) =>
-      a.studentId.localeCompare(b.studentId)
+    setSavedHeroes(
+      loadedHeroes
     );
-
-    setSavedHeroes(loadedHeroes);
   }
 
   useEffect(() => {
@@ -227,28 +499,41 @@ export default function TeacherHeroesPage() {
         setIsLoading(true);
         setStatusMessage("");
 
-        const studentsSnapshot = await getDocs(
-          collection(db, "students")
-        );
+        const studentsSnapshot =
+          await getDocs(
+            collection(
+              db,
+              "students"
+            )
+          );
 
-        const loadedStudents: StudentOption[] = [];
+        const loadedStudents:
+          StudentOption[] = [];
 
-        for (const studentDoc of studentsSnapshot.docs) {
-          const data = studentDoc.data();
+        for (
+          const studentDoc of
+          studentsSnapshot.docs
+        ) {
+          const data =
+            studentDoc.data();
 
           const name =
-            typeof data.studentName === "string"
+            typeof data.studentName ===
+            "string"
               ? data.studentName
-              : typeof data.name === "string"
-                ? data.name
-                : studentDoc.id;
+              : typeof data.name ===
+                "string"
+              ? data.name
+              : studentDoc.id;
 
           const classroom =
-            typeof data.classroom === "string"
+            typeof data.classroom ===
+            "string"
               ? data.classroom
               : "";
 
-          let photoConsent = false;
+          let photoConsent =
+            false;
 
           try {
             const caseStudySnapshot =
@@ -260,14 +545,19 @@ export default function TeacherHeroesPage() {
                 )
               );
 
-            if (caseStudySnapshot.exists()) {
+            if (
+              caseStudySnapshot.exists()
+            ) {
               const caseStudyData =
                 caseStudySnapshot.data();
 
               photoConsent =
-                caseStudyData.photoConsent === true ||
-                caseStudyData.photoConsent === "نعم" ||
-                caseStudyData.photoConsent === "yes";
+                caseStudyData.photoConsent ===
+                  true ||
+                caseStudyData.photoConsent ===
+                  "نعم" ||
+                caseStudyData.photoConsent ===
+                  "yes";
             }
           } catch (error) {
             console.error(
@@ -277,18 +567,25 @@ export default function TeacherHeroesPage() {
           }
 
           loadedStudents.push({
-            id: studentDoc.id,
+            id:
+              studentDoc.id,
             name,
             classroom,
             photoConsent,
           });
         }
 
-        loadedStudents.sort((a, b) =>
-          a.id.localeCompare(b.id)
+        loadedStudents.sort(
+          (a, b) =>
+            a.name.localeCompare(
+              b.name,
+              "ar"
+            )
         );
 
-        setStudents(loadedStudents);
+        setStudents(
+          loadedStudents
+        );
 
         await loadSavedHeroes();
       } catch (error) {
@@ -298,7 +595,7 @@ export default function TeacherHeroesPage() {
         );
 
         setStatusMessage(
-          "تعذر تحميل بعض بيانات لوحة الأبطال."
+          "❌ تعذر تحميل بعض بيانات لوحة الأبطال."
         );
       } finally {
         setIsLoading(false);
@@ -308,47 +605,93 @@ export default function TeacherHeroesPage() {
     void loadPageData();
   }, []);
 
-  const selectedStudent = useMemo(
-    () =>
-      students.find(
-        (student) =>
-          student.id === selectedStudentId
-      ) ?? null,
-    [students, selectedStudentId]
-  );
+  const selectedStudent =
+    useMemo(
+      () =>
+        students.find(
+          (student) =>
+            student.id ===
+            selectedStudentId
+        ) ?? null,
+      [
+        students,
+        selectedStudentId,
+      ]
+    );
 
-  const selectedCategory =
-    categoryOptions.find(
-      (item) => item.key === category
-    ) ?? categoryOptions[0];
+  const selectedTrackInfo =
+    weeklyTrackOptions.find(
+      (item) =>
+        item.key ===
+        weeklyTrack
+    ) ??
+    weeklyTrackOptions[0];
+
+  const currentWeekHeroes =
+    useMemo(
+      () =>
+        savedHeroes.filter(
+          (hero) =>
+            hero.weekKey ===
+            currentWeek.key
+        ),
+      [
+        savedHeroes,
+        currentWeek.key,
+      ]
+    );
 
   function resetForm() {
     setSelectedStudentId("");
-    setCategory("reading");
-    setCustomTitle("ملك القراءة");
-    setBadge("");
+    setWeeklyTrack(
+      "achievement"
+    );
+    setCustomTitle(
+      "بطل الإنجاز"
+    );
+    setBadge(
+      "الأكثر إنجازًا هذا الأسبوع"
+    );
     setImageUrl("");
-    setAchievementsCount(0);
+    setAchievementsCount(
+      0
+    );
     setReadingCount(0);
     setSpellingCount(0);
     setPublished(false);
   }
 
-  function handleEditHero(hero: SavedHero) {
-    setSelectedStudentId(hero.studentId);
-    setCategory(hero.category);
-    setCustomTitle(hero.title);
+  function handleEditHero(
+    hero: SavedHero
+  ) {
+    setSelectedStudentId(
+      hero.studentId
+    );
+    setWeeklyTrack(
+      hero.weeklyTrack
+    );
+    setCustomTitle(
+      hero.title
+    );
     setBadge(hero.badge);
-    setImageUrl(hero.imageUrl);
+    setImageUrl(
+      hero.imageUrl
+    );
     setAchievementsCount(
       hero.achievementsCount
     );
-    setReadingCount(hero.readingCount);
-    setSpellingCount(hero.spellingCount);
-    setPublished(hero.published);
+    setReadingCount(
+      hero.readingCount
+    );
+    setSpellingCount(
+      hero.spellingCount
+    );
+    setPublished(
+      hero.published
+    );
 
     setStatusMessage(
-      `✏️ أنت الآن تعدّل بطل: ${hero.studentFirstName} — ${hero.title}`
+      `✏️ أنت الآن تعدّل: ${hero.studentFirstName} — ${hero.title}`
     );
 
     window.scrollTo({
@@ -357,10 +700,59 @@ export default function TeacherHeroesPage() {
     });
   }
 
+  async function unpublishOlderWeeks() {
+    const snapshot =
+      await getDocs(
+        collection(
+          db,
+          "academyHeroes"
+        )
+      );
+
+    const batch =
+      writeBatch(db);
+
+    let hasChanges =
+      false;
+
+    snapshot.docs.forEach(
+      (heroDoc) => {
+        const data =
+          heroDoc.data();
+
+        if (
+          data.published ===
+            true &&
+          data.weekKey !==
+            currentWeek.key
+        ) {
+          batch.set(
+            heroDoc.ref,
+            {
+              published: false,
+              updatedAt:
+                serverTimestamp(),
+            },
+            {
+              merge: true,
+            }
+          );
+
+          hasChanges =
+            true;
+        }
+      }
+    );
+
+    if (hasChanges) {
+      await batch.commit();
+    }
+  }
+
   async function handleSave() {
     if (!selectedStudent) {
       setStatusMessage(
-        "اختر الطالب أولًا."
+        "⚠️ اختر الطالب أولًا."
       );
       return;
     }
@@ -370,7 +762,7 @@ export default function TeacherHeroesPage() {
       !selectedStudent.photoConsent
     ) {
       setStatusMessage(
-        "لا يمكن نشر صورة هذا الطالب للزوار لأن موافقة الأسرة على النشر غير موجودة."
+        "⚠️ لا يمكن نشر هذا الطالب للزوار لأن موافقة الأسرة على النشر غير موجودة."
       );
       return;
     }
@@ -379,8 +771,12 @@ export default function TeacherHeroesPage() {
       setIsSaving(true);
       setStatusMessage("");
 
+      if (published) {
+        await unpublishOlderWeeks();
+      }
+
       const heroId =
-        `${selectedStudent.id}_${category}`;
+        `weekly_${currentWeek.key}_${weeklyTrack}`;
 
       await setDoc(
         doc(
@@ -400,14 +796,24 @@ export default function TeacherHeroesPage() {
           classroom:
             selectedStudent.classroom,
 
-          category,
+          category:
+            weeklyTrack,
+
+          weeklyTrack,
+
+          weekKey:
+            currentWeek.key,
+
+          weekLabel:
+            currentWeek.label,
 
           title:
             customTitle.trim() ||
-            selectedCategory.label,
+            selectedTrackInfo.defaultTitle,
 
           badge:
-            badge.trim(),
+            badge.trim() ||
+            selectedTrackInfo.defaultBadge,
 
           imageUrl:
             imageUrl.trim(),
@@ -447,17 +853,17 @@ export default function TeacherHeroesPage() {
 
       setStatusMessage(
         published
-          ? "✅ تم حفظ البطل ونشره في ركن الأبطال."
-          : "✅ تم حفظ البطل كمسودة غير منشورة."
+          ? `✅ تم اعتماد ${selectedTrackInfo.label} ونشره ضمن أبطال هذا الأسبوع.`
+          : `✅ تم حفظ ${selectedTrackInfo.label} كمسودة لهذا الأسبوع.`
       );
     } catch (error) {
       console.error(
-        "تعذر حفظ البطل:",
+        "تعذر حفظ بطل الأسبوع:",
         error
       );
 
       setStatusMessage(
-        "تعذر حفظ بيانات البطل. تحقق من الاتصال أو الصلاحيات."
+        "❌ تعذر حفظ بيانات بطل الأسبوع. تحقق من الاتصال أو الصلاحيات."
       );
     } finally {
       setIsSaving(false);
@@ -471,7 +877,7 @@ export default function TeacherHeroesPage() {
         className="flex min-h-screen items-center justify-center bg-slate-50 p-6"
       >
         <div className="rounded-3xl bg-white px-8 py-6 text-xl font-black text-emerald-700 shadow-sm">
-          جارٍ تحميل لوحة الأبطال...
+          ⏳ جارٍ تحميل لوحة أبطال الأسبوع...
         </div>
       </main>
     );
@@ -483,7 +889,6 @@ export default function TeacherHeroesPage() {
       className="min-h-screen bg-slate-50 p-4 sm:p-6"
     >
       <div className="mx-auto max-w-6xl">
-
         <header className="mb-6 rounded-3xl bg-gradient-to-l from-emerald-800 to-emerald-600 p-7 text-white shadow-lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -492,27 +897,93 @@ export default function TeacherHeroesPage() {
               </p>
 
               <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                🌟 إدارة أبطال أكاديمية لغتي
+                🏆 إدارة أبطال الأكاديمية في أسبوع
               </h1>
 
               <p className="mt-3 max-w-3xl leading-8 text-emerald-50">
-                اختر الطالب واللقب والإنجازات،
-                ثم قرر هل يظهر في الواجهة
-                العامة أم يبقى محفوظًا فقط.
+                اختر ثلاثة أبطال أسبوعيًا عبر مسارات مستقلة:
+                الأكثر إنجازًا، الأكثر تطورًا، والأكثر التزامًا.
               </p>
+
+              <div className="mt-4 inline-flex rounded-full bg-white/15 px-4 py-2 font-black text-emerald-50">
+                🗓️ {currentWeek.label}
+              </div>
             </div>
 
-            <a
+            <Link
               href="/teacher"
               className="rounded-2xl bg-white px-5 py-3 font-black text-emerald-700 no-underline"
             >
               ← العودة إلى لوحة المعلم
-            </a>
+            </Link>
           </div>
         </header>
 
-        <section className="mb-6 grid gap-4 md:grid-cols-2">
+        {/* حالة المسارات الثلاثة */}
 
+        <section className="mb-6 grid gap-4 md:grid-cols-3">
+          {weeklyTrackOptions.map(
+            (track) => {
+              const hero =
+                currentWeekHeroes.find(
+                  (item) =>
+                    item.weeklyTrack ===
+                    track.key
+                );
+
+              return (
+                <article
+                  key={track.key}
+                  className={`rounded-3xl border p-5 shadow-sm ${
+                    hero?.published
+                      ? "border-emerald-200 bg-emerald-50"
+                      : hero
+                      ? "border-amber-200 bg-amber-50"
+                      : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <div className="text-3xl">
+                    {track.icon}
+                  </div>
+
+                  <h2 className="mt-3 text-xl font-black text-slate-800">
+                    {track.label}
+                  </h2>
+
+                  {hero ? (
+                    <>
+                      <p className="mt-2 font-black text-emerald-800">
+                        {hero.studentFirstName}
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-500">
+                        {hero.title}
+                      </p>
+
+                      <span
+                        className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black ${
+                          hero.published
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {hero.published
+                          ? "🌍 منشور"
+                          : "📝 مسودة"}
+                      </span>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm font-bold text-slate-500">
+                      لم يتم اختيار بطل هذا المسار بعد.
+                    </p>
+                  )}
+                </article>
+              );
+            }
+          )}
+        </section>
+
+        <section className="mb-6 grid gap-4 md:grid-cols-2">
           <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="mb-3 block text-lg font-black text-slate-800">
               👨‍🎓 اختر الطالب
@@ -538,8 +1009,7 @@ export default function TeacherHeroesPage() {
                     key={student.id}
                     value={student.id}
                   >
-                    {student.name} —{" "}
-                    {student.classroom}
+                    {student.name} — {student.classroom}
                   </option>
                 )
               )}
@@ -554,38 +1024,41 @@ export default function TeacherHeroesPage() {
                 }`}
               >
                 {selectedStudent.photoConsent
-                  ? "✅ الأسرة موافقة على نشر الصورة."
-                  : "⚠️ لا توجد موافقة أسرة على نشر الصورة للزوار."}
+                  ? "✅ الأسرة موافقة على النشر في الواجهة العامة."
+                  : "⚠️ لا توجد موافقة أسرة على النشر للزوار."}
               </div>
             )}
           </article>
 
           <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="mb-3 block text-lg font-black text-slate-800">
-              🏆 نوع البطولة
+              🏆 مسار التكريم الأسبوعي
             </label>
 
             <select
-              value={category}
+              value={weeklyTrack}
               onChange={(event) => {
-                const newCategory =
+                const newTrack =
                   event.target
-                    .value as HeroCategory;
+                    .value as WeeklyHeroTrack;
 
-                setCategory(
-                  newCategory
+                setWeeklyTrack(
+                  newTrack
                 );
 
-                const categoryInfo =
-                  categoryOptions.find(
+                const info =
+                  weeklyTrackOptions.find(
                     (item) =>
                       item.key ===
-                      newCategory
+                      newTrack
                   );
 
-                if (categoryInfo) {
+                if (info) {
                   setCustomTitle(
-                    categoryInfo.label
+                    info.defaultTitle
+                  );
+                  setBadge(
+                    info.defaultBadge
                   );
                 }
 
@@ -593,23 +1066,25 @@ export default function TeacherHeroesPage() {
               }}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 font-bold"
             >
-              {categoryOptions.map(
+              {weeklyTrackOptions.map(
                 (item) => (
                   <option
                     key={item.key}
                     value={item.key}
                   >
-                    {item.icon}{" "}
-                    {item.label}
+                    {item.icon} {item.label}
                   </option>
                 )
               )}
             </select>
+
+            <p className="mt-3 text-sm font-bold leading-7 text-slate-500">
+              {selectedTrackInfo.description}
+            </p>
           </article>
         </section>
 
         <section className="mb-6 grid gap-4 md:grid-cols-2">
-
           <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="mb-3 block font-black text-slate-800">
               👑 اللقب المعروض
@@ -622,7 +1097,7 @@ export default function TeacherHeroesPage() {
                   event.target.value
                 )
               }
-              placeholder="مثال: ملك القراءة"
+              placeholder="مثال: بطل الإنجاز"
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 font-bold"
             />
           </article>
@@ -662,17 +1137,17 @@ export default function TeacherHeroesPage() {
           />
 
           <p className="mt-2 text-sm text-slate-500">
-            في نسخة الإطلاق نستخدم رابط
-            الصورة. لاحقًا يمكن إضافة زر رفع
-            مباشر.
+            يمكن ترك الرابط فارغًا، ولن يتم نشر الطالب للزوار
+            إذا لم تكن موافقة الأسرة موجودة.
           </p>
         </section>
 
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
-
           <NumberField
             label="⭐ عدد الإنجازات"
-            value={achievementsCount}
+            value={
+              achievementsCount
+            }
             onChange={
               setAchievementsCount
             }
@@ -680,7 +1155,9 @@ export default function TeacherHeroesPage() {
 
           <NumberField
             label="📖 قراءات معتمدة"
-            value={readingCount}
+            value={
+              readingCount
+            }
             onChange={
               setReadingCount
             }
@@ -688,7 +1165,9 @@ export default function TeacherHeroesPage() {
 
           <NumberField
             label="✍️ إنجازات الإملاء"
-            value={spellingCount}
+            value={
+              spellingCount
+            }
             onChange={
               setSpellingCount
             }
@@ -696,16 +1175,15 @@ export default function TeacherHeroesPage() {
         </section>
 
         <section className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-
           <label className="flex cursor-pointer items-center justify-between gap-4">
             <div>
               <p className="text-lg font-black text-emerald-800">
-                🌍 نشر البطل للزوار
+                🌍 نشر بطل الأسبوع للزوار
               </p>
 
               <p className="mt-1 text-sm text-emerald-700">
-                لن يسمح بالنشر إذا لم تكن
-                موافقة الأسرة موجودة.
+                عند نشر أول بطل من أسبوع جديد سيتم إخفاء أبطال
+                الأسابيع السابقة تلقائيًا من الواجهة العامة.
               </p>
             </div>
 
@@ -724,30 +1202,32 @@ export default function TeacherHeroesPage() {
         </section>
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-
           <button
             type="button"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={
+              handleSave
+            }
+            disabled={
+              isSaving
+            }
             className="w-full rounded-2xl bg-emerald-600 px-5 py-4 text-xl font-black text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
           >
             {isSaving
-              ? "⏳ جارٍ حفظ البطل..."
-              : "💾 حفظ البطل"}
+              ? "⏳ جارٍ حفظ بطل الأسبوع..."
+              : `💾 حفظ ${selectedTrackInfo.label}`}
           </button>
 
           <button
             type="button"
             onClick={() => {
               resetForm();
-
               setStatusMessage(
-                "تم تجهيز نموذج جديد."
+                "✅ تم تجهيز نموذج جديد."
               );
             }}
             className="rounded-2xl border-2 border-slate-200 bg-white px-6 py-4 font-black text-slate-700"
           >
-            ＋ بطل جديد
+            ＋ اختيار جديد
           </button>
         </div>
 
@@ -757,29 +1237,25 @@ export default function TeacherHeroesPage() {
           </p>
         )}
 
-        {/* الأبطال المحفوظون */}
-
         <section className="mt-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-
             <div>
               <h2 className="text-2xl font-black text-slate-800">
-                🌟 الأبطال المحفوظون
+                🏆 سجل أبطال الأكاديمية
               </h2>
 
               <p className="mt-2 text-slate-500">
-                المسودات والأبطال المنشورون
-                في مكان واحد.
+                يظهر هنا أبطال الأسبوع الحالي والأسابيع السابقة.
               </p>
             </div>
 
             <span className="rounded-full bg-emerald-50 px-4 py-2 font-black text-emerald-700">
-              {savedHeroes.length} بطل
+              {savedHeroes.length} سجل
             </span>
           </div>
 
-          {savedHeroes.length === 0 ? (
+          {savedHeroes.length ===
+          0 ? (
             <div className="rounded-2xl bg-slate-50 p-8 text-center font-bold text-slate-500">
               لا يوجد أبطال محفوظون حتى الآن.
             </div>
@@ -787,11 +1263,11 @@ export default function TeacherHeroesPage() {
             <div className="grid gap-3">
               {savedHeroes.map(
                 (hero) => {
-                  const categoryData =
-                    categoryOptions.find(
+                  const track =
+                    weeklyTrackOptions.find(
                       (item) =>
                         item.key ===
-                        hero.category
+                        hero.weeklyTrack
                     );
 
                   return (
@@ -800,36 +1276,32 @@ export default function TeacherHeroesPage() {
                       className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
                     >
                       <div className="flex items-center gap-3">
-
                         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-2xl shadow-sm">
-                          {categoryData?.icon ??
+                          {track?.icon ??
                             "🌟"}
                         </div>
 
                         <div>
                           <h3 className="font-black text-slate-800">
-                            {
-                              hero.studentFirstName
-                            }
+                            {hero.studentFirstName}
                             {" — "}
                             {hero.title}
                           </h3>
 
                           <p className="mt-1 text-sm font-bold text-slate-500">
-                            {hero.classroom ||
-                              "الفصل غير محدد"}
+                            {track?.label ??
+                              "تكريم"}
+                            {" • "}
+                            {hero.weekLabel ||
+                              "سجل سابق"}
                             {" • "}
                             ⭐{" "}
-                            {
-                              hero.achievementsCount
-                            }{" "}
-                            إنجازًا
+                            {hero.achievementsCount}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-
                         <span
                           className={`rounded-full px-3 py-2 text-sm font-black ${
                             hero.published
@@ -863,17 +1335,25 @@ export default function TeacherHeroesPage() {
         </section>
 
         <section className="mt-6 rounded-3xl border border-violet-200 bg-violet-50 p-5">
-
           <h2 className="text-xl font-black text-violet-800">
-            🔐 الخصوصية أولًا
+            💡 فلسفة التكريم
           </h2>
 
           <p className="mt-2 leading-8 text-violet-900">
-            الطالب يحصل على اللقب والتكريم
-            داخل الأكاديمية سواء وافقت الأسرة
-            على نشر الصورة أم لا. موافقة
-            الأسرة مطلوبة فقط للظهور في
-            الواجهة العامة.
+            لا نكرّم الدرجات فقط؛ بل نحتفي بالإنجاز والتطور
+            والالتزام، حتى يستطيع كل طالب أن يجد طريقه إلى منصة
+            الأبطال.
+          </p>
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-sky-200 bg-sky-50 p-5">
+          <h2 className="text-xl font-black text-sky-800">
+            🔐 الخصوصية أولًا
+          </h2>
+
+          <p className="mt-2 leading-8 text-sky-900">
+            التكريم داخل الأكاديمية مستقل عن موافقة نشر الصورة.
+            الظهور في الواجهة العامة يخضع لموافقة الأسرة.
           </p>
         </section>
       </div>
@@ -888,11 +1368,12 @@ function NumberField({
 }: {
   label: string;
   value: number;
-  onChange: (value: number) => void;
+  onChange: (
+    value: number
+  ) => void;
 }) {
   return (
     <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-
       <label className="mb-3 block font-black text-slate-800">
         {label}
       </label>
