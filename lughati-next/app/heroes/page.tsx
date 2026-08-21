@@ -898,7 +898,7 @@ function HeroPodiumCard({
           ✨ {hero.badge}
         </div>
       )}
-
+     {hero.achievementsCount > 0 && (
       <div
         style={{
           marginTop:
@@ -923,6 +923,7 @@ function HeroPodiumCard({
         }{" "}
         إنجازًا
       </div>
+      )}
     </article>
   );
 }

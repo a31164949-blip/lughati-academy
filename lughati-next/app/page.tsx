@@ -1202,7 +1202,17 @@ useEffect(() => {
                 fontWeight: 900,
               }}
             >
-              ⭐ {featuredHero.achievementsCount} إنجازًا
+              {featuredHero.achievementsCount > 0 && (
+  <span
+    style={{
+      color: "#7a6a25",
+      fontSize: "13px",
+      fontWeight: 900,
+    }}
+  >
+    ⭐ {featuredHero.achievementsCount} إنجازًا
+  </span>
+)}
             </span>
           </div>
 
