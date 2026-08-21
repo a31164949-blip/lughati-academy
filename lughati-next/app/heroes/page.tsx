@@ -1,678 +1,1168 @@
 "use client";
+
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   getDocs,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-type HeroCategory =
-  | "reading"
-  | "spelling"
-  | "progress"
-  | "commitment"
-  | "creativity"
-  | "notebook";
+import { db } from "../../firebase";
 
 type AcademyHero = {
   id: string;
   studentFirstName: string;
-  classroom: string;
   title: string;
-  category: HeroCategory;
-  achievementsCount: number;
-  readingCount: number;
-  spellingCount: number;
   badge: string;
+  achievementsCount: number;
   imageUrl: string;
   photoConsent: boolean;
   published: boolean;
 };
 
-const categoryInfo: Record<
-  HeroCategory,
-  {
-    label: string;
-    icon: string;
-  }
-> = {
-  reading: {
-    label: "ملك القراءة",
-    icon: "📖",
-  },
-  spelling: {
-    label: "ملك الإملاء",
-    icon: "✍️",
-  },
-  progress: {
-    label: "الأكثر تطورًا",
-    icon: "🌱",
-  },
-  commitment: {
-    label: "الأكثر التزامًا",
-    icon: "🔥",
-  },
-  creativity: {
-    label: "المبدع",
-    icon: "🎨",
-  },
-  notebook: {
-    label: "دفتر أنيق",
-    icon: "✨",
-  },
-};
+function getWeekRangeLabel() {
+  const now = new Date();
+
+  const weekday =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        weekday: "short",
+        timeZone: "Asia/Riyadh",
+      }
+    ).format(now);
+
+  const dayIndex: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+
+  const currentDay =
+    dayIndex[weekday] ?? 0;
+
+  const start =
+    new Date(now);
+
+  start.setDate(
+    start.getDate() -
+      currentDay
+  );
+
+  const end =
+    new Date(start);
+
+  end.setDate(
+    start.getDate() + 6
+  );
+
+  const formatter =
+    new Intl.DateTimeFormat(
+      "ar-SA",
+      {
+        day: "numeric",
+        month: "long",
+        timeZone: "Asia/Riyadh",
+      }
+    );
+
+  return `${formatter.format(
+    start
+  )} — ${formatter.format(
+    end
+  )}`;
+}
 
 export default function HeroesPage() {
-  const [heroes, setHeroes] = useState<AcademyHero[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [
+    heroes,
+    setHeroes,
+  ] = useState<AcademyHero[]>([]);
 
-  const [selectedCategory, setSelectedCategory] =
-    useState<HeroCategory | "all">("all");
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
   useEffect(() => {
+    let active = true;
+
     async function loadHeroes() {
       try {
-        setIsLoading(true);
+        setLoading(true);
         setErrorMessage("");
 
-        const snapshot = await getDocs(
-          collection(db, "academyHeroes")
-        );
+        const snapshot =
+          await getDocs(
+            collection(
+              db,
+              "academyHeroes"
+            )
+          );
 
-        const loadedHeroes: AcademyHero[] =
+        const loadedHeroes =
           snapshot.docs
-            .map((docSnap) => {
-              const data = docSnap.data();
+            .map(
+              (
+                document
+              ) => {
+                const data =
+                  document.data();
 
-              const category: HeroCategory =
-                data.category === "spelling" ||
-                data.category === "progress" ||
-                data.category === "commitment" ||
-                data.category === "creativity" ||
-                data.category === "notebook"
-                  ? data.category
-                  : "reading";
+                return {
+                  id:
+                    document.id,
 
-              return {
-                id: docSnap.id,
+                  studentFirstName:
+                    typeof data.studentFirstName ===
+                    "string"
+                      ? data.studentFirstName
+                      : "بطل الأكاديمية",
 
-                studentFirstName:
-                  typeof data.studentFirstName === "string"
-                    ? data.studentFirstName
-                    : "بطل الأكاديمية",
+                  title:
+                    typeof data.title ===
+                    "string"
+                      ? data.title
+                      : "بطل الأكاديمية",
 
-                classroom:
-                  typeof data.classroom === "string"
-                    ? data.classroom
-                    : "",
+                  badge:
+                    typeof data.badge ===
+                    "string"
+                      ? data.badge
+                      : "",
 
-                title:
-                  typeof data.title === "string"
-                    ? data.title
-                    : categoryInfo[category].label,
+                  achievementsCount:
+                    typeof data.achievementsCount ===
+                    "number"
+                      ? data.achievementsCount
+                      : 0,
 
-                category,
+                  imageUrl:
+                    typeof data.imageUrl ===
+                    "string"
+                      ? data.imageUrl
+                      : "",
 
-                achievementsCount:
-                  typeof data.achievementsCount === "number"
-                    ? data.achievementsCount
-                    : 0,
+                  photoConsent:
+                    data.photoConsent ===
+                    true,
 
-                readingCount:
-                  typeof data.readingCount === "number"
-                    ? data.readingCount
-                    : 0,
-
-                spellingCount:
-                  typeof data.spellingCount === "number"
-                    ? data.spellingCount
-                    : 0,
-
-                badge:
-                  typeof data.badge === "string"
-                    ? data.badge
-                    : "",
-
-                imageUrl:
-                  typeof data.imageUrl === "string"
-                    ? data.imageUrl
-                    : "",
-
-                photoConsent:
-                  data.photoConsent === true,
-
-                published:
-                  data.published === true,
-              };
-            })
+                  published:
+                    data.published ===
+                    true,
+                } satisfies AcademyHero;
+              }
+            )
             .filter(
               (hero) =>
                 hero.published &&
                 hero.photoConsent
+            )
+            .sort(
+              (a, b) =>
+                b.achievementsCount -
+                a.achievementsCount
             );
 
-        setHeroes(loadedHeroes);
+        if (!active) {
+          return;
+        }
+
+        setHeroes(
+          loadedHeroes
+        );
       } catch (error) {
         console.error(
           "تعذر تحميل أبطال الأكاديمية:",
           error
         );
 
-        setHeroes([]);
-
-        setErrorMessage(
-          "سيظهر أبطال الأكاديمية هنا فور اعتماد إنجازاتهم للنشر 🌟"
-        );
+        if (active) {
+          setHeroes([]);
+          setErrorMessage(
+            "تعذر تحميل أبطال الأكاديمية الآن."
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     void loadHeroes();
-  }, []);
-
-  useEffect(() => {
-    if (heroes.length <= 1) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setFeaturedIndex((current) =>
-        current + 1 >= heroes.length
-          ? 0
-          : current + 1
-      );
-    }, 6000);
 
     return () => {
-      window.clearInterval(interval);
+      active = false;
     };
-  }, [heroes.length]);
+  }, []);
 
-  const filteredHeroes = useMemo(() => {
-    if (selectedCategory === "all") {
-      return heroes;
-    }
-
-    return heroes.filter(
-      (hero) =>
-        hero.category === selectedCategory
-    );
-  }, [heroes, selectedCategory]);
-
-  const featuredHero =
-    heroes.length > 0
-      ? heroes[
-          Math.min(
-            featuredIndex,
-            heroes.length - 1
-          )
-        ]
-      : null;
-
-  const totalAchievements =
-    heroes.reduce(
-      (total, hero) =>
-        total + hero.achievementsCount,
-      0
+  const weekLabel =
+    useMemo(
+      () =>
+        getWeekRangeLabel(),
+      []
     );
 
-  const totalReading =
-    heroes.reduce(
-      (total, hero) =>
-        total + hero.readingCount,
-      0
-    );
+  const topHeroes =
+    heroes.slice(0, 3);
 
-  const totalSpelling =
-    heroes.reduce(
-      (total, hero) =>
-        total + hero.spellingCount,
-      0
-    );
+  const remainingHeroes =
+    heroes.slice(3);
 
   return (
     <main
       dir="rtl"
-      className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-emerald-50 p-4 sm:p-6"
+      style={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(180deg,#f2fbf6 0%,#ffffff 47%,#fffaf0 100%)",
+        padding:
+          "24px 16px 60px",
+        fontFamily:
+          "Arial, sans-serif",
+        color:
+          "#173f31",
+      }}
     >
-      <div className="mx-auto max-w-7xl">
+      <div
+        style={{
+          maxWidth: "1180px",
+          margin: "0 auto",
+        }}
+      >
+        <div
+          style={{
+            marginBottom: "18px",
+          }}
+        >
+          <Link
+            href="/"
+            style={{
+              display:
+                "inline-flex",
+              alignItems:
+                "center",
+              gap: "7px",
+              textDecoration:
+                "none",
+              background:
+                "#ffffff",
+              border:
+                "1px solid #d5e9df",
+              color:
+                "#176d4c",
+              borderRadius:
+                "15px",
+              padding:
+                "11px 17px",
+              fontWeight:
+                900,
+              boxShadow:
+                "0 7px 18px rgba(30,90,60,.06)",
+            }}
+          >
+            ← العودة إلى الرئيسية
+          </Link>
+        </div>
 
-        {/* الترويسة */}
+        <section
+          style={{
+            position:
+              "relative",
+            overflow:
+              "hidden",
+            borderRadius:
+              "32px",
+            padding:
+              "34px 24px",
+            background:
+              "linear-gradient(135deg,#147a52 0%,#1e9b6b 55%,#39b978 100%)",
+            color:
+              "#ffffff",
+            boxShadow:
+              "0 18px 42px rgba(20,120,80,.18)",
+            textAlign:
+              "center",
+          }}
+        >
+          <div
+            style={{
+              position:
+                "absolute",
+              width:
+                "230px",
+              height:
+                "230px",
+              borderRadius:
+                "50%",
+              background:
+                "rgba(255,255,255,.08)",
+              top:
+                "-105px",
+              left:
+                "-60px",
+            }}
+          />
 
-        <header className="mb-6 overflow-hidden rounded-[32px] bg-gradient-to-l from-emerald-800 via-emerald-700 to-emerald-600 p-7 text-white shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-5">
-            <div>
-              <p className="font-bold text-emerald-100">
-                أكاديمية لغتي الرقمية
-              </p>
-
-              <h1 className="mt-2 text-3xl font-black sm:text-5xl">
-                🌟 أبطال أكاديمية لغتي
-              </h1>
-
-              <p className="mt-4 max-w-3xl text-lg leading-8 text-emerald-50">
-                هنا نحتفي بالجهد، والتقدم،
-                والاستمرار، والإبداع…
-                فلكل بطل طريقه الخاص نحو
-                التميز.
-              </p>
+          <div
+            style={{
+              position:
+                "relative",
+              zIndex: 2,
+            }}
+          >
+            <div
+              style={{
+                fontSize:
+                  "58px",
+                marginBottom:
+                  "6px",
+              }}
+            >
+              🏆
             </div>
 
-<Link
-  href="/"
-  className="inline-flex items-center justify-center rounded-2xl bg-emerald-..."
->
-  ← العودة إلى الرئيسية
-</Link>
-          </div>
-        </header>
+            <span
+              style={{
+                display:
+                  "inline-flex",
+                padding:
+                  "7px 13px",
+                borderRadius:
+                  "999px",
+                background:
+                  "rgba(255,255,255,.16)",
+                fontSize:
+                  "13px",
+                fontWeight:
+                  900,
+                marginBottom:
+                  "10px",
+              }}
+            >
+              ✨ تكريم أسبوعي
+            </span>
 
-        {/* تاج لغتي */}
+            <h1
+              style={{
+                margin:
+                  "0 0 9px",
+                fontSize:
+                  "clamp(32px,5vw,50px)",
+                lineHeight:
+                  1.35,
+              }}
+            >
+              أبطال الأكاديمية
+              في أسبوع
+            </h1>
 
-        <section className="mb-6 rounded-[30px] border-2 border-amber-300 bg-gradient-to-l from-amber-100 via-yellow-50 to-white p-6 shadow-lg">
-          <div className="text-center">
-            <div className="text-5xl">
-              👑
-            </div>
-
-            <h2 className="mt-2 text-3xl font-black text-amber-800">
-              تاج لغتي
-            </h2>
-
-            <p className="mt-2 text-amber-700">
-              اقرأ… أتقن… وتقدّم نحو التاج
+            <p
+              style={{
+                maxWidth:
+                  "760px",
+                margin:
+                  "0 auto",
+                lineHeight:
+                  1.9,
+                fontSize:
+                  "16px",
+                fontWeight:
+                  700,
+                opacity:
+                  0.94,
+              }}
+            >
+              نحتفي كل أسبوع
+              بجهود أبطالنا
+              وتقدمهم واستمرارهم،
+              لأن كل خطوة إلى
+              الأمام تستحق
+              الاحتفاء.
             </p>
-          </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <article className="rounded-3xl border border-emerald-200 bg-white p-5 text-center shadow-sm">
-              <div className="text-4xl">
-                📖
-              </div>
-
-              <h3 className="mt-2 text-2xl font-black text-emerald-700">
-                ملك القراءة
-              </h3>
-
-              <p className="mt-2 leading-7 text-slate-600">
-                نحتفي بالقراءة المستمرة،
-                والتطور، والالتزام.
-              </p>
-            </article>
-
-            <article className="rounded-3xl border border-rose-200 bg-white p-5 text-center shadow-sm">
-              <div className="text-4xl">
-                ✍️
-              </div>
-
-              <h3 className="mt-2 text-2xl font-black text-rose-700">
-                ملك الإملاء
-              </h3>
-
-              <p className="mt-2 leading-7 text-slate-600">
-                نحتفي بإتقان الكلمات،
-                والتحسن، والمثابرة.
-              </p>
-            </article>
+            <div
+              style={{
+                display:
+                  "inline-flex",
+                marginTop:
+                  "16px",
+                padding:
+                  "8px 14px",
+                borderRadius:
+                  "999px",
+                background:
+                  "#fff4c7",
+                color:
+                  "#805b00",
+                fontWeight:
+                  900,
+                fontSize:
+                  "13px",
+              }}
+            >
+              🗓️ {weekLabel}
+            </div>
           </div>
         </section>
 
-        {/* البطل المتحرك */}
-
-        <section className="mb-6 rounded-[30px] border border-emerald-200 bg-white p-6 shadow-lg">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-black text-slate-800">
-                🏆 بطل في الواجهة
-              </h2>
-
-              <p className="mt-1 text-slate-500">
-                تتغير البطاقة تلقائيًا لعرض
-                أبطال الأكاديمية.
-              </p>
+        {loading ? (
+          <section
+            style={
+              messageCardStyle
+            }
+          >
+            ⏳ جارٍ تحميل
+            أبطال الأسبوع...
+          </section>
+        ) : errorMessage ? (
+          <section
+            style={{
+              ...messageCardStyle,
+              color:
+                "#b91c1c",
+              background:
+                "#fef2f2",
+              border:
+                "1px solid #fecaca",
+            }}
+          >
+            {errorMessage}
+          </section>
+        ) : heroes.length ===
+          0 ? (
+          <section
+            style={
+              messageCardStyle
+            }
+          >
+            <div
+              style={{
+                fontSize:
+                  "48px",
+              }}
+            >
+              🌟
             </div>
 
-            <span className="rounded-full bg-emerald-100 px-4 py-2 font-black text-emerald-700">
-              مباشر ✨
-            </span>
-          </div>
+            <h2
+              style={{
+                margin:
+                  "8px 0 4px",
+                color:
+                  "#176c46",
+              }}
+            >
+              أبطال هذا الأسبوع
+              قادمون قريبًا
+            </h2>
 
-          {isLoading ? (
-            <div className="rounded-3xl bg-slate-50 p-10 text-center font-black text-emerald-700">
-              جارٍ تجهيز لوحة الأبطال...
-            </div>
-          ) : featuredHero ? (
-            <div className="grid items-center gap-6 rounded-[28px] bg-gradient-to-l from-emerald-50 via-white to-amber-50 p-6 md:grid-cols-[180px_1fr]">
-              <HeroImage hero={featuredHero} />
+            <p
+              style={{
+                margin: 0,
+                color:
+                  "#718078",
+                lineHeight:
+                  1.8,
+              }}
+            >
+              تابع الأكاديمية
+              لتكتشف الأبطال
+              والإنجازات الجديدة.
+            </p>
+          </section>
+        ) : (
+          <>
+            <section
+              style={{
+                marginTop:
+                  "24px",
+              }}
+            >
+              <div
+                style={{
+                  display:
+                    "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems:
+                    "end",
+                  gap: "12px",
+                  flexWrap:
+                    "wrap",
+                  marginBottom:
+                    "14px",
+                }}
+              >
+                <div>
+                  <span
+                    style={{
+                      color:
+                        "#a66a00",
+                      fontWeight:
+                        900,
+                      fontSize:
+                        "13px",
+                    }}
+                  >
+                    🌟 منصة التميز
+                  </span>
 
-              <div>
-                <span className="rounded-full bg-amber-100 px-4 py-2 font-black text-amber-800">
-                  {
-                    categoryInfo[
-                      featuredHero.category
-                    ].icon
-                  }{" "}
-                  {featuredHero.title}
-                </span>
-
-                <h3 className="mt-5 text-3xl font-black text-emerald-800">
-                  {featuredHero.studentFirstName}
-                </h3>
-
-                <p className="mt-2 font-bold text-slate-500">
-                  {featuredHero.classroom}
-                </p>
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <HeroStat
-                    icon="⭐"
-                    label="الإنجازات"
-                    value={
-                      featuredHero.achievementsCount
-                    }
-                  />
-
-                  <HeroStat
-                    icon="📖"
-                    label="القراءات"
-                    value={
-                      featuredHero.readingCount
-                    }
-                  />
-
-                  <HeroStat
-                    icon="✍️"
-                    label="الإملاء"
-                    value={
-                      featuredHero.spellingCount
-                    }
-                  />
+                  <h2
+                    style={{
+                      margin:
+                        "4px 0 0",
+                      color:
+                        "#174c3b",
+                      fontSize:
+                        "clamp(24px,4vw,32px)",
+                    }}
+                  >
+                    أبطال الأسبوع
+                  </h2>
                 </div>
 
-                {featuredHero.badge && (
-                  <p className="mt-5 font-black text-amber-700">
-                    🏅 {featuredHero.badge}
-                  </p>
+                <span
+                  style={{
+                    color:
+                      "#718078",
+                    fontSize:
+                      "12px",
+                    fontWeight:
+                      800,
+                  }}
+                >
+                  التكريم للجهد
+                  والتقدم والاستمرار
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(240px,1fr))",
+                  gap:
+                    "16px",
+                  alignItems:
+                    "stretch",
+                }}
+              >
+                {topHeroes.map(
+                  (
+                    hero,
+                    index
+                  ) => (
+                    <HeroPodiumCard
+                      key={
+                        hero.id
+                      }
+                      hero={
+                        hero
+                      }
+                      rank={
+                        index + 1
+                      }
+                    />
+                  )
                 )}
               </div>
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-dashed border-emerald-300 bg-emerald-50 p-10 text-center">
-              <div className="text-5xl">
-                🌟
-              </div>
+            </section>
 
-              <h3 className="mt-3 text-xl font-black text-emerald-800">
-                الأبطال قادمون قريبًا
-              </h3>
-
-              <p className="mt-2 text-emerald-700">
-                ستظهر هنا الإنجازات المعتمدة
-                التي وافقت الأسر على نشرها.
-              </p>
-            </div>
-          )}
-
-          {errorMessage && !featuredHero && (
-            <p className="mt-3 text-center font-bold text-slate-500">
-              {errorMessage}
-            </p>
-          )}
-        </section>
-
-        {/* إحصاءات عامة */}
-
-        <section className="mb-6 grid gap-4 sm:grid-cols-3">
-          <PublicStat
-            icon="⭐"
-            label="إنجازات الأبطال"
-            value={totalAchievements}
-          />
-
-          <PublicStat
-            icon="📖"
-            label="قراءات معتمدة"
-            value={totalReading}
-          />
-
-          <PublicStat
-            icon="✍️"
-            label="إنجازات إملائية"
-            value={totalSpelling}
-          />
-        </section>
-
-        {/* الفلاتر */}
-
-        <section className="mb-5 overflow-x-auto">
-          <div className="flex min-w-max gap-2">
-            <CategoryButton
-              active={
-                selectedCategory === "all"
-              }
-              label="🌟 جميع الأبطال"
-              onClick={() =>
-                setSelectedCategory("all")
-              }
-            />
-
-            {(
-              Object.keys(
-                categoryInfo
-              ) as HeroCategory[]
-            ).map((category) => (
-              <CategoryButton
-                key={category}
-                active={
-                  selectedCategory ===
-                  category
-                }
-                label={`${categoryInfo[category].icon} ${categoryInfo[category].label}`}
-                onClick={() =>
-                  setSelectedCategory(
-                    category
-                  )
-                }
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* جميع الأبطال */}
-
-        <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-2xl font-black text-slate-800">
-              🌟 لوحة الأبطال
-            </h2>
-
-            <p className="mt-2 text-slate-500">
-              نحتفي بالإنجاز دون ترتيب أول
-              وثانٍ وثالث.
-            </p>
-          </div>
-
-          {filteredHeroes.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredHeroes.map(
-                (hero) => (
-                  <article
-                    key={hero.id}
-                    className="rounded-[26px] border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-5 text-center shadow-sm"
+            {remainingHeroes.length >
+              0 && (
+              <section
+                style={{
+                  marginTop:
+                    "24px",
+                  background:
+                    "#ffffff",
+                  border:
+                    "1px solid #dcece4",
+                  borderRadius:
+                    "26px",
+                  padding:
+                    "20px",
+                  boxShadow:
+                    "0 10px 28px rgba(30,90,60,.06)",
+                }}
+              >
+                <div
+                  style={{
+                    display:
+                      "flex",
+                    justifyContent:
+                      "space-between",
+                    alignItems:
+                      "center",
+                    gap:
+                      "10px",
+                    flexWrap:
+                      "wrap",
+                    marginBottom:
+                      "14px",
+                  }}
+                >
+                  <h2
+                    style={{
+                      margin: 0,
+                      color:
+                        "#176c46",
+                      fontSize:
+                        "21px",
+                    }}
                   >
-                    <div className="mx-auto w-28">
-                      <HeroImage hero={hero} />
-                    </div>
+                    ✨ بقية أبطال
+                    الأسبوع
+                  </h2>
 
-                    <p className="mt-4 text-sm font-black text-amber-700">
-                      {
-                        categoryInfo[
-                          hero.category
-                        ].icon
-                      }{" "}
-                      {hero.title}
-                    </p>
+                  <span
+                    style={{
+                      color:
+                        "#718078",
+                      fontSize:
+                        "12px",
+                      fontWeight:
+                        800,
+                    }}
+                  >
+                    كل إنجاز يستحق
+                    التقدير
+                  </span>
+                </div>
 
-                    <h3 className="mt-2 text-2xl font-black text-slate-800">
-                      {hero.studentFirstName}
-                    </h3>
+                <div
+                  style={{
+                    display:
+                      "grid",
+                    gap:
+                      "10px",
+                  }}
+                >
+                  {remainingHeroes.map(
+                    (
+                      hero,
+                      index
+                    ) => (
+                      <HeroRow
+                        key={
+                          hero.id
+                        }
+                        hero={
+                          hero
+                        }
+                        rank={
+                          index + 4
+                        }
+                      />
+                    )
+                  )}
+                </div>
+              </section>
+            )}
 
-                    <p className="mt-1 text-sm font-bold text-slate-500">
-                      {hero.classroom}
-                    </p>
-
-                    <div className="mt-4 rounded-2xl bg-emerald-50 p-3 font-black text-emerald-700">
-                      ⭐ {hero.achievementsCount}{" "}
-                      إنجازًا
-                    </div>
-
-                    {hero.badge && (
-                      <p className="mt-3 text-sm font-bold text-amber-700">
-                        🏅 {hero.badge}
-                      </p>
-                    )}
-                  </article>
-                )
-              )}
-            </div>
-          ) : (
-            <div className="rounded-3xl bg-slate-50 p-10 text-center">
-              <div className="text-5xl">
-                🏆
+            <section
+              style={{
+                marginTop:
+                  "22px",
+                borderRadius:
+                  "24px",
+                padding:
+                  "19px",
+                background:
+                  "linear-gradient(135deg,#fffaf0,#f3fff8)",
+                border:
+                  "1px solid #ece3bf",
+                textAlign:
+                  "center",
+                boxShadow:
+                  "0 8px 22px rgba(120,90,20,.05)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize:
+                    "34px",
+                }}
+              >
+                💚
               </div>
 
-              <p className="mt-3 font-black text-slate-600">
-                لا يوجد أبطال منشورون في
-                هذا المسار حتى الآن.
+              <strong
+                style={{
+                  display:
+                    "block",
+                  color:
+                    "#176c46",
+                  fontSize:
+                    "19px",
+                  marginTop:
+                    "4px",
+                }}
+              >
+                أنت بطل الأسبوع
+                القادم
+              </strong>
+
+              <p
+                style={{
+                  margin:
+                    "6px 0 0",
+                  color:
+                    "#718078",
+                  lineHeight:
+                    1.8,
+                }}
+              >
+                استمر في التعلم
+                والقراءة والإنجاز،
+                فكل تقدم جديد
+                يقربك من منصة
+                الأبطال.
               </p>
-            </div>
-          )}
-        </section>
-
-        {/* فلسفة التكريم */}
-
-        <section className="mt-6 rounded-[30px] border border-violet-200 bg-violet-50 p-6">
-          <h2 className="text-2xl font-black text-violet-800">
-            💜 في أكاديمية لغتي…
-          </h2>
-
-          <p className="mt-3 text-lg leading-9 text-violet-900">
-            لا نحتفي بالدرجات فقط؛ نحتفي
-            بالطالب الذي تطور، والذي استمر،
-            والذي حاول، والذي أبدع. لكل طالب
-            فرصة حقيقية ليكون بطلًا.
-          </p>
-        </section>
-
-        <footer className="mt-7 text-center text-sm leading-7 text-slate-500">
-          <strong className="text-emerald-700">
-            أكاديمية لغتي الرقمية
-          </strong>
-
-          <br />
-
-          نتعلّم… نقرأ… نبدع
-        </footer>
+            </section>
+          </>
+        )}
       </div>
     </main>
   );
 }
 
-function HeroImage({
+function HeroPodiumCard({
   hero,
+  rank,
 }: {
   hero: AcademyHero;
+  rank: number;
 }) {
-  if (hero.imageUrl) {
-    return (
-      <img
-        src={hero.imageUrl}
-        alt={`صورة ${hero.studentFirstName}`}
-        className="aspect-square w-full rounded-[28px] object-cover shadow-md"
-      />
-    );
-  }
+  const rankInfo =
+    rank === 1
+      ? {
+          medal: "🥇",
+          label:
+            "المركز الأول",
+          background:
+            "linear-gradient(180deg,#fff9df,#ffffff)",
+          border:
+            "#f5d56d",
+        }
+      : rank === 2
+      ? {
+          medal: "🥈",
+          label:
+            "المركز الثاني",
+          background:
+            "linear-gradient(180deg,#f4f7fa,#ffffff)",
+          border:
+            "#cbd5e1",
+        }
+      : {
+          medal: "🥉",
+          label:
+            "المركز الثالث",
+          background:
+            "linear-gradient(180deg,#fff3e7,#ffffff)",
+          border:
+            "#fdba74",
+        };
 
   return (
-    <div className="grid aspect-square w-full place-items-center rounded-[28px] bg-emerald-100 text-6xl shadow-sm">
-      👦
-    </div>
-  );
-}
-
-function HeroStat({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <p className="text-sm font-bold text-slate-500">
-        {icon} {label}
-      </p>
-
-      <p className="mt-1 text-xl font-black text-slate-800">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function PublicStat({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <article className="rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-      <div className="text-3xl">
-        {icon}
+    <article
+      style={{
+        position:
+          "relative",
+        overflow:
+          "hidden",
+        borderRadius:
+          "26px",
+        padding:
+          "22px 18px",
+        background:
+          rankInfo.background,
+        border:
+          `2px solid ${rankInfo.border}`,
+        boxShadow:
+          rank === 1
+            ? "0 16px 34px rgba(184,134,11,.15)"
+            : "0 10px 25px rgba(30,70,60,.07)",
+        textAlign:
+          "center",
+      }}
+    >
+      <div
+        style={{
+          position:
+            "absolute",
+          top:
+            "12px",
+          right:
+            "13px",
+          fontSize:
+            "30px",
+        }}
+      >
+        {rankInfo.medal}
       </div>
 
-      <p className="mt-2 text-sm font-bold text-slate-500">
-        {label}
+      <span
+        style={{
+          display:
+            "inline-flex",
+          padding:
+            "6px 10px",
+          borderRadius:
+            "999px",
+          background:
+            "rgba(255,255,255,.8)",
+          color:
+            "#765c11",
+          fontSize:
+            "11px",
+          fontWeight:
+            900,
+          marginBottom:
+            "13px",
+        }}
+      >
+        {rankInfo.label}
+      </span>
+
+      <HeroAvatar
+        hero={hero}
+        size={84}
+      />
+
+      <h3
+        style={{
+          margin:
+            "13px 0 4px",
+          color:
+            "#174c3b",
+          fontSize:
+            "21px",
+        }}
+      >
+        {hero.studentFirstName}
+      </h3>
+
+      <p
+        style={{
+          margin: 0,
+          color:
+            "#5f7168",
+          fontSize:
+            "14px",
+          fontWeight:
+            800,
+        }}
+      >
+        {hero.title}
       </p>
 
-      <p className="mt-2 text-3xl font-black text-emerald-700">
-        {value}
-      </p>
+      {hero.badge && (
+        <div
+          style={{
+            display:
+              "inline-flex",
+            marginTop:
+              "10px",
+            padding:
+              "6px 10px",
+            borderRadius:
+              "999px",
+            background:
+              "#fff4c7",
+            color:
+              "#805b00",
+            fontSize:
+              "12px",
+            fontWeight:
+              900,
+          }}
+        >
+          ✨ {hero.badge}
+        </div>
+      )}
+
+      <div
+        style={{
+          marginTop:
+            "13px",
+          padding:
+            "10px",
+          borderRadius:
+            "14px",
+          background:
+            "#f1fbf5",
+          color:
+            "#176c46",
+          fontWeight:
+            900,
+          fontSize:
+            "13px",
+        }}
+      >
+        ⭐{" "}
+        {
+          hero.achievementsCount
+        }{" "}
+        إنجازًا
+      </div>
     </article>
   );
 }
 
-function CategoryButton({
-  active,
-  label,
-  onClick,
+function HeroRow({
+  hero,
+  rank,
 }: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
+  hero: AcademyHero;
+  rank: number;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full border-2 px-4 py-2 font-black transition ${
-        active
-          ? "border-emerald-600 bg-emerald-600 text-white"
-          : "border-slate-200 bg-white text-slate-600"
-      }`}
+    <article
+      style={{
+        display:
+          "flex",
+        alignItems:
+          "center",
+        justifyContent:
+          "space-between",
+        gap:
+          "12px",
+        flexWrap:
+          "wrap",
+        padding:
+          "13px 14px",
+        borderRadius:
+          "17px",
+        background:
+          "#fbfefc",
+        border:
+          "1px solid #e0eee7",
+      }}
     >
-      {label}
-    </button>
+      <div
+        style={{
+          display:
+            "flex",
+          alignItems:
+            "center",
+          gap:
+            "11px",
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            width:
+              "34px",
+            height:
+              "34px",
+            borderRadius:
+              "11px",
+            display:
+              "grid",
+            placeItems:
+              "center",
+            background:
+              "#eef8f3",
+            color:
+              "#176c46",
+            fontWeight:
+              900,
+            flexShrink:
+              0,
+          }}
+        >
+          {rank}
+        </div>
+
+        <HeroAvatar
+          hero={hero}
+          size={48}
+        />
+
+        <div
+          style={{
+            minWidth: 0,
+          }}
+        >
+          <strong
+            style={{
+              display:
+                "block",
+              color:
+                "#174c3b",
+            }}
+          >
+            {
+              hero.studentFirstName
+            }
+          </strong>
+
+          <span
+            style={{
+              color:
+                "#718078",
+              fontSize:
+                "12px",
+              fontWeight:
+                700,
+            }}
+          >
+            {hero.title}
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display:
+            "flex",
+          alignItems:
+            "center",
+          gap:
+            "8px",
+          flexWrap:
+            "wrap",
+        }}
+      >
+        {hero.badge && (
+          <span
+            style={{
+              padding:
+                "5px 9px",
+              borderRadius:
+                "999px",
+              background:
+                "#fff7d6",
+              color:
+                "#806000",
+              fontSize:
+                "11px",
+              fontWeight:
+                900,
+            }}
+          >
+            ✨ {hero.badge}
+          </span>
+        )}
+
+        <span
+          style={{
+            padding:
+              "6px 10px",
+            borderRadius:
+              "999px",
+            background:
+              "#eaf9f0",
+            color:
+              "#176c46",
+            fontSize:
+              "12px",
+            fontWeight:
+              900,
+          }}
+        >
+          ⭐{" "}
+          {
+            hero.achievementsCount
+          }
+        </span>
+      </div>
+    </article>
   );
 }
+
+function HeroAvatar({
+  hero,
+  size,
+}: {
+  hero: AcademyHero;
+  size: number;
+}) {
+  return (
+    <div
+      style={{
+        width:
+          `${size}px`,
+        height:
+          `${size}px`,
+        borderRadius:
+          "50%",
+        overflow:
+          "hidden",
+        margin:
+          size > 60
+            ? "0 auto"
+            : undefined,
+        background:
+          "#e9f8ef",
+        border:
+          "3px solid #ffffff",
+        boxShadow:
+          "0 7px 18px rgba(30,90,60,.12)",
+        display:
+          "grid",
+        placeItems:
+          "center",
+        fontSize:
+          `${Math.round(
+            size * 0.46
+          )}px`,
+        flexShrink:
+          0,
+      }}
+    >
+      {hero.imageUrl ? (
+        <img
+          src={hero.imageUrl}
+          alt=""
+          style={{
+            width:
+              "100%",
+            height:
+              "100%",
+            objectFit:
+              "cover",
+          }}
+        />
+      ) : (
+        "🌟"
+      )}
+    </div>
+  );
+}
+
+const messageCardStyle:
+  React.CSSProperties = {
+    marginTop: "22px",
+    background: "#ffffff",
+    border:
+      "1px solid #dcece4",
+    borderRadius:
+      "24px",
+    padding: "30px",
+    textAlign:
+      "center",
+    color: "#64756d",
+    fontWeight: 800,
+    boxShadow:
+      "0 9px 25px rgba(30,90,60,.06)",
+  };
