@@ -1,10 +1,19 @@
 "use client";
 
 import Link from "next/link";
+
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
+
+import {
+  doc,
+  getDoc,
+} from "firebase/firestore";
+
+import { db } from "../../../firebase";
 
 type CellType =
   | "wall"
@@ -29,8 +38,11 @@ type Position = {
   row: number;
   col: number;
 };
+type MazeSettings = {
+  mazeWords: string;
+};
 
-const questions: Question[] = [
+const fallbackQuestions: Question[] = [
   {
     id: 1,
     text: "اختر الكلمة التي تبدأ بحرف «م»",
@@ -155,6 +167,187 @@ const maze: MazeCell[][] = [
 ];
 
 export default function PublicMazeGamePage() {
+  const [
+  mazeWords,
+  setMazeWords,
+] = useState<string[]>([]);
+
+const [
+  wordsLoading,
+  setWordsLoading,
+] = useState(true);
+useEffect(() => {
+  let active = true;
+
+  async function loadMazeWords() {
+    try {
+      setWordsLoading(true);
+
+      const snapshot =
+        await getDoc(
+          doc(
+            db,
+            "gameSettings",
+            "weekly"
+          )
+        );
+
+      if (
+        !active ||
+        !snapshot.exists()
+      ) {
+        return;
+      }
+
+      const data =
+        snapshot.data();
+
+      const rawWords =
+        typeof data.mazeWords ===
+        "string"
+          ? data.mazeWords
+          : "";
+
+      const parsedWords =
+        rawWords
+          .split(/[\n،,]+/)
+          .map((word) =>
+            word.trim()
+          )
+          .filter(Boolean);
+
+      setMazeWords(parsedWords);
+    } catch (error) {
+      console.error(
+        "تعذر تحميل كلمات المتاهة:",
+        error
+      );
+
+      setMazeWords([]);
+    } finally {
+      if (active) {
+        setWordsLoading(false);
+      }
+    }
+  }
+
+  void loadMazeWords();
+
+  return () => {
+    active = false;
+  };
+}, []);
+const questions = useMemo<Question[]>(() => {
+  if (wordsLoading) {
+    return fallbackQuestions;
+  }
+
+  const cleanedWords = Array.from(
+    new Set(
+      mazeWords
+        .map((word) => word.trim())
+        .filter(Boolean)
+    )
+  );
+
+  /*
+   * نختار كلمات ببدايات مختلفة حتى
+   * لا يكون للسؤال أكثر من إجابة صحيحة.
+   */
+  const uniqueStartWords: string[] = [];
+
+  const usedFirstLetters =
+    new Set<string>();
+
+  for (const word of cleanedWords) {
+    const firstLetter =
+      word.charAt(0);
+
+    if (
+      !firstLetter ||
+      usedFirstLetters.has(
+        firstLetter
+      )
+    ) {
+      continue;
+    }
+
+    usedFirstLetters.add(
+      firstLetter
+    );
+
+    uniqueStartWords.push(
+      word
+    );
+  }
+
+  /*
+   * نحتاج ثلاث بدايات مختلفة على الأقل
+   * لأن المتاهة الحالية فيها ثلاثة أبواب.
+   */
+  if (
+    uniqueStartWords.length < 3
+  ) {
+    return fallbackQuestions;
+  }
+
+  return uniqueStartWords
+    .slice(0, 3)
+    .map(
+      (
+        correctWord,
+        index
+      ) => {
+        const firstLetter =
+          correctWord.charAt(0);
+
+        const distractors =
+          uniqueStartWords
+            .filter(
+              (word) =>
+                word !==
+                correctWord
+            )
+            .slice(0, 2);
+
+        const options =
+          index === 0
+            ? [
+                correctWord,
+                ...distractors,
+              ]
+            : index === 1
+            ? [
+                distractors[0],
+                correctWord,
+                distractors[1],
+              ]
+            : [
+                ...distractors,
+                correctWord,
+              ];
+
+        return {
+          id: index + 1,
+
+          text:
+            `اختر الكلمة التي تبدأ بحرف «${firstLetter}»`,
+
+          options,
+
+          correctIndex:
+            index === 0
+              ? 0
+              : index === 1
+              ? 1
+              : 2,
+        };
+      }
+    );
+}, [
+  mazeWords,
+  wordsLoading,
+]);
  const startPosition: Position = (() => {
   for (
     let row = 0;
