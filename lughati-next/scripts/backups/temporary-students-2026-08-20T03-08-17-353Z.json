@@ -1,0 +1,779 @@
+[
+  {
+    "id": "student-040",
+    "data": {
+      "studentId": "student-040",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 40",
+      "loginCode": "0040",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-041",
+    "data": {
+      "studentId": "student-041",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 41",
+      "loginCode": "0041",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-042",
+    "data": {
+      "studentId": "student-042",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 42",
+      "loginCode": "0042",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-043",
+    "data": {
+      "studentId": "student-043",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 43",
+      "loginCode": "0043",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-044",
+    "data": {
+      "studentId": "student-044",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 44",
+      "loginCode": "0044",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-045",
+    "data": {
+      "studentId": "student-045",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 45",
+      "loginCode": "0045",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-046",
+    "data": {
+      "studentId": "student-046",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 46",
+      "loginCode": "0046",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-047",
+    "data": {
+      "studentId": "student-047",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 47",
+      "loginCode": "0047",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-048",
+    "data": {
+      "studentId": "student-048",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 48",
+      "loginCode": "0048",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-049",
+    "data": {
+      "studentId": "student-049",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 49",
+      "loginCode": "0049",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-050",
+    "data": {
+      "studentId": "student-050",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 50",
+      "loginCode": "0050",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-051",
+    "data": {
+      "studentId": "student-051",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 51",
+      "loginCode": "0051",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-052",
+    "data": {
+      "studentId": "student-052",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 52",
+      "loginCode": "0052",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-053",
+    "data": {
+      "studentId": "student-053",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 53",
+      "loginCode": "0053",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-054",
+    "data": {
+      "studentId": "student-054",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 54",
+      "loginCode": "0054",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-055",
+    "data": {
+      "studentId": "student-055",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 55",
+      "loginCode": "0055",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "points": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-056",
+    "data": {
+      "studentId": "student-056",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 56",
+      "loginCode": "0056",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-057",
+    "data": {
+      "studentId": "student-057",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 57",
+      "loginCode": "0057",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-058",
+    "data": {
+      "studentId": "student-058",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 58",
+      "loginCode": "0058",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-059",
+    "data": {
+      "studentId": "student-059",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 59",
+      "loginCode": "0059",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  },
+  {
+    "id": "student-060",
+    "data": {
+      "studentId": "student-060",
+      "temporary": true,
+      "createdAt": {
+        "__type": "Timestamp",
+        "value": "2026-07-17T04:28:21.659Z"
+      },
+      "studentName": "طالب 60",
+      "loginCode": "0060",
+      "active": true,
+      "classroom": "الثاني ب",
+      "stars": 0,
+      "badges": [],
+      "journey": {
+        "currentLevel": 1,
+        "lastCompletedDate": "",
+        "xp": 0,
+        "currentPath": "",
+        "lastActivityAt": null,
+        "streak": 0
+      },
+      "teacherMessage": "",
+      "pointsHistory": [],
+      "teacherMessageUpdatedAt": null,
+      "spellingHistory": [],
+      "dailyTaskRewardKeys": [],
+      "attendanceHistory": [],
+      "readingHistory": [],
+      "points": 0,
+      "updatedAt": {
+        "__type": "Timestamp",
+        "value": "2026-08-13T23:11:32.234Z"
+      }
+    }
+  }
+]

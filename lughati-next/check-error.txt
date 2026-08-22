@@ -1,0 +1,23 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Unable to detect a Project Id in the current environment. 
+To learn more about authentication and Google APIs, visit: 
+https://cloud.google.com/docs/authentication/getting-started
+    at GoogleAuth.findAndCacheProjectId (/workspaces/lughati-academy/lughati-next/node_modules/google-gax/node_modules/google-auth-library/build/src/auth/googleauth.js:168:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Firestore.initializeIfNeeded (/workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/index.js:1258:35)
+Caused by: Error
+    at QueryUtil._getResponse (/workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/reference/query-util.js:47:23)
+    at CollectionReference._getResponse (/workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/reference/query.js:905:32)
+    at CollectionReference._get (/workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/reference/query.js:898:35)
+    at /workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/reference/query.js:866:43
+    at /workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:125:30
+    at NoopContextManager.with (/workspaces/lughati-academy/lughati-next/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:14:19)
+    at ContextAPI.with (/workspaces/lughati-academy/lughati-next/node_modules/@opentelemetry/api/build/src/api/context.js:51:46)
+    at NoopTracer.startActiveSpan (/workspaces/lughati-academy/lughati-next/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:54:31)
+    at ProxyTracer.startActiveSpan (/workspaces/lughati-academy/lughati-next/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:27:24)
+    at EnabledTraceUtil.startActiveSpan (/workspaces/lughati-academy/lughati-next/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:117:28)
+
+Node.js v24.14.0

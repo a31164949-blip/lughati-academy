@@ -425,7 +425,31 @@ const activePeriod: ActivePeriodState = (() => {
         nowMinutes
     );
   }
+  const isWeekend =
+    todayName === "الجمعة" ||
+    todayName === "السبت";
 
+  const sundaySchedule =
+    schedule?.days.find(
+      (day) => day.day === "الأحد"
+    ) ?? null;
+
+  function getSubjectFromDay(
+    day: DaySchedule | null,
+    periodId: number
+  ) {
+    if (!day) {
+      return "";
+    }
+
+    return (
+      day.periods?.[periodId] ??
+      day.periods?.[
+        String(periodId) as unknown as number
+      ] ??
+      ""
+    );
+  }
   if (isLoading) {
     return (
       <main
@@ -715,100 +739,207 @@ const activePeriod: ActivePeriodState = (() => {
               "no-school-day" &&
               "🌿 لا توجد حصص دراسية اليوم."}
           </p>
-        </section>
-
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 p-5">
             <h2 className="text-2xl font-black text-slate-800">
               📚 حصص اليوم
             </h2>
 
             <p className="mt-2 text-slate-500">
-              جدولك لليوم مرتّب
-              من أول حصة حتى
-              نهاية اليوم.
+              {isWeekend
+                ? "استمتع بإجازتك واستعد ليوم دراسي جديد."
+                : "جدولك لليوم مرتب من أول حصة حتى نهاية اليوم."}
             </p>
           </div>
 
-          <div className="grid gap-3 p-5">
-            {schedule.periods.map(
-              (period) => {
-                const subject =
-                  getSubject(
-                    period.id
-                  );
+          {isWeekend ? (
+            <div className="p-6">
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-7 text-center">
+                <div className="text-6xl">
+                  🌿
+                </div>
 
-                const isCurrent =
-                  activePeriod.current
-                    ?.id ===
-                  period.id;
+                <h3 className="mt-4 text-2xl font-black text-emerald-800">
+                  اليوم إجازة يا بطل
+                </h3>
 
-                const isNext =
-                  activePeriod.next
-                    ?.id ===
-                  period.id;
+                <p className="mt-3 text-lg leading-8 text-emerald-700">
+                  استمتع بوقتك، وخذ قسطًا من الراحة،
+                  واستعد ليوم دراسي جديد مليء بالإنجاز 🌟
+                </p>
+              </div>
 
-                return (
-                  <article
-                    key={
-                      period.id
-                    }
-                    className={`rounded-2xl border p-4 ${
-                      isCurrent
-                        ? "border-emerald-400 bg-emerald-50"
-                        : isNext
-                          ? "border-sky-300 bg-sky-50"
-                          : "border-slate-200 bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+              {todayName === "السبت" &&
+                sundaySchedule && (
+                  <div className="mt-6">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-black text-slate-800">
-                            {
-                              period.title
-                            }
-                          </p>
+                        <h3 className="text-2xl font-black text-slate-800">
+                          🎒 استعد للأحد
+                        </h3>
 
-                          {isCurrent && (
-                            <span className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white">
-                              الآن
-                            </span>
-                          )}
-
-                          {isNext && (
-                            <span className="rounded-full bg-sky-600 px-3 py-1 text-xs font-black text-white">
-                              التالية
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="mt-2 text-lg font-bold text-slate-700">
-                          {subject ||
-                            "لم تُحدد المادة"}
+                        <p className="mt-1 text-slate-500">
+                          هذه حصصك غدًا حتى تجهز حقيبتك من الآن.
                         </p>
                       </div>
 
-                      <p
-                        dir="ltr"
-                        className="whitespace-nowrap font-black text-slate-500"
-                      >
-                        {
-                          period.startTime
-                        }{" "}
-                        -{" "}
-                        {
-                          period.endTime
-                        }
-                      </p>
+                      <span className="rounded-full bg-amber-100 px-4 py-2 text-sm font-black text-amber-800">
+                        غدًا الأحد
+                      </span>
                     </div>
-                  </article>
-                );
-              }
-            )}
-          </div>
-        </section>
 
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {schedule.periods.map(
+                        (period) => {
+                          const subject =
+                            getSubjectFromDay(
+                              sundaySchedule,
+                              period.id
+                            );
+
+                          if (!subject) {
+                            return null;
+                          }
+
+                          const isLughati =
+                            subject.trim() ===
+                            "لغتي";
+
+                          return (
+                            <article
+                              key={period.id}
+                              className={`rounded-2xl border p-4 ${
+                                isLughati
+                                  ? "border-amber-300 bg-amber-50"
+                                  : "border-slate-200 bg-slate-50"
+                              }`}
+                            >
+                              <p className="text-sm font-black text-slate-500">
+                                {period.title}
+                              </p>
+
+                              <p
+                                className={`mt-2 text-xl font-black ${
+                                  isLughati
+                                    ? "text-amber-800"
+                                    : "text-slate-800"
+                                }`}
+                              >
+                                {isLughati
+                                  ? `📖 ${subject}`
+                                  : subject}
+                              </p>
+
+                              <p
+                                dir="ltr"
+                                className="mt-2 text-sm font-bold text-slate-500"
+                              >
+                                {period.startTime}
+                                {" - "}
+                                {period.endTime}
+                              </p>
+                            </article>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
+                )}
+            </div>
+          ) : (
+            <div className="grid gap-3 p-5">
+              {schedule.periods.map(
+                (period) => {
+                  const subject =
+                    getSubject(
+                      period.id
+                    );
+
+                  if (!subject) {
+                    return null;
+                  }
+
+                  const isCurrent =
+                    activePeriod.current
+                      ?.id === period.id;
+
+                  const isNext =
+                    activePeriod.next
+                      ?.id === period.id;
+
+                  const isLughati =
+                    subject.trim() ===
+                    "لغتي";
+
+                  return (
+                    <article
+                      key={period.id}
+                      className={`rounded-2xl border p-4 ${
+                        isCurrent
+                          ? "border-emerald-400 bg-emerald-50"
+                          : isNext
+                            ? "border-sky-300 bg-sky-50"
+                            : isLughati
+                              ? "border-amber-300 bg-amber-50"
+                              : "border-slate-200 bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-lg font-black text-slate-800">
+                              {period.title}
+                            </p>
+
+                            {isCurrent && (
+                              <span className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-black text-white">
+                                الآن
+                              </span>
+                            )}
+
+                            {isNext && (
+                              <span className="rounded-full bg-sky-600 px-3 py-1 text-xs font-black text-white">
+                                التالية
+                              </span>
+                            )}
+
+                            {isLughati && (
+                              <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-white">
+                                ⭐ لغتي
+                              </span>
+                            )}
+                          </div>
+
+                          <p
+                            className={`mt-2 text-lg font-bold ${
+                              isLughati
+                                ? "text-amber-800"
+                                : "text-slate-700"
+                            }`}
+                          >
+                            {isLughati
+                              ? `📖 ${subject}`
+                              : subject}
+                          </p>
+                        </div>
+
+                        <p
+                          dir="ltr"
+                          className="whitespace-nowrap font-black text-slate-500"
+                        >
+                          {period.startTime}
+                          {" - "}
+                          {period.endTime}
+                        </p>
+                      </div>
+                    </article>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </section>
+        </section>
         <footer className="mt-6 rounded-3xl bg-white p-5 text-center shadow-sm">
           <p className="font-black text-emerald-700">
             نتعلّم… نقرأ… نبدع

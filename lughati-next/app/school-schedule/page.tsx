@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
@@ -51,14 +52,24 @@ function normalizeClassroomToKey(
   return "second-a";
 }
 
+function getSubject(
+  day: DaySchedule | undefined,
+  periodId: number
+) {
+  return (
+    day?.periods?.[periodId] ??
+    day?.periods?.[
+      String(periodId) as unknown as number
+    ] ??
+    ""
+  );
+}
+
 export default function StudentSchoolSchedulePage() {
   const [schedule, setSchedule] =
     useState<SchoolSchedule | null>(null);
 
   const [studentName, setStudentName] =
-    useState("");
-
-  const [studentClassroom, setStudentClassroom] =
     useState("");
 
   const [isLoading, setIsLoading] =
@@ -85,20 +96,16 @@ export default function StudentSchoolSchedulePage() {
               JSON.parse(savedStudent);
 
             loadedStudentName =
-              typeof parsed.studentName ===
-              "string"
+              typeof parsed.studentName === "string"
                 ? parsed.studentName
-                : typeof parsed.name ===
-                    "string"
+                : typeof parsed.name === "string"
                   ? parsed.name
                   : "";
 
             loadedClassroom =
-              typeof parsed.classroom ===
-              "string"
+              typeof parsed.classroom === "string"
                 ? parsed.classroom
-                : typeof parsed.className ===
-                    "string"
+                : typeof parsed.className === "string"
                   ? parsed.className
                   : "";
           } catch (error) {
@@ -111,10 +118,6 @@ export default function StudentSchoolSchedulePage() {
 
         setStudentName(
           loadedStudentName
-        );
-
-        setStudentClassroom(
-          loadedClassroom
         );
 
         const classroomKey =
@@ -155,35 +158,28 @@ export default function StudentSchoolSchedulePage() {
 
         setSchedule({
           classroomKey:
-            typeof data.classroomKey ===
-            "string"
+            typeof data.classroomKey === "string"
               ? data.classroomKey
               : classroomKey,
 
           classroom:
-            typeof data.classroom ===
-            "string"
+            typeof data.classroom === "string"
               ? data.classroom
               : loadedClassroom ||
                 "الثاني أ",
 
           scheduleTitle:
-            typeof data.scheduleTitle ===
-            "string"
+            typeof data.scheduleTitle === "string"
               ? data.scheduleTitle
               : "الجدول المدرسي",
 
           periods:
-            Array.isArray(
-              data.periods
-            )
+            Array.isArray(data.periods)
               ? data.periods
               : [],
 
           days:
-            Array.isArray(
-              data.days
-            )
+            Array.isArray(data.days)
               ? data.days
               : [],
 
@@ -222,6 +218,21 @@ export default function StudentSchoolSchedulePage() {
     ];
   }, []);
 
+  const todaySchedule = useMemo(() => {
+    if (!schedule) {
+      return undefined;
+    }
+
+    return schedule.days.find(
+      (item) =>
+        item.day === todayName
+    );
+  }, [schedule, todayName]);
+
+  const isWeekend =
+    todayName === "الجمعة" ||
+    todayName === "السبت";
+
   if (isLoading) {
     return (
       <main
@@ -255,9 +266,10 @@ export default function StudentSchoolSchedulePage() {
           </p>
 <Link
   href="/journey"
-  className="mt-6 inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg transition hover:bg-emerald-800 active:scale-95"
+  className="schoolScheduleBackButton"
 >
-  ← العودة إلى رحلتي
+  <span>↩️</span>
+  <span>العودة إلى رحلتي</span>
 </Link>
         </div>
       </main>
@@ -271,60 +283,40 @@ export default function StudentSchoolSchedulePage() {
     >
       <div className="mx-auto max-w-7xl">
 
-        <header className="mb-6 rounded-3xl bg-gradient-to-l from-emerald-700 to-emerald-500 p-7 text-white shadow-lg">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="font-bold text-emerald-50">
-                أكاديمية لغتي الرقمية
-              </p>
-
-              <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                📅 جدولي المدرسي
-              </h1>
-
-              <p className="mt-3 text-xl font-black text-emerald-50">
-                {schedule.classroom}
-              </p>
-
-              <p className="mt-2 text-emerald-50">
-                {studentName
-                  ? `أهلًا ${studentName} 🌟`
-                  : "أهلًا يا بطل 🌟"}
-              </p>
-            </div>
-
-           <div
-  style={{
-    maxWidth: "1180px",
-    margin: "0 auto 14px",
-    display: "flex",
-    justifyContent: "flex-start",
-  }}
->
-  <a
+        {/* رأس الصفحة */}
+     <div className="mb-4 flex justify-start">
+  <Link
     href="/journey"
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "8px",
-      padding: "11px 17px",
-      borderRadius: "14px",
-      background: "#ffffff",
-      color: "#047857",
-      border: "1px solid #a7f3d0",
-      fontWeight: 900,
-      fontSize: "15px",
-      textDecoration: "none",
-      boxShadow: "0 5px 14px rgba(4,120,87,0.10)",
-    }}
+    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-5 py-3 font-black no-underline shadow-md transition hover:-translate-y-0.5 hover:shadow-lg active:scale-95"
   >
-    ← العودة إلى رحلتي
-  </a>
+    <span>↩️</span>
+    <span>العودة إلى رحلتي</span>
+  </Link>
 </div>
-          </div>
-        </header>
 
+<header className="mb-6 rounded-3xl bg-gradient-to-l from-emerald-700 to-emerald-500 p-7 text-white shadow-lg">
+  <div>
+    <p className="font-bold text-emerald-50">
+      أكاديمية لغتي الرقمية
+    </p>
+
+    <h1 className="mt-2 text-3xl font-black sm:text-4xl">
+      📅 جدولي المدرسي
+    </h1>
+
+    <p className="mt-3 text-xl font-black text-emerald-50">
+      {schedule.classroom}
+    </p>
+
+    <p className="mt-2 text-emerald-50">
+      {studentName
+        ? `أهلًا ${studentName} 🌟`
+        : "أهلًا يا بطل 🌟"}
+    </p>
+  </div>
+</header>
+
+        {/* معلومات سريعة */}
         <section className="mb-6 grid gap-4 md:grid-cols-3">
           <article className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
             <p className="font-black text-emerald-800">
@@ -357,6 +349,122 @@ export default function StudentSchoolSchedulePage() {
           </article>
         </section>
 
+        {/* حصصي اليوم */}
+        <section className="mb-6 overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm">
+          <div className="bg-gradient-to-l from-emerald-50 to-white p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-black text-emerald-800 sm:text-3xl">
+                  ☀️ حصصي اليوم
+                </h2>
+
+                <p className="mt-2 text-slate-600">
+                  جدول يوم {todayName} أمامك
+                  بشكل سريع وواضح.
+                </p>
+              </div>
+
+              {!isWeekend && (
+                <span className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-black text-white">
+                  📚 يوم دراسي
+                </span>
+              )}
+            </div>
+          </div>
+
+          {isWeekend ? (
+            <div className="p-7 text-center">
+              <div className="text-6xl">
+                🌤️
+              </div>
+
+              <h3 className="mt-4 text-2xl font-black text-slate-800">
+                عطلة سعيدة يا بطل
+              </h3>
+
+              <p className="mt-2 text-lg leading-8 text-slate-600">
+                استمتع بوقتك، واستعد لأسبوع
+                جديد مليء بالتعلّم والإنجاز 🌟
+              </p>
+            </div>
+          ) : todaySchedule ? (
+            <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {schedule.periods.map(
+                (period) => {
+                  const subject =
+                    getSubject(
+                      todaySchedule,
+                      period.id
+                    );
+
+                  if (!subject) {
+                    return null;
+                  }
+
+                  const isLughati =
+                    subject.trim() ===
+                    "لغتي";
+
+                  return (
+                    <article
+                      key={period.id}
+                      className={`relative overflow-hidden rounded-3xl border p-5 transition hover:-translate-y-1 hover:shadow-md ${
+                        isLughati
+                          ? "border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-100"
+                          : "border-emerald-100 bg-emerald-50"
+                      }`}
+                    >
+                      {isLughati && (
+                        <span className="absolute left-3 top-3 rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-white">
+                          ⭐ لغتي
+                        </span>
+                      )}
+
+                      <p
+                        className={`text-sm font-black ${
+                          isLughati
+                            ? "text-amber-700"
+                            : "text-emerald-700"
+                        }`}
+                      >
+                        {period.title}
+                      </p>
+
+                      <h3
+                        className={`mt-3 text-2xl font-black ${
+                          isLughati
+                            ? "text-amber-900"
+                            : "text-slate-800"
+                        }`}
+                      >
+                        {isLughati
+                          ? "📖 لغتي"
+                          : subject}
+                      </h3>
+
+                      <p
+                        dir="ltr"
+                        className="mt-3 inline-flex rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-500 shadow-sm"
+                      >
+                        {period.startTime}
+                        {" - "}
+                        {period.endTime}
+                      </p>
+                    </article>
+                  );
+                }
+              )}
+            </div>
+          ) : (
+            <div className="p-7 text-center">
+              <p className="text-lg font-black text-slate-600">
+                لا توجد حصص مسجلة لهذا اليوم.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* الجدول الأسبوعي */}
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 p-5">
             <h2 className="text-2xl font-black text-slate-800">
@@ -364,8 +472,7 @@ export default function StudentSchoolSchedulePage() {
             </h2>
 
             <p className="mt-2 text-slate-500">
-              شاهد جميع حصصك من الأحد
-              إلى الخميس.
+              شاهد جميع حصصك من الأحد إلى الخميس.
             </p>
           </div>
 
@@ -382,8 +489,7 @@ export default function StudentSchoolSchedulePage() {
                       <th
                         key={day}
                         className={`border border-slate-200 p-3 font-black ${
-                          day ===
-                          todayName
+                          day === todayName
                             ? "bg-emerald-200 text-emerald-900"
                             : "text-emerald-800"
                         }`}
@@ -405,29 +511,19 @@ export default function StudentSchoolSchedulePage() {
               <tbody>
                 {schedule.periods.map(
                   (period) => (
-                    <tr
-                      key={
-                        period.id
-                      }
-                    >
+                    <tr key={period.id}>
                       <td className="border border-slate-200 bg-slate-50 p-3">
                         <p className="font-black text-slate-800">
-                          {
-                            period.title
-                          }
+                          {period.title}
                         </p>
 
                         <p
                           dir="ltr"
                           className="mt-1 whitespace-nowrap text-xs font-bold text-slate-500"
                         >
-                          {
-                            period.startTime
-                          }{" "}
-                          -{" "}
-                          {
-                            period.endTime
-                          }
+                          {period.startTime}
+                          {" - "}
+                          {period.endTime}
                         </p>
                       </td>
 
@@ -435,27 +531,24 @@ export default function StudentSchoolSchedulePage() {
                         (dayName) => {
                           const day =
                             schedule.days.find(
-                              (
-                                item
-                              ) =>
+                              (item) =>
                                 item.day ===
                                 dayName
                             );
 
                           const subject =
-                            day?.periods?.[
+                            getSubject(
+                              day,
                               period.id
-                            ] ??
-                            day?.periods?.[
-                              String(
-                                period.id
-                              ) as unknown as number
-                            ] ??
-                            "";
+                            );
 
                           const isToday =
                             dayName ===
                             todayName;
+
+                          const isLughati =
+                            subject.trim() ===
+                            "لغتي";
 
                           return (
                             <td
@@ -468,15 +561,19 @@ export default function StudentSchoolSchedulePage() {
                             >
                               <div
                                 className={`rounded-2xl px-3 py-4 font-black ${
-                                  subject
-                                    ? isToday
-                                      ? "bg-emerald-100 text-emerald-800"
-                                      : "bg-slate-50 text-slate-800"
-                                    : "bg-slate-50 text-slate-400"
+                                  !subject
+                                    ? "bg-slate-50 text-slate-400"
+                                    : isLughati
+                                      ? "bg-amber-100 text-amber-900 ring-1 ring-amber-300"
+                                      : isToday
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : "bg-slate-50 text-slate-800"
                                 }`}
                               >
-                                {subject ||
-                                  "—"}
+                                {isLughati
+                                  ? `📖 ${subject}`
+                                  : subject ||
+                                    "—"}
                               </div>
                             </td>
                           );
@@ -490,24 +587,25 @@ export default function StudentSchoolSchedulePage() {
           </div>
         </section>
 
+        {/* روابط سريعة */}
         <section className="mt-6 grid gap-4 md:grid-cols-2">
-          <a
+          <Link
             href="/school-day"
-            className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 no-underline"
+            className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 no-underline transition hover:-translate-y-1 hover:shadow-md"
           >
             <p className="text-xl font-black text-emerald-800">
               ⏰ انتقل إلى يومي الدراسي
             </p>
 
             <p className="mt-2 leading-8 text-emerald-700">
-              شاهد الحصة الحالية
-              والقادمة وبقية حصص اليوم.
+              شاهد الحصة الحالية والقادمة
+              وبقية حصص اليوم.
             </p>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/weekly-plan"
-            className="rounded-3xl border border-sky-200 bg-sky-50 p-5 no-underline"
+            className="rounded-3xl border border-sky-200 bg-sky-50 p-5 no-underline transition hover:-translate-y-1 hover:shadow-md"
           >
             <p className="text-xl font-black text-sky-800">
               🗓️ الخطة الأسبوعية
@@ -517,7 +615,7 @@ export default function StudentSchoolSchedulePage() {
               تعرف على أهداف الأسبوع
               وواجباته ومهامه.
             </p>
-          </a>
+          </Link>
         </section>
 
         <footer className="mt-6 rounded-3xl bg-white p-5 text-center shadow-sm">

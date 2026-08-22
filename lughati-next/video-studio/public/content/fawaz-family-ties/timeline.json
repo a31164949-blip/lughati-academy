@@ -1,0 +1,307 @@
+{
+  "elements": [
+    {
+      "startMs": 0,
+      "endMs": 8000,
+      "imageUrl": "fawaz-scene-01",
+      "enterTransition": "blur",
+      "exitTransition": "blur",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 1.12,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 8000
+        }
+      ]
+    },
+    {
+      "startMs": 8000,
+      "endMs": 18000,
+      "imageUrl": "fawaz-scene-02",
+      "enterTransition": "blur",
+      "exitTransition": "blur",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 1,
+          "to": 1.12,
+          "startMs": 0,
+          "endMs": 10000
+        }
+      ]
+    },
+    {
+      "startMs": 18000,
+      "endMs": 30000,
+      "imageUrl": "fawaz-scene-03",
+      "enterTransition": "blur",
+      "exitTransition": "blur",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 1.12,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 12000
+        }
+      ]
+    },
+    {
+      "startMs": 30000,
+      "endMs": 42000,
+      "imageUrl": "fawaz-scene-04",
+      "enterTransition": "blur",
+      "exitTransition": "blur",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 1,
+          "to": 1.12,
+          "startMs": 0,
+          "endMs": 12000
+        }
+      ]
+    },
+    {
+      "startMs": 42000,
+      "endMs": 55000,
+      "imageUrl": "fawaz-scene-05",
+      "enterTransition": "blur",
+      "exitTransition": "blur",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 1.1,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 13000
+        }
+      ]
+    },
+    {
+      "startMs": 55000,
+      "endMs": 70000,
+      "imageUrl": "fawaz-scene-06",
+      "enterTransition": "blur",
+      "exitTransition": "blur",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 1,
+          "to": 1.1,
+          "startMs": 0,
+          "endMs": 15000
+        }
+      ]
+    }
+  ],
+
+  "text": [
+    {
+      "startMs": 500,
+      "endMs": 3500,
+      "text": "مفاجأة فواز لجدته",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.8,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 500
+        }
+      ]
+    },
+    {
+      "startMs": 3600,
+      "endMs": 7600,
+      "text": "صلة الرحم ❤️",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.85,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 400
+        }
+      ]
+    },
+
+    {
+      "startMs": 8500,
+      "endMs": 12500,
+      "text": "أبي، اشتقتُ إلى جدتي.",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.9,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 350
+        }
+      ]
+    },
+    {
+      "startMs": 12500,
+      "endMs": 17500,
+      "text": "هل نزورها اليوم؟",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.9,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 350
+        }
+      ]
+    },
+
+    {
+      "startMs": 18500,
+      "endMs": 23500,
+      "text": "فكرة جميلة يا فواز!",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.85,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 400
+        }
+      ]
+    },
+    {
+      "startMs": 23500,
+      "endMs": 29500,
+      "text": "زيارة الأقارب من صلة الرحم.",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.9,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 400
+        }
+      ]
+    },
+
+    {
+      "startMs": 30500,
+      "endMs": 35500,
+      "text": "أهلًا بحفيدي فواز!",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.85,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 400
+        }
+      ]
+    },
+    {
+      "startMs": 35500,
+      "endMs": 41500,
+      "text": "اشتقتُ إليك يا جدتي ❤️",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.9,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 400
+        }
+      ]
+    },
+
+    {
+      "startMs": 42500,
+      "endMs": 47000,
+      "text": "أزور أقاربي",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.85,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 350
+        }
+      ]
+    },
+    {
+      "startMs": 47000,
+      "endMs": 51000,
+      "text": "أسأل عنهم",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.85,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 350
+        }
+      ]
+    },
+    {
+      "startMs": 51000,
+      "endMs": 54500,
+      "text": "وأساعدهم 🤝",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.85,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 350
+        }
+      ]
+    },
+
+    {
+      "startMs": 55500,
+      "endMs": 61000,
+      "text": "صلة الرحم تزيد المحبة بيننا ❤️",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.8,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 500
+        }
+      ]
+    },
+    {
+      "startMs": 61500,
+      "endMs": 69500,
+      "text": "والآن يا بطل: أيُّ عملٍ يدل على صلة الرحم؟",
+      "position": "center",
+      "animations": [
+        {
+          "type": "scale",
+          "from": 0.8,
+          "to": 1,
+          "startMs": 0,
+          "endMs": 500
+        }
+      ]
+    }
+  ],
+
+  "audio": [],
+
+  "shortTitle": "مفاجأة فواز لجدته"
+}

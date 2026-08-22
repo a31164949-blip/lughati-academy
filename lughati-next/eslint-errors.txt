@@ -1,0 +1,91 @@
+/workspaces/lughati-academy/lughati-next/app/class-diary/page.tsx
+  49:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/class-diary/page.tsx:49:5
+/workspaces/lughati-academy/lughati-next/app/components/AcademicJourney.tsx
+  93:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/components/AcademicJourney.tsx:93:5
+/workspaces/lughati-academy/lughati-next/app/components/HomeworkReminder.tsx
+  32:5  error  Error: Cannot access variable before it is declared
+/workspaces/lughati-academy/lughati-next/app/components/HomeworkReminder.tsx:32:5
+/workspaces/lughati-academy/lughati-next/app/components/HomeworkReminder.tsx:35:3
+/workspaces/lughati-academy/lughati-next/app/forms/diagnostic/page.tsx
+  34:3  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/forms/diagnostic/page.tsx:34:3
+/workspaces/lughati-academy/lughati-next/app/gallery/page.tsx
+  1231:25  error  Error: Cannot call impure function during render
+/workspaces/lughati-academy/lughati-next/app/gallery/page.tsx:1231:25
+/workspaces/lughati-academy/lughati-next/app/games/maze/page.tsx
+  159:5  error  Compilation Skipped: Existing memoization could not be preserved
+/workspaces/lughati-academy/lughati-next/app/games/maze/page.tsx:159:5
+/workspaces/lughati-academy/lughati-next/app/homework-check/page.tsx
+  52:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/homework-check/page.tsx:52:5
+/workspaces/lughati-academy/lughati-next/app/homeworks/page.tsx
+  160:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/homeworks/page.tsx:160:5
+  219:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/homeworks/page.tsx:219:7
+/workspaces/lughati-academy/lughati-next/app/journey/city/maze/page.tsx
+  137:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/journey/city/maze/page.tsx:137:5
+/workspaces/lughati-academy/lughati-next/app/journey/city/page.tsx
+  177:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/journey/city/page.tsx:177:5
+/workspaces/lughati-academy/lughati-next/app/lessons/unit1/intro/page.tsx
+  108:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/lessons/unit1/intro/page.tsx:108:7
+/workspaces/lughati-academy/lughati-next/app/lessons/unit1/lesson2/read/page.tsx
+  86:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/lessons/unit1/lesson2/read/page.tsx:86:5
+/workspaces/lughati-academy/lughati-next/app/lessons/unit1/review/page.tsx
+  46:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/lessons/unit1/review/page.tsx:46:7
+/workspaces/lughati-academy/lughati-next/app/quizzes/take/page.tsx
+   59:3  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/quizzes/take/page.tsx:59:3
+  218:3  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/quizzes/take/page.tsx:218:3
+/workspaces/lughati-academy/lughati-next/app/school-day/page.tsx
+  137:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/school-day/page.tsx:137:5
+  271:5  error  Compilation Skipped: Existing memoization could not be preserved
+/workspaces/lughati-academy/lughati-next/app/school-day/page.tsx:271:5
+  271:5  error  Compilation Skipped: Existing memoization could not be preserved
+/workspaces/lughati-academy/lughati-next/app/school-day/page.tsx:271:5
+/workspaces/lughati-academy/lughati-next/app/school-schedule/page.tsx
+  256:1  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+/workspaces/lughati-academy/lughati-next/app/teacher/class-diary/page.tsx
+  332:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/class-diary/page.tsx:332:10
+/workspaces/lughati-academy/lughati-next/app/teacher/gallery/page.tsx
+  131:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/gallery/page.tsx:131:10
+/workspaces/lughati-academy/lughati-next/app/teacher/homework-tracking/page.tsx
+  268:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/homework-tracking/page.tsx:268:5
+/workspaces/lughati-academy/lughati-next/app/teacher/homeworks/page.tsx
+  104:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/homeworks/page.tsx:104:5
+/workspaces/lughati-academy/lughati-next/app/teacher/homeworks/tracking/page.tsx
+  409:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/homeworks/tracking/page.tsx:409:10
+/workspaces/lughati-academy/lughati-next/app/teacher/notebook-gallery/page.tsx
+  254:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/notebook-gallery/page.tsx:254:10
+/workspaces/lughati-academy/lughati-next/app/teacher/reading-submissions/page.tsx
+  60:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/reading-submissions/page.tsx:60:5
+/workspaces/lughati-academy/lughati-next/app/teacher/student-messages/page.tsx
+  107:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/student-messages/page.tsx:107:10
+/workspaces/lughati-academy/lughati-next/app/teacher/students/[studentId]/page.tsx
+  848:7  error  Do not use an `<a>` element to navigate to `/teacher/students/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+/workspaces/lughati-academy/lughati-next/app/teacher/students/page.tsx
+  250:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/students/page.tsx:250:10
+/workspaces/lughati-academy/lughati-next/app/teacher/submissions/page.tsx
+  236:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/teacher/submissions/page.tsx:236:10
+/workspaces/lughati-academy/lughati-next/app/weekly-plan/page.tsx
+  56:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+/workspaces/lughati-academy/lughati-next/app/weekly-plan/page.tsx:56:5
