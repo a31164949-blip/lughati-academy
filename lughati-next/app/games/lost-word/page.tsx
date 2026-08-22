@@ -180,7 +180,10 @@ export default function LostWordPage() {
                 .trim()
             )
             .filter(Boolean);
-
+          console.log(
+  "كلمات الكلمة الضائعة من Firestore:",
+  parsedWords
+);
         setLostWordWords(parsedWords);
       } catch (error) {
         console.error(
