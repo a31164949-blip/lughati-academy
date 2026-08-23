@@ -757,7 +757,7 @@ export default function WeeklyGames() {
           </button>
 
           <Link
-            href="/games"
+            href="/"
             style={{
               textDecoration: "none",
               padding: "11px 16px",

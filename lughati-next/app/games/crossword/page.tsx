@@ -730,7 +730,7 @@ export default function CrosswordPage() {
           }}
         >
           <Link
-            href="/games"
+            href="/"
             style={{
               display: "inline-flex",
               alignItems: "center",
