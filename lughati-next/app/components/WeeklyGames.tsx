@@ -111,7 +111,7 @@ const baseWeeklyGames: WeeklyGame[] = [
     description:
       "اكتشف الكلمات من خلال التلميحات وأكمل الشبكة بأسرع وقت.",
     icon: "✏️",
-    href: "/games/crosswords",
+    href: "/games/crossword",
     skill: "مفردات • إملاء • تفكير",
     background:
       "linear-gradient(135deg,#b45309 0%,#ea580c 52%,#f59e0b 100%)",
@@ -329,9 +329,7 @@ export default function WeeklyGames() {
   const isFamilyDay =
     riyadhWeekday === "Thu" ||
     riyadhWeekday === "Fri";
-const familyModeActive =
-  isFamilyDay &&
-  gameSettings.familyChallengeEnabled;
+
   const weeklyGames =
     useMemo(
       () =>
@@ -342,14 +340,15 @@ const familyModeActive =
               gameSettings.mazeAlwaysOpen;
 
             const weeklyOpen =
-  !familyModeActive &&
-  game.id ===
-    gameSettings.weeklyGameId;
+              !isFamilyDay &&
+              game.id ===
+                gameSettings.weeklyGameId;
 
-const familyOpen =
-  familyModeActive &&
-  game.id ===
-    gameSettings.familyGameId;
+            const familyOpen =
+              isFamilyDay &&
+              gameSettings.familyChallengeEnabled &&
+              game.id ===
+                gameSettings.familyGameId;
 
             return {
               ...game,
@@ -362,7 +361,7 @@ const familyOpen =
         ),
       [
         gameSettings,
-        familyModeActive,
+        isFamilyDay,
       ]
     );
 
