@@ -1,5 +1,6 @@
 "use client";
 
+import InstallAppButton from "../components/InstallAppButton";
 import Link from "next/link";
 import {
   useEffect,
@@ -810,6 +811,7 @@ useEffect(() => {
               flexWrap: "wrap",
             }}
           >
+            <InstallAppButton />
             <button
               type="button"
               onClick={() => {

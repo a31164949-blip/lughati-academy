@@ -15,7 +15,7 @@ import WeeklyPicks from "./components/WeeklyPicks";
 import HomeworkReminder from "./components/HomeworkReminder";
 import AcademicJourney from "./components/AcademicJourney";
 import ClassDiary from "./components/ClassDiary";
-
+import InstallAppButton from "./components/InstallAppButton";
 type AcademySection = {
   icon: string;
   title: string;
@@ -880,7 +880,7 @@ useEffect(() => {
               </>
             )}
           </span>
-
+          <InstallAppButton />
           <Link
             href="/login"
             style={{
