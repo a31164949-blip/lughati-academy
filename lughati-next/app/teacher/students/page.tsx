@@ -19,9 +19,14 @@ type Student = {
   classroom: string;
   loginCode: string;
   active: boolean;
-   archived: boolean;
+  archived: boolean;
   points: number;
   streakDays: number;
+
+  accountActivated: boolean;
+  loginCount: number;
+  firstLoginAt: Date | null;
+  lastLoginAt: Date | null;
 };
 
 type FamilyProfile = {
@@ -108,6 +113,11 @@ const [restoringStudentId, setRestoringStudentId] =
   const [classFilter, setClassFilter] =
     useState("الكل");
 
+  const [loginFilter, setLoginFilter] =
+    useState<
+      "all" | "never" | "today" | "previous" | "followup"
+    >("all");
+
  async function fetchStudentsData() {
   const [
     studentsSnapshot,
@@ -168,6 +178,24 @@ archived:
           streakDays: Number(
             data.streakDays ?? 0
           ),
+
+          accountActivated:
+            data.accountActivated === true,
+
+          loginCount:
+            typeof data.loginCount === "number"
+              ? data.loginCount
+              : 0,
+
+          firstLoginAt:
+            data.firstLoginAt?.toDate
+              ? data.firstLoginAt.toDate()
+              : null,
+
+          lastLoginAt:
+            data.lastLoginAt?.toDate
+              ? data.lastLoginAt.toDate()
+              : null,
         };
       }
     );
@@ -781,6 +809,81 @@ useEffect(() => {
       );
     }, [activeStudents]);
 
+  const todayInRiyadh =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone: "Asia/Riyadh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }
+    ).format(new Date());
+
+  const FOLLOW_UP_DAYS = 3;
+
+  const followUpThreshold =
+    Date.now() -
+    FOLLOW_UP_DAYS *
+      24 *
+      60 *
+      60 *
+      1000;
+
+  const needsFollowUp = (
+    student: Student
+  ) =>
+    student.accountActivated &&
+    student.loginCount > 0 &&
+    Boolean(student.lastLoginAt) &&
+    (student.lastLoginAt?.getTime() ?? 0) <
+      followUpThreshold;
+
+  const needsFollowUpCount =
+    activeStudents.filter(
+      needsFollowUp
+    ).length;
+
+  const activatedStudentsCount =
+    activeStudents.filter(
+      (student) =>
+        student.accountActivated
+    ).length;
+
+  const neverLoggedInCount =
+    activeStudents.filter(
+      (student) =>
+        !student.accountActivated ||
+        student.loginCount === 0
+    ).length;
+
+  const loggedInTodayCount =
+    activeStudents.filter(
+      (student) => {
+        if (!student.lastLoginAt) {
+          return false;
+        }
+
+        const loginDay =
+          new Intl.DateTimeFormat(
+            "en-CA",
+            {
+              timeZone:
+                "Asia/Riyadh",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }
+          ).format(
+            student.lastLoginAt
+          );
+
+        return (
+          loginDay === todayInRiyadh
+        );
+      }
+    ).length;
+
   const visibleStudents =
     useMemo(() => {
       const search =
@@ -805,9 +908,86 @@ useEffect(() => {
             student.classroom ===
               classFilter;
 
+          const matchesLoginStatus =
+            (() => {
+              if (
+                loginFilter === "all"
+              ) {
+                return true;
+              }
+
+              if (
+                loginFilter === "never"
+              ) {
+                return (
+                  !student.accountActivated ||
+                  student.loginCount === 0
+                );
+              }
+
+              if (
+                loginFilter ===
+                "followup"
+              ) {
+                return (
+                  student.accountActivated &&
+                  student.loginCount > 0 &&
+                  Boolean(
+                    student.lastLoginAt
+                  ) &&
+                  (student.lastLoginAt?.getTime() ??
+                    0) <
+                    followUpThreshold
+                );
+              }
+
+              if (
+                !student.lastLoginAt
+              ) {
+                return false;
+              }
+
+              const loginDay =
+                new Intl.DateTimeFormat(
+                  "en-CA",
+                  {
+                    timeZone:
+                      "Asia/Riyadh",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                  }
+                ).format(
+                  student.lastLoginAt
+                );
+
+              if (
+                loginFilter === "today"
+              ) {
+                return (
+                  loginDay ===
+                  todayInRiyadh
+                );
+              }
+
+              if (
+                loginFilter ===
+                "previous"
+              ) {
+                return (
+                  student.accountActivated &&
+                  loginDay !==
+                    todayInRiyadh
+                );
+              }
+
+              return true;
+            })();
+
           return (
             matchesSearch &&
-            matchesClass
+            matchesClass &&
+            matchesLoginStatus
           );
         }
       );
@@ -815,6 +995,9 @@ useEffect(() => {
       activeStudents,
       searchText,
       classFilter,
+      loginFilter,
+      todayInRiyadh,
+      followUpThreshold,
     ]);
 
   const totalPoints =
@@ -947,6 +1130,38 @@ useEffect(() => {
             completedProfiles
           }
         />
+
+        <StatCard
+          icon="✅"
+          title="فعّلوا الحساب"
+          value={
+            activatedStudentsCount
+          }
+        />
+
+        <StatCard
+          icon="⏳"
+          title="لم يدخلوا بعد"
+          value={
+            neverLoggedInCount
+          }
+        />
+
+        <StatCard
+          icon="🟢"
+          title="دخلوا اليوم"
+          value={
+            loggedInTodayCount
+          }
+        />
+
+        <StatCard
+          icon="🟠"
+          title="يحتاجون متابعة"
+          value={
+            needsFollowUpCount
+          }
+        />
       </section>
 
       <section
@@ -986,6 +1201,41 @@ useEffect(() => {
               </option>
             )
           )}
+        </select>
+
+        <select
+          value={loginFilter}
+          onChange={(event) =>
+            setLoginFilter(
+              event.target.value as
+                | "all"
+                | "never"
+                | "today"
+                | "previous"
+                | "followup"
+            )
+          }
+          style={styles.select}
+        >
+          <option value="all">
+            جميع حالات الدخول
+          </option>
+
+          <option value="never">
+            ⏳ لم يدخلوا بعد
+          </option>
+
+          <option value="today">
+            🟢 دخلوا اليوم
+          </option>
+
+          <option value="previous">
+            🔵 دخلوا سابقًا
+          </option>
+
+          <option value="followup">
+            🟠 يحتاجون متابعة
+          </option>
         </select>
       </section>
 
@@ -1032,6 +1282,94 @@ useEffect(() => {
                         .studentId
                     ]
                   );
+
+                const isLoggedInToday =
+                  (() => {
+                    if (
+                      !student.lastLoginAt
+                    ) {
+                      return false;
+                    }
+
+                    const loginDay =
+                      new Intl.DateTimeFormat(
+                        "en-CA",
+                        {
+                          timeZone:
+                            "Asia/Riyadh",
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                        }
+                      ).format(
+                        student.lastLoginAt
+                      );
+
+                    return (
+                      loginDay ===
+                      todayInRiyadh
+                    );
+                  })();
+
+                const studentNeedsFollowUp =
+                  student.accountActivated &&
+                  student.loginCount > 0 &&
+                  Boolean(
+                    student.lastLoginAt
+                  ) &&
+                  (student.lastLoginAt?.getTime() ??
+                    0) <
+                    followUpThreshold;
+
+                const loginStatus =
+                  !student.accountActivated ||
+                  student.loginCount === 0
+                    ? {
+                        label:
+                          "لم يدخل بعد",
+                        icon: "⏳",
+                        background:
+                          "#fff7ed",
+                        color:
+                          "#9a3412",
+                        border:
+                          "#fed7aa",
+                      }
+                    : studentNeedsFollowUp
+                      ? {
+                          label:
+                            "يحتاج متابعة",
+                          icon: "🟠",
+                          background:
+                            "#fff7ed",
+                          color:
+                            "#c2410c",
+                          border:
+                            "#fdba74",
+                        }
+                    : isLoggedInToday
+                      ? {
+                          label:
+                            "دخل اليوم",
+                          icon: "🟢",
+                          background:
+                            "#ecfdf5",
+                          color:
+                            "#166534",
+                          border:
+                            "#86efac",
+                        }
+                      : {
+                          label:
+                            "دخل سابقًا",
+                          icon: "🔵",
+                          background:
+                            "#eff6ff",
+                          color:
+                            "#1d4ed8",
+                          border:
+                            "#93c5fd",
+                        };
 
                 return (
                   <article
@@ -1093,6 +1431,51 @@ useEffect(() => {
                           styles.details
                         }
                       >
+                        <span
+                          style={{
+                            padding:
+                              "7px 10px",
+                            borderRadius:
+                              "999px",
+                            background:
+                              loginStatus.background,
+                            color:
+                              loginStatus.color,
+                            border:
+                              `1px solid ${loginStatus.border}`,
+                            fontWeight: 900,
+                            fontSize: "13px",
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                        >
+                          {loginStatus.icon}{" "}
+                          {loginStatus.label}
+                        </span>
+
+                        <span>
+                          🔐{" "}
+                          {student.loginCount}{" "}
+                          دخول
+                        </span>
+
+                        <span>
+                          🕒{" "}
+                          {student.lastLoginAt
+                            ? student.lastLoginAt.toLocaleString(
+                                "ar-SA",
+                                {
+                                  timeZone:
+                                    "Asia/Riyadh",
+                                  dateStyle:
+                                    "short",
+                                  timeStyle:
+                                    "short",
+                                }
+                              )
+                            : "لا يوجد دخول"}
+                        </span>
+
                         <span>
                           🔥{" "}
                           {

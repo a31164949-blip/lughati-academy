@@ -326,6 +326,57 @@ export async function POST(request: Request) {
 
     const uid =
       `student_${resolvedStudentId}`;
+     
+      const loginTimestamp = new Date();
+
+await adminDb.runTransaction(
+  async (transaction) => {
+    const latestStudentSnapshot =
+      await transaction.get(
+        studentReference
+      );
+
+    if (
+      !latestStudentSnapshot.exists
+    ) {
+      return;
+    }
+
+    const latestStudentData =
+      latestStudentSnapshot.data() ?? {};
+
+    const previousLoginCount =
+      typeof latestStudentData.loginCount ===
+      "number"
+        ? latestStudentData.loginCount
+        : 0;
+
+    const updateData: Record<
+      string,
+      unknown
+    > = {
+      accountActivated: true,
+      lastLoginAt: loginTimestamp,
+      loginCount:
+        previousLoginCount + 1,
+    };
+
+    if (
+      !latestStudentData.firstLoginAt
+    ) {
+      updateData.firstLoginAt =
+        loginTimestamp;
+    }
+
+    transaction.set(
+      studentReference,
+      updateData,
+      {
+        merge: true,
+      }
+    );
+  }
+);
 
     const customToken =
       await adminAuth.createCustomToken(
