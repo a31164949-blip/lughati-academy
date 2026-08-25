@@ -4,6 +4,7 @@ import {
   initializeApp,
   type App,
 } from "firebase-admin/app";
+
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -21,18 +22,21 @@ function getAdminApp(): App {
     return existingApp;
   }
 
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID
-  ?.trim()
-  .replace(/^["']|["']$/g, "");
+  const projectId =
+    process.env.FIREBASE_ADMIN_PROJECT_ID
+      ?.trim()
+      .replace(/^["']|["']$/g, "");
 
-const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL
-  ?.trim()
-  .replace(/^["']|["']$/g, "");
+  const clientEmail =
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL
+      ?.trim()
+      .replace(/^["']|["']$/g, "");
 
-const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
-  ?.trim()
-  .replace(/^["']|["']$/g, "")
-  .replace(/\\n/g, "\n");
+  const privateKey =
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY
+      ?.trim()
+      .replace(/^["']|["']$/g, "")
+      .replace(/\\n/g, "\n");
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(

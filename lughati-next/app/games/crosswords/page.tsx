@@ -11,6 +11,9 @@ import {
 import {
   doc,
   getDoc,
+  onSnapshot,
+  runTransaction,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -481,6 +484,105 @@ export default function CrosswordsPage() {
     setCompleted,
   ] = useState(false);
 
+   const [
+  startedAt,
+  setStartedAt,
+] = useState<number | null>(null);
+
+const [
+  elapsedSeconds,
+  setElapsedSeconds,
+] = useState(0);
+
+const [
+  finishedTime,
+  setFinishedTime,
+] = useState<number | null>(null);
+
+const [
+  bestTime,
+  setBestTime,
+] = useState<number | null>(null);
+
+const [
+  isNewRecord,
+  setIsNewRecord,
+] = useState(false);
+
+const [
+  showResult,
+  setShowResult,
+] = useState(false);
+
+useEffect(() => {
+  const recordRef = doc(
+    db,
+    "gameRecords",
+    "lughati-crossword"
+  );
+
+  const unsubscribe = onSnapshot(
+    recordRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setBestTime(null);
+        return;
+      }
+
+      const value = snapshot.data().bestTime;
+
+      if (typeof value === "number") {
+        setBestTime(value);
+      } else {
+        setBestTime(null);
+      }
+    },
+    (error) => {
+      console.error(
+        "تعذر تحميل أسرع وقت للكلمات المتقاطعة:",
+        error
+      );
+    }
+  );
+
+  return () => {
+    unsubscribe();
+  };
+}, []);
+
+useEffect(() => {
+  if (
+    loading ||
+    completed ||
+    startedAt === null
+  ) {
+    return;
+  }
+
+  const timer = window.setInterval(() => {
+    setElapsedSeconds(
+      Math.floor(
+        (Date.now() - startedAt) / 1000
+      )
+    );
+  }, 1000);
+
+  return () => {
+    window.clearInterval(timer);
+  };
+}, [loading, completed, startedAt]);
+
+useEffect(() => {
+  if (
+    !loading &&
+    startedAt === null &&
+    !completed
+  ) {
+    setStartedAt(Date.now());
+    setElapsedSeconds(0);
+  }
+}, [loading, startedAt, completed]);
+
   useEffect(() => {
     let active = true;
 
@@ -631,7 +733,64 @@ export default function CrosswordsPage() {
       "واصل الحل… أنت تقترب! ✨"
     );
   }
+async function saveBestTime(
+  finalTime: number
+) {
+  try {
+    const recordRef = doc(
+      db,
+      "gameRecords",
+      "lughati-crossword"
+    );
 
+    let newRecord = false;
+
+    await runTransaction(
+      db,
+      async (transaction) => {
+        const recordSnap =
+          await transaction.get(
+            recordRef
+          );
+
+        const previousBest =
+          recordSnap.exists()
+            ? recordSnap.data().bestTime
+            : null;
+
+        if (
+          typeof previousBest !== "number" ||
+          finalTime < previousBest
+        ) {
+          transaction.set(
+            recordRef,
+            {
+              gameId:
+                "lughati-crossword",
+              bestTime:
+                finalTime,
+              updatedAt:
+                serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          newRecord = true;
+        }
+      }
+    );
+
+    if (newRecord) {
+      setBestTime(finalTime);
+      setIsNewRecord(true);
+    }
+  } catch (error) {
+    console.error(
+      "تعذر حفظ أسرع وقت للكلمات المتقاطعة:",
+      error
+    );
+  }
+}
   function checkAnswers() {
     const keys =
       Object.keys(
@@ -669,7 +828,26 @@ export default function CrosswordsPage() {
       return;
     }
 
+    const finalTime =
+      startedAt !== null
+        ? Math.max(
+            1,
+            Math.floor(
+              (Date.now() - startedAt) /
+                1000
+            )
+          )
+        : Math.max(
+            1,
+            elapsedSeconds
+          );
+
+    setFinishedTime(finalTime);
+    setElapsedSeconds(finalTime);
     setCompleted(true);
+    setShowResult(true);
+
+    void saveBestTime(finalTime);
 
     setMessage(
       "🏆 أحسنت! أكملت الكلمات المتقاطعة بنجاح."
@@ -679,6 +857,11 @@ export default function CrosswordsPage() {
   function restartGame() {
     setAnswers({});
     setCompleted(false);
+    setStartedAt(Date.now());
+    setElapsedSeconds(0);
+    setFinishedTime(null);
+    setIsNewRecord(false);
+    setShowResult(false);
 
     setMessage(
       "اكتب الحروف داخل المربعات لإكمال الكلمات."
@@ -787,7 +970,7 @@ export default function CrosswordsPage() {
             </div>
 
             <Link
-              href="/"
+              href="/#weekly-games"
               style={{
                 textDecoration:
                   "none",
@@ -838,6 +1021,47 @@ export default function CrosswordsPage() {
             ? "⏳ جارٍ تجهيز التحدي..."
             : message}
         </section>
+
+        {!loading && (
+          <section
+            style={{
+              marginTop: "12px",
+              display: "flex",
+              justifyContent: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                padding: "9px 14px",
+                borderRadius: "999px",
+                background: "#fff7e8",
+                border: "1px solid #f1dfbb",
+                color: "#9a5a00",
+                fontWeight: 900,
+              }}
+            >
+              ⏱️ الوقت: {formatTime(elapsedSeconds)}
+            </span>
+
+            <span
+              style={{
+                padding: "9px 14px",
+                borderRadius: "999px",
+                background: "#ecfdf5",
+                border: "1px solid #bbf7d0",
+                color: "#166534",
+                fontWeight: 900,
+              }}
+            >
+              🏆 أسرع وقت:{" "}
+              {bestTime !== null
+                ? formatTime(bestTime)
+                : "لا يوجد بعد"}
+            </span>
+          </section>
+        )}
 
         {!loading && (
           <section
@@ -918,6 +1142,7 @@ export default function CrosswordsPage() {
                                   "#334155",
                                 borderRadius:
                                   "5px",
+                                  
                               }}
                             />
                           );
@@ -1168,6 +1393,222 @@ export default function CrosswordsPage() {
         )}
       </div>
 
+      {completed && showResult && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "grid",
+            placeItems: "center",
+            padding: "18px",
+            background: "rgba(15,23,42,.52)",
+            backdropFilter: "blur(5px)",
+          }}
+        >
+          <section
+            dir="rtl"
+            style={{
+              position: "relative",
+              width: "min(520px, 100%)",
+              borderRadius: "30px",
+              background:
+                "linear-gradient(180deg,#ffffff 0%,#f1fff7 100%)",
+              padding: "34px 24px 26px",
+              textAlign: "center",
+              border: "1px solid #cfe9db",
+              boxShadow:
+                "0 26px 70px rgba(15,23,42,.24)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowResult(false)}
+              aria-label="إغلاق نافذة النتيجة"
+              title="إغلاق"
+              style={{
+                position: "absolute",
+                top: "14px",
+                left: "14px",
+                width: "42px",
+                height: "42px",
+                display: "grid",
+                placeItems: "center",
+                borderRadius: "50%",
+                border: "1px solid #d8e7df",
+                background: "#ffffff",
+                color: "#557067",
+                fontSize: "21px",
+                fontWeight: 900,
+                cursor: "pointer",
+                boxShadow:
+                  "0 6px 16px rgba(0,0,0,.08)",
+              }}
+            >
+              ✕
+            </button>
+
+            <div style={{ fontSize: "68px" }}>
+              🏆
+            </div>
+
+            <h2
+              style={{
+                margin: "8px 0 6px",
+                color: "#166534",
+                fontSize: "30px",
+              }}
+            >
+              أحسنت يا بطل!
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                color: "#64748b",
+                lineHeight: 1.8,
+                fontWeight: 700,
+              }}
+            >
+              أكملت الكلمات المتقاطعة بنجاح.
+            </p>
+
+            <div
+              style={{
+                marginTop: "20px",
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(2,minmax(0,1fr))",
+                gap: "10px",
+              }}
+            >
+              <div
+                style={{
+                  padding: "15px",
+                  borderRadius: "18px",
+                  background: "#ffffff",
+                  border: "1px solid #d9eadf",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#64748b",
+                    fontSize: "12px",
+                    fontWeight: 800,
+                  }}
+                >
+                  زمنك
+                </span>
+                <strong
+                  style={{
+                    display: "block",
+                    marginTop: "5px",
+                    color: "#166534",
+                    fontSize: "24px",
+                  }}
+                >
+                  {formatTime(
+                    finishedTime ?? elapsedSeconds
+                  )}
+                </strong>
+              </div>
+
+              <div
+                style={{
+                  padding: "15px",
+                  borderRadius: "18px",
+                  background: "#ffffff",
+                  border: "1px solid #d9eadf",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#64748b",
+                    fontSize: "12px",
+                    fontWeight: 800,
+                  }}
+                >
+                  الرقم القياسي
+                </span>
+                <strong
+                  style={{
+                    display: "block",
+                    marginTop: "5px",
+                    color: "#166534",
+                    fontSize: "24px",
+                  }}
+                >
+                  {bestTime !== null
+                    ? formatTime(bestTime)
+                    : formatTime(
+                        finishedTime ?? elapsedSeconds
+                      )}
+                </strong>
+              </div>
+            </div>
+
+            {isNewRecord && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  padding: "11px 14px",
+                  borderRadius: "15px",
+                  background: "#fff7d6",
+                  border: "1px solid #f2d56b",
+                  color: "#8a5a00",
+                  fontWeight: 900,
+                }}
+              >
+                🥇 رقم قياسي جديد!
+              </div>
+            )}
+
+            <div
+              style={{
+                marginTop: "18px",
+                display: "flex",
+                justifyContent: "center",
+                gap: "10px",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={restartGame}
+                style={{
+                  border: "none",
+                  borderRadius: "15px",
+                  padding: "12px 17px",
+                  background: "#16a36a",
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                🔄 العب مرة أخرى
+              </button>
+
+              <Link
+                href="/#weekly-games"
+                style={{
+                  textDecoration: "none",
+                  borderRadius: "15px",
+                  padding: "12px 17px",
+                  background: "#ffffff",
+                  color: "#176d4c",
+                  border: "1px solid #d4e7dc",
+                  fontWeight: 900,
+                }}
+              >
+                🎮 ألعاب أخرى
+              </Link>
+            </div>
+          </section>
+        </div>
+      )}
+
       <style>{`
         @media (max-width: 820px) {
           .crossword-layout {
@@ -1177,4 +1618,28 @@ export default function CrosswordsPage() {
       `}</style>
     </main>
   );
+}
+
+function formatTime(
+  totalSeconds: number
+) {
+  const safeSeconds = Math.max(
+    0,
+    Math.floor(totalSeconds)
+  );
+
+  const minutes = Math.floor(
+    safeSeconds / 60
+  );
+
+  const seconds =
+    safeSeconds % 60;
+
+  return `${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(seconds).padStart(
+    2,
+    "0"
+  )}`;
 }

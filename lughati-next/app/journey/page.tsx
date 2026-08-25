@@ -926,6 +926,48 @@ useEffect(() => {
           </div>
         </section>
 
+        {/* أساس لغتي - تنبيه مراجعة المهارات */}
+        <Link
+          href="/foundation"
+          style={{
+            display: "block",
+            textDecoration: "none",
+            color: "inherit",
+            marginBottom: "20px",
+          }}
+        >
+          <section
+            style={{
+              border: "2px solid #a7dfc2",
+              background:
+                "linear-gradient(135deg, #eafff3 0%, #ffffff 58%, #fff8df 100%)",
+              borderRadius: "24px",
+              padding: "20px",
+              boxShadow: "0 10px 28px rgba(20, 110, 70, 0.10)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ position: "absolute", top: "-18px", left: "-12px", width: "90px", height: "90px", borderRadius: "50%", background: "rgba(34, 197, 94, 0.08)" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap", position: "relative", zIndex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: "1 1 430px" }}>
+                <div style={{ width: "62px", height: "62px", borderRadius: "19px", background: "linear-gradient(135deg, #d8f7e6, #fff4c9)", display: "grid", placeItems: "center", fontSize: "34px", flexShrink: 0, border: "1px solid #c5ead6" }}>🌱</div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "5px" }}>
+                    <strong style={{ color: "#126b49", fontSize: "21px" }}>راجع معلوماتك واختبر مهاراتك</strong>
+                    <span style={{ background: "#fff1b8", color: "#7a5900", padding: "5px 9px", borderRadius: "999px", fontSize: "12px", fontWeight: 900 }}>أساس لغتي</span>
+                  </div>
+                  <p style={{ margin: 0, color: "#5d7167", lineHeight: 1.8, fontWeight: 700 }}>مهمة قصيرة تساعدك على تقوية مهاراتك السابقة. ابدأ اليوم بمهارة السكون.</p>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ background: "#ffffff", border: "1px solid #d7e9df", color: "#5c6f65", borderRadius: "13px", padding: "10px 12px", fontWeight: 800, whiteSpace: "nowrap" }}>⏱️ 4 دقائق</span>
+                <span style={{ background: "linear-gradient(135deg, #168a63, #0f7654)", color: "#ffffff", borderRadius: "14px", padding: "11px 16px", fontWeight: 900, whiteSpace: "nowrap", boxShadow: "0 6px 14px rgba(22, 138, 99, 0.18)" }}>ابدأ الآن ←</span>
+              </div>
+            </div>
+          </section>
+        </Link>
+
         {/* مستواي اليوم */}
 
         <section

@@ -8,6 +8,15 @@ import {
   useState,
 } from "react";
 
+import {
+  doc,
+  onSnapshot,
+  runTransaction,
+  serverTimestamp,
+} from "firebase/firestore";
+
+import { db } from "../../../firebase";
+
 type Direction = "across" | "down";
 type LevelId = "easy" | "medium" | "hard";
 
@@ -264,6 +273,9 @@ export default function CrosswordPage() {
   const [completed, setCompleted] =
     useState(false);
 
+  const [showResult, setShowResult] =
+    useState(false);
+
   const [seconds, setSeconds] =
     useState(0);
 
@@ -275,6 +287,12 @@ export default function CrosswordPage() {
 
   const [finalScore, setFinalScore] =
     useState(0);
+
+  const [bestTime, setBestTime] =
+    useState<number | null>(null);
+
+  const [isNewRecord, setIsNewRecord] =
+    useState(false);
 
   const inputRefs = useRef<
     Record<string, HTMLInputElement | null>
@@ -442,6 +460,43 @@ export default function CrosswordPage() {
       : 0;
 
   useEffect(() => {
+    const recordRef = doc(
+      db,
+      "gameRecords",
+      "lughati-crossword"
+    );
+
+    const unsubscribe = onSnapshot(
+      recordRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setBestTime(null);
+          return;
+        }
+
+        const value =
+          snapshot.data().bestTime;
+
+        setBestTime(
+          typeof value === "number"
+            ? value
+            : null
+        );
+      },
+      (error) => {
+        console.error(
+          "تعذر تحميل أسرع وقت للكلمات المتقاطعة:",
+          error
+        );
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     if (completed) {
       return;
     }
@@ -470,10 +525,12 @@ export default function CrosswordPage() {
     setSelectedWordId(1);
     setChecked(false);
     setCompleted(false);
+    setShowResult(false);
     setSeconds(0);
     setHintsUsed(0);
     setWrongChecks(0);
     setFinalScore(0);
+    setIsNewRecord(false);
   }
 
   function getWordCells(
@@ -593,6 +650,70 @@ export default function CrosswordPage() {
     );
   }
 
+  async function saveBestTime(
+    finalTime: number
+  ) {
+    try {
+      const safeTime = Math.max(
+        1,
+        Math.floor(finalTime)
+      );
+
+      const recordRef = doc(
+        db,
+        "gameRecords",
+        "lughati-crossword"
+      );
+
+      let newRecord = false;
+
+      await runTransaction(
+        db,
+        async (transaction) => {
+          const snapshot =
+            await transaction.get(
+              recordRef
+            );
+
+          const previousBest =
+            snapshot.exists()
+              ? snapshot.data().bestTime
+              : null;
+
+          if (
+            typeof previousBest !== "number" ||
+            safeTime < previousBest
+          ) {
+            transaction.set(
+              recordRef,
+              {
+                gameId:
+                  "lughati-crossword",
+                bestTime:
+                  safeTime,
+                updatedAt:
+                  serverTimestamp(),
+              },
+              { merge: true }
+            );
+
+            newRecord = true;
+          }
+        }
+      );
+
+      if (newRecord) {
+        setBestTime(safeTime);
+        setIsNewRecord(true);
+      }
+    } catch (error) {
+      console.error(
+        "تعذر حفظ أسرع وقت للكلمات المتقاطعة:",
+        error
+      );
+    }
+  }
+
   function checkAnswers() {
     setChecked(true);
 
@@ -605,10 +726,19 @@ export default function CrosswordPage() {
       );
 
     if (isComplete) {
+      const finalTime = Math.max(
+        1,
+        seconds
+      );
+
       setCompleted(true);
+      setShowResult(true);
       setFinalScore(
         calculateScore()
       );
+
+      void saveBestTime(finalTime);
+
       return;
     }
 
@@ -730,7 +860,7 @@ export default function CrosswordPage() {
           }}
         >
           <Link
-            href="/"
+  href="/#weekly-games"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -968,6 +1098,14 @@ export default function CrosswordPage() {
 
                 <StatChip
                   text={`💡 ${hintsUsed}`}
+                />
+
+                <StatChip
+                  text={
+                    bestTime !== null
+                      ? `🏆 ${formatTime(bestTime)}`
+                      : "🏆 لا يوجد رقم بعد"
+                  }
                 />
               </div>
 
@@ -1444,13 +1582,44 @@ export default function CrosswordPage() {
           </aside>
         </section>
 
-        {completed && (
+        {completed && showResult && (
           <div
             className="successOverlay"
           >
             <div
               className="successCard"
             >
+              <button
+                type="button"
+                onClick={() =>
+                  setShowResult(false)
+                }
+                aria-label="إغلاق نافذة النتيجة"
+                title="إغلاق"
+                style={{
+                  position: "absolute",
+                  top: "14px",
+                  left: "14px",
+                  width: "42px",
+                  height: "42px",
+                  display: "grid",
+                  placeItems: "center",
+                  border:
+                    "1px solid #d7e7df",
+                  borderRadius: "50%",
+                  background: "#ffffff",
+                  color: "#49675a",
+                  fontSize: "21px",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  boxShadow:
+                    "0 6px 16px rgba(0,0,0,.09)",
+                  zIndex: 10,
+                }}
+              >
+                ✕
+              </button>
+
               <div
                 style={{
                   fontSize: "60px",
@@ -1514,6 +1683,29 @@ export default function CrosswordPage() {
                 />
               </div>
 
+              {isNewRecord && (
+                <div
+                  style={{
+                    margin:
+                      "0 0 16px",
+                    padding:
+                      "11px 14px",
+                    borderRadius:
+                      "15px",
+                    background:
+                      "#fff7d6",
+                    border:
+                      "1px solid #f2d56b",
+                    color:
+                      "#8a5a00",
+                    fontWeight:
+                      900,
+                  }}
+                >
+                  🥇 رقم قياسي جديد!
+                </div>
+              )}
+
               <div
                 style={{
                   display: "flex",
@@ -1536,7 +1728,7 @@ export default function CrosswordPage() {
                 </button>
 
                 <Link
-                  href="/games"
+                  href="/#weekly-games"
                   style={{
                     ...secondaryButton,
                     textDecoration:

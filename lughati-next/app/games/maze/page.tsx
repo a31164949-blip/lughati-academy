@@ -1,5 +1,11 @@
 "use client";
-
+import {
+  doc,
+  getDoc,
+  onSnapshot,
+  runTransaction,
+  serverTimestamp,
+} from "firebase/firestore";
 import Link from "next/link";
 
 import {
@@ -8,10 +14,7 @@ import {
   useState,
 } from "react";
 
-import {
-  doc,
-  getDoc,
-} from "firebase/firestore";
+
 
 import { db } from "../../../firebase";
 
@@ -211,9 +214,9 @@ useEffect(() => {
       const parsedWords =
         rawWords
           .split(/[\n،,]+/)
-          .map((word) =>
-            word.trim()
-          )
+          .map((word: string) =>
+  word.trim()
+)
           .filter(Boolean);
 
       setMazeWords(parsedWords);
@@ -412,11 +415,91 @@ const questions = useMemo<Question[]>(() => {
   ] = useState(false);
 
   const [
+    startedAt,
+    setStartedAt,
+  ] = useState<number | null>(null);
+
+  const [
+    elapsedSeconds,
+    setElapsedSeconds,
+  ] = useState(0);
+
+  const [
+    finishedTime,
+    setFinishedTime,
+  ] = useState<number | null>(null);
+
+  const [
+    bestTime,
+    setBestTime,
+  ] = useState<number | null>(null);
+
+  const [
+    isNewRecord,
+    setIsNewRecord,
+  ] = useState(false);
+
+  const [
     message,
     setMessage,
   ] = useState(
     "حرّك فارس داخل المتاهة حتى يصل إلى الكنز."
   );
+
+  useEffect(() => {
+  const recordRef = doc(
+    db,
+    "gameRecords",
+    "lughati-maze"
+  );
+
+  const unsubscribe = onSnapshot(
+    recordRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setBestTime(null);
+        return;
+      }
+
+      const value = snapshot.data().bestTime;
+
+      if (typeof value === "number") {
+        setBestTime(value);
+      } else {
+        setBestTime(null);
+      }
+    },
+    (error) => {
+      console.error(
+        "تعذر متابعة أسرع وقت:",
+        error
+      );
+    }
+  );
+
+  return () => {
+    unsubscribe();
+  };
+}, []);
+
+  useEffect(() => {
+    if (!startedAt || completed) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(
+        Math.floor(
+          (Date.now() - startedAt) /
+            1000
+        )
+      );
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [startedAt, completed]);
 
   const totalDoors =
     questions.length;
@@ -459,6 +542,10 @@ const questions = useMemo<Question[]>(() => {
       completed
     ) {
       return;
+    }
+
+    if (!startedAt) {
+      setStartedAt(Date.now());
     }
 
     const nextRow =
@@ -524,6 +611,45 @@ const questions = useMemo<Question[]>(() => {
     );
   }
 
+  async function saveBestTime(finalTime: number) {
+    try {
+      const recordRef = doc(db, "gameRecords", "lughati-maze");
+      let newRecord = false;
+
+      await runTransaction(db, async (transaction) => {
+        const recordSnap = await transaction.get(recordRef);
+        const previousBest = recordSnap.exists()
+          ? recordSnap.data().bestTime
+          : null;
+
+        if (
+          typeof previousBest !== "number" ||
+          finalTime < previousBest
+        ) {
+          transaction.set(
+            recordRef,
+            {
+              gameId: "lughati-maze",
+              bestTime: finalTime,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          newRecord = true;
+        } else {
+          setBestTime(previousBest);
+        }
+      });
+
+      if (newRecord) {
+        setBestTime(finalTime);
+        setIsNewRecord(true);
+      }
+    } catch (error) {
+      console.error("تعذر حفظ أسرع وقت:", error);
+    }
+  }
+
   function movePlayerTo(
     row: number,
     col: number
@@ -540,7 +666,19 @@ const questions = useMemo<Question[]>(() => {
       cell.type ===
       "goal"
     ) {
+      const finalTime =
+        startedAt
+          ? Math.floor(
+              (Date.now() -
+                startedAt) /
+                1000
+            )
+          : elapsedSeconds;
+
+      setFinishedTime(finalTime);
+      setElapsedSeconds(finalTime);
       setCompleted(true);
+      void saveBestTime(finalTime);
 
       setMessage(
         "🏆 أحسنت! وصلت إلى كنز لغتي."
@@ -638,6 +776,11 @@ const questions = useMemo<Question[]>(() => {
     setCompleted(
       false
     );
+
+    setStartedAt(null);
+    setElapsedSeconds(0);
+    setFinishedTime(null);
+    setIsNewRecord(false);
 
     setMessage(
       "حرّك فارس داخل المتاهة حتى يصل إلى الكنز."
@@ -777,9 +920,20 @@ const questions = useMemo<Question[]>(() => {
               </h2>
             </div>
 
-            <strong className="rounded-full bg-violet-50 px-4 py-2 text-violet-700">
-              {progress}%
-            </strong>
+            <div className="flex flex-wrap items-center gap-2">
+              <strong className="rounded-full bg-violet-50 px-4 py-2 text-violet-700">
+                {progress}%
+              </strong>
+
+              <strong className="rounded-full bg-amber-50 px-4 py-2 text-amber-700">
+                ⏱️ {elapsedSeconds} ثانية
+              </strong>
+
+              <strong className="rounded-full bg-emerald-50 px-4 py-2 text-emerald-700">
+                🏆 أسرع وقت:{" "}
+                {bestTime !== null ? `${bestTime} ثانية` : "لا يوجد بعد"}
+              </strong>
+            </div>
           </div>
 
           <div className="mt-4 h-4 overflow-hidden rounded-full bg-slate-100">
@@ -1149,6 +1303,22 @@ const questions = useMemo<Question[]>(() => {
               ✅ {totalDoors} من{" "}
               {totalDoors} تحديات
               مكتملة
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-amber-50 px-5 py-4 font-black text-amber-700">
+              ⏱️ زمنك:{" "}
+              {finishedTime ?? elapsedSeconds} ثانية
+            </div>
+
+            {isNewRecord && (
+              <div className="mt-3 rounded-2xl bg-violet-50 px-5 py-4 font-black text-violet-700">
+                🏆 رقم قياسي جديد! أحسنت.
+              </div>
+            )}
+
+            <div className="mt-3 rounded-2xl bg-sky-50 px-5 py-4 font-black text-sky-700">
+              أسرع وقت مسجل:{" "}
+              {bestTime !== null ? `${bestTime} ثانية` : "جارٍ التحديث..."}
             </div>
 
             <button

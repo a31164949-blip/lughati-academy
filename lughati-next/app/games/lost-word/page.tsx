@@ -12,6 +12,9 @@ import {
 import {
   doc,
   getDoc,
+  onSnapshot,
+  runTransaction,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -242,13 +245,6 @@ export default function LostWordPage() {
 
   const grid =
     useMemo<string[][]>(() => {
-      if (
-        targetWords ===
-        fallbackTargetWords
-      ) {
-        return fallbackGrid;
-      }
-
       const rows = 8;
       const cols = 8;
 
@@ -275,184 +271,92 @@ export default function LostWordPage() {
         "ي",
       ];
 
-      const board =
-        Array.from(
-          { length: rows },
-          () =>
-            Array.from(
-              { length: cols },
-              () => ""
-            )
-        );
-
-      const directions: Array<
-        [number, number]
-      > = [
-        [0, 1],
-        [1, 0],
-        [1, 1],
-        [1, -1],
-      ];
+      const board = Array.from(
+        { length: rows },
+        () =>
+          Array.from(
+            { length: cols },
+            () => ""
+          )
+      );
 
       /*
-       * مولّد أرقام حتمي يعتمد على كلمات الأسبوع.
-       * بهذه الطريقة لا نستخدم Math.random داخل useMemo،
-       * وتبقى الشبكة ثابتة لنفس مجموعة الكلمات.
+       * نضمن وجود كل كلمة مطلوبة داخل الشبكة.
+       * نضع كل كلمة في صف مستقل، مع تغيير موضع البداية
+       * واتجاهها بطريقة حتمية حتى لا تتغير الشبكة
+       * في كل إعادة رسم.
        */
       const seedText =
         targetWords.join("|");
 
-   function deterministicNumber(
-  key: string,
-  max: number
-) {
-  let hash = 2166136261;
-
-  for (
-    let index = 0;
-    index < key.length;
-    index++
-  ) {
-    hash =
-      Math.imul(
-        hash ^
-          key.charCodeAt(index),
-        16777619
-      );
-  }
-
-  const positiveHash =
-    hash >>> 0;
-
-  return max > 0
-    ? positiveHash % max
-    : 0;
-}
-
-      function canPlaceWord(
-        word: string,
-        row: number,
-        col: number,
-        rowStep: number,
-        colStep: number
+      function deterministicNumber(
+        key: string,
+        max: number
       ) {
-        const endRow =
-          row +
-          rowStep *
-            (word.length - 1);
-
-        const endCol =
-          col +
-          colStep *
-            (word.length - 1);
-
-        if (
-          endRow < 0 ||
-          endRow >= rows ||
-          endCol < 0 ||
-          endCol >= cols
-        ) {
-          return false;
-        }
+        let hash = 2166136261;
 
         for (
           let index = 0;
-          index < word.length;
+          index < key.length;
           index++
         ) {
-          const current =
-            board[
-              row +
-                rowStep * index
-            ][
-              col +
-                colStep * index
-            ];
-
-          if (
-            current &&
-            current !==
-              word[index]
-          ) {
-            return false;
-          }
+          hash =
+            Math.imul(
+              hash ^
+                key.charCodeAt(index),
+              16777619
+            );
         }
 
-        return true;
+        const positiveHash =
+          hash >>> 0;
+
+        return max > 0
+          ? positiveHash % max
+          : 0;
       }
 
-      function placeWord(
-        word: string
-      ) {
-        for (
-          let attempt = 0;
-          attempt < 200;
-          attempt++
-        ) {
-          const [
-            rowStep,
-            colStep,
-          ] =
-            directions[
-              deterministicNumber(
-  `${seedText}-${word}-${attempt}-direction`,
-  directions.length
-
-              )
-            ];
-
+      targetWords.forEach(
+        (word, index) => {
           const row =
-  deterministicNumber(
-    `${seedText}-${word}-${attempt}-row`,
-    rows
-  );
+            index % rows;
 
-const col =
-  deterministicNumber(
-    `${seedText}-${word}-${attempt}-col`,
-    cols
-  );;
+          const maxStart =
+            Math.max(
+              0,
+              cols - word.length
+            );
 
-          if (
-            !canPlaceWord(
-              word,
-              row,
-              col,
-              rowStep,
-              colStep
-            )
-          ) {
-            continue;
-          }
+          const startCol =
+            deterministicNumber(
+              `${seedText}-${word}-${index}-start`,
+              maxStart + 1
+            );
 
-          for (
-            let index = 0;
-            index < word.length;
-            index++
-          ) {
-            board[
-              row +
-                rowStep * index
-            ][
-              col +
-                colStep * index
-            ] =
-              word[index];
-          }
+          const reversed =
+            deterministicNumber(
+              `${seedText}-${word}-${index}-reverse`,
+              2
+            ) === 1;
 
-          return true;
+          const letters =
+            reversed
+              ? Array.from(
+                  word
+                ).reverse()
+              : Array.from(
+                  word
+                );
+
+          letters.forEach(
+            (letter, letterIndex) => {
+              board[row][
+                startCol + letterIndex
+              ] = letter;
+            }
+          );
         }
-
-        return false;
-      }
-
-      for (
-        const word of targetWords
-      ) {
-        if (!placeWord(word)) {
-          return fallbackGrid;
-        }
-      }
+      );
 
       for (
         let row = 0;
@@ -468,9 +372,9 @@ const col =
             board[row][col] =
               fillerLetters[
                 deterministicNumber(
-  `${seedText}-${row}-${col}-filler`,
-  fillerLetters.length
-)
+                  `${seedText}-${row}-${col}-filler`,
+                  fillerLetters.length
+                )
               ];
           }
         }
@@ -513,6 +417,16 @@ const col =
   showCompletedModal,
   setShowCompletedModal,
 ] = useState(true);
+
+  const [
+    bestTime,
+    setBestTime,
+  ] = useState<number | null>(null);
+
+  const [
+    isNewRecord,
+    setIsNewRecord,
+  ] = useState(false);
 
   const [
     playerName,
@@ -604,6 +518,42 @@ const col =
           .join(""),
       [selectedCells]
     );
+
+  useEffect(() => {
+    const recordRef = doc(
+      db,
+      "gameRecords",
+      "lughati-lost-word"
+    );
+
+    const unsubscribe = onSnapshot(
+      recordRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setBestTime(null);
+          return;
+        }
+
+        const value = snapshot.data().bestTime;
+
+        setBestTime(
+          typeof value === "number"
+            ? value
+            : null
+        );
+      },
+      (error) => {
+        console.error(
+          "تعذر تحميل أسرع وقت للكلمة الضائعة:",
+          error
+        );
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -798,13 +748,22 @@ const col =
       targetWords.length;
 
     if (allFound) {
+      const finalTime = Math.max(
+        1,
+        seconds
+      );
+
       setCompleted(true);
+      setShowCompletedModal(true);
       setMessage(
         "🏆 أحسنت! اكتشفت جميع الكلمات."
       );
+
+      void saveBestTime(finalTime);
+
       return;
     }
-setShowCompletedModal(true);
+
     setMessage(
       `✅ رائع! اكتشفت كلمة «${matchedWord}».`
     );
@@ -814,6 +773,65 @@ setShowCompletedModal(true);
     setIsSelecting(false);
     setSelectedCells([]);
     setStartCell(null);
+  }
+
+  async function saveBestTime(
+    finalTime: number
+  ) {
+    try {
+      const safeTime = Math.max(
+        1,
+        Math.floor(finalTime)
+      );
+
+      const recordRef = doc(
+        db,
+        "gameRecords",
+        "lughati-lost-word"
+      );
+
+      let newRecord = false;
+
+      await runTransaction(
+        db,
+        async (transaction) => {
+          const snapshot =
+            await transaction.get(recordRef);
+
+          const previousBest =
+            snapshot.exists()
+              ? snapshot.data().bestTime
+              : null;
+
+          if (
+            typeof previousBest !== "number" ||
+            safeTime < previousBest
+          ) {
+            transaction.set(
+              recordRef,
+              {
+                gameId: "lughati-lost-word",
+                bestTime: safeTime,
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+
+            newRecord = true;
+          }
+        }
+      );
+
+      if (newRecord) {
+        setBestTime(safeTime);
+        setIsNewRecord(true);
+      }
+    } catch (error) {
+      console.error(
+        "تعذر حفظ أسرع وقت للكلمة الضائعة:",
+        error
+      );
+    }
   }
 
   async function saveScore() {
@@ -894,7 +912,7 @@ setShowCompletedModal(true);
 
   function restartGame() {
     setFoundWords([]);
-    setShowCompletedModal(true);
+    setShowCompletedModal(false);
     setSelectedCells([]);
     setStartCell(null);
     setIsSelecting(false);
@@ -906,6 +924,7 @@ setShowCompletedModal(true);
     setScoreSaved(false);
     setSaveMessage("");
     setTopScores([]);
+    setIsNewRecord(false);
     setMessage(
       "اسحب من أول حرف إلى آخر حرف في خط مستقيم."
     );
@@ -1068,7 +1087,7 @@ setShowCompletedModal(true);
             </div>
 
             <Link
-              href="/"
+              href="/#weekly-games"
               style={{
                 textDecoration:
                   "none",
@@ -1144,6 +1163,16 @@ setShowCompletedModal(true);
             value={
               currentWord ||
               "اسحب على الحروف"
+            }
+          />
+
+          <StatCard
+            icon="🏆"
+            title="أسرع وقت"
+            value={
+              bestTime !== null
+                ? formatSeconds(bestTime)
+                : "لا يوجد بعد"
             }
           />
         </section>
@@ -1506,6 +1535,7 @@ setShowCompletedModal(true);
         >
           <div
             style={{
+              position: "relative",
               width:
                 "min(100%,480px)",
               background:
@@ -1520,6 +1550,36 @@ setShowCompletedModal(true);
                 "0 24px 60px rgba(15,23,42,.25)",
             }}
           >
+            <button
+              type="button"
+              onClick={() =>
+                setShowCompletedModal(false)
+              }
+              aria-label="إغلاق نافذة النتيجة"
+              title="إغلاق"
+              style={{
+                position: "absolute",
+                top: "14px",
+                left: "14px",
+                width: "42px",
+                height: "42px",
+                display: "grid",
+                placeItems: "center",
+                border: "1px solid #d7e7df",
+                borderRadius: "50%",
+                background: "#ffffff",
+                color: "#49675a",
+                fontSize: "21px",
+                fontWeight: 900,
+                cursor: "pointer",
+                boxShadow:
+                  "0 6px 16px rgba(0,0,0,.09)",
+                zIndex: 10,
+              }}
+            >
+              ✕
+            </button>
+
             <div
               style={{
                 fontSize:
@@ -1568,6 +1628,22 @@ setShowCompletedModal(true);
             >
               ⏱️ {formattedTime}
             </strong>
+
+            {isNewRecord && (
+              <div
+                style={{
+                  margin: "0 0 14px",
+                  padding: "10px 12px",
+                  borderRadius: "14px",
+                  background: "#fff7d6",
+                  border: "1px solid #f2d56b",
+                  color: "#8a5a00",
+                  fontWeight: 900,
+                }}
+              >
+                🥇 رقم قياسي جديد!
+              </div>
+            )}
 
             <div
               style={{
@@ -1867,25 +1943,6 @@ setShowCompletedModal(true);
                   "pointer",
               }}
             >
-              <button
-  type="button"
-  onClick={() =>
-    setShowCompletedModal(false)
-  }
-  style={{
-    width: "100%",
-    border: "1px solid #cbd5e1",
-    borderRadius: "15px",
-    padding: "13px",
-    background: "#ffffff",
-    color: "#475569",
-    fontWeight: 900,
-    cursor: "pointer",
-    marginBottom: "10px",
-  }}
->
-  ✖ إغلاق
-</button>
               🔄 حاول كسر وقتك
             </button>
           </div>
@@ -1893,6 +1950,29 @@ setShowCompletedModal(true);
       )}
     </main>
   );
+}
+
+function formatSeconds(
+  totalSeconds: number
+) {
+  const safe = Math.max(
+    0,
+    Math.floor(totalSeconds)
+  );
+
+  const minutes =
+    Math.floor(safe / 60);
+
+  const seconds =
+    safe % 60;
+
+  return `${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(seconds).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 function StatCard({

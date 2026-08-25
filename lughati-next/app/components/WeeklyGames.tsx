@@ -11,6 +11,7 @@ import {
 import {
   doc,
   getDoc,
+  onSnapshot,
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
@@ -252,7 +253,22 @@ export default function WeeklyGames() {
     settingsLoading,
     setSettingsLoading,
   ] = useState(true);
-
+const [
+  mazeBestTime,
+  setMazeBestTime,
+] = useState<number | null>(null);
+const [
+  crosswordBestTime,
+  setCrosswordBestTime,
+] = useState<number | null>(null);
+const [
+  familyBestScore,
+  setFamilyBestScore,
+] = useState<number | null>(null);
+const [
+  familyBestTime,
+  setFamilyBestTime,
+] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
 
@@ -322,6 +338,119 @@ export default function WeeklyGames() {
       active = false;
     };
   }, []);
+useEffect(() => {
+  const recordRef = doc(
+    db,
+    "gameRecords",
+    "lughati-maze"
+  );
+
+  const unsubscribe = onSnapshot(
+    recordRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setMazeBestTime(null);
+        return;
+      }
+
+      const data = snapshot.data();
+
+      setMazeBestTime(
+        typeof data.bestTime === "number"
+          ? data.bestTime
+          : null
+      );
+    },
+    (error) => {
+      console.error(
+        "تعذر تحميل أسرع وقت للمتاهة:",
+        error
+      );
+    }
+  );
+
+  return () => {
+    unsubscribe();
+  };
+}, []);
+useEffect(() => {
+  const recordRef = doc(
+    db,
+    "gameRecords",
+    "lughati-crossword"
+  );
+
+  const unsubscribe = onSnapshot(
+    recordRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setCrosswordBestTime(null);
+        return;
+      }
+
+      const data = snapshot.data();
+
+      setCrosswordBestTime(
+        typeof data.bestTime === "number"
+          ? data.bestTime
+          : null
+      );
+    },
+    (error) => {
+      console.error(
+        "تعذر تحميل أسرع وقت للكلمات المتقاطعة:",
+        error
+      );
+    }
+  );
+
+  return () => {
+    unsubscribe();
+  };
+}, []);
+
+useEffect(() => {
+  const recordRef = doc(
+    db,
+    "gameRecords",
+    "lughati-family-challenge"
+  );
+
+  const unsubscribe = onSnapshot(
+    recordRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setFamilyBestScore(null);
+        setFamilyBestTime(null);
+        return;
+      }
+
+      const data = snapshot.data();
+
+      setFamilyBestScore(
+        typeof data.bestScore === "number"
+          ? data.bestScore
+          : null
+      );
+
+      setFamilyBestTime(
+        typeof data.bestTime === "number"
+          ? data.bestTime
+          : null
+      );
+    },
+    (error) => {
+      console.error(
+        "تعذر تحميل الرقم القياسي للتحدي العائلي:",
+        error
+      );
+    }
+  );
+
+  return () => {
+    unsubscribe();
+  };
+}, []);
 
   const riyadhWeekday =
     getRiyadhWeekday();
@@ -556,7 +685,8 @@ export default function WeeklyGames() {
 
   return (
     <section
-      dir="rtl"
+  id="weekly-games"
+  dir="rtl"
       style={{
         maxWidth: "1180px",
         margin: "30px auto",
@@ -911,14 +1041,75 @@ export default function WeeklyGames() {
                 ⚠️ تعذر تحميل لوحة
                 الأوقات الآن
               </span>
-            ) : activeScores.length ===
-              0 ? (
-              <span>
-                🏆 كن أول من يسجل
-                رقمًا قياسيًا
-              </span>
-            ) : (
-              activeScores.map(
+            ) : activeGame === "maze" &&
+  mazeBestTime !== null ? (
+  <span
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "7px",
+      padding: "6px 11px",
+      borderRadius: "999px",
+      background:
+        "rgba(255,255,255,.12)",
+      whiteSpace: "nowrap",
+    }}
+  >
+    🥇 الرقم القياسي للمتاهة
+    <strong>
+      {formatTime(mazeBestTime)}
+    </strong>
+  </span>
+  
+  ) : activeGame === "crosswords" &&
+  crosswordBestTime !== null ? (
+  <span
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "7px",
+      padding: "6px 11px",
+      borderRadius: "999px",
+      background:
+        "rgba(255,255,255,.12)",
+      whiteSpace: "nowrap",
+    }}
+  >
+    🥇 الرقم القياسي للكلمات المتقاطعة
+    <strong>
+      {formatTime(crosswordBestTime)}
+    </strong>
+  </span>
+ ) : activeGame === "family-challenge" &&
+  familyBestScore !== null &&
+  familyBestTime !== null ? (
+  <span
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "7px",
+      padding: "6px 11px",
+      borderRadius: "999px",
+      background:
+        "rgba(255,255,255,.12)",
+      whiteSpace: "nowrap",
+    }}
+  >
+    🥇 الرقم القياسي للتحدي العائلي
+    <strong>
+      {familyBestScore} نقطة • {formatTime(familyBestTime)}
+    </strong>
+  </span>
+) : activeScores.length ===
+  0 ? (
+    
+  <span>
+    🏆 كن أول من يسجل
+    رقمًا قياسيًا
+  </span>
+) : (
+  
+        activeScores.map(
                 (score, index) => (
                   <span
                     key={score.id}
