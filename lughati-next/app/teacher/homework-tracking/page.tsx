@@ -14,7 +14,7 @@ getDoc,
 runTransaction,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
-
+import { checkAndRegisterPointMilestones } from "../../lib/academyMilestones";
 type ClassroomFilter = "الكل" | "الثاني أ" | "الثاني ب";
 type StatusFilter = "الكل" | "لم يؤكد" | "بانتظار المراجعة" | "تمت المراجعة";
 type DailyCompletionFilter = "الكل" | "المنجزون" | "لم ينجزوا";
@@ -718,10 +718,24 @@ if (
         ? studentSnapshot.data().points
         : 0;
 
+    const newPoints = currentPoints + 2;
+
+    await checkAndRegisterPointMilestones(
+      transaction,
+      {
+        studentId: row.studentId,
+        studentName: row.studentName,
+        classroom: row.classroom,
+        previousPoints: currentPoints,
+        newPoints,
+        rewardType: "madrasati",
+      }
+    );
+
     transaction.set(
       studentReference,
       {
-        points: currentPoints + 2,
+        points: newPoints,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -774,10 +788,24 @@ if (
         ? studentSnapshot.data().points
         : 0;
 
+    const newPoints = currentPoints + 4;
+
+    await checkAndRegisterPointMilestones(
+      transaction,
+      {
+        studentId: row.studentId,
+        studentName: row.studentName,
+        classroom: row.classroom,
+        previousPoints: currentPoints,
+        newPoints,
+        rewardType: "creative-homework",
+      }
+    );
+
     transaction.set(
       studentReference,
       {
-        points: currentPoints + 4,
+        points: newPoints,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -1062,7 +1090,8 @@ async function approveSolution(row: StudentHomeworkRow) {
     );
     if (
   row.completionMethod.includes("الكتاب") ||
-  row.completionMethod.includes("الدفتر")
+  row.completionMethod.includes("الدفتر") ||
+  row.completionMethod === "📸 أرفقت صورة"
 ) {
   const completionReference = doc(
     db,
@@ -1097,11 +1126,25 @@ async function approveSolution(row: StudentHomeworkRow) {
         ? studentSnapshot.data().points
         : 0;
 
+    const newPoints = currentPoints + 3;
+
+    await checkAndRegisterPointMilestones(
+      transaction,
+      {
+        studentId: row.studentId,
+        studentName: row.studentName,
+        classroom: row.classroom,
+        previousPoints: currentPoints,
+        newPoints,
+        rewardType: "homework-book-notebook",
+      }
+    );
+
     // إضافة 3 نقاط للطالب
     transaction.set(
       studentReference,
       {
-        points: currentPoints + 3,
+        points: newPoints,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -1284,6 +1327,20 @@ async function grantReadingCycleReward(
         ? studentSnapshot.data().points
         : 0;
 
+    const newPoints = currentPoints + 50;
+
+    await checkAndRegisterPointMilestones(
+      transaction,
+      {
+        studentId: row.studentId,
+        studentName: row.studentName,
+        classroom: row.classroom,
+        previousPoints: currentPoints,
+        newPoints,
+        rewardType: "reading-five-days",
+      }
+    );
+
     // إضافة 50 نقطة إلى رصيد الطالب الحقيقي.
     transaction.set(
       studentReference,
@@ -1291,7 +1348,7 @@ async function grantReadingCycleReward(
         studentId: row.studentId,
         studentName: row.studentName,
         classroom: row.classroom,
-        points: currentPoints + 50,
+        points: newPoints,
         updatedAt: serverTimestamp(),
       },
       { merge: true }

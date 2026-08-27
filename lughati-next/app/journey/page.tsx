@@ -12,8 +12,14 @@ import {
   type User,
 } from "firebase/auth";
 import {
+  collection,
   doc,
   getDoc,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+  type Timestamp,
 } from "firebase/firestore";
 
 import {
@@ -194,6 +200,23 @@ type CrownData = {
   achievements?: CrownAchievement[];
   message?: string;
 };
+type StudentNotification = {
+  id: string;
+  studentId: string;
+  title: string;
+  message: string;
+  type: string;
+  homeworkId: string;
+  href: string;
+  read: boolean;
+
+  milestoneId?: string;
+  badgeTitle?: string;
+  pointsReached?: number;
+
+  createdAt?: Timestamp | null;
+};
+
 type StudentSmartFollowUp = {
   date: string;
 
@@ -208,17 +231,48 @@ type StudentSmartFollowUp = {
 };
 
 export default function JourneyPage() {
-  const [studentName] = useState(() => {
-  if (typeof window === "undefined") {
-    return "";
-  }
+  const [studentName, setStudentName] =
+  useState("");
 
-  return (
-    window.localStorage.getItem("student-name") || ""
-  );
-});
+
+useEffect(() => {
+  const savedStudentName =
+    window.localStorage.getItem(
+      "student-name"
+    ) || "";
+
+  setStudentName(savedStudentName);
+}, []);
   const [user, setUser] =
     useState<User | null>(null);
+
+  const [notifications, setNotifications] =
+    useState<StudentNotification[]>([]);
+
+  const [notificationsOpen, setNotificationsOpen] =
+    useState(false);
+const [
+  celebrationNotification,
+  setCelebrationNotification,
+] = useState<StudentNotification | null>(null);
+
+const [
+  diagnosticReminder,
+  setDiagnosticReminder,
+] = useState<StudentNotification | null>(null);
+
+const displayedNotifications = useMemo(
+  () =>
+    diagnosticReminder
+      ? [diagnosticReminder, ...notifications]
+      : notifications,
+  [diagnosticReminder, notifications]
+);
+
+const unreadNotificationsCount =
+  displayedNotifications.filter(
+    (notification) => !notification.read
+  ).length;
 
   const [
     smartFollowUp,
@@ -252,6 +306,7 @@ export default function JourneyPage() {
     savingTaskId,
     setSavingTaskId,
   ] =
+  
     useState<number | null>(null);
 
   const [
@@ -295,6 +350,7 @@ const [
   useState<CrownAchievement | null>(
     null
   );
+  
   useEffect(() => {
     const unsubscribe =
       onAuthStateChanged(
@@ -306,6 +362,191 @@ const [
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    const studentId =
+      window.localStorage.getItem("student-id") || "";
+
+    if (!studentId || studentId === "student-demo") {
+      setNotifications([]);
+      return;
+    }
+
+    const notificationsQuery = query(
+      collection(db, "studentNotifications"),
+      where("studentId", "==", studentId)
+    );
+
+    const unsubscribeNotifications = onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+        const items = snapshot.docs
+          .map((notificationDocument) => {
+            const data = notificationDocument.data();
+
+           return {
+  id: notificationDocument.id,
+
+  studentId:
+    typeof data.studentId === "string"
+      ? data.studentId
+      : "",
+
+  title:
+    typeof data.title === "string"
+      ? data.title
+      : "إشعار جديد",
+
+  message:
+    typeof data.message === "string"
+      ? data.message
+      : "",
+
+  type:
+    typeof data.type === "string"
+      ? data.type
+      : "",
+
+  homeworkId:
+    typeof data.homeworkId === "string"
+      ? data.homeworkId
+      : "",
+
+  href:
+    typeof data.href === "string" &&
+    data.href
+      ? data.href
+      : "/homeworks",
+
+  read:
+    data.read === true,
+
+  milestoneId:
+    typeof data.milestoneId === "string"
+      ? data.milestoneId
+      : "",
+
+  badgeTitle:
+    typeof data.badgeTitle === "string"
+      ? data.badgeTitle
+      : "",
+
+  pointsReached:
+    typeof data.pointsReached === "number"
+      ? data.pointsReached
+      : undefined,
+
+  createdAt:
+    data.createdAt ?? null,
+} as StudentNotification;
+          })
+          .sort((a, b) => {
+            const aTime = a.createdAt?.toMillis?.() ?? 0;
+            const bTime = b.createdAt?.toMillis?.() ?? 0;
+            return bTime - aTime;
+          });
+
+        setNotifications(items);
+        const latestUnreadMilestone =
+  items.find(
+    (notification) =>
+      notification.type ===
+        "academy-milestone" &&
+      !notification.read
+  );
+
+if (latestUnreadMilestone) {
+  setCelebrationNotification(
+    latestUnreadMilestone
+  );
+}
+      },
+      (error) => {
+        console.error("تعذر تحميل إشعارات الطالب:", error);
+      }
+    );
+
+    return unsubscribeNotifications;
+  }, [user]);
+
+  // 📋 تنبيه ذكي لولي الأمر لاستكمال دراسة الحالة
+  // هذا التنبيه محلي داخل واجهة الطالب، ولا ينشئ مستندًا
+  // في studentNotifications من حساب الطالب.
+  useEffect(() => {
+    if (!user) {
+      setDiagnosticReminder(null);
+      return;
+    }
+
+    const studentId =
+      window.localStorage.getItem("student-id") || "";
+
+    if (!studentId || studentId === "student-demo") {
+      setDiagnosticReminder(null);
+      return;
+    }
+
+    async function checkCaseStudyCompletion() {
+      try {
+        const caseStudySnapshot = await getDoc(
+          doc(db, "studentCaseStudies", studentId)
+        );
+
+        if (caseStudySnapshot.exists()) {
+          setDiagnosticReminder(null);
+          return;
+        }
+
+        setDiagnosticReminder({
+          id: `case-study-reminder-${studentId}`,
+          studentId,
+          title: "📋 نحتاج مساعدة ولي أمرك",
+          message:
+            "اطلب من ولي أمرك إكمال ملف الطالب والأسرة؛ ليساعد معلمك على معرفة احتياجاتك وتقديم الدعم المناسب لك.",
+          type: "case-study-reminder",
+          homeworkId: "",
+          href: "/parent/case-study",
+          read: false,
+          createdAt: null,
+        });
+      } catch (error) {
+        console.error(
+          "تعذر التحقق من استكمال دراسة الحالة:",
+          error
+        );
+
+        setDiagnosticReminder(null);
+      }
+    }
+
+    void checkCaseStudyCompletion();
+  }, [user]);
+
+  async function openNotification(notification: StudentNotification) {
+    if (notification.type === "case-study-reminder") {
+      window.location.href =
+        notification.href || "/parent/case-study";
+      return;
+    }
+
+    try {
+      if (!notification.read) {
+        await updateDoc(
+          doc(db, "studentNotifications", notification.id),
+          { read: true }
+        );
+      }
+    } catch (error) {
+      console.error("تعذر تحديث حالة الإشعار:", error);
+    } finally {
+      window.location.href = notification.href || "/homeworks";
+    }
+  }
 
   useEffect(() => {
     if (!user) {
@@ -750,6 +991,187 @@ useEffect(() => {
         paddingBottom: "50px",
       }}
     >
+    {celebrationNotification && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 9999,
+      background: "rgba(15, 23, 42, 0.62)",
+      backdropFilter: "blur(5px)",
+      display: "grid",
+      placeItems: "center",
+      padding: "20px",
+    }}
+  >
+    <div
+      style={{
+        width: "min(500px, 100%)",
+        borderRadius: "30px",
+        background:
+          "linear-gradient(145deg,#fffdf3 0%,#ffffff 55%,#f7f1ff 100%)",
+        border: "2px solid #efd77b",
+        boxShadow: "0 26px 70px rgba(0,0,0,.25)",
+        padding: "28px 24px",
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: "12px",
+          right: "18px",
+          fontSize: "28px",
+        }}
+      >
+        ✨
+      </div>
+
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          bottom: "14px",
+          left: "18px",
+          fontSize: "25px",
+        }}
+      >
+        🎊
+      </div>
+
+      <div
+        style={{
+          width: "92px",
+          height: "92px",
+          margin: "0 auto 16px",
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          fontSize: "54px",
+          background:
+            "linear-gradient(135deg,#fff0a8,#fff8d8)",
+          border: "3px solid #e9c94f",
+          boxShadow:
+            "0 12px 28px rgba(180,140,20,.18)",
+        }}
+      >
+        🏆
+      </div>
+
+      <div
+        style={{
+          color: "#8a6500",
+          fontWeight: 900,
+          fontSize: "14px",
+          marginBottom: "7px",
+        }}
+      >
+        إنجاز تاريخي في أكاديمية لغتي
+      </div>
+
+      <h2
+        style={{
+          margin: "0 0 12px",
+          color: "#174c36",
+          fontSize: "clamp(26px,5vw,36px)",
+          lineHeight: 1.4,
+        }}
+      >
+        أحسنت يا بطل! 🎉
+      </h2>
+
+      <p
+        style={{
+          margin: "0 auto 18px",
+          maxWidth: "420px",
+          color: "#58685f",
+          lineHeight: 1.9,
+          fontSize: "16px",
+          fontWeight: 700,
+        }}
+      >
+        {celebrationNotification.message}
+      </p>
+
+      {celebrationNotification.badgeTitle && (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "10px 16px",
+            borderRadius: "999px",
+            background: "#fff4c7",
+            color: "#805b00",
+            fontWeight: 900,
+            marginBottom: "12px",
+            border: "1px solid #ead487",
+          }}
+        >
+          🥇 {celebrationNotification.badgeTitle}
+        </div>
+      )}
+
+      {typeof celebrationNotification.pointsReached ===
+        "number" && (
+        <div
+          style={{
+            marginBottom: "18px",
+            color: "#6d4bc3",
+            fontWeight: 900,
+            fontSize: "14px",
+          }}
+        >
+          ⭐ وصلت إلى {celebrationNotification.pointsReached} نقطة
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await updateDoc(
+              doc(
+                db,
+                "studentNotifications",
+                celebrationNotification.id
+              ),
+              {
+                read: true,
+              }
+            );
+          } catch (error) {
+            console.error(
+              "تعذر تسجيل عرض احتفالية الإنجاز:",
+              error
+            );
+          } finally {
+            setCelebrationNotification(null);
+          }
+        }}
+        style={{
+          width: "100%",
+          border: "none",
+          borderRadius: "17px",
+          padding: "15px 18px",
+          background:
+            "linear-gradient(135deg,#168a63,#0f7654)",
+          color: "#ffffff",
+          fontSize: "17px",
+          fontWeight: 900,
+          cursor: "pointer",
+          boxShadow:
+            "0 8px 18px rgba(22,138,99,.20)",
+        }}
+      >
+        رائع! أكمل رحلتي 🚀
+      </button>
+    </div>
+  </div>
+)}
       <header
         style={{
           background:
@@ -811,6 +1233,169 @@ useEffect(() => {
               flexWrap: "wrap",
             }}
           >
+            <div
+              style={{
+                position: "relative",
+              }}
+            >
+              <button
+                type="button"
+                aria-label="الإشعارات"
+                onClick={() =>
+                  setNotificationsOpen((current) => !current)
+                }
+                style={{
+                  ...headerButtonStyle,
+                  position: "relative",
+                  minWidth: "52px",
+                  fontSize: "22px",
+                  padding: "10px 14px",
+                }}
+              >
+                🔔
+                {unreadNotificationsCount > 0 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "-7px",
+                      right: "-7px",
+                      minWidth: "23px",
+                      height: "23px",
+                      padding: "0 6px",
+                      borderRadius: "999px",
+                      background: "#dc2626",
+                      color: "#ffffff",
+                      display: "grid",
+                      placeItems: "center",
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      border: "2px solid #ffffff",
+                    }}
+                  >
+                    {unreadNotificationsCount > 99
+                      ? "99+"
+                      : unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "58px",
+                    left: 0,
+                    width: "min(360px, calc(100vw - 32px))",
+                    maxHeight: "430px",
+                    overflowY: "auto",
+                    background: "#ffffff",
+                    color: "#17352a",
+                    borderRadius: "20px",
+                    border: "1px solid #dcebe3",
+                    boxShadow: "0 18px 45px rgba(15, 70, 50, 0.22)",
+                    zIndex: 1000,
+                    padding: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "5px 5px 11px",
+                      borderBottom: "1px solid #edf3ef",
+                    }}
+                  >
+                    <strong style={{ color: "#126b49" }}>🔔 إشعاراتي</strong>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "#64748b",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {unreadNotificationsCount > 0
+                        ? `${unreadNotificationsCount} جديد`
+                        : "لا جديد"}
+                    </span>
+                  </div>
+
+                  {displayedNotifications.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "24px 12px",
+                        textAlign: "center",
+                        color: "#64748b",
+                        lineHeight: 1.8,
+                        fontWeight: 700,
+                      }}
+                    >
+                      لا توجد إشعارات جديدة الآن 🌟
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gap: "8px", marginTop: "9px" }}>
+                      {displayedNotifications.slice(0, 12).map((notification) => (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          onClick={() => void openNotification(notification)}
+                          style={{
+                            width: "100%",
+                            border: notification.read
+                              ? "1px solid #e5ece8"
+                              : "1px solid #9eddbd",
+                            background: notification.read
+                              ? "#ffffff"
+                              : "#effcf5",
+                            borderRadius: "15px",
+                            padding: "12px",
+                            cursor: "pointer",
+                            textAlign: "right",
+                            color: "#17352a",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "10px",
+                              marginBottom: "5px",
+                            }}
+                          >
+                            <strong style={{ color: "#126b49", fontSize: "14px" }}>
+                              {notification.title}
+                            </strong>
+                            {!notification.read && (
+                              <span
+                                style={{
+                                  width: "9px",
+                                  height: "9px",
+                                  borderRadius: "50%",
+                                  background: "#16a34a",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              color: "#5f7067",
+                              fontSize: "13px",
+                              lineHeight: 1.7,
+                            }}
+                          >
+                            {notification.message}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <InstallAppButton />
             <button
               type="button"
@@ -923,7 +1508,7 @@ useEffect(() => {
                 جديدًا.
               </p>
             </div>
-          </div>
+          </div> 
         </section>
 
         {/* أساس لغتي - تنبيه مراجعة المهارات */}

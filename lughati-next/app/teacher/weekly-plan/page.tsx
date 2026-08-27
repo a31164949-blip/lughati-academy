@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 
@@ -343,6 +346,86 @@ export default function WeeklyPlanPage() {
     }
   }
 
+  async function notifyStudentsAboutWeeklyPlan() {
+    const studentsSnapshot =
+      await getDocs(
+        collection(db, "students")
+      );
+
+    const batch =
+      writeBatch(db);
+
+    let notificationCount = 0;
+
+    studentsSnapshot.docs.forEach(
+      (studentDocument) => {
+        const studentData =
+          studentDocument.data();
+
+        if (studentData.active === false) {
+          return;
+        }
+
+        const studentId =
+          typeof studentData.studentId ===
+          "string" &&
+          studentData.studentId.trim()
+            ? studentData.studentId.trim()
+            : studentDocument.id;
+
+        const notificationReference =
+          doc(
+            db,
+            "studentNotifications",
+            `weekly-plan-${studentId}`
+          );
+
+        batch.set(
+          notificationReference,
+          {
+            studentId,
+
+            title:
+              "🗓️ تم نشر خطتك الأسبوعية",
+
+            message:
+              weekTitle.trim()
+                ? `تم اعتماد ونشر «${weekTitle.trim()}». اطّلع على دروس الأسبوع ومهامه وما تحتاج إلى إحضاره.`
+                : "تم اعتماد ونشر الخطة الأسبوعية. اطّلع على دروس الأسبوع ومهامه وما تحتاج إلى إحضاره.",
+
+            type:
+              "weekly-plan-published",
+
+            homeworkId: "",
+
+            href:
+              "/weekly-plan",
+
+            read: false,
+
+            weekTitle:
+              weekTitle.trim(),
+
+            createdAt:
+              serverTimestamp(),
+
+            updatedAt:
+              serverTimestamp(),
+          },
+          {
+            merge: true,
+          }
+        );
+
+        notificationCount += 1;
+      }
+    );
+
+    if (notificationCount > 0) {
+      await batch.commit();
+    }
+  }
+
   async function handleSavePlan() {
     if (!weekTitle.trim()) {
       setStatusMessage(
@@ -399,9 +482,13 @@ export default function WeeklyPlanPage() {
         published
       );
 
+      if (published) {
+        await notifyStudentsAboutWeeklyPlan();
+      }
+
       setStatusMessage(
         published
-          ? "تم حفظ الخطة ونشرها للطلاب، وتم تحديث إعلان الخطة تلقائيًا ✅"
+          ? "تم حفظ الخطة ونشرها للطلاب، وتم تحديث الإعلان وإرسال إشعار الخطة للجميع ✅"
           : "تم حفظ الخطة كمسودة وإخفاء إعلان الخطة الأسبوعية ✅"
       );
     } catch (error) {

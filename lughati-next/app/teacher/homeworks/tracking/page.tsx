@@ -8,6 +8,7 @@ runTransaction,
   doc,
   getDocs,
   serverTimestamp,
+  setDoc,
   Timestamp,
   updateDoc,
 } from "firebase/firestore";
@@ -39,8 +40,10 @@ type Completion = {
   classroom: string;
   completed: boolean;
   teacherApproved: boolean;
+  teacherRejected: boolean;
+  teacherNote: string;
   pointsAwarded: boolean;
-pointsAwardedValue: number;
+  pointsAwardedValue: number;
   completedAtText: string;
 };
 
@@ -125,6 +128,8 @@ export default function HomeworkTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [approvingCompletionId, setApprovingCompletionId] =
+  useState<string | null>(null);
+  const [rejectingCompletionId, setRejectingCompletionId] =
   useState<string | null>(null);
   const [awardingPointsCompletionId, setAwardingPointsCompletionId] =
   useState<string | null>(null);
@@ -285,6 +290,15 @@ const fetchTrackingData = useCallback(async () => {
             teacherApproved:
               data.teacherApproved === true,
 
+            teacherRejected:
+              data.teacherRejected === true ||
+              data.reviewStatus === "needs-revision",
+
+            teacherNote:
+              typeof data.teacherNote === "string"
+                ? data.teacherNote
+                : "",
+
             completedAtText,
 
             pointsAwarded:
@@ -365,37 +379,247 @@ const loadData =
 const approveHomeworkCompletion = async (
   completion: Completion
 ) => {
-  if (!completion.completed || completion.teacherApproved) {
+  if (
+    !completion.completed ||
+    completion.teacherApproved
+  ) {
     return;
   }
 
   try {
-    setApprovingCompletionId(completion.id);
+    setApprovingCompletionId(
+      completion.id
+    );
 
     await updateDoc(
-      doc(db, "homeworkCompletions", completion.id),
+      doc(
+        db,
+        "homeworkCompletions",
+        completion.id
+      ),
       {
         teacherApproved: true,
-        teacherApprovedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        teacherRejected: false,
+        reviewStatus: "approved",
+        teacherApprovedAt:
+          serverTimestamp(),
+        updatedAt:
+          serverTimestamp(),
       }
     );
 
-    setCompletions((currentCompletions) =>
-      currentCompletions.map((item) =>
-        item.id === completion.id
-          ? {
-              ...item,
-              teacherApproved: true,
-            }
-          : item
-      )
+    const homeworkTitle =
+      homeworks.find(
+        (homework) =>
+          homework.id ===
+          completion.homeworkId
+      )?.title || "الواجب";
+
+    const notificationId =
+      `homework-approved-${completion.id}`;
+
+    await setDoc(
+      doc(
+        db,
+        "studentNotifications",
+        notificationId
+      ),
+      {
+        studentId:
+          completion.studentId,
+
+        title:
+          "✅ تم اعتماد واجبك",
+
+        message:
+          `أحسنت يا ${completion.studentName} 🌟 ` +
+          `تم اعتماد واجبك «${homeworkTitle}».`,
+
+        type:
+          "homework-approved",
+
+        homeworkId:
+          completion.homeworkId,
+
+        href:
+          `/homeworks?homeworkId=${completion.homeworkId}`,
+
+        read: false,
+
+        createdAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp(),
+      },
+      {
+        merge: true,
+      }
+    );
+
+    setCompletions(
+      (currentCompletions) =>
+        currentCompletions.map(
+          (item) =>
+            item.id ===
+            completion.id
+              ? {
+                  ...item,
+                  teacherApproved:
+                    true,
+                  teacherRejected:
+                    false,
+                  teacherNote:
+                    "",
+                }
+              : item
+        )
     );
   } catch (approvalError) {
-    console.error(approvalError);
-    alert("تعذر اعتماد إنجاز الطالب، حاول مرة أخرى.");
+    console.error(
+      approvalError
+    );
+
+    alert(
+      "تعذر اعتماد إنجاز الطالب أو إرسال الإشعار، حاول مرة أخرى."
+    );
   } finally {
-    setApprovingCompletionId(null);
+    setApprovingCompletionId(
+      null
+    );
+  }
+};
+
+const rejectHomeworkCompletion = async (
+  completion: Completion
+) => {
+  if (
+    !completion.completed ||
+    completion.teacherApproved
+  ) {
+    return;
+  }
+
+  const teacherNote =
+    window.prompt(
+      "اكتب ملاحظة قصيرة للطالب توضّح ما يحتاج إلى تعديله:",
+      completion.teacherNote || ""
+    )?.trim() || "";
+
+  const confirmed =
+    window.confirm(
+      teacherNote
+        ? `سيتم إعادة الواجب للطالب للتعديل مع الملاحظة:\n\n${teacherNote}\n\nهل تريد المتابعة؟`
+        : "سيتم إعادة الواجب للطالب للتعديل. هل تريد المتابعة؟"
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setRejectingCompletionId(
+      completion.id
+    );
+
+    const homeworkTitle =
+      homeworks.find(
+        (homework) =>
+          homework.id ===
+          completion.homeworkId
+      )?.title || "الواجب";
+
+    await updateDoc(
+      doc(
+        db,
+        "homeworkCompletions",
+        completion.id
+      ),
+      {
+        teacherApproved: false,
+        teacherRejected: true,
+        reviewStatus:
+          "needs-revision",
+        teacherNote,
+        teacherRejectedAt:
+          serverTimestamp(),
+        updatedAt:
+          serverTimestamp(),
+      }
+    );
+
+    const notificationId =
+      `homework-revision-${completion.id}`;
+
+    await setDoc(
+      doc(
+        db,
+        "studentNotifications",
+        notificationId
+      ),
+      {
+        studentId:
+          completion.studentId,
+
+        title:
+          "🔄 يحتاج واجبك إلى تعديل",
+
+        message:
+          teacherNote
+            ? `راجع واجبك «${homeworkTitle}» ثم أعد رفع الحل. ملاحظة المعلم: ${teacherNote}`
+            : `راجع واجبك «${homeworkTitle}» ثم أعد رفع الحل.`,
+
+        type:
+          "homework-revision",
+
+        homeworkId:
+          completion.homeworkId,
+
+        href:
+          `/homeworks?homeworkId=${completion.homeworkId}`,
+
+        read: false,
+
+        createdAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp(),
+      },
+      {
+        merge: true,
+      }
+    );
+
+    setCompletions(
+      (currentCompletions) =>
+        currentCompletions.map(
+          (item) =>
+            item.id ===
+            completion.id
+              ? {
+                  ...item,
+                  teacherApproved:
+                    false,
+                  teacherRejected:
+                    true,
+                  teacherNote,
+                }
+              : item
+        )
+    );
+  } catch (rejectionError) {
+    console.error(
+      rejectionError
+    );
+
+    alert(
+      "تعذر إعادة الواجب للتعديل أو إرسال الإشعار، حاول مرة أخرى."
+    );
+  } finally {
+    setRejectingCompletionId(
+      null
+    );
   }
 };
 
@@ -896,42 +1120,135 @@ useEffect(() => {
                             </small>
                           )}
                           {isCompleted && completion && (
-  <button
-    type="button"
-    onClick={() => approveHomeworkCompletion(completion)}
-    disabled={
-      completion.teacherApproved ||
-      approvingCompletionId === completion.id
-    }
+  <div
     style={{
       marginTop: "10px",
-      padding: "10px 14px",
-      border: "none",
-      borderRadius: "12px",
-      background: completion.teacherApproved
-        ? "#dcfce7"
-        : "#047857",
-      color: completion.teacherApproved
-        ? "#166534"
-        : "#ffffff",
-      fontWeight: 800,
-      fontSize: "14px",
-      cursor: completion.teacherApproved
-        ? "default"
-        : "pointer",
-      opacity:
-        approvingCompletionId === completion.id
-          ? 0.7
-          : 1,
+      display: "flex",
+      gap: "8px",
+      flexWrap: "wrap",
+      justifyContent: "flex-end",
     }}
   >
-    {approvingCompletionId === completion.id
-      ? "جارٍ الاعتماد..."
-      : completion.teacherApproved
-        ? "تم اعتماد الإنجاز ✅"
-        : "اعتماد الإنجاز ✅"}
-  </button>
+    <button
+      type="button"
+      onClick={() =>
+        approveHomeworkCompletion(
+          completion
+        )
+      }
+      disabled={
+        completion.teacherApproved ||
+        approvingCompletionId ===
+          completion.id ||
+        rejectingCompletionId ===
+          completion.id
+      }
+      style={{
+        padding: "10px 14px",
+        border: "none",
+        borderRadius: "12px",
+        background:
+          completion.teacherApproved
+            ? "#dcfce7"
+            : "#047857",
+        color:
+          completion.teacherApproved
+            ? "#166534"
+            : "#ffffff",
+        fontWeight: 800,
+        fontSize: "14px",
+        cursor:
+          completion.teacherApproved
+            ? "default"
+            : "pointer",
+        opacity:
+          approvingCompletionId ===
+            completion.id ||
+          rejectingCompletionId ===
+            completion.id
+            ? 0.7
+            : 1,
+      }}
+    >
+      {approvingCompletionId ===
+      completion.id
+        ? "جارٍ الاعتماد..."
+        : completion.teacherApproved
+          ? "تم اعتماد الإنجاز ✅"
+          : "اعتماد الإنجاز ✅"}
+    </button>
+
+    {!completion.teacherApproved && (
+      <button
+        type="button"
+        onClick={() =>
+          rejectHomeworkCompletion(
+            completion
+          )
+        }
+        disabled={
+          rejectingCompletionId ===
+            completion.id ||
+          approvingCompletionId ===
+            completion.id
+        }
+        style={{
+          padding: "10px 14px",
+          border:
+            "1px solid #fecaca",
+          borderRadius: "12px",
+          background:
+            completion.teacherRejected
+              ? "#fff7ed"
+              : "#fef2f2",
+          color:
+            completion.teacherRejected
+              ? "#9a3412"
+              : "#b91c1c",
+          fontWeight: 800,
+          fontSize: "14px",
+          cursor: "pointer",
+          opacity:
+            rejectingCompletionId ===
+              completion.id ||
+            approvingCompletionId ===
+              completion.id
+              ? 0.7
+              : 1,
+        }}
+      >
+        {rejectingCompletionId ===
+        completion.id
+          ? "جارٍ الإرسال..."
+          : completion.teacherRejected
+            ? "أُعيد للتعديل 🔄"
+            : "إعادة للتعديل 🔄"}
+      </button>
+    )}
+  </div>
 )}
+{isCompleted &&
+  completion &&
+  completion.teacherRejected &&
+  completion.teacherNote && (
+    <div
+      style={{
+        marginTop: "8px",
+        maxWidth: "420px",
+        padding: "9px 12px",
+        borderRadius: "11px",
+        background: "#fff7ed",
+        border: "1px solid #fed7aa",
+        color: "#9a3412",
+        fontSize: "13px",
+        fontWeight: 700,
+        lineHeight: 1.7,
+      }}
+    >
+      💬 ملاحظة المعلم:{" "}
+      {completion.teacherNote}
+    </div>
+  )}
 {isCompleted &&
   completion &&
   completion.teacherApproved && (

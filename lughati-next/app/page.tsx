@@ -66,6 +66,35 @@ type DayMessage = {
   icon: string;
 };
 
+type AcademyMilestone = {
+  id: string;
+  title: string;
+  badgeTitle: string;
+  studentName: string;
+  pointsReached: number;
+  createdAtMilliseconds: number;
+};
+
+function getPublicStudentName(fullName: string) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(" ");
+}
+
+function getMilestoneIcon(pointsReached: number) {
+  if (pointsReached >= 1000) return "🚀";
+  if (pointsReached >= 500) return "🏰";
+  if (pointsReached >= 250) return "💎";
+  if (pointsReached >= 100) return "👑";
+  if (pointsReached >= 50) return "🥇";
+  if (pointsReached >= 25) return "🌟";
+  if (pointsReached >= 10) return "⭐";
+  return "🏆";
+}
+
 const sections: AcademySection[] = [
   {
     icon: "📚",
@@ -228,6 +257,11 @@ export default function Home() {
     setHeroes,
   ] =
     useState<AcademyHero[]>([]);
+
+  const [
+    academyMilestones,
+    setAcademyMilestones,
+  ] = useState<AcademyMilestone[]>([]);
 
   
 
@@ -500,6 +534,96 @@ useEffect(() => {
     }
 
     void loadHeroes();
+  }, []);
+
+
+  /*
+   * تحميل أحدث إنجازات «أوائل الأكاديمية».
+   * الزاوية لا تظهر إلا بعد تسجيل أول إنجاز فعلي.
+   */
+  useEffect(() => {
+    async function loadAcademyMilestones() {
+      try {
+        const snapshot =
+          await getDocs(
+            collection(
+              db,
+              "academyMilestones"
+            )
+          );
+
+        const loadedMilestones =
+          snapshot.docs
+            .map(
+              (
+                milestoneDocument
+              ) => {
+                const data =
+                  milestoneDocument.data();
+
+                return {
+                  id:
+                    milestoneDocument.id,
+
+                  title:
+                    typeof data.title ===
+                    "string"
+                      ? data.title
+                      : "إنجاز جديد في أكاديمية لغتي",
+
+                  badgeTitle:
+                    typeof data.badgeTitle ===
+                    "string"
+                      ? data.badgeTitle
+                      : "",
+
+                  studentName:
+                    typeof data.studentName ===
+                    "string"
+                      ? data.studentName
+                      : "",
+
+                  pointsReached:
+                    typeof data.pointsReached ===
+                    "number"
+                      ? data.pointsReached
+                      : 1,
+
+                  createdAtMilliseconds:
+                    data.createdAt
+                      ?.toMillis?.() ||
+                    data.updatedAt
+                      ?.toMillis?.() ||
+                    0,
+                } satisfies AcademyMilestone;
+              }
+            )
+            .filter(
+              (milestone) =>
+                milestone.studentName
+                  .trim() !== ""
+            )
+            .sort(
+              (first, second) =>
+                second.createdAtMilliseconds -
+                first.createdAtMilliseconds
+            )
+            .slice(0, 3);
+
+        setAcademyMilestones(
+          loadedMilestones
+        );
+      } catch (error) {
+        console.error(
+          "تعذر تحميل أوائل الأكاديمية:",
+          error
+        );
+
+        setAcademyMilestones([]);
+      }
+    }
+
+    void loadAcademyMilestones();
   }, []);
 
 
@@ -1012,6 +1136,243 @@ useEffect(() => {
           مباشر
         </span>
         </section>
+{/* زاوية أوائل الأكاديمية — تظهر تلقائيًا عند وجود إنجاز فعلي */}
+{academyMilestones.length > 0 && (
+  <div
+    style={{
+      maxWidth: "1180px",
+      margin: "14px auto 4px",
+      padding: "0 16px",
+      display: "flex",
+    }}
+  >
+    <section
+      aria-label="أوائل أكاديمية لغتي"
+      style={{
+        width: "min(430px, 100%)",
+        marginLeft: "auto",
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "24px",
+        border: "1px solid #eadca8",
+        background:
+          "linear-gradient(145deg,#fffdf5 0%,#ffffff 52%,#f8f4ff 100%)",
+        boxShadow:
+          "0 12px 32px rgba(93,72,25,.10)",
+        padding: "16px",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: "10px",
+          left: "14px",
+          fontSize: "16px",
+          opacity: 0.75,
+        }}
+      >
+        ✨
+      </span>
+
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          bottom: "12px",
+          right: "14px",
+          fontSize: "14px",
+          opacity: 0.5,
+        }}
+      >
+        🎊
+      </span>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: "11px",
+          marginBottom: "12px",
+        }}
+      >
+        <div
+          style={{
+            width: "48px",
+            height: "48px",
+            borderRadius: "16px",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            fontSize: "27px",
+            background:
+              "linear-gradient(135deg,#fff0a8,#fff9dc)",
+            border: "1px solid #efd77b",
+            boxShadow:
+              "0 7px 18px rgba(161,121,15,.12)",
+          }}
+        >
+          🏆
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <strong
+            style={{
+              display: "block",
+              color: "#6f5200",
+              fontSize: "16px",
+              fontWeight: 900,
+            }}
+          >
+            أوائل أكاديمية لغتي
+          </strong>
+
+          <span
+            style={{
+              display: "block",
+              marginTop: "2px",
+              color: "#7a7465",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+          >
+            لحظات تاريخية نفخر بها ✨
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "grid",
+          gap: "8px",
+        }}
+      >
+        {academyMilestones.map(
+          (milestone, index) => (
+            <article
+              key={milestone.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "44px minmax(0,1fr) auto",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px",
+                borderRadius: "16px",
+                background:
+                  index === 0
+                    ? "linear-gradient(135deg,#fff8df,#ffffff)"
+                    : "#ffffff",
+                border:
+                  index === 0
+                    ? "1px solid #f0d98d"
+                    : "1px solid #ece9df",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "14px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "23px",
+                  background:
+                    index === 0
+                      ? "#fff1b8"
+                      : "#f6f3ff",
+                }}
+              >
+                {getMilestoneIcon(
+                  milestone.pointsReached
+                )}
+              </div>
+
+              <div style={{ minWidth: 0 }}>
+                <strong
+                  style={{
+                    display: "block",
+                    color: "#24382f",
+                    fontSize: "14px",
+                    fontWeight: 900,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {getPublicStudentName(
+                    milestone.studentName
+                  )}
+                </strong>
+
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: "3px",
+                    color: "#6b756f",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {milestone.title}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  minWidth: "48px",
+                  textAlign: "center",
+                  padding: "7px 8px",
+                  borderRadius: "12px",
+                  background: "#f7f3ff",
+                  color: "#6d4bc3",
+                  fontWeight: 900,
+                  fontSize: "12px",
+                }}
+              >
+                {milestone.pointsReached}
+
+                <div
+                  style={{
+                    marginTop: "1px",
+                    fontSize: "9px",
+                    color: "#8477a4",
+                  }}
+                >
+                  نقطة
+                </div>
+              </div>
+            </article>
+          )
+        )}
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          marginTop: "10px",
+          paddingTop: "9px",
+          borderTop:
+            "1px dashed #e5ddc3",
+          color: "#7b6a34",
+          fontSize: "11px",
+          fontWeight: 800,
+          textAlign: "center",
+        }}
+      >
+        🌟 كل إنجاز جديد يكتب سطرًا في تاريخ الأكاديمية
+      </div>
+    </section>
+  </div>
+)}
+
 {/* أبطال الأكاديمية في أسبوع */}
 
 <section

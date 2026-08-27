@@ -10,6 +10,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -227,6 +228,87 @@ async function uploadSelectedFile() {
     setUploadingFile(false);
   }
 }
+async function createHomeworkNotifications(
+  homeworkId: string,
+  homeworkTitle: string,
+  targetClass: TargetClass
+) {
+  const studentsSnapshot = await getDocs(
+    collection(db, "students")
+  );
+
+  const matchingStudents =
+    studentsSnapshot.docs.filter(
+      (studentDocument) => {
+        const studentData =
+          studentDocument.data();
+
+        if (studentData.active === false) {
+          return false;
+        }
+
+        const studentClass = String(
+          studentData.classroom ??
+            studentData.className ??
+            ""
+        ).trim();
+
+        if (targetClass === "الفصلان") {
+          return (
+            studentClass === "الثاني أ" ||
+            studentClass === "الثاني ب"
+          );
+        }
+
+        return studentClass === targetClass;
+      }
+    );
+
+  await Promise.all(
+    matchingStudents.map(
+      async (studentDocument) => {
+        const studentData =
+          studentDocument.data();
+
+        const studentId =
+          typeof studentData.studentId ===
+          "string"
+            ? studentData.studentId
+            : studentDocument.id;
+
+        const notificationId =
+          `${homeworkId}_${studentDocument.id}`;
+
+        await setDoc(
+          doc(
+            db,
+            "studentNotifications",
+            notificationId
+          ),
+          {
+            studentId,
+            studentDocId:
+              studentDocument.id,
+            title: "📚 واجب جديد",
+            message:
+              `لديك واجب جديد: ${homeworkTitle}`,
+            type: "homework",
+            homeworkId,
+            href:
+              `/homeworks?homeworkId=${homeworkId}`,
+            read: false,
+            createdAt:
+              serverTimestamp(),
+            updatedAt:
+              serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+    )
+  );
+}
+
   function updateForm(
     field: keyof typeof form,
     value: string | boolean
@@ -299,16 +381,57 @@ attachmentName,
       };
 
       if (editingId) {
-        await updateDoc(doc(db, "homeworks", editingId), homeworkData);
+        const previousHomework =
+          homeworks.find(
+            (homework) =>
+              homework.id === editingId
+          );
 
-        setMessage("تم تعديل الواجب بنجاح ✅");
+        await updateDoc(
+          doc(db, "homeworks", editingId),
+          homeworkData
+        );
+
+        const becamePublished =
+          form.published &&
+          previousHomework?.published !== true;
+
+        if (becamePublished) {
+          await createHomeworkNotifications(
+            editingId,
+            cleanTitle,
+            form.targetClass
+          );
+        }
+
+        setMessage(
+          becamePublished
+            ? "تم تعديل الواجب ونشر إشعاره للطلاب ✅🔔"
+            : "تم تعديل الواجب بنجاح ✅"
+        );
       } else {
-        await addDoc(collection(db, "homeworks"), {
-          ...homeworkData,
-          createdAt: serverTimestamp(),
-        });
+        const createdHomework =
+          await addDoc(
+            collection(db, "homeworks"),
+            {
+              ...homeworkData,
+              createdAt: serverTimestamp(),
+            }
+          );
 
-        setMessage("تم إنشاء الواجب بنجاح ✅");
+        if (form.published) {
+          await createHomeworkNotifications(
+            createdHomework.id,
+            cleanTitle,
+            form.targetClass
+          );
+        }
+
+        setMessage(
+          form.published
+            ? "تم إنشاء الواجب وإرسال إشعاره للطلاب ✅🔔"
+            : "تم إنشاء الواجب بنجاح ✅"
+        );
       }
 
       setForm(emptyForm);
@@ -351,30 +474,49 @@ attachmentName: homework.attachmentName,
       setError("");
       setMessage("جاري تحديث حالة النشر...");
 
-      await updateDoc(doc(db, "homeworks", homework.id), {
-        published: !homework.published,
-        updatedAt: serverTimestamp(),
-      });
+      const nextPublished =
+        !homework.published;
+
+      await updateDoc(
+        doc(db, "homeworks", homework.id),
+        {
+          published: nextPublished,
+          updatedAt: serverTimestamp(),
+        }
+      );
+
+      if (nextPublished) {
+        await createHomeworkNotifications(
+          homework.id,
+          homework.title,
+          homework.targetClass
+        );
+      }
 
       setHomeworks((currentHomeworks) =>
-        currentHomeworks.map((currentHomework) =>
-          currentHomework.id === homework.id
-            ? {
-                ...currentHomework,
-                published: !currentHomework.published,
-              }
-            : currentHomework
+        currentHomeworks.map(
+          (currentHomework) =>
+            currentHomework.id ===
+            homework.id
+              ? {
+                  ...currentHomework,
+                  published:
+                    nextPublished,
+                }
+              : currentHomework
         )
       );
 
       setMessage(
-        homework.published
-          ? "تم إيقاف نشر الواجب."
-          : "تم نشر الواجب للطلاب ✅"
+        nextPublished
+          ? "تم نشر الواجب وإرسال إشعار للطلاب ✅🔔"
+          : "تم إيقاف نشر الواجب."
       );
     } catch (publishError) {
       console.error(publishError);
-      setError("تعذر تغيير حالة نشر الواجب.");
+      setError(
+        "تعذر تغيير حالة نشر الواجب أو إرسال الإشعار."
+      );
     }
   }
 
