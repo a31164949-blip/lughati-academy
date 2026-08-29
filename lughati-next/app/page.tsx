@@ -102,7 +102,24 @@ type AcademyBoardSettings = {
   tickerText: string;
 };
 
+type WeeklyEngagementStudent = {
+  rank: number;
+  studentId: string;
+  studentName: string;
+  score: number;
+  movement: number;
+};
+
 type AcademyBoardDisplaySlide =
+  | {
+      id: string;
+      kind: "engagement";
+      icon: string;
+      eyebrow: string;
+      title: string;
+      message: string;
+      rankings: WeeklyEngagementStudent[];
+    }
   | {
       id: string;
       kind: "milestone";
@@ -334,6 +351,14 @@ export default function Home() {
     activeBoardSlideIndex,
     setActiveBoardSlideIndex,
   ] = useState(0);
+
+  const [
+    weeklyEngagement,
+    setWeeklyEngagement,
+  ] = useState<WeeklyEngagementStudent[]>([]);
+
+  const previousEngagementRanks =
+    useRef<Map<string, number>>(new Map());
 
   const boardTouchStartX =
     useRef<number | null>(null);
@@ -741,6 +766,112 @@ useEffect(() => {
     void loadPublicAcademyBoard();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWeeklyEngagement() {
+      try {
+        const response = await fetch(
+          "/api/public-weekly-engagement",
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        const text = await response.text();
+        const data = text
+          ? JSON.parse(text)
+          : {};
+
+        if (
+          !response.ok ||
+          data?.success !== true ||
+          !Array.isArray(data?.rankings)
+        ) {
+          throw new Error(
+            data?.message ||
+              "تعذر تحميل ترتيب التفاعل."
+          );
+        }
+
+        if (cancelled) return;
+
+        const oldRanks =
+          previousEngagementRanks.current;
+
+        const nextRows: WeeklyEngagementStudent[] =
+          data.rankings.map(
+            (item: {
+              rank?: number;
+              studentId?: string;
+              studentName?: string;
+              score?: number;
+            }) => {
+              const rank =
+                typeof item.rank === "number"
+                  ? item.rank
+                  : 0;
+
+              const studentId =
+                typeof item.studentId === "string"
+                  ? item.studentId
+                  : "";
+
+              const previousRank =
+                oldRanks.get(studentId);
+
+              return {
+                rank,
+                studentId,
+                studentName:
+                  typeof item.studentName === "string"
+                    ? item.studentName
+                    : "طالب الأكاديمية",
+                score:
+                  typeof item.score === "number"
+                    ? item.score
+                    : 0,
+                movement:
+                  typeof previousRank === "number"
+                    ? previousRank - rank
+                    : 0,
+              };
+            }
+          );
+
+        previousEngagementRanks.current =
+          new Map(
+            nextRows.map((row) => [
+              row.studentId,
+              row.rank,
+            ])
+          );
+
+        setWeeklyEngagement(nextRows);
+      } catch (error) {
+        console.error(
+          "تعذر تحميل الأكثر تفاعلًا هذا الأسبوع:",
+          error
+        );
+      }
+    }
+
+    void loadWeeklyEngagement();
+
+    const timer = window.setInterval(
+      () => {
+        void loadWeeklyEngagement();
+      },
+      30000
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
 
   /*
    * التاريخ.
@@ -807,6 +938,20 @@ useEffect(() => {
 
   const academyBoardSlides:
     AcademyBoardDisplaySlide[] = [
+      ...(weeklyEngagement.length > 0
+        ? [
+            {
+              id: "weekly-engagement-top-10",
+              kind: "engagement" as const,
+              icon: "🔥",
+              eyebrow: "ترتيب مباشر • Top 10",
+              title: "الأكثر تفاعلًا هذا الأسبوع",
+              message:
+                "يتغير ترتيب الطلاب تلقائيًا حسب تفاعلهم الحقيقي داخل الأكاديمية.",
+              rankings: weeklyEngagement,
+            },
+          ]
+        : []),
       ...academyBoardManualSlides.map(
         (slide) => ({
           id: `manual-${slide.id}`,
@@ -1366,6 +1511,106 @@ useEffect(() => {
           مباشر
         </span>
         </section>
+{/* تنويه قناة التليجرام */}
+      <section
+        aria-label="تنويه قناة التليجرام"
+        style={{
+          maxWidth: "1180px",
+          margin: "14px auto 18px",
+          padding: "16px 18px",
+          borderRadius: "22px",
+          border: "1px solid #bae6fd",
+          background:
+            "linear-gradient(135deg, #effaff 0%, #f8fcff 100%)",
+          boxShadow:
+            "0 10px 26px rgba(14, 116, 144, 0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "14px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            minWidth: 0,
+            flex: "1 1 520px",
+          }}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "16px",
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+              background: "#229ED9",
+              color: "#ffffff",
+              fontSize: "25px",
+              boxShadow:
+                "0 8px 18px rgba(34, 158, 217, 0.22)",
+            }}
+          >
+            ✈️
+          </div>
+
+          <div>
+            <strong
+              style={{
+                display: "block",
+                color: "#075985",
+                fontSize: "16px",
+                fontWeight: 900,
+              }}
+            >
+              📢 تنويه مهم
+            </strong>
+
+            <p
+              style={{
+                margin: "4px 0 0",
+                color: "#334155",
+                fontSize: "14px",
+                fontWeight: 800,
+                lineHeight: 1.8,
+              }}
+            >
+              أرجو الانضمام إلى قناتنا على التليجرام؛
+              لضمان متابعة جميع المهام.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="https://t.me/LughatiDigitalAcademy"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "7px",
+            padding: "11px 17px",
+            borderRadius: "14px",
+            background: "#229ED9",
+            color: "#ffffff",
+            textDecoration: "none",
+            fontSize: "14px",
+            fontWeight: 900,
+            whiteSpace: "nowrap",
+            boxShadow:
+              "0 8px 18px rgba(34, 158, 217, 0.2)",
+          }}
+        >
+          📲 الانضمام إلى القناة
+        </a>
+      </section>
+
 {/* لوحة الأكاديمية الرقمية — إنجازات + إعلانات + فعاليات + مسابقات */}
 {academyBoardSettings.enabled &&
   academyBoardSlides.length > 0 &&
@@ -1398,9 +1643,14 @@ useEffect(() => {
     const isMilestone =
       activeSlide.kind === "milestone";
 
+    const isEngagement =
+      activeSlide.kind === "engagement";
+
     const accent =
       isMilestone
         ? "#facc15"
+        : isEngagement
+        ? "#38bdf8"
         : activeSlide.category === "event"
         ? "#34d399"
         : activeSlide.category ===
@@ -1411,6 +1661,8 @@ useEffect(() => {
     const tickerLabel =
       isMilestone
         ? "خبر الإنجاز"
+        : isEngagement
+        ? "Top 10"
         : activeSlide.category === "event"
         ? "فعالية"
         : activeSlide.category ===
@@ -1465,6 +1717,12 @@ useEffect(() => {
             .academy-firsts-points {
               grid-column: 1 / -1;
               justify-self: stretch;
+            }
+          }
+
+          @media (max-width: 760px) {
+            .academy-engagement-grid {
+              grid-template-columns: 1fr !important;
             }
           }
 
@@ -1648,148 +1906,346 @@ useEffect(() => {
             </div>
           </div>
 
-          <div
-            key={activeSlide.id}
-            className="academy-firsts-slide"
-            style={{
-              position: "relative",
-              zIndex: 2,
-              minHeight: "176px",
-              display: "grid",
-              gridTemplateColumns:
-                isMilestone
-                  ? "minmax(72px,100px) minmax(0,1fr) auto"
-                  : "minmax(72px,100px) minmax(0,1fr)",
-              alignItems: "center",
-              gap:
-                "clamp(13px,3vw,24px)",
-              padding:
-                "clamp(18px,3vw,26px) clamp(18px,4vw,34px)",
-              animation:
-                "academyBillboardEnter .55s ease both",
-            }}
-          >
+          {isEngagement ? (
             <div
-              aria-hidden="true"
+              key={activeSlide.id}
+              className="academy-firsts-slide"
               style={{
-                width:
-                  "clamp(72px,10vw,96px)",
-                height:
-                  "clamp(72px,10vw,96px)",
-                borderRadius: "26px",
-                display: "grid",
-                placeItems: "center",
-                fontSize:
-                  "clamp(38px,6vw,58px)",
-                background:
-                  "linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.06))",
-                border:
-                  "1px solid rgba(255,255,255,.16)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,.12), 0 12px 30px rgba(0,0,0,.14)",
+                position: "relative",
+                zIndex: 2,
+                padding:
+                  "clamp(16px,3vw,24px) clamp(16px,4vw,30px)",
+                animation:
+                  "academyBillboardEnter .55s ease both",
               }}
             >
-              {activeSlide.icon}
-            </div>
-
-            <div
-              style={{ minWidth: 0 }}
-            >
-              <span
+              <div
                 style={{
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  gap: "6px",
-                  marginBottom: "6px",
-                  color: accent,
-                  fontSize: "12px",
-                  fontWeight: 900,
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  marginBottom: "14px",
                 }}
               >
-                ✨ {activeSlide.eyebrow}
-              </span>
-
-              <strong
-                style={{
-                  display: "block",
-                  color: "#ffffff",
-                  fontSize:
-                    isMilestone
-                      ? "clamp(24px,5vw,42px)"
-                      : "clamp(23px,4.5vw,38px)",
-                  lineHeight: 1.25,
-                  fontWeight: 900,
-                  overflow: "hidden",
-                  textOverflow:
-                    "ellipsis",
-                  whiteSpace:
-                    isMilestone
-                      ? "nowrap"
-                      : "normal",
-                  textShadow:
-                    "0 3px 16px rgba(0,0,0,.18)",
-                }}
-              >
-                {activeSlide.title}
-              </strong>
-
-              <div
-                style={{
-                  marginTop: "8px",
-                  color: "#d1fae5",
-                  fontSize:
-                    "clamp(13px,2.3vw,17px)",
-                  lineHeight: 1.7,
-                  fontWeight: 800,
-                }}
-              >
-                {activeSlide.message}
-              </div>
-            </div>
-
-            {activeSlide.kind ===
-              "milestone" && (
-              <div
-                className="academy-firsts-points"
-                style={{
-                  minWidth: "78px",
-                  padding: "12px 13px",
-                  borderRadius: "20px",
-                  textAlign: "center",
-                  background:
-                    "linear-gradient(145deg,#fff8d8,#fde68a)",
-                  color: "#6b4d00",
-                  border:
-                    "1px solid rgba(255,255,255,.45)",
-                  boxShadow:
-                    "0 10px 25px rgba(250,204,21,.13)",
-                }}
-              >
-                <strong
-                  style={{
-                    display: "block",
-                    fontSize:
-                      "clamp(22px,4vw,32px)",
-                    lineHeight: 1,
-                    fontWeight: 900,
-                  }}
-                >
-                  {activeSlide.points}
-                </strong>
+                <div>
+                  <span
+                    style={{
+                      display: "block",
+                      color: accent,
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      marginBottom: "4px",
+                    }}
+                  >
+                    🔥 {activeSlide.eyebrow}
+                  </span>
+                  <strong
+                    style={{
+                      display: "block",
+                      fontSize: "clamp(22px,4vw,34px)",
+                      fontWeight: 900,
+                      color: "#ffffff",
+                    }}
+                  >
+                    {activeSlide.title}
+                  </strong>
+                </div>
 
                 <span
                   style={{
-                    display: "block",
-                    marginTop: "5px",
-                    fontSize: "10px",
+                    padding: "8px 12px",
+                    borderRadius: "999px",
+                    background: "rgba(56,189,248,.12)",
+                    border: "1px solid rgba(56,189,248,.28)",
+                    color: "#bae6fd",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  تحديث تلقائي كل 30 ثانية
+                </span>
+              </div>
+
+              <div
+                className="academy-engagement-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+                  gap: "8px 12px",
+                }}
+              >
+                {activeSlide.rankings.map((row) => {
+                  const medal =
+                    row.rank === 1
+                      ? "🥇"
+                      : row.rank === 2
+                      ? "🥈"
+                      : row.rank === 3
+                      ? "🥉"
+                      : String(row.rank);
+
+                  const movementAmount =
+                    Math.abs(row.movement);
+
+                  const movementUnit =
+                    movementAmount === 1
+                      ? "مركزًا"
+                      : "مراكز";
+
+                  const movementLabel =
+                    row.movement > 0
+                      ? `↑ صعد ${movementAmount} ${movementUnit}`
+                      : row.movement < 0
+                      ? `↓ تراجع ${movementAmount} ${movementUnit}`
+                      : previousEngagementRanks.current.size > 0
+                      ? "— ثابت"
+                      : "—";
+
+                  const movementColor =
+                    row.movement > 0
+                      ? "#86efac"
+                      : row.movement < 0
+                      ? "#fca5a5"
+                      : "#94a3b8";
+
+                  return (
+                    <div
+                      key={row.studentId}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "48px minmax(0,1fr) auto auto",
+                        alignItems: "center",
+                        gap: "9px",
+                        minHeight: "46px",
+                        padding: "7px 10px",
+                        borderRadius: "14px",
+                        background:
+                          row.rank <= 3
+                            ? "rgba(255,255,255,.105)"
+                            : "rgba(255,255,255,.065)",
+                        border:
+                          row.rank <= 3
+                            ? "1px solid rgba(250,204,21,.18)"
+                            : "1px solid rgba(255,255,255,.08)",
+                      }}
+                    >
+                      <strong
+                        style={{
+                          textAlign: "center",
+                          color:
+                            row.rank <= 3
+                              ? "#fde68a"
+                              : "#cbd5e1",
+                          fontSize: row.rank <= 3 ? "19px" : "14px",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {medal}
+                      </strong>
+
+                      <span
+                        style={{
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "#ffffff",
+                          fontSize: "13px",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {row.studentName}
+                      </span>
+
+                      <span
+                        title="تغير المركز منذ آخر تحديث"
+                        style={{
+                          minWidth: "34px",
+                          textAlign: "center",
+                          color: movementColor,
+                          fontSize: "11px",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {movementLabel}
+                      </span>
+
+                      <span
+                        style={{
+                          minWidth: "54px",
+                          padding: "5px 8px",
+                          borderRadius: "10px",
+                          textAlign: "center",
+                          background: "rgba(56,189,248,.12)",
+                          color: "#bae6fd",
+                          fontSize: "11px",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {row.score} تفاعل
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  color: "#a7f3d0",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  lineHeight: 1.7,
+                }}
+              >
+                يحتسب الترتيب التفاعل الحقيقي لهذا الأسبوع، ويبدأ من جديد تلقائيًا كل يوم أحد.
+              </p>
+            </div>
+          ) : (
+            <div
+              key={activeSlide.id}
+              className="academy-firsts-slide"
+              style={{
+                position: "relative",
+                zIndex: 2,
+                minHeight: "176px",
+                display: "grid",
+                gridTemplateColumns:
+                  isMilestone
+                    ? "minmax(72px,100px) minmax(0,1fr) auto"
+                    : "minmax(72px,100px) minmax(0,1fr)",
+                alignItems: "center",
+                gap:
+                  "clamp(13px,3vw,24px)",
+                padding:
+                  "clamp(18px,3vw,26px) clamp(18px,4vw,34px)",
+                animation:
+                  "academyBillboardEnter .55s ease both",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width:
+                    "clamp(72px,10vw,96px)",
+                  height:
+                    "clamp(72px,10vw,96px)",
+                  borderRadius: "26px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize:
+                    "clamp(38px,6vw,58px)",
+                  background:
+                    "linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.06))",
+                  border:
+                    "1px solid rgba(255,255,255,.16)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,.12), 0 12px 30px rgba(0,0,0,.14)",
+                }}
+              >
+                {activeSlide.icon}
+              </div>
+
+              <div style={{ minWidth: 0 }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    marginBottom: "6px",
+                    color: accent,
+                    fontSize: "12px",
                     fontWeight: 900,
                   }}
                 >
-                  نقطة
+                  ✨ {activeSlide.eyebrow}
                 </span>
+
+                <strong
+                  style={{
+                    display: "block",
+                    color: "#ffffff",
+                    fontSize:
+                      isMilestone
+                        ? "clamp(24px,5vw,42px)"
+                        : "clamp(23px,4.5vw,38px)",
+                    lineHeight: 1.25,
+                    fontWeight: 900,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace:
+                      isMilestone
+                        ? "nowrap"
+                        : "normal",
+                    textShadow:
+                      "0 3px 16px rgba(0,0,0,.18)",
+                  }}
+                >
+                  {activeSlide.title}
+                </strong>
+
+                <div
+                  style={{
+                    marginTop: "8px",
+                    color: "#d1fae5",
+                    fontSize:
+                      "clamp(13px,2.3vw,17px)",
+                    lineHeight: 1.7,
+                    fontWeight: 800,
+                  }}
+                >
+                  {activeSlide.message}
+                </div>
               </div>
-            )}
-          </div>
+
+              {activeSlide.kind ===
+                "milestone" && (
+                <div
+                  className="academy-firsts-points"
+                  style={{
+                    minWidth: "78px",
+                    padding: "12px 13px",
+                    borderRadius: "20px",
+                    textAlign: "center",
+                    background:
+                      "linear-gradient(145deg,#fff8d8,#fde68a)",
+                    color: "#6b4d00",
+                    border:
+                      "1px solid rgba(255,255,255,.45)",
+                    boxShadow:
+                      "0 10px 25px rgba(250,204,21,.13)",
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: "block",
+                      fontSize:
+                        "clamp(22px,4vw,32px)",
+                      lineHeight: 1,
+                      fontWeight: 900,
+                    }}
+                  >
+                    {activeSlide.points}
+                  </strong>
+
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: "5px",
+                      fontSize: "10px",
+                      fontWeight: 900,
+                    }}
+                  >
+                    نقطة
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {academyBoardSlides.length >
             1 && (
