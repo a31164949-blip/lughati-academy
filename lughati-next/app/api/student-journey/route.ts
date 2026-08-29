@@ -4,6 +4,16 @@ import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export const runtime = "nodejs";
 
+/**
+ * مهام اليوم:
+ * 1 و4: مهام تدريبية يمكن للطالب تأكيدها.
+ * 2: لا تُحتسب بالضغط؛ تُعد منجزة بعد اعتماد واجب اليوم.
+ * 3: لا تُحتسب بالضغط؛ تُعد منجزة بعد اعتماد قراءة اليوم.
+ *
+ * لا توجد نقاط مباشرة لمجرد الضغط على أي مهمة.
+ * نقاط الواجب (+3) تأتي من مسار اعتماد الواجب الرسمي.
+ * مكافأة القراءة (+50) تأتي من دورة 5 قراءات معتمدة.
+ */
 const tasks = [
   {
     id: 1,
@@ -14,19 +24,19 @@ const tasks = [
   {
     id: 2,
     title: "حل الواجب اليومي",
-    rewardPoints: 3,
+    rewardPoints: 0,
     rewardStars: 0,
   },
   {
     id: 3,
-    title: "التدرب على القراءة",
+    title: "القراءة اليومية",
     rewardPoints: 0,
-    rewardStars: 1,
+    rewardStars: 0,
   },
   {
     id: 4,
     title: "مراجعة كلمات الإملاء",
-    rewardPoints: 2,
+    rewardPoints: 0,
     rewardStars: 0,
   },
 ];
@@ -40,61 +50,261 @@ function getSaudiDateKey(date = new Date()) {
   }).format(date);
 }
 
-async function getStudentFromRequest(request: Request) {
+function getFirestoreDateKey(
+  value: unknown
+): string {
+  if (!value) {
+    return "";
+  }
+
+  try {
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "toDate" in value &&
+      typeof (value as { toDate?: unknown })
+        .toDate === "function"
+    ) {
+      return getSaudiDateKey(
+        (
+          value as {
+            toDate: () => Date;
+          }
+        ).toDate()
+      );
+    }
+
+    if (value instanceof Date) {
+      return getSaudiDateKey(value);
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+async function getStudentFromRequest(
+  request: Request
+) {
   const authorization =
     request.headers.get("authorization");
 
-  if (!authorization?.startsWith("Bearer ")) {
+  if (
+    !authorization?.startsWith("Bearer ")
+  ) {
     throw new Error("UNAUTHORIZED");
   }
 
-  const token = authorization.slice(7);
+  const token =
+    authorization.slice(7);
 
-  const { adminAuth } = getFirebaseAdmin();
+  const { adminAuth } =
+    getFirebaseAdmin();
 
   const decodedToken =
     await adminAuth.verifyIdToken(token);
 
-  if (decodedToken.role !== "student") {
+  if (
+    decodedToken.role !== "student"
+  ) {
     throw new Error("FORBIDDEN");
   }
 
   const studentDocId =
-    typeof decodedToken.studentDocId === "string"
+    typeof decodedToken.studentDocId ===
+    "string"
       ? decodedToken.studentDocId
       : "";
 
   if (!studentDocId) {
-    throw new Error("STUDENT_NOT_FOUND");
+    throw new Error(
+      "STUDENT_NOT_FOUND"
+    );
   }
 
   return studentDocId;
 }
 
-export async function GET(request: Request) {
+type DailyProofStatus =
+  | "none"
+  | "pending"
+  | "approved"
+  | "rejected";
+
+async function getHomeworkStatusForDate(
+  studentDocId: string,
+  dateKey: string
+): Promise<DailyProofStatus> {
+  const { adminDb } =
+    getFirebaseAdmin();
+
+  const snapshot =
+    await adminDb
+      .collection("homeworkCompletions")
+      .where(
+        "studentId",
+        "==",
+        studentDocId
+      )
+      .get();
+
+  const todayRows =
+    snapshot.docs
+      .map((document) => ({
+        id: document.id,
+        data: document.data() ?? {},
+      }))
+      .filter(({ data }) => {
+        const completedDateKey =
+          getFirestoreDateKey(
+            data.completedAt
+          ) ||
+          getFirestoreDateKey(
+            data.createdAt
+          );
+
+        return (
+          completedDateKey === dateKey &&
+          typeof data.solutionUrl ===
+            "string" &&
+          data.solutionUrl.trim() !== ""
+        );
+      })
+      .sort((first, second) => {
+        const firstMillis =
+          first.data.updatedAt
+            ?.toMillis?.() ?? 0;
+        const secondMillis =
+          second.data.updatedAt
+            ?.toMillis?.() ?? 0;
+
+        return secondMillis -
+          firstMillis;
+      });
+
+  if (todayRows.length === 0) {
+    return "none";
+  }
+
+  const latest =
+    todayRows[0].data;
+
+  if (
+    latest.solutionStatus ===
+    "approved"
+  ) {
+    return "approved";
+  }
+
+  if (
+    latest.solutionStatus ===
+    "rejected"
+  ) {
+    return "rejected";
+  }
+
+  return "pending";
+}
+
+async function getReadingStatusForDate(
+  studentDocId: string,
+  dateKey: string
+): Promise<DailyProofStatus> {
+  const { adminDb } =
+    getFirebaseAdmin();
+
+  const snapshot =
+    await adminDb
+      .collection("reading-submissions")
+      .where(
+        "studentId",
+        "==",
+        studentDocId
+      )
+      .get();
+
+  const todayRows =
+    snapshot.docs
+      .map((document) => ({
+        id: document.id,
+        data: document.data() ?? {},
+      }))
+      .filter(({ data }) =>
+        data.readingDate === dateKey
+      )
+      .sort((first, second) => {
+        const firstMillis =
+          first.data.createdAt
+            ?.toMillis?.() ?? 0;
+        const secondMillis =
+          second.data.createdAt
+            ?.toMillis?.() ?? 0;
+
+        return secondMillis -
+          firstMillis;
+      });
+
+  if (todayRows.length === 0) {
+    return "none";
+  }
+
+  const latestStatus =
+    todayRows[0].data.status;
+
+  if (
+    latestStatus === "approved"
+  ) {
+    return "approved";
+  }
+
+  if (
+    latestStatus === "redo" ||
+    latestStatus === "rejected"
+  ) {
+    return "rejected";
+  }
+
+  return "pending";
+}
+
+export async function GET(
+  request: Request
+) {
   try {
     const studentDocId =
-      await getStudentFromRequest(request);
+      await getStudentFromRequest(
+        request
+      );
 
-    const { adminDb } = getFirebaseAdmin();
+    const { adminDb } =
+      getFirebaseAdmin();
 
-    const dateKey = getSaudiDateKey();
+    const dateKey =
+      getSaudiDateKey();
 
-    const studentRef = adminDb
-      .collection("students")
-      .doc(studentDocId);
-
-    const readingProgressRef = adminDb
-      .collection("reading-progress")
-      .doc(studentDocId);
-
-    const completionRefs = tasks.map((task) =>
+    const studentRef =
       adminDb
-        .collection("dailyCompletions")
-        .doc(
-          `${studentDocId}_${dateKey}_task-${task.id}`
+        .collection("students")
+        .doc(studentDocId);
+
+    const readingProgressRef =
+      adminDb
+        .collection(
+          "reading-progress"
         )
-    );
+        .doc(studentDocId);
+
+    const completionRefs =
+      tasks.map((task) =>
+        adminDb
+          .collection(
+            "dailyCompletions"
+          )
+          .doc(
+            `${studentDocId}_${dateKey}_task-${task.id}`
+          )
+      );
 
     const [
       studentSnapshot,
@@ -106,76 +316,160 @@ export async function GET(request: Request) {
       ...completionRefs
     );
 
-    if (!studentSnapshot.exists) {
+    if (
+      !studentSnapshot.exists
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "لم يتم العثور على الطالب.",
+          message:
+            "لم يتم العثور على الطالب.",
         },
         { status: 404 }
       );
     }
+
+    const [
+      homeworkStatus,
+      readingStatus,
+    ] = await Promise.all([
+      getHomeworkStatusForDate(
+        studentDocId,
+        dateKey
+      ),
+      getReadingStatusForDate(
+        studentDocId,
+        dateKey
+      ),
+    ]);
+
+    const hasApprovedHomeworkToday =
+      homeworkStatus === "approved";
+
+    const hasApprovedReadingToday =
+      readingStatus === "approved";
 
     const studentData =
       studentSnapshot.data() ?? {};
 
     const readingProgressData =
       readingProgressSnapshot.exists
-        ? readingProgressSnapshot.data() ?? {}
+        ? readingProgressSnapshot.data() ??
+          {}
         : {};
 
+    const completedSet =
+      new Set<number>();
+
+    completionSnapshots.forEach(
+      (snapshot, index) => {
+        if (snapshot.exists) {
+          completedSet.add(
+            tasks[index].id
+          );
+        }
+      }
+    );
+
+    // المهمة 2 لا تصبح مكتملة إلا
+    // بعد اعتماد الواجب.
+    if (
+      hasApprovedHomeworkToday
+    ) {
+      completedSet.add(2);
+    } else {
+      completedSet.delete(2);
+    }
+
+    // المهمة 3 لا تصبح مكتملة إلا
+    // بعد اعتماد قراءة اليوم.
+    if (
+      hasApprovedReadingToday
+    ) {
+      completedSet.add(3);
+    } else {
+      completedSet.delete(3);
+    }
+
     const completedTaskIds =
-      completionSnapshots
-        .map((snapshot, index) =>
-          snapshot.exists
-            ? tasks[index].id
-            : null
-        )
-        .filter(
-          (taskId): taskId is number =>
-            taskId !== null
-        );
+      Array.from(completedSet).sort(
+        (first, second) =>
+          first - second
+      );
 
     return NextResponse.json({
       success: true,
 
       points:
-        typeof studentData.points === "number"
+        typeof studentData.points ===
+        "number"
           ? studentData.points
           : 0,
 
       stars:
-        typeof studentData.stars === "number"
+        typeof studentData.stars ===
+        "number"
           ? studentData.stars
           : 0,
 
       streak:
-        typeof studentData?.journey?.streak ===
-        "number"
-          ? studentData.journey.streak
+        typeof studentData?.journey
+          ?.streak === "number"
+          ? studentData.journey
+              .streak
           : 0,
 
       readingDays:
         typeof readingProgressData
-          .totalApprovedDays === "number"
-          ? readingProgressData.totalApprovedDays
+          .totalApprovedDays ===
+        "number"
+          ? readingProgressData
+              .totalApprovedDays
           : 0,
 
       personalPhotoUrl:
-        studentData.personalPhotoStatus ===
+        studentData
+          .personalPhotoStatus ===
           "approved" &&
-        typeof studentData.personalPhotoUrl ===
+        typeof studentData
+          .personalPhotoUrl ===
           "string"
-          ? studentData.personalPhotoUrl
+          ? studentData
+              .personalPhotoUrl
           : "",
 
       selectedAvatarIcon:
-        typeof studentData.selectedAvatarIcon ===
-          "string"
-          ? studentData.selectedAvatarIcon
+        typeof studentData
+          .selectedAvatarIcon ===
+        "string"
+          ? studentData
+              .selectedAvatarIcon
           : "🧒🏻",
 
       completedTaskIds,
+      hasApprovedHomeworkToday,
+      hasApprovedReadingToday,
+      homeworkStatus,
+      readingStatus,
+      smartFollowUp:
+  studentData.smartFollowUp &&
+  typeof studentData.smartFollowUp ===
+    "object"
+    ? studentData.smartFollowUp
+    : null,
+      readingCycleProgress:
+        typeof readingProgressData
+          .totalApprovedDays === "number"
+          ? (
+              readingProgressData
+                .totalApprovedDays > 0 &&
+              readingProgressData
+                .totalApprovedDays % 5 === 0
+                ? 5
+                : readingProgressData
+                    .totalApprovedDays % 5
+            )
+          : 0,
     });
   } catch (error) {
     console.error(
@@ -188,17 +482,22 @@ export async function GET(request: Request) {
         ? error.message
         : "";
 
-    if (message === "UNAUTHORIZED") {
+    if (
+      message === "UNAUTHORIZED"
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "غير مصرح بالدخول.",
+          message:
+            "غير مصرح بالدخول.",
         },
         { status: 401 }
       );
     }
 
-    if (message === "FORBIDDEN") {
+    if (
+      message === "FORBIDDEN"
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -220,85 +519,168 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request
+) {
   try {
     const studentDocId =
-      await getStudentFromRequest(request);
+      await getStudentFromRequest(
+        request
+      );
 
-    const body = await request.json();
+    const body =
+      await request.json();
 
-    const taskId = Number(body?.taskId);
+    const taskId =
+      Number(body?.taskId);
 
-    const task = tasks.find(
-      (item) => item.id === taskId
-    );
+    const task =
+      tasks.find(
+        (item) =>
+          item.id === taskId
+      );
 
     if (!task) {
       return NextResponse.json(
         {
           success: false,
-          message: "المهمة غير صحيحة.",
+          message:
+            "المهمة غير صحيحة.",
         },
         { status: 400 }
       );
     }
 
-    const { adminDb } = getFirebaseAdmin();
+    // حماية الخادم:
+    // لا يمكن تحويل الواجب أو القراءة
+    // إلى نقاط/إنجاز بمجرد استدعاء API.
+    if (task.id === 2) {
+      return NextResponse.json(
+        {
+          success: false,
+          code:
+            "HOMEWORK_APPROVAL_REQUIRED",
+          message:
+            "أرفق واجبك من صفحة الواجبات، وتُحتسب +3 نقاط بعد اعتماد المعلم.",
+        },
+        { status: 409 }
+      );
+    }
 
-    const dateKey = getSaudiDateKey();
+    if (task.id === 3) {
+      return NextResponse.json(
+        {
+          success: false,
+          code:
+            "READING_APPROVAL_REQUIRED",
+          message:
+            "سجّل قراءتك من رحلة القراءة. كل 5 قراءات معتمدة = +50 نقطة.",
+        },
+        { status: 409 }
+      );
+    }
 
-    const studentRef = adminDb
-      .collection("students")
-      .doc(studentDocId);
+    const { adminDb } =
+      getFirebaseAdmin();
 
-    const completionRefs = tasks.map((item) =>
+    const dateKey =
+      getSaudiDateKey();
+
+    const [
+      homeworkStatus,
+      readingStatus,
+    ] = await Promise.all([
+      getHomeworkStatusForDate(
+        studentDocId,
+        dateKey
+      ),
+      getReadingStatusForDate(
+        studentDocId,
+        dateKey
+      ),
+    ]);
+
+    const hasApprovedHomeworkToday =
+      homeworkStatus === "approved";
+
+    const hasApprovedReadingToday =
+      readingStatus === "approved";
+
+    const studentRef =
       adminDb
-        .collection("dailyCompletions")
-        .doc(
-          `${studentDocId}_${dateKey}_task-${item.id}`
+        .collection("students")
+        .doc(studentDocId);
+
+    const completionRefs =
+      tasks.map((item) =>
+        adminDb
+          .collection(
+            "dailyCompletions"
+          )
+          .doc(
+            `${studentDocId}_${dateKey}_task-${item.id}`
+          )
+      );
+
+    const selectedCompletionRef =
+      adminDb
+        .collection(
+          "dailyCompletions"
         )
-    );
+        .doc(
+          `${studentDocId}_${dateKey}_task-${task.id}`
+        );
 
-    const selectedCompletionRef = adminDb
-      .collection("dailyCompletions")
-      .doc(
-        `${studentDocId}_${dateKey}_task-${task.id}`
-      );
-
-    const bonusRef = adminDb
-      .collection("dailyCompletions")
-      .doc(
-        `${studentDocId}_${dateKey}_bonus`
-      );
+    const bonusRef =
+      adminDb
+        .collection(
+          "dailyCompletions"
+        )
+        .doc(
+          `${studentDocId}_${dateKey}_bonus`
+        );
 
     const result =
       await adminDb.runTransaction(
         async (transaction) => {
           const studentSnapshot =
-            await transaction.get(studentRef);
+            await transaction.get(
+              studentRef
+            );
 
           const completionSnapshots =
             await Promise.all(
-              completionRefs.map((ref) =>
-                transaction.get(ref)
+              completionRefs.map(
+                (ref) =>
+                  transaction.get(
+                    ref
+                  )
               )
             );
 
           const bonusSnapshot =
-            await transaction.get(bonusRef);
+            await transaction.get(
+              bonusRef
+            );
 
-          if (!studentSnapshot.exists) {
+          if (
+            !studentSnapshot.exists
+          ) {
             throw new Error(
               "STUDENT_NOT_FOUND"
             );
           }
 
           const studentData =
-            studentSnapshot.data() ?? {};
+            studentSnapshot.data() ??
+            {};
 
           const alreadyCompleted =
             completionSnapshots.some(
-              (snapshot, index) =>
+              (
+                snapshot,
+                index
+              ) =>
                 tasks[index].id ===
                   task.id &&
                 snapshot.exists
@@ -309,63 +691,98 @@ export async function POST(request: Request) {
               alreadyCompleted: true,
 
               points:
-                typeof studentData.points ===
+                typeof studentData
+                  .points ===
                 "number"
                   ? studentData.points
                   : 0,
 
               stars:
-                typeof studentData.stars ===
+                typeof studentData
+                  .stars ===
                 "number"
                   ? studentData.stars
                   : 0,
 
               streak:
-                typeof studentData?.journey
-                  ?.streak === "number"
-                  ? studentData.journey.streak
+                typeof studentData
+                  ?.journey
+                  ?.streak ===
+                "number"
+                  ? studentData
+                      .journey
+                      .streak
                   : 0,
             };
           }
 
-          const completedBefore =
-            completionSnapshots.filter(
-              (snapshot) =>
-                snapshot.exists
-            ).length;
+          const completedIdsBefore =
+            new Set<number>();
+
+          completionSnapshots.forEach(
+            (
+              snapshot,
+              index
+            ) => {
+              if (snapshot.exists) {
+                completedIdsBefore.add(
+                  tasks[index].id
+                );
+              }
+            }
+          );
+
+          if (
+            hasApprovedHomeworkToday
+          ) {
+            completedIdsBefore.add(2);
+          }
+
+          if (
+            hasApprovedReadingToday
+          ) {
+            completedIdsBefore.add(3);
+          }
 
           const willCompleteAll =
-            completedBefore + 1 ===
-            tasks.length;
+            !completedIdsBefore.has(
+              task.id
+            ) &&
+            completedIdsBefore.size +
+              1 ===
+              tasks.length;
 
           const grantDailyBonus =
             willCompleteAll &&
             !bonusSnapshot.exists;
 
-          const addedPoints =
-            task.rewardPoints +
-            (grantDailyBonus ? 10 : 0);
+          const addedPoints = 0;
 
           const addedStars =
             task.rewardStars +
-            (grantDailyBonus ? 3 : 0);
+            (grantDailyBonus
+              ? 3
+              : 0);
 
           let resultingStreak =
-            typeof studentData?.journey
-              ?.streak === "number"
-              ? studentData.journey.streak
+            typeof studentData
+              ?.journey?.streak ===
+            "number"
+              ? studentData
+                  .journey.streak
               : 0;
 
           transaction.set(
             selectedCompletionRef,
             {
-              studentId: studentDocId,
+              studentId:
+                studentDocId,
               taskId: task.id,
-              taskTitle: task.title,
+              taskTitle:
+                task.title,
               date: dateKey,
               completed: true,
-              rewardPoints:
-                task.rewardPoints,
+              rewardPoints: 0,
               rewardStars:
                 task.rewardStars,
               completedAt:
@@ -375,27 +792,37 @@ export async function POST(request: Request) {
 
           if (grantDailyBonus) {
             const currentStreak =
-              typeof studentData?.journey
-                ?.streak === "number"
-                ? studentData.journey.streak
+              typeof studentData
+                ?.journey
+                ?.streak ===
+              "number"
+                ? studentData
+                    .journey
+                    .streak
                 : 0;
 
             const lastCompletedDate =
-              typeof studentData?.journey
+              typeof studentData
+                ?.journey
                 ?.lastCompletedDate ===
               "string"
-                ? studentData.journey
+                ? studentData
+                    .journey
                     .lastCompletedDate
                 : "";
 
-            const yesterday = new Date();
+            const yesterday =
+              new Date();
 
             yesterday.setDate(
-              yesterday.getDate() - 1
+              yesterday.getDate() -
+                1
             );
 
             const yesterdayKey =
-              getSaudiDateKey(yesterday);
+              getSaudiDateKey(
+                yesterday
+              );
 
             const newStreak =
               lastCompletedDate ===
@@ -414,7 +841,7 @@ export async function POST(request: Request) {
                 date: dateKey,
                 type:
                   "daily-completion-bonus",
-                points: 10,
+                points: 0,
                 stars: 3,
                 completedAt:
                   FieldValue.serverTimestamp(),
@@ -432,77 +859,94 @@ export async function POST(request: Request) {
             );
           }
 
-          const historyEntries: Record<
-            string,
-            unknown
-          >[] = [
-            {
-              reason: `مهمة يومية: ${task.title}`,
-              points:
-                task.rewardPoints,
+          const historyEntries:
+            Record<
+              string,
+              unknown
+            >[] = [];
+
+          if (
+            task.rewardStars > 0
+          ) {
+            historyEntries.push({
+              reason:
+                `مهمة يومية: ${task.title}`,
+              points: 0,
               stars:
                 task.rewardStars,
-              category: "مهمة يومية",
+              category:
+                "مهمة يومية",
               date: dateKey,
-              createdAt: new Date(),
-            },
-          ];
+              createdAt:
+                new Date(),
+            });
+          }
 
           if (grantDailyBonus) {
             historyEntries.push({
               reason:
                 "إكمال جميع مهام اليوم",
-              points: 10,
+              points: 0,
               stars: 3,
               category:
                 "وسام النشاط اليومي",
               date: dateKey,
-              createdAt: new Date(),
+              createdAt:
+                new Date(),
             });
           }
 
-          transaction.update(
-            studentRef,
-            {
-              points:
-                FieldValue.increment(
-                  addedPoints
-                ),
-
-              stars:
-                FieldValue.increment(
-                  addedStars
-                ),
-
-              "journey.xp":
-                FieldValue.increment(
-                  addedPoints
-                ),
-
-              pointsHistory:
-                FieldValue.arrayUnion(
-                  ...historyEntries
-                ),
-
+          const studentUpdate:
+            Record<
+              string,
+              unknown
+            > = {
               updatedAt:
                 FieldValue.serverTimestamp(),
-            }
+            };
+
+          if (
+            addedStars > 0
+          ) {
+            studentUpdate.stars =
+              FieldValue.increment(
+                addedStars
+              );
+          }
+
+          if (
+            historyEntries.length >
+            0
+          ) {
+            studentUpdate.pointsHistory =
+              FieldValue.arrayUnion(
+                ...historyEntries
+              );
+          }
+
+          // لا نزيد points أو journey.xp
+          // لأن مهام اليوم نفسها لا تمنح
+          // نقاطًا مباشرة.
+          transaction.update(
+            studentRef,
+            studentUpdate
           );
 
           const currentPoints =
-            typeof studentData.points ===
-            "number"
+            typeof studentData
+              .points === "number"
               ? studentData.points
               : 0;
 
           const currentStars =
-            typeof studentData.stars ===
-            "number"
+            typeof studentData
+              .stars === "number"
               ? studentData.stars
               : 0;
 
           return {
-            alreadyCompleted: false,
+            alreadyCompleted:
+              false,
             points:
               currentPoints +
               addedPoints,
@@ -525,6 +969,38 @@ export async function POST(request: Request) {
       "Student journey POST error:",
       error
     );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "";
+
+    if (
+      message ===
+      "UNAUTHORIZED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "غير مصرح بالدخول.",
+        },
+        { status: 401 }
+      );
+    }
+
+    if (
+      message === "FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "هذا المسار مخصص للطلاب.",
+        },
+        { status: 403 }
+      );
+    }
 
     return NextResponse.json(
       {

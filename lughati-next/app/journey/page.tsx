@@ -14,7 +14,6 @@ import {
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   updateDoc,
@@ -148,26 +147,47 @@ const dailyTasks = [
     title: "قراءة درس اليوم",
     reward: "نجمتان",
     icon: "📖",
+    actionLabel: "تمت القراءة",
+    href: "",
   },
   {
     id: 2,
     title: "حل الواجب اليومي",
-    reward: "3 نقاط",
+    reward: "+3 نقاط بعد اعتماد المعلم",
     icon: "✏️",
+    actionLabel: "📎 أرفق واجبك",
+    href: "/homeworks",
   },
   {
     id: 3,
-    title: "التدرب على القراءة",
-    reward: "نجمة",
+    title: "القراءة اليومية",
+    reward: "5 قراءات معتمدة = +50 نقطة",
     icon: "🎙️",
+    actionLabel: "🎙️ سجّل قراءتك",
+    href: "/reading-journey",
   },
   {
     id: 4,
     title: "مراجعة كلمات الإملاء",
-    reward: "نقطتان",
+    reward: "مهمة تدريبية دون نقاط مباشرة",
     icon: "🔤",
+    actionLabel: "تمت المراجعة",
+    href: "",
   },
 ];
+
+type StudentSmartFollowUp = {
+  date: string;
+
+  homeworkLabel: string;
+
+  readingLevelLabel: string;
+  readingAccuracyLabel: string;
+  readingFluencyLabel: string;
+  readingDiacriticsLabel: string;
+
+  readingNote: string;
+};
 
 type JourneyData = {
   success: boolean;
@@ -178,6 +198,18 @@ type JourneyData = {
   personalPhotoUrl?: string;
   selectedAvatarIcon?: string;
   completedTaskIds?: number[];
+  homeworkStatus?:
+    | "none"
+    | "pending"
+    | "approved"
+    | "rejected";
+  readingStatus?:
+    | "none"
+    | "pending"
+    | "approved"
+    | "rejected";
+  readingCycleProgress?: number;
+  smartFollowUp?: StudentSmartFollowUp | null;
   message?: string;
 };
 type CrownAchievement = {
@@ -217,18 +249,6 @@ type StudentNotification = {
   createdAt?: Timestamp | null;
 };
 
-type StudentSmartFollowUp = {
-  date: string;
-
-  homeworkLabel: string;
-
-  readingLevelLabel: string;
-  readingAccuracyLabel: string;
-  readingFluencyLabel: string;
-  readingDiacriticsLabel: string;
-
-  readingNote: string;
-};
 
 export default function JourneyPage() {
   const [studentName, setStudentName] =
@@ -255,24 +275,8 @@ const [
   celebrationNotification,
   setCelebrationNotification,
 ] = useState<StudentNotification | null>(null);
-
-const [
-  diagnosticReminder,
-  setDiagnosticReminder,
-] = useState<StudentNotification | null>(null);
-
-const displayedNotifications = useMemo(
-  () =>
-    diagnosticReminder
-      ? [diagnosticReminder, ...notifications]
-      : notifications,
-  [diagnosticReminder, notifications]
-);
-
-const unreadNotificationsCount =
-  displayedNotifications.filter(
-    (notification) => !notification.read
-  ).length;
+  const unreadNotificationsCount =
+    notifications.filter((notification) => !notification.read).length;
 
   const [
     smartFollowUp,
@@ -301,6 +305,31 @@ const unreadNotificationsCount =
     completedTasks,
     setCompletedTasks,
   ] = useState<number[]>([]);
+
+  const [
+    homeworkStatus,
+    setHomeworkStatus,
+  ] = useState<
+    "none" |
+    "pending" |
+    "approved" |
+    "rejected"
+  >("none");
+
+  const [
+    readingStatus,
+    setReadingStatus,
+  ] = useState<
+    "none" |
+    "pending" |
+    "approved" |
+    "rejected"
+  >("none");
+
+  const [
+    readingCycleProgress,
+    setReadingCycleProgress,
+  ] = useState(0);
 
   const [
     savingTaskId,
@@ -355,9 +384,31 @@ const [
     const unsubscribe =
       onAuthStateChanged(
         auth,
-        (currentUser) => {
-          setUser(currentUser);
-        }
+        async (currentUser) => {
+  setUser(currentUser);
+
+  if (currentUser) {
+    const tokenResult =
+      await currentUser.getIdTokenResult();
+
+    console.log(
+      "🔎 student-id المحلي:",
+      window.localStorage.getItem(
+        "student-id"
+      )
+    );
+
+    console.log(
+      "🔎 studentDocId في التوكن:",
+      tokenResult.claims.studentDocId
+    );
+
+    console.log(
+      "🔎 studentId في التوكن:",
+      tokenResult.claims.studentId
+    );
+  }
+}
       );
 
     return unsubscribe;
@@ -474,66 +525,9 @@ if (latestUnreadMilestone) {
     return unsubscribeNotifications;
   }, [user]);
 
-  // 📋 تنبيه ذكي لولي الأمر لاستكمال دراسة الحالة
-  // هذا التنبيه محلي داخل واجهة الطالب، ولا ينشئ مستندًا
-  // في studentNotifications من حساب الطالب.
-  useEffect(() => {
-    if (!user) {
-      setDiagnosticReminder(null);
-      return;
-    }
-
-    const studentId =
-      window.localStorage.getItem("student-id") || "";
-
-    if (!studentId || studentId === "student-demo") {
-      setDiagnosticReminder(null);
-      return;
-    }
-
-    async function checkCaseStudyCompletion() {
-      try {
-        const caseStudySnapshot = await getDoc(
-          doc(db, "studentCaseStudies", studentId)
-        );
-
-        if (caseStudySnapshot.exists()) {
-          setDiagnosticReminder(null);
-          return;
-        }
-
-        setDiagnosticReminder({
-          id: `case-study-reminder-${studentId}`,
-          studentId,
-          title: "📋 نحتاج مساعدة ولي أمرك",
-          message:
-            "اطلب من ولي أمرك إكمال ملف الطالب والأسرة؛ ليساعد معلمك على معرفة احتياجاتك وتقديم الدعم المناسب لك.",
-          type: "case-study-reminder",
-          homeworkId: "",
-          href: "/parent/case-study",
-          read: false,
-          createdAt: null,
-        });
-      } catch (error) {
-        console.error(
-          "تعذر التحقق من استكمال دراسة الحالة:",
-          error
-        );
-
-        setDiagnosticReminder(null);
-      }
-    }
-
-    void checkCaseStudyCompletion();
-  }, [user]);
+ 
 
   async function openNotification(notification: StudentNotification) {
-    if (notification.type === "case-study-reminder") {
-      window.location.href =
-        notification.href || "/parent/case-study";
-      return;
-    }
-
     try {
       if (!notification.read) {
         await updateDoc(
@@ -562,7 +556,25 @@ if (latestUnreadMilestone) {
 
         const token =
           await currentUser.getIdToken();
-
+// مزامنة تذكير استمارة التشخيص من الخادم الآمن.
+try {
+  await fetch(
+    "/api/diagnostic-reminder",
+    {
+      method: "POST",
+      headers: {
+        Authorization:
+          `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+} catch (reminderError) {
+  console.error(
+    "تعذر مزامنة تذكير استمارة التشخيص:",
+    reminderError
+  );
+}
         const response =
           await fetch(
             "/api/student-journey",
@@ -638,6 +650,71 @@ if (latestUnreadMilestone) {
             ? data.completedTaskIds
             : []
         );
+
+        setHomeworkStatus(
+          data.homeworkStatus ??
+            "none"
+        );
+
+        setReadingStatus(
+          data.readingStatus ??
+            "none"
+        );
+
+        setReadingCycleProgress(
+          typeof data.readingCycleProgress ===
+            "number"
+            ? data.readingCycleProgress
+            : 0
+        );
+
+        const savedFollowUp =
+          data.smartFollowUp;
+
+        if (
+          savedFollowUp &&
+          typeof savedFollowUp === "object"
+        ) {
+          setSmartFollowUp({
+            date:
+              typeof savedFollowUp.date ===
+              "string"
+                ? savedFollowUp.date
+                : "",
+            homeworkLabel:
+              typeof savedFollowUp.homeworkLabel ===
+              "string"
+                ? savedFollowUp.homeworkLabel
+                : "",
+            readingLevelLabel:
+              typeof savedFollowUp.readingLevelLabel ===
+              "string"
+                ? savedFollowUp.readingLevelLabel
+                : "",
+            readingAccuracyLabel:
+              typeof savedFollowUp.readingAccuracyLabel ===
+              "string"
+                ? savedFollowUp.readingAccuracyLabel
+                : "",
+            readingFluencyLabel:
+              typeof savedFollowUp.readingFluencyLabel ===
+              "string"
+                ? savedFollowUp.readingFluencyLabel
+                : "",
+            readingDiacriticsLabel:
+              typeof savedFollowUp.readingDiacriticsLabel ===
+              "string"
+                ? savedFollowUp.readingDiacriticsLabel
+                : "",
+            readingNote:
+              typeof savedFollowUp.readingNote ===
+              "string"
+                ? savedFollowUp.readingNote
+                : "",
+          });
+        } else {
+          setSmartFollowUp(null);
+        }
       } catch (error) {
         console.error(
           "تعذر تحميل رحلة الطالب:",
@@ -739,107 +816,7 @@ useEffect(() => {
 
   void loadCrownData();
 }, [user]);
-  useEffect(() => {
-    async function loadSmartFollowUp() {
-      try {
-        const studentId =
-          localStorage.getItem(
-            "student-id"
-          );
- 
-        if (
-          !studentId ||
-          studentId === "student-demo"
-        ) {
-          setSmartFollowUp(null);
-          return;
-        }
 
-        const studentSnapshot =
-          await getDoc(
-            doc(
-              db,
-              "students",
-              studentId
-            )
-          );
-
-        if (
-          !studentSnapshot.exists()
-        ) {
-          setSmartFollowUp(null);
-          return;
-        }
-
-        const studentData =
-          studentSnapshot.data();
-
-        const saved =
-          studentData.smartFollowUp;
-
-        if (
-          !saved ||
-          typeof saved !== "object"
-        ) {
-          setSmartFollowUp(null);
-          return;
-        }
-
-        setSmartFollowUp({
-          date:
-            typeof saved.date ===
-              "string"
-              ? saved.date
-              : "",
-
-          homeworkLabel:
-            typeof saved.homeworkLabel ===
-              "string"
-              ? saved.homeworkLabel
-              : "",
-
-          readingLevelLabel:
-            typeof saved.readingLevelLabel ===
-              "string"
-              ? saved.readingLevelLabel
-              : "",
-
-          readingAccuracyLabel:
-            typeof saved.readingAccuracyLabel ===
-              "string"
-              ? saved.readingAccuracyLabel
-              : "",
-
-          readingFluencyLabel:
-            typeof saved.readingFluencyLabel ===
-              "string"
-              ? saved.readingFluencyLabel
-              : "",
-
-          readingDiacriticsLabel:
-            typeof saved.readingDiacriticsLabel ===
-              "string"
-              ? saved.readingDiacriticsLabel
-              : "",
-
-          readingNote:
-            typeof saved.readingNote ===
-              "string"
-              ? saved.readingNote
-              : "",
-        });
-      } catch (error) {
-        console.error(
-          "تعذر تحميل متابعة الطالب:",
-          error
-        );
-
-        setSmartFollowUp(null);
-      }
-    }
-
-    void loadSmartFollowUp();
-  }, []);
 
   const completedCount =
     completedTasks.length;
@@ -876,9 +853,147 @@ useEffect(() => {
       ? "بطل نشيط"
       : "بداية الرحلة";
 
+  function getTaskActionState(
+    taskId: number,
+    completed: boolean
+  ) {
+    if (taskId === 2) {
+      if (
+        homeworkStatus ===
+        "approved"
+      ) {
+        return {
+          label:
+            "✅ معتمد +3 نقاط",
+          background:
+            "#dcfce7",
+          color: "#08734b",
+          disabled: true,
+        };
+      }
+
+      if (
+        homeworkStatus ===
+        "pending"
+      ) {
+        return {
+          label:
+            "⏳ بانتظار الاعتماد",
+          background:
+            "#fff7d6",
+          color: "#8a6200",
+          disabled: false,
+        };
+      }
+
+      if (
+        homeworkStatus ===
+        "rejected"
+      ) {
+        return {
+          label:
+            "🔄 أعد إرفاق الواجب",
+          background:
+            "#fff0f0",
+          color: "#b42318",
+          disabled: false,
+        };
+      }
+
+      return {
+        label:
+          "📎 أرفق واجبك",
+        background:
+          "#eef8ff",
+        color: "#185b89",
+        disabled: false,
+      };
+    }
+
+    if (taskId === 3) {
+      if (
+        readingStatus ===
+        "approved"
+      ) {
+        return {
+          label:
+            `✅ قراءة معتمدة ${readingCycleProgress}/5`,
+          background:
+            "#dcfce7",
+          color: "#08734b",
+          disabled: true,
+        };
+      }
+
+      if (
+        readingStatus ===
+        "pending"
+      ) {
+        return {
+          label:
+            "⏳ بانتظار الاعتماد",
+          background:
+            "#fff7d6",
+          color: "#8a6200",
+          disabled: false,
+        };
+      }
+
+      if (
+        readingStatus ===
+        "rejected"
+      ) {
+        return {
+          label:
+            "🔄 أعد تسجيل قراءتك",
+          background:
+            "#fff0f0",
+          color: "#b42318",
+          disabled: false,
+        };
+      }
+
+      return {
+        label:
+          "🎙️ سجّل قراءتك",
+        background:
+          "#eef8ff",
+        color: "#185b89",
+        disabled: false,
+      };
+    }
+
+    return {
+      label:
+        completed
+          ? "✅ معتمد"
+          : "⬜",
+      background:
+        completed
+          ? "#dcfce7"
+          : "transparent",
+      color:
+        completed
+          ? "#08734b"
+          : "#185b89",
+      disabled: completed,
+    };
+  }
+
   async function completeTask(
     taskId: number
   ) {
+    const selectedTask =
+      dailyTasks.find(
+        (task) => task.id === taskId
+      );
+
+    if (selectedTask?.href) {
+      window.location.href =
+        selectedTask.href;
+      return;
+    }
+
     if (!user) {
       alert(
         "يرجى تسجيل الدخول من جديد."
@@ -971,7 +1086,7 @@ useEffect(() => {
       );
 
       alert(
-        "تعذر حفظ المهمة ومكافأتها، حاول مرة أخرى."
+        "تعذر حفظ المهمة، حاول مرة أخرى."
       );
     } finally {
       setSavingTaskId(null);
@@ -1321,7 +1436,7 @@ useEffect(() => {
                     </span>
                   </div>
 
-                  {displayedNotifications.length === 0 ? (
+                  {notifications.length === 0 ? (
                     <div
                       style={{
                         padding: "24px 12px",
@@ -1335,7 +1450,7 @@ useEffect(() => {
                     </div>
                   ) : (
                     <div style={{ display: "grid", gap: "8px", marginTop: "9px" }}>
-                      {displayedNotifications.slice(0, 12).map((notification) => (
+                      {notifications.slice(0, 12).map((notification) => (
                         <button
                           key={notification.id}
                           type="button"
@@ -2423,11 +2538,10 @@ useEffect(() => {
                 lineHeight: 1.8,
               }}
             >
-              أكملت جميع مهام اليوم
-              وحصلت على مكافأة النشاط اليومي:
+              أكملت جميع مهام اليوم بنجاح ✅
               <strong>
                 {" "}
-                10 نقاط و3 نجوم 🏅
+                وتُحتسب مكافآت الواجب والقراءة من الإنجازات المعتمدة فقط.
               </strong>
             </p>
           </section>
@@ -2519,12 +2633,18 @@ useEffect(() => {
                     task.id
                   );
 
+                const actionState =
+                  getTaskActionState(
+                    task.id,
+                    completed
+                  );
+
                 return (
                   <button
                     key={task.id}
                     type="button"
                     disabled={
-                      completed ||
+                      actionState.disabled ||
                       savingTaskId !==
                         null ||
                       loading
@@ -2554,7 +2674,7 @@ useEffect(() => {
                         "center",
                       gap: "12px",
                       cursor:
-                        completed
+                        actionState.disabled
                           ? "default"
                           : "pointer",
                       textAlign:
@@ -2629,16 +2749,37 @@ useEffect(() => {
 
                     <span
                       style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minWidth:
+                          task.href
+                            ? "126px"
+                            : "42px",
+                        padding:
+                          task.href
+                            ? "8px 11px"
+                            : "0",
+                        borderRadius:
+                          task.href
+                            ? "12px"
+                            : "0",
+                        background:
+                          actionState.background,
+                        color:
+                          actionState.color,
                         fontSize:
-                          "22px",
+                          task.href
+                            ? "12px"
+                            : "22px",
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {savingTaskId ===
                       task.id
                         ? "⏳"
-                        : completed
-                          ? "🌟"
-                          : "⬜"}
+                        : actionState.label}
                     </span>
                   </button>
                 );

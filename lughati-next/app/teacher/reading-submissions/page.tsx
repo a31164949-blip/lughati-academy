@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from "react";
 import {
+  arrayUnion,
   collection,
+  doc,
+  getDoc,
   getDocs,
+  increment,
   orderBy,
   query,
-  doc,
-  updateDoc,
-  setDoc,
-  getDoc,
-  increment,
   runTransaction,
   serverTimestamp,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 
@@ -85,6 +86,169 @@ export default function ReadingSubmissionsPage() {
       active = false;
     };
   }, []);
+
+  async function grantCompletedReadingCycles(
+    studentId: string,
+    approvedDates: string[]
+  ) {
+    const completedCycles =
+      Math.floor(
+        approvedDates.length / 5
+      );
+
+    if (completedCycles < 1) {
+      return;
+    }
+
+    for (
+      let cycleNumber = 1;
+      cycleNumber <= completedCycles;
+      cycleNumber += 1
+    ) {
+      const rewardId =
+        `${studentId}_reading-journey-cycle-${cycleNumber}`;
+
+      const rewardRef = doc(
+        db,
+        "readingCycleRewards",
+        rewardId
+      );
+
+      const studentRef = doc(
+        db,
+        "students",
+        studentId
+      );
+
+      let rewardGranted = false;
+
+      await runTransaction(
+        db,
+        async (transaction) => {
+          const [
+            rewardSnapshot,
+            studentSnapshot,
+          ] = await Promise.all([
+            transaction.get(rewardRef),
+            transaction.get(studentRef),
+          ]);
+
+          if (
+            rewardSnapshot.exists()
+          ) {
+            return;
+          }
+
+          if (
+            !studentSnapshot.exists()
+          ) {
+            throw new Error(
+              "تعذر العثور على سجل الطالب."
+            );
+          }
+
+          const rewardDate =
+            new Intl.DateTimeFormat(
+              "en-CA",
+              {
+                timeZone:
+                  "Asia/Riyadh",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              }
+            ).format(
+              new Date()
+            );
+
+          transaction.set(
+            rewardRef,
+            {
+              studentId,
+              cycleNumber,
+              requiredApprovedReadings:
+                5,
+              points: 50,
+              source:
+                "reading-journey",
+              approvedReadingCount:
+                approvedDates.length,
+              createdAt:
+                serverTimestamp(),
+            }
+          );
+
+          transaction.update(
+            studentRef,
+            {
+              points:
+                increment(50),
+
+              pointsHistory:
+                arrayUnion({
+                  reason:
+                    "مكافأة إكمال 5 قراءات معتمدة في رحلة القراءة",
+                  points: 50,
+                  stars: 0,
+                  category:
+                    "القراءة",
+                  cycleNumber,
+                  date:
+                    rewardDate,
+                  createdAt:
+                    new Date(),
+                }),
+
+              updatedAt:
+                serverTimestamp(),
+            }
+          );
+
+          rewardGranted = true;
+        }
+      );
+
+      if (rewardGranted) {
+        await setDoc(
+          doc(
+            db,
+            "studentNotifications",
+            `reading-cycle-reward-${studentId}-${cycleNumber}`
+          ),
+          {
+            studentId,
+
+            title:
+              "🏆 مكافأة رحلة القراءة",
+
+            message:
+              "رائع جدًا! أكملت 5 قراءات معتمدة وحصلت على 50 نقطة 🎙️📚✨",
+
+            type:
+              "reading-cycle-reward",
+
+            href:
+              "/reading-journey",
+
+            read: false,
+
+            points: 50,
+
+            cycleNumber,
+
+            createdAt:
+              serverTimestamp(),
+
+            updatedAt:
+              serverTimestamp(),
+          },
+          {
+            merge: true,
+          }
+        );
+      }
+    }
+  }
 
   async function updateStatus(
     submissionId: string,
@@ -170,68 +334,10 @@ export default function ReadingSubmissionsPage() {
               }
             );
 
-            /*
-             * 🎉 مكافأة إكمال
-             * خمسة أيام قراءة معتمدة
-             */
-            if (newDates.length >= 5) {
-              const studentRef = doc(
-                db,
-                "students",
-                submission.studentId
-              );
-
-              await runTransaction(
-                db,
-                async (transaction) => {
-                  const latestProgressSnap =
-                    await transaction.get(
-                      progressRef
-                    );
-
-                  const rewardAlreadyGranted =
-                    latestProgressSnap.exists() &&
-                    latestProgressSnap.data()
-                      .fiveDayRewardGranted ===
-                      true;
-
-                  if (rewardAlreadyGranted) {
-                    return;
-                  }
-
-                  transaction.set(
-                    studentRef,
-                    {
-                      points:
-                        increment(50),
-
-                      updatedAt:
-                        serverTimestamp(),
-                    },
-                    {
-                      merge: true,
-                    }
-                  );
-
-                  transaction.set(
-                    progressRef,
-                    {
-                      fiveDayRewardGranted:
-                        true,
-
-                      fiveDayRewardPoints:
-                        50,
-
-                      fiveDayRewardGrantedAt:
-                        serverTimestamp(),
-                    },
-                    {
-                      merge: true,
-                    }
-                  );
-                }
-              );
-            }
+            await grantCompletedReadingCycles(
+              submission.studentId,
+              newDates
+            );
           }
         }
 

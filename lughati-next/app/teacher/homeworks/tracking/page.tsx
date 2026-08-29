@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
- collection,arrayUnion,
-increment,
-runTransaction,
+  collection,
   doc,
   getDocs,
   serverTimestamp,
@@ -130,8 +128,6 @@ export default function HomeworkTrackingPage() {
   const [approvingCompletionId, setApprovingCompletionId] =
   useState<string | null>(null);
   const [rejectingCompletionId, setRejectingCompletionId] =
-  useState<string | null>(null);
-  const [awardingPointsCompletionId, setAwardingPointsCompletionId] =
   useState<string | null>(null);
 const fetchTrackingData = useCallback(async () => {
   const [
@@ -623,102 +619,6 @@ const rejectHomeworkCompletion = async (
   }
 };
 
-const awardHomeworkPoints = async (
-  completion: Completion,
-  pointsValue: number
-) => {
-  if (
-    !completion.completed ||
-    !completion.teacherApproved ||
-    completion.pointsAwarded
-  ) {
-    return;
-  }
-
-  if (!completion.studentId) {
-    alert("تعذر العثور على رقم الطالب.");
-    return;
-  }
-
-  try {
-    setAwardingPointsCompletionId(completion.id);
-
-    await runTransaction(db, async (transaction) => {
-      const completionRef = doc(
-        db,
-        "homeworkCompletions",
-        completion.id
-      );
-
-      const studentRef = doc(
-        db,
-        "students",
-        completion.studentId
-      );
-
-      const completionSnapshot =
-        await transaction.get(completionRef);
-
-      if (!completionSnapshot.exists()) {
-        throw new Error("COMPLETION_NOT_FOUND");
-      }
-
-      const completionData = completionSnapshot.data();
-
-      if (completionData.pointsAwarded === true) {
-        throw new Error("POINTS_ALREADY_AWARDED");
-      }
-
-      const newHistoryEntry = {
-        reason: "إنجاز واجب معتمد",
-        points: pointsValue,
-        badge: "",
-        category: "واجب",
-        createdAt: new Date(),
-        homeworkId: completion.homeworkId,
-        completionId: completion.id,
-      };
-
-      transaction.update(studentRef, {
-        points: increment(pointsValue),
-        "journey.xp": increment(pointsValue),
-        pointsHistory: arrayUnion(newHistoryEntry),
-      });
-
-      transaction.update(completionRef, {
-        pointsAwarded: true,
-        pointsAwardedValue: pointsValue,
-        pointsAwardedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    });
-
-    setCompletions((currentCompletions) =>
-      currentCompletions.map((item) =>
-        item.id === completion.id
-          ? {
-              ...item,
-              pointsAwarded: true,
-              pointsAwardedValue: pointsValue,
-            }
-          : item
-      )
-    );
-  } catch (pointsError) {
-    console.error(pointsError);
-
-    if (
-      pointsError instanceof Error &&
-      pointsError.message === "POINTS_ALREADY_AWARDED"
-    ) {
-      alert("تم منح نقاط هذا الواجب سابقًا.");
-    } else {
-      alert("تعذر منح النقاط، حاول مرة أخرى.");
-    }
-  } finally {
-    setAwardingPointsCompletionId(null);
-  }
-};
 
 useEffect(() => {
   let active = true;
@@ -1272,56 +1172,22 @@ useEffect(() => {
             fontSize: "14px",
           }}
         >
-          تم منح {completion.pointsAwardedValue} نقاط ⭐
+          تم منح {completion.pointsAwardedValue} نقاط سابقًا ⭐
         </div>
       ) : (
-        <>
-          {[1, 5, 10].map((pointsValue) => (
-            <button
-              key={pointsValue}
-              type="button"
-              onClick={() =>
-                awardHomeworkPoints(
-                  completion,
-                  pointsValue
-                )
-              }
-              disabled={
-                awardingPointsCompletionId ===
-                completion.id
-              }
-              style={{
-                padding: "10px 14px",
-                border: "none",
-                borderRadius: "12px",
-                background:
-                  pointsValue === 10
-                    ? "#7c3aed"
-                    : pointsValue === 5
-                      ? "#d97706"
-                      : "#2563eb",
-                color: "#ffffff",
-                fontWeight: 800,
-                fontSize: "14px",
-                cursor: "pointer",
-                opacity:
-                  awardingPointsCompletionId ===
-                  completion.id
-                    ? 0.7
-                    : 1,
-              }}
-            >
-              {awardingPointsCompletionId ===
-              completion.id
-                ? "جارٍ الحفظ..."
-                : pointsValue === 1
-                  ? "⭐ +1"
-                  : pointsValue === 5
-                    ? "🌟 +5"
-                    : "👑 +10"}
-            </button>
-          ))}
-        </>
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: "12px",
+            background: "#eef6ff",
+            color: "#1d4f91",
+            fontWeight: 800,
+            fontSize: "14px",
+            border: "1px solid #cfe0f5",
+          }}
+        >
+          تُحتسب النقاط من نظام الاعتماد الرسمي للواجبات ✅
+        </div>
       )}
     </div>
   )}

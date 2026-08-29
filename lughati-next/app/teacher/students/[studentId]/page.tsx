@@ -22,6 +22,7 @@ type Student = {
   badge: string;
   category: "قراءة" | "إملاء" | "يدوي";
   createdAt?: Date;
+  rewardId?: string;
 
 }[];badges?: {
   id: string;
@@ -59,7 +60,9 @@ readingHistory?: {
   fluency: string;
   expression: string;
   notes: string;
-  createdAt?: {
+  rewardId?: string;
+  rewardPoints?: number;
+  createdAt?: Date | {
     seconds?: number;
     nanoseconds?: number;
   };
@@ -680,76 +683,71 @@ async function handleSaveReading() {
 
   try {
     const readingReward = getReadingReward(
-  readingErrors,
-  readingFluency,
-  readingExpression,student.latestReading?.errors ?? null
-);
-    const studentRef = doc(db, "students", studentId);
+      readingErrors,
+      readingFluency,
+      readingExpression,
+      student.latestReading?.errors ?? null
+    );
 
-    await updateDoc(studentRef, {
-      latestReading: {
-        textName: readingText.trim(),
-        errors: readingErrors,
-        fluency: readingFluency,
-        expression: readingExpression,
-        notes: readingNotes.trim(),
-        createdAt: new Date(),
-      },
-      readingHistory: arrayUnion({
-  textName: readingText.trim(),
-  errors: readingErrors,
-  fluency: readingFluency,
-  expression: readingExpression,
-  notes: readingNotes.trim(),
-  createdAt: new Date(),
-}),
-points: increment(readingReward.points),
-pointsHistory: readingReward.points > 0
-  ? arrayUnion({
-      reason: readingReward.message,
-      points: readingReward.points,
-      badge: readingReward.badge,
-      category: "قراءة",
-      createdAt: new Date(),
-    })
-  : arrayUnion(),
-    });
+    const studentRef = doc(db, "students", studentId);
+    const rewardId = `reading-${studentId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
 
     const newReading = {
-  textName: readingText.trim(),
-  errors: readingErrors,
-  fluency: readingFluency,
-  expression: readingExpression,
-  notes: readingNotes.trim(),
-};
+      textName: readingText.trim(),
+      errors: readingErrors,
+      fluency: readingFluency,
+      expression: readingExpression,
+      notes: readingNotes.trim(),
+      rewardId,
+      rewardPoints: readingReward.points,
+      createdAt: new Date(),
+    };
 
-setStudent({
-  ...student,
-  latestReading: newReading,
-  points: (student.points ?? 0) + readingReward.points,
-  readingHistory: [
-    ...(student.readingHistory ?? []),
-    newReading,
-  ],
-  pointsHistory:
-  readingReward.points > 0
-    ? [
-        ...(student.pointsHistory ?? []),
-        {
-          reason: readingReward.message,
-          points: readingReward.points,
-          badge: readingReward.badge,
-          category: "قراءة",
-          createdAt: new Date(),
-        },
-      ]
-    : student.pointsHistory ?? [],
-} as Student);
+    const readingPointEntry =
+      readingReward.points > 0
+        ? {
+            reason: readingReward.message,
+            points: readingReward.points,
+            badge: readingReward.badge,
+            category: "قراءة" as const,
+            rewardId,
+            createdAt: new Date(),
+          }
+        : null;
+
+    await updateDoc(studentRef, {
+      latestReading: newReading,
+      readingHistory: arrayUnion(newReading),
+      ...(readingReward.points > 0
+        ? {
+            points: increment(readingReward.points),
+            pointsHistory: arrayUnion(readingPointEntry),
+          }
+        : {}),
+    });
+
+    setStudent({
+      ...student,
+      latestReading: newReading,
+      points: (student.points ?? 0) + readingReward.points,
+      readingHistory: [
+        ...(student.readingHistory ?? []),
+        newReading,
+      ],
+      pointsHistory: readingPointEntry
+        ? [
+            ...(student.pointsHistory ?? []),
+            readingPointEntry,
+          ]
+        : student.pointsHistory ?? [],
+    } as Student);
 
     alert(
-  readingReward.message ||
-    "✅ تم حفظ تقييم القراءة بنجاح دون نقاط إضافية"
-);
+      readingReward.message ||
+        "✅ تم حفظ تقييم القراءة بنجاح دون نقاط إضافية"
+    );
 
     setShowReadingBox(false);
     setReadingText("");
@@ -762,6 +760,7 @@ setStudent({
     alert("حدث خطأ أثناء حفظ التقييم");
   }
 }
+
 async function handleSaveSpelling() {
   if (!studentId || !student) return;
 
@@ -777,34 +776,49 @@ async function handleSaveSpelling() {
 
   try {
     const spellingReward = getSpellingReward(
-  spellingErrors,
-  spellingLevel,
-  student.latestSpelling?.errors ?? null
-);
+      spellingErrors,
+      spellingLevel,
+      student.latestSpelling?.errors ?? null
+    );
+
     const studentRef = doc(db, "students", studentId);
+    const rewardId = `spelling-${studentId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
 
     const newSpelling = {
       textName: spellingText.trim(),
       errors: spellingErrors,
       level: spellingLevel,
       notes: spellingNotes.trim(),
+      rewardId,
+      rewardPoints: spellingReward.points,
       createdAt: new Date(),
     };
+
+    const spellingPointEntry =
+      spellingReward.points > 0
+        ? {
+            reason: spellingReward.message,
+            points: spellingReward.points,
+            badge: spellingReward.badge,
+            category: "إملاء" as const,
+            rewardId,
+            createdAt: new Date(),
+          }
+        : null;
 
     await updateDoc(studentRef, {
       latestSpelling: newSpelling,
       spellingHistory: arrayUnion(newSpelling),
-      points: increment(spellingReward.points),
-      pointsHistory: spellingReward.points > 0
-  ? arrayUnion({
-      reason: spellingReward.message,
-      points: spellingReward.points,
-      badge: spellingReward.badge,
-      category: "إملاء",
-      createdAt: new Date(),
-    })
-  : arrayUnion(),
+      ...(spellingReward.points > 0
+        ? {
+            points: increment(spellingReward.points),
+            pointsHistory: arrayUnion(spellingPointEntry),
+          }
+        : {}),
     });
+
     setStudent({
       ...student,
       latestSpelling: newSpelling,
@@ -813,25 +827,18 @@ async function handleSaveSpelling() {
         ...(student.spellingHistory ?? []),
         newSpelling,
       ],
-      pointsHistory:
-  spellingReward.points > 0
-    ? [
-        ...(student.pointsHistory ?? []),
-        {
-          reason: spellingReward.message,
-          points: spellingReward.points,
-          badge: spellingReward.badge,
-          category: "إملاء",
-          createdAt: new Date(),
-        },
-      ]
-    : student.pointsHistory ?? [],
+      pointsHistory: spellingPointEntry
+        ? [
+            ...(student.pointsHistory ?? []),
+            spellingPointEntry,
+          ]
+        : student.pointsHistory ?? [],
     } as Student);
-alert(
-  spellingReward.message ||
-    "✅ تم حفظ تقييم الإملاء بنجاح دون نقاط إضافية"
-);
-  
+
+    alert(
+      spellingReward.message ||
+        "✅ تم حفظ تقييم الإملاء بنجاح دون نقاط إضافية"
+    );
 
     setShowSpellingBox(false);
     setSpellingText("");
@@ -843,6 +850,7 @@ alert(
     alert("حدث خطأ أثناء حفظ تقييم الإملاء");
   }
 }
+
   return (
     <main style={styles.page} dir="rtl">
      <Link

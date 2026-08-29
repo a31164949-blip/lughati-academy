@@ -6,6 +6,7 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
+  increment,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 
@@ -55,6 +56,55 @@ const [studentId] = useState(() => {
 
   return window.localStorage.getItem("student-id") ?? "";
 });
+
+useEffect(() => {
+  async function registerWeeklyPlanView() {
+    if (!studentId || !plan?.published) {
+      return;
+    }
+
+    const normalizedWeekTitle = plan.weekTitle.trim() || "الخطة الأسبوعية";
+    const weekKey = normalizedWeekTitle
+      .replace(/\s+/g, "-")
+      .replace(/[^\u0600-\u06FFa-zA-Z0-9_-]/g, "")
+      .slice(0, 80);
+
+    const safeWeekKey = weekKey || "current";
+    const viewId = `${studentId}_${safeWeekKey}`;
+    const viewReference = doc(db, "weeklyPlanViews", viewId);
+
+    try {
+      const existingView = await getDoc(viewReference);
+
+      if (!existingView.exists()) {
+        await setDoc(viewReference, {
+          studentId,
+          weekTitle: normalizedWeekTitle,
+          firstViewedAt: serverTimestamp(),
+          lastViewedAt: serverTimestamp(),
+          viewCount: 1,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await setDoc(
+          viewReference,
+          {
+            studentId,
+            weekTitle: normalizedWeekTitle,
+            lastViewedAt: serverTimestamp(),
+            viewCount: increment(1),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+    } catch (error) {
+      console.error("تعذر تسجيل الاطلاع على الخطة الأسبوعية:", error);
+    }
+  }
+
+  void registerWeeklyPlanView();
+}, [studentId, plan]);
 useEffect(() => {
   async function loadTodayCompletion() {
     if (!studentId) {

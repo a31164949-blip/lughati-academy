@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import WeeklyGames from "./components/WeeklyGames";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -72,62 +72,7 @@ type AcademyMilestone = {
   badgeTitle: string;
   studentName: string;
   pointsReached: number;
-  boardVisible: boolean;
-  boardStartDate: string;
-  boardEndDate: string;
   createdAtMilliseconds: number;
-};
-
-type AcademyBoardCategory =
-  | "announcement"
-  | "event"
-  | "competition";
-
-type AcademyBoardManualSlide = {
-  id: string;
-  title: string;
-  message: string;
-  category: AcademyBoardCategory;
-  icon: string;
-  visible: boolean;
-  startDate: string;
-  endDate: string;
-  createdAtMilliseconds: number;
-};
-
-type AcademyBoardSettings = {
-  enabled: boolean;
-  intervalSeconds: number;
-  tickerEnabled: boolean;
-  tickerText: string;
-};
-
-type AcademyBoardDisplaySlide =
-  | {
-      id: string;
-      kind: "milestone";
-      icon: string;
-      eyebrow: string;
-      title: string;
-      message: string;
-      points: number;
-    }
-  | {
-      id: string;
-      kind: "manual";
-      icon: string;
-      eyebrow: string;
-      title: string;
-      message: string;
-      category: AcademyBoardCategory;
-    };
-
-const defaultAcademyBoardSettings: AcademyBoardSettings = {
-  enabled: true,
-  intervalSeconds: 6,
-  tickerEnabled: true,
-  tickerText:
-    "🌟 كل إنجاز جديد يكتب اسمًا جديدًا في تاريخ أكاديمية لغتي",
 };
 
 function getPublicStudentName(fullName: string) {
@@ -140,62 +85,62 @@ function getPublicStudentName(fullName: string) {
 }
 
 function getMilestoneIcon(pointsReached: number) {
-  if (pointsReached >= 1000) return "🚀";
-  if (pointsReached >= 500) return "🏰";
-  if (pointsReached >= 250) return "💎";
-  if (pointsReached >= 100) return "👑";
-  if (pointsReached >= 50) return "🥇";
-  if (pointsReached >= 25) return "🌟";
-  if (pointsReached >= 10) return "⭐";
-  return "🏆";
+  if (pointsReached >= 1000) return "ðŸš€";
+  if (pointsReached >= 500) return "ðŸ°";
+  if (pointsReached >= 250) return "ðŸ’Ž";
+  if (pointsReached >= 100) return "ðŸ‘‘";
+  if (pointsReached >= 50) return "ðŸ¥‡";
+  if (pointsReached >= 25) return "ðŸŒŸ";
+  if (pointsReached >= 10) return "â­";
+  return "ðŸ†";
 }
 
 const sections: AcademySection[] = [
   {
-    icon: "📚",
-    title: "دروسي",
+    icon: "ðŸ“š",
+    title: "Ø¯Ø±ÙˆØ³ÙŠ",
     description:
-      "الدروس والأنشطة التعليمية الممتعة",
+      "Ø§Ù„Ø¯Ø±ÙˆØ³ ÙˆØ§Ù„Ø£Ù†Ø´Ø·Ø© Ø§Ù„ØªØ¹Ù„ÙŠÙ…ÙŠØ© Ø§Ù„Ù…Ù…ØªØ¹Ø©",
     href: "/lessons",
     className: "blue-card",
   },
   {
-    icon: "🌱",
-    title: "رحلة الدعم",
+    icon: "ðŸŒ±",
+    title: "Ø±Ø­Ù„Ø© Ø§Ù„Ø¯Ø¹Ù…",
     description:
-      "تدريبات متدرجة لتقوية القراءة والكتابة",
+      "ØªØ¯Ø±ÙŠØ¨Ø§Øª Ù…ØªØ¯Ø±Ø¬Ø© Ù„ØªÙ‚ÙˆÙŠØ© Ø§Ù„Ù‚Ø±Ø§Ø¡Ø© ÙˆØ§Ù„ÙƒØªØ§Ø¨Ø©",
     href: "/support",
     className: "green-card",
   },
   {
-    icon: "📖",
-    title: "الفهم القرائي",
+    icon: "ðŸ“–",
+    title: "Ø§Ù„ÙÙ‡Ù… Ø§Ù„Ù‚Ø±Ø§Ø¦ÙŠ",
     description:
-      "نصوص وقصص وأسئلة لتنمية الفهم",
+      "Ù†ØµÙˆØµ ÙˆÙ‚ØµØµ ÙˆØ£Ø³Ø¦Ù„Ø© Ù„ØªÙ†Ù…ÙŠØ© Ø§Ù„ÙÙ‡Ù…",
     href: "/reading",
     className: "purple-card",
   },
   {
-    icon: "🎮",
-    title: "الألعاب التعليمية",
+    icon: "ðŸŽ®",
+    title: "Ø§Ù„Ø£Ù„Ø¹Ø§Ø¨ Ø§Ù„ØªØ¹Ù„ÙŠÙ…ÙŠØ©",
     description:
-      "تعلّم والعب واكسب النجوم",
+      "ØªØ¹Ù„Ù‘Ù… ÙˆØ§Ù„Ø¹Ø¨ ÙˆØ§ÙƒØ³Ø¨ Ø§Ù„Ù†Ø¬ÙˆÙ…",
     href: "/games",
     className: "orange-card",
   },
   {
-    icon: "🌟",
-    title: "أبطال الأكاديمية",
+    icon: "ðŸŒŸ",
+    title: "Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©",
     description:
-      "شاهد أبطال القراءة والإملاء والإنجاز",
+      "Ø´Ø§Ù‡Ø¯ Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ù‚Ø±Ø§Ø¡Ø© ÙˆØ§Ù„Ø¥Ù…Ù„Ø§Ø¡ ÙˆØ§Ù„Ø¥Ù†Ø¬Ø§Ø²",
     href: "/heroes",
     className: "gold-card",
   },
   {
-    icon: "🎨",
-    title: "معرض الطلاب",
+    icon: "ðŸŽ¨",
+    title: "Ù…Ø¹Ø±Ø¶ Ø§Ù„Ø·Ù„Ø§Ø¨",
     description:
-      "شاهد إبداعات وأعمال زملائك",
+      "Ø´Ø§Ù‡Ø¯ Ø¥Ø¨Ø¯Ø§Ø¹Ø§Øª ÙˆØ£Ø¹Ù…Ø§Ù„ Ø²Ù…Ù„Ø§Ø¦Ùƒ",
     href: "/gallery",
     className: "teal-card",
   },
@@ -204,72 +149,72 @@ const sections: AcademySection[] = [
 const academicJourneyEvents: AcademicJourneyEvent[] = [
   {
     id: "school-start",
-    title: "بداية العام الدراسي",
-    icon: "🏫",
+    title: "Ø¨Ø¯Ø§ÙŠØ© Ø§Ù„Ø¹Ø§Ù… Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠ",
+    icon: "ðŸ«",
     semester: 1,
     date: "2026-08-23",
     category: "study",
   },
   {
     id: "national-day",
-    title: "إجازة اليوم الوطني",
-    icon: "🇸🇦",
+    title: "Ø¥Ø¬Ø§Ø²Ø© Ø§Ù„ÙŠÙˆÙ… Ø§Ù„ÙˆØ·Ù†ÙŠ",
+    icon: "ðŸ‡¸ðŸ‡¦",
     semester: 1,
     date: "2026-09-23",
     category: "national",
   },
   {
     id: "autumn-break",
-    title: "إجازة الخريف",
-    icon: "🍂",
+    title: "Ø¥Ø¬Ø§Ø²Ø© Ø§Ù„Ø®Ø±ÙŠÙ",
+    icon: "ðŸ‚",
     semester: 1,
     date: "2026-11-20",
     category: "holiday",
   },
   {
     id: "midyear-break",
-    title: "إجازة منتصف العام",
-    icon: "❄️",
+    title: "Ø¥Ø¬Ø§Ø²Ø© Ù…Ù†ØªØµÙ Ø§Ù„Ø¹Ø§Ù…",
+    icon: "â„ï¸",
     semester: 1,
     date: null,
     category: "holiday",
   },
   {
     id: "semester-two-start",
-    title: "بداية الفصل الدراسي الثاني",
-    icon: "🚀",
+    title: "Ø¨Ø¯Ø§ÙŠØ© Ø§Ù„ÙØµÙ„ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠ Ø§Ù„Ø«Ø§Ù†ÙŠ",
+    icon: "ðŸš€",
     semester: 2,
     date: null,
     category: "study",
   },
   {
     id: "foundation-day",
-    title: "إجازة يوم التأسيس",
-    icon: "🐪",
+    title: "Ø¥Ø¬Ø§Ø²Ø© ÙŠÙˆÙ… Ø§Ù„ØªØ£Ø³ÙŠØ³",
+    icon: "ðŸª",
     semester: 2,
     date: null,
     category: "national",
   },
   {
     id: "eid-al-fitr",
-    title: "إجازة عيد الفطر",
-    icon: "🌙",
+    title: "Ø¥Ø¬Ø§Ø²Ø© Ø¹ÙŠØ¯ Ø§Ù„ÙØ·Ø±",
+    icon: "ðŸŒ™",
     semester: 2,
     date: null,
     category: "holiday",
   },
   {
     id: "eid-al-adha",
-    title: "إجازة عيد الأضحى",
-    icon: "🕋",
+    title: "Ø¥Ø¬Ø§Ø²Ø© Ø¹ÙŠØ¯ Ø§Ù„Ø£Ø¶Ø­Ù‰",
+    icon: "ðŸ•‹",
     semester: 2,
     date: null,
     category: "holiday",
   },
   {
     id: "school-year-end",
-    title: "نهاية العام الدراسي",
-    icon: "🎓",
+    title: "Ù†Ù‡Ø§ÙŠØ© Ø§Ù„Ø¹Ø§Ù… Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠ",
+    icon: "ðŸŽ“",
     semester: 2,
     date: null,
     category: "study",
@@ -299,7 +244,7 @@ export default function Home() {
       show: false,
       title: "",
       message: "",
-      icon: "🌙",
+      icon: "ðŸŒ™",
     });
 
   const [
@@ -318,37 +263,17 @@ export default function Home() {
     setAcademyMilestones,
   ] = useState<AcademyMilestone[]>([]);
 
-  const [
-    academyBoardManualSlides,
-    setAcademyBoardManualSlides,
-  ] = useState<AcademyBoardManualSlide[]>([]);
-
-  const [
-    academyBoardSettings,
-    setAcademyBoardSettings,
-  ] = useState<AcademyBoardSettings>(
-    defaultAcademyBoardSettings
-  );
-
-  const [
-    activeBoardSlideIndex,
-    setActiveBoardSlideIndex,
-  ] = useState(0);
-
-  const boardTouchStartX =
-    useRef<number | null>(null);
-
   
 
   /*
-   * رسالة الوقت الذكية.
-   * تظهر بعد الساعة 10 مساءً
-   * وحتى الساعة 5 صباحًا
-   * حسب توقيت الرياض.
+   * Ø±Ø³Ø§Ù„Ø© Ø§Ù„ÙˆÙ‚Øª Ø§Ù„Ø°ÙƒÙŠØ©.
+   * ØªØ¸Ù‡Ø± Ø¨Ø¹Ø¯ Ø§Ù„Ø³Ø§Ø¹Ø© 10 Ù…Ø³Ø§Ø¡Ù‹
+   * ÙˆØ­ØªÙ‰ Ø§Ù„Ø³Ø§Ø¹Ø© 5 ØµØ¨Ø§Ø­Ù‹Ø§
+   * Ø­Ø³Ø¨ ØªÙˆÙ‚ÙŠØª Ø§Ù„Ø±ÙŠØ§Ø¶.
    */
 /*
- * رسالة فارس الذكية حسب الوقت
- * بتوقيت الرياض.
+ * Ø±Ø³Ø§Ù„Ø© ÙØ§Ø±Ø³ Ø§Ù„Ø°ÙƒÙŠØ© Ø­Ø³Ø¨ Ø§Ù„ÙˆÙ‚Øª
+ * Ø¨ØªÙˆÙ‚ÙŠØª Ø§Ù„Ø±ÙŠØ§Ø¶.
  */
 useEffect(() => {
   const updateDayMessage = () => {
@@ -371,56 +296,56 @@ useEffect(() => {
         )?.value ?? 0
       );
 
-    // من 5 صباحًا إلى 12 ظهرًا
+    // Ù…Ù† 5 ØµØ¨Ø§Ø­Ù‹Ø§ Ø¥Ù„Ù‰ 12 Ø¸Ù‡Ø±Ù‹Ø§
     if (hour >= 5 && hour < 12) {
       setDayMessage({
         show: true,
         title:
-          "صباح النشاط يا بطل ☀️",
+          "ØµØ¨Ø§Ø­ Ø§Ù„Ù†Ø´Ø§Ø· ÙŠØ§ Ø¨Ø·Ù„ â˜€ï¸",
         message:
-          "يوم جديد بدأ… اقرأ، تعلّم، واصنع إنجازًا جميلًا مع فارس 🌱✨",
-        icon: "☀️",
+          "ÙŠÙˆÙ… Ø¬Ø¯ÙŠØ¯ Ø¨Ø¯Ø£â€¦ Ø§Ù‚Ø±Ø£ØŒ ØªØ¹Ù„Ù‘Ù…ØŒ ÙˆØ§ØµÙ†Ø¹ Ø¥Ù†Ø¬Ø§Ø²Ù‹Ø§ Ø¬Ù…ÙŠÙ„Ù‹Ø§ Ù…Ø¹ ÙØ§Ø±Ø³ ðŸŒ±âœ¨",
+        icon: "â˜€ï¸",
       });
 
       return;
     }
 
-    // من 12 ظهرًا إلى 6 مساءً
+    // Ù…Ù† 12 Ø¸Ù‡Ø±Ù‹Ø§ Ø¥Ù„Ù‰ 6 Ù…Ø³Ø§Ø¡Ù‹
     if (hour >= 12 && hour < 18) {
       setDayMessage({
         show: true,
         title:
-          "استمر يا بطل 🌤️",
+          "Ø§Ø³ØªÙ…Ø± ÙŠØ§ Ø¨Ø·Ù„ ðŸŒ¤ï¸",
         message:
-          "أحسنت حتى الآن… أكمل مهامك بهدوء، فكل خطوة تقرّبك من هدفك ⭐",
-        icon: "🌤️",
+          "Ø£Ø­Ø³Ù†Øª Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†â€¦ Ø£ÙƒÙ…Ù„ Ù…Ù‡Ø§Ù…Ùƒ Ø¨Ù‡Ø¯ÙˆØ¡ØŒ ÙÙƒÙ„ Ø®Ø·ÙˆØ© ØªÙ‚Ø±Ù‘Ø¨Ùƒ Ù…Ù† Ù‡Ø¯ÙÙƒ â­",
+        icon: "ðŸŒ¤ï¸",
       });
 
       return;
     }
 
-    // من 6 مساءً إلى 10 مساءً
+    // Ù…Ù† 6 Ù…Ø³Ø§Ø¡Ù‹ Ø¥Ù„Ù‰ 10 Ù…Ø³Ø§Ø¡Ù‹
     if (hour >= 18 && hour < 22) {
       setDayMessage({
         show: true,
         title:
-          "مساء الإنجاز يا بطل 🌙",
+          "Ù…Ø³Ø§Ø¡ Ø§Ù„Ø¥Ù†Ø¬Ø§Ø² ÙŠØ§ Ø¨Ø·Ù„ ðŸŒ™",
         message:
-          "راجع ما تعلمته اليوم، وأنهِ ما بقي لك لتبدأ غدًا وأنت مستعد ✨",
-        icon: "🌙",
+          "Ø±Ø§Ø¬Ø¹ Ù…Ø§ ØªØ¹Ù„Ù…ØªÙ‡ Ø§Ù„ÙŠÙˆÙ…ØŒ ÙˆØ£Ù†Ù‡Ù Ù…Ø§ Ø¨Ù‚ÙŠ Ù„Ùƒ Ù„ØªØ¨Ø¯Ø£ ØºØ¯Ù‹Ø§ ÙˆØ£Ù†Øª Ù…Ø³ØªØ¹Ø¯ âœ¨",
+        icon: "ðŸŒ™",
       });
 
       return;
     }
 
-    // من 10 مساءً إلى 5 صباحًا
+    // Ù…Ù† 10 Ù…Ø³Ø§Ø¡Ù‹ Ø¥Ù„Ù‰ 5 ØµØ¨Ø§Ø­Ù‹Ø§
     setDayMessage({
       show: true,
       title:
-        "حان وقت الراحة يا بطل 🌙",
+        "Ø­Ø§Ù† ÙˆÙ‚Øª Ø§Ù„Ø±Ø§Ø­Ø© ÙŠØ§ Ø¨Ø·Ù„ ðŸŒ™",
       message:
-        "لقد أبدعت اليوم… نم مبكرًا، ونلتقي غدًا بطاقة جديدة بإذن الله 😴✨",
-      icon: "🌙",
+        "Ù„Ù‚Ø¯ Ø£Ø¨Ø¯Ø¹Øª Ø§Ù„ÙŠÙˆÙ…â€¦ Ù†Ù… Ù…Ø¨ÙƒØ±Ù‹Ø§ØŒ ÙˆÙ†Ù„ØªÙ‚ÙŠ ØºØ¯Ù‹Ø§ Ø¨Ø·Ø§Ù‚Ø© Ø¬Ø¯ÙŠØ¯Ø© Ø¨Ø¥Ø°Ù† Ø§Ù„Ù„Ù‡ ðŸ˜´âœ¨",
+      icon: "ðŸŒ™",
     });
   };
 
@@ -438,7 +363,7 @@ useEffect(() => {
 
   /*
   /*
- * تحميل الإعلانات.
+ * ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§Øª.
  */
 useEffect(() => {
   async function loadAnnouncements() {
@@ -458,7 +383,7 @@ useEffect(() => {
 
       if (!responseText.trim()) {
         console.warn(
-          "استجابة الإعلانات فارغة."
+          "Ø§Ø³ØªØ¬Ø§Ø¨Ø© Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§Øª ÙØ§Ø±ØºØ©."
         );
 
         setAnnouncements([]);
@@ -476,7 +401,7 @@ useEffect(() => {
         );
       } catch (parseError) {
         console.error(
-          "استجابة الإعلانات ليست JSON صالحًا:",
+          "Ø§Ø³ØªØ¬Ø§Ø¨Ø© Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ù„ÙŠØ³Øª JSON ØµØ§Ù„Ø­Ù‹Ø§:",
           responseText,
           parseError
         );
@@ -502,7 +427,7 @@ useEffect(() => {
       );
     } catch (error) {
       console.error(
-        "تعذر تحميل نبض الأكاديمية:",
+        "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ù†Ø¨Ø¶ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©:",
         error
       );
 
@@ -518,7 +443,7 @@ useEffect(() => {
 }, []);
 
   /*
-   * تحميل الأبطال المنشورين فقط.
+   * ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ù…Ù†Ø´ÙˆØ±ÙŠÙ† ÙÙ‚Ø·.
    */
   useEffect(() => {
     async function loadHeroes() {
@@ -547,13 +472,13 @@ useEffect(() => {
                     typeof data.studentFirstName ===
                     "string"
                       ? data.studentFirstName
-                      : "بطل الأكاديمية",
+                      : "Ø¨Ø·Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©",
 
                   title:
                     typeof data.title ===
                     "string"
                       ? data.title
-                      : "بطل الأكاديمية",
+                      : "Ø¨Ø·Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©",
 
                   badge:
                     typeof data.badge ===
@@ -600,7 +525,7 @@ useEffect(() => {
         );
       } catch (error) {
         console.error(
-          "تعذر تحميل أبطال الأكاديمية:",
+          "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©:",
           error
         );
 
@@ -613,144 +538,98 @@ useEffect(() => {
 
 
   /*
-   * تحميل لوحة الأكاديمية العامة من API آمن.
-   * يمنع القراءة المباشرة من Firestore للزوار.
+   * ØªØ­Ù…ÙŠÙ„ Ø£Ø­Ø¯Ø« Ø¥Ù†Ø¬Ø§Ø²Ø§Øª Â«Ø£ÙˆØ§Ø¦Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©Â».
+   * Ø§Ù„Ø²Ø§ÙˆÙŠØ© Ù„Ø§ ØªØ¸Ù‡Ø± Ø¥Ù„Ø§ Ø¨Ø¹Ø¯ ØªØ³Ø¬ÙŠÙ„ Ø£ÙˆÙ„ Ø¥Ù†Ø¬Ø§Ø² ÙØ¹Ù„ÙŠ.
    */
   useEffect(() => {
-    async function loadPublicAcademyBoard() {
+    async function loadAcademyMilestones() {
       try {
-        const response = await fetch(
-          "/api/public-academy-board",
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
-
-        const responseText =
-          await response.text();
-
-        if (!responseText.trim()) {
-          console.warn(
-            "استجابة لوحة الأكاديمية فارغة."
+        const snapshot =
+          await getDocs(
+            collection(
+              db,
+              "academyMilestones"
+            )
           );
 
-          setAcademyMilestones([]);
-          setAcademyBoardManualSlides([]);
-          setAcademyBoardSettings(
-            defaultAcademyBoardSettings
-          );
-          return;
-        }
+        const loadedMilestones =
+          snapshot.docs
+            .map(
+              (
+                milestoneDocument
+              ) => {
+                const data =
+                  milestoneDocument.data();
 
-        let data: {
-          success?: boolean;
-          settings?: AcademyBoardSettings;
-          slides?: AcademyBoardManualSlide[];
-          milestones?: AcademyMilestone[];
-        };
+                return {
+                  id:
+                    milestoneDocument.id,
 
-        try {
-          data = JSON.parse(
-            responseText
-          );
-        } catch (parseError) {
-          console.error(
-            "استجابة لوحة الأكاديمية ليست JSON صالحًا:",
-            responseText,
-            parseError
-          );
+                  title:
+                    typeof data.title ===
+                    "string"
+                      ? data.title
+                      : "Ø¥Ù†Ø¬Ø§Ø² Ø¬Ø¯ÙŠØ¯ ÙÙŠ Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠ",
 
-          setAcademyMilestones([]);
-          setAcademyBoardManualSlides([]);
-          setAcademyBoardSettings(
-            defaultAcademyBoardSettings
-          );
-          return;
-        }
+                  badgeTitle:
+                    typeof data.badgeTitle ===
+                    "string"
+                      ? data.badgeTitle
+                      : "",
 
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          console.error(
-            "تعذر تحميل لوحة الأكاديمية من API.",
-            data
-          );
+                  studentName:
+                    typeof data.studentName ===
+                    "string"
+                      ? data.studentName
+                      : "",
 
-          setAcademyMilestones([]);
-          setAcademyBoardManualSlides([]);
-          setAcademyBoardSettings(
-            defaultAcademyBoardSettings
-          );
-          return;
-        }
+                  pointsReached:
+                    typeof data.pointsReached ===
+                    "number"
+                      ? data.pointsReached
+                      : 1,
 
-        setAcademyBoardSettings(
-          data.settings &&
-          typeof data.settings === "object"
-            ? {
-                enabled:
-                  data.settings.enabled !== false,
-                intervalSeconds:
-                  typeof data.settings.intervalSeconds ===
-                    "number" &&
-                  data.settings.intervalSeconds >= 3
-                    ? Math.min(
-                        30,
-                        data.settings.intervalSeconds
-                      )
-                    : defaultAcademyBoardSettings.intervalSeconds,
-                tickerEnabled:
-                  data.settings.tickerEnabled !== false,
-                tickerText:
-                  typeof data.settings.tickerText ===
-                    "string" &&
-                  data.settings.tickerText.trim()
-                    ? data.settings.tickerText
-                    : defaultAcademyBoardSettings.tickerText,
+                  createdAtMilliseconds:
+                    data.createdAt
+                      ?.toMillis?.() ||
+                    data.updatedAt
+                      ?.toMillis?.() ||
+                    0,
+                } satisfies AcademyMilestone;
               }
-            : defaultAcademyBoardSettings
-        );
-
-        setAcademyBoardManualSlides(
-          Array.isArray(data.slides)
-            ? data.slides
-            : []
-        );
+            )
+            .filter(
+              (milestone) =>
+                milestone.studentName
+                  .trim() !== ""
+            )
+            .sort(
+              (first, second) =>
+                second.createdAtMilliseconds -
+                first.createdAtMilliseconds
+            )
+            .slice(0, 3);
 
         setAcademyMilestones(
-          Array.isArray(data.milestones)
-            ? data.milestones
-            : []
+          loadedMilestones
         );
       } catch (error) {
         console.error(
-          "تعذر تحميل لوحة الأكاديمية:",
+          "ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø£ÙˆØ§Ø¦Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©:",
           error
         );
 
         setAcademyMilestones([]);
-        setAcademyBoardManualSlides([]);
-        setAcademyBoardSettings(
-          defaultAcademyBoardSettings
-        );
       }
     }
 
-    void loadPublicAcademyBoard();
+    void loadAcademyMilestones();
   }, []);
 
 
   /*
-   * التاريخ.
+   * Ø§Ù„ØªØ§Ø±ÙŠØ®.
    */
-  /*
-   * تدوير اللوحة الرقمية يُدار بعد دمج
-   * الإنجازات والإعلانات في قائمة واحدة.
-   */
-
-
   useEffect(() => {
     const updateToday =
       () => {
@@ -805,115 +684,6 @@ useEffect(() => {
     );
   });
 
-  const academyBoardSlides:
-    AcademyBoardDisplaySlide[] = [
-      ...academyBoardManualSlides.map(
-        (slide) => ({
-          id: `manual-${slide.id}`,
-          kind: "manual" as const,
-          icon: slide.icon,
-          eyebrow:
-            slide.category === "event"
-              ? "فعالية جديدة"
-              : slide.category ===
-                "competition"
-              ? "مسابقة جديدة"
-              : "إعلان الأكاديمية",
-          title: slide.title,
-          message: slide.message,
-          category: slide.category,
-        })
-      ),
-      ...academyMilestones
-        .filter((milestone) => {
-          if (!milestone.boardVisible) {
-            return false;
-          }
-
-          const riyadhDateKey =
-            new Intl.DateTimeFormat(
-              "en-CA",
-              {
-                timeZone:
-                  "Asia/Riyadh",
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-              }
-            ).format(new Date());
-
-          const hasStarted =
-            !milestone.boardStartDate ||
-            riyadhDateKey >=
-              milestone.boardStartDate;
-
-          const hasNotEnded =
-            !milestone.boardEndDate ||
-            riyadhDateKey <=
-              milestone.boardEndDate;
-
-          return (
-            hasStarted &&
-            hasNotEnded
-          );
-        })
-        .map((milestone) => ({
-          id: `milestone-${milestone.id}`,
-          kind: "milestone" as const,
-          icon: getMilestoneIcon(
-            milestone.pointsReached
-          ),
-          eyebrow:
-            milestone.badgeTitle ||
-            "إنجاز تاريخي",
-          title: getPublicStudentName(
-            milestone.studentName
-          ),
-          message: milestone.title,
-          points:
-            milestone.pointsReached,
-        })),
-    ];
-
-  useEffect(() => {
-    if (
-      !academyBoardSettings.enabled ||
-      academyBoardSlides.length <= 1
-    ) {
-      setActiveBoardSlideIndex(0);
-      return;
-    }
-
-    setActiveBoardSlideIndex(
-      (current) =>
-        current >=
-        academyBoardSlides.length
-          ? 0
-          : current
-    );
-
-    const timer =
-      window.setInterval(() => {
-        setActiveBoardSlideIndex(
-          (current) =>
-            (current + 1) %
-            academyBoardSlides.length
-        );
-      },
-      Math.max(
-        3,
-        academyBoardSettings.intervalSeconds
-      ) * 1000
-    );
-
-    return () =>
-      window.clearInterval(timer);
-  }, [
-    academyBoardSettings.enabled,
-    academyBoardSettings.intervalSeconds,
-    academyBoardSlides.length,
-  ]);
-
 
   return (
     <main
@@ -922,11 +692,11 @@ useEffect(() => {
     >
       <HomeworkReminder />
 
-      {/* رسالة المساء الذكية */}
+      {/* Ø±Ø³Ø§Ù„Ø© Ø§Ù„Ù…Ø³Ø§Ø¡ Ø§Ù„Ø°ÙƒÙŠØ© */}
 
       {dayMessage.show && (
         <section
-          aria-label="رسالة المساء"
+          aria-label="Ø±Ø³Ø§Ù„Ø© Ø§Ù„Ù…Ø³Ø§Ø¡"
           style={{
             maxWidth:
               "1180px",
@@ -956,7 +726,7 @@ useEffect(() => {
               "hidden",
           }}
         >
-          {/* قمر خلفي */}
+          {/* Ù‚Ù…Ø± Ø®Ù„ÙÙŠ */}
 
           <div
             style={{
@@ -1069,40 +839,40 @@ useEffect(() => {
                 "relative",
             }}
           >
-            ✨ ⭐ ✨
+            âœ¨ â­ âœ¨
           </div>
         </section>
       )}
 
-      {/* الهوية */}
+      {/* Ø§Ù„Ù‡ÙˆÙŠØ© */}
 
       <header className="academy-header">
         <div className="brand">
           <div className="brand-icon">
-            📚
+            ðŸ“š
           </div>
 
           <div>
             <p className="brand-label">
-              مرحبًا بك في
+              Ù…Ø±Ø­Ø¨Ù‹Ø§ Ø¨Ùƒ ÙÙŠ
             </p>
 
             <h1>
-              أكاديمية لغتي الرقمية
+              Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠ Ø§Ù„Ø±Ù‚Ù…ÙŠØ©
             </h1>
 
             <p className="slogan">
-              نتعلّم… نقرأ… نبدع
+              Ù†ØªØ¹Ù„Ù‘Ù…â€¦ Ù†Ù‚Ø±Ø£â€¦ Ù†Ø¨Ø¯Ø¹
             </p>
           </div>
         </div>
 
         <div className="student-points">
-          <span>⭐</span>
+          <span>â­</span>
 
           <div>
             <small>
-              نجومك
+              Ù†Ø¬ÙˆÙ…Ùƒ
             </small>
 
             <strong>
@@ -1110,13 +880,13 @@ useEffect(() => {
             </strong>
 
             <small>
-              {points} نقطة
+              {points} Ù†Ù‚Ø·Ø©
             </small>
           </div>
         </div>
       </header>
 
-      {/* الترحيب المختصر الجديد */}
+      {/* Ø§Ù„ØªØ±Ø­ÙŠØ¨ Ø§Ù„Ù…Ø®ØªØµØ± Ø§Ù„Ø¬Ø¯ÙŠØ¯ */}
 
       <section
         style={{
@@ -1173,7 +943,7 @@ useEffect(() => {
                 0,
             }}
           >
-            🧒🏻
+            ðŸ§’ðŸ»
           </div>
 
           <div>
@@ -1185,7 +955,7 @@ useEffect(() => {
                   900,
               }}
             >
-              السلام عليكم يا بطل 👋
+              Ø§Ù„Ø³Ù„Ø§Ù… Ø¹Ù„ÙŠÙƒÙ… ÙŠØ§ Ø¨Ø·Ù„ ðŸ‘‹
             </div>
 
             <p
@@ -1198,8 +968,8 @@ useEffect(() => {
                   1.6,
               }}
             >
-              فارس معك… جاهز
-              لإنجاز جديد اليوم؟
+              ÙØ§Ø±Ø³ Ù…Ø¹Ùƒâ€¦ Ø¬Ø§Ù‡Ø²
+              Ù„Ø¥Ù†Ø¬Ø§Ø² Ø¬Ø¯ÙŠØ¯ Ø§Ù„ÙŠÙˆÙ…ØŸ
             </p>
           </div>
         </div>
@@ -1225,12 +995,12 @@ useEffect(() => {
           >
             {today ? (
               <>
-                🗓️{" "}
+                ðŸ—“ï¸{" "}
                 {today}
               </>
             ) : (
               <>
-                🗓️ اليوم
+                ðŸ—“ï¸ Ø§Ù„ÙŠÙˆÙ…
               </>
             )}
           </span>
@@ -1254,24 +1024,24 @@ useEffect(() => {
                 "nowrap",
             }}
           >
-            ابدأ رحلتي ←
+            Ø§Ø¨Ø¯Ø£ Ø±Ø­Ù„ØªÙŠ â†
           </Link>
         </div>
       </section>
 
-      {/* نبض الأكاديمية */}
+      {/* Ù†Ø¨Ø¶ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© */}
 
       <section
         className="academy-pulse"
-        aria-label="نبض الأكاديمية"
+        aria-label="Ù†Ø¨Ø¶ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©"
       >
         <div className="academy-pulse__badge">
           <span aria-hidden="true">
-            📣
+            ðŸ“£
           </span>
 
           <strong>
-            نبض الأكاديمية
+            Ù†Ø¨Ø¶ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©
           </strong>
         </div>
 
@@ -1279,8 +1049,8 @@ useEffect(() => {
           <div className="academy-pulse__track">
             {announcementsLoading ? (
               <span className="academy-pulse__item">
-                ⏳ جارٍ تحميل أخبار
-                الأكاديمية...
+                â³ Ø¬Ø§Ø±Ù ØªØ­Ù…ÙŠÙ„ Ø£Ø®Ø¨Ø§Ø±
+                Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©...
               </span>
             ) : announcements.length >
               0 ? (
@@ -1301,8 +1071,8 @@ useEffect(() => {
                     >
                       <span className="academy-pulse__item">
                         {announcement.pinned
-                          ? "📌 "
-                          : "✨ "}
+                          ? "ðŸ“Œ "
+                          : "âœ¨ "}
 
                         <strong>
                           {
@@ -1314,7 +1084,7 @@ useEffect(() => {
                           announcement.message
                         ) && (
                           <>
-                            {" — "}
+                            {" â€” "}
                             {getAnnouncementPreview(
                               announcement.message
                             )}
@@ -1329,7 +1099,7 @@ useEffect(() => {
                           className="academy-pulse__separator"
                           aria-hidden="true"
                         >
-                          ✦
+                          âœ¦
                         </span>
                       )}
                     </span>
@@ -1339,22 +1109,22 @@ useEffect(() => {
             ) : (
               <>
                 <span className="academy-pulse__item">
-                  🌟 أهلاً بأبطال
-                  أكاديمية لغتي…
-                  نتعلّم، نقرأ، نبدع.
+                  ðŸŒŸ Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ø£Ø¨Ø·Ø§Ù„
+                  Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠâ€¦
+                  Ù†ØªØ¹Ù„Ù‘Ù…ØŒ Ù†Ù‚Ø±Ø£ØŒ Ù†Ø¨Ø¯Ø¹.
                 </span>
 
                 <span
                   className="academy-pulse__separator"
                   aria-hidden="true"
                 >
-                  ✦
+                  âœ¦
                 </span>
 
                 <span className="academy-pulse__item">
-                  📚 تابع خطتك
-                  الأسبوعية وابدأ
-                  رحلتك التعليمية.
+                  ðŸ“š ØªØ§Ø¨Ø¹ Ø®Ø·ØªÙƒ
+                  Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹ÙŠØ© ÙˆØ§Ø¨Ø¯Ø£
+                  Ø±Ø­Ù„ØªÙƒ Ø§Ù„ØªØ¹Ù„ÙŠÙ…ÙŠØ©.
                 </span>
               </>
             )}
@@ -1363,615 +1133,247 @@ useEffect(() => {
 
         <span className="academy-pulse__live">
           <span aria-hidden="true"></span>
-          مباشر
+          Ù…Ø¨Ø§Ø´Ø±
         </span>
         </section>
-{/* لوحة الأكاديمية الرقمية — إنجازات + إعلانات + فعاليات + مسابقات */}
-{academyBoardSettings.enabled &&
-  academyBoardSlides.length > 0 &&
-  (() => {
-    const activeSlide =
-      academyBoardSlides[
-        Math.min(
-          activeBoardSlideIndex,
-          academyBoardSlides.length - 1
-        )
-      ];
-
-    const showPreviousSlide = () => {
-      setActiveBoardSlideIndex(
-        (current) =>
-          current === 0
-            ? academyBoardSlides.length - 1
-            : current - 1
-      );
-    };
-
-    const showNextSlide = () => {
-      setActiveBoardSlideIndex(
-        (current) =>
-          (current + 1) %
-          academyBoardSlides.length
-      );
-    };
-
-    const isMilestone =
-      activeSlide.kind === "milestone";
-
-    const accent =
-      isMilestone
-        ? "#facc15"
-        : activeSlide.category === "event"
-        ? "#34d399"
-        : activeSlide.category ===
-          "competition"
-        ? "#fb923c"
-        : "#60a5fa";
-
-    const tickerLabel =
-      isMilestone
-        ? "خبر الإنجاز"
-        : activeSlide.category === "event"
-        ? "فعالية"
-        : activeSlide.category ===
-          "competition"
-        ? "مسابقة"
-        : "إعلان";
-
-    return (
-      <div
+{/* Ø²Ø§ÙˆÙŠØ© Ø£ÙˆØ§Ø¦Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© â€” ØªØ¸Ù‡Ø± ØªÙ„Ù‚Ø§Ø¦ÙŠÙ‹Ø§ Ø¹Ù†Ø¯ ÙˆØ¬ÙˆØ¯ Ø¥Ù†Ø¬Ø§Ø² ÙØ¹Ù„ÙŠ */}
+{academyMilestones.length > 0 && (
+  <div
+    style={{
+      maxWidth: "1180px",
+      margin: "14px auto 4px",
+      padding: "0 16px",
+      display: "flex",
+    }}
+  >
+    <section
+      aria-label="Ø£ÙˆØ§Ø¦Ù„ Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠ"
+      style={{
+        width: "min(430px, 100%)",
+        marginLeft: "auto",
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "24px",
+        border: "1px solid #eadca8",
+        background:
+          "linear-gradient(145deg,#fffdf5 0%,#ffffff 52%,#f8f4ff 100%)",
+        boxShadow:
+          "0 12px 32px rgba(93,72,25,.10)",
+        padding: "16px",
+      }}
+    >
+      <span
+        aria-hidden="true"
         style={{
-          maxWidth: "1180px",
-          margin: "16px auto 6px",
-          padding: "0 16px",
+          position: "absolute",
+          top: "10px",
+          left: "14px",
+          fontSize: "16px",
+          opacity: 0.75,
         }}
       >
-        <style>{`
-          @keyframes academyBillboardEnter {
-            0% {
-              opacity: 0;
-              transform: translateY(10px) scale(.985);
-              filter: blur(3px);
-            }
-            100% {
-              opacity: 1;
-              transform: translateY(0) scale(1);
-              filter: blur(0);
-            }
-          }
+        âœ¨
+      </span>
 
-          @keyframes academyBillboardGlow {
-            0%, 100% {
-              opacity: .42;
-              transform: scale(1);
-            }
-            50% {
-              opacity: .72;
-              transform: scale(1.05);
-            }
-          }
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          bottom: "12px",
+          right: "14px",
+          fontSize: "14px",
+          opacity: 0.5,
+        }}
+      >
+        ðŸŽŠ
+      </span>
 
-          @keyframes academyTickerMove {
-            from { transform: translateX(-8%); }
-            to { transform: translateX(108%); }
-          }
-
-          @media (max-width: 620px) {
-            .academy-firsts-slide {
-              grid-template-columns:
-                68px minmax(0,1fr) !important;
-            }
-
-            .academy-firsts-points {
-              grid-column: 1 / -1;
-              justify-self: stretch;
-            }
-          }
-
-          @media (prefers-reduced-motion: reduce) {
-            .academy-firsts-slide,
-            .academy-firsts-glow,
-            .academy-firsts-ticker {
-              animation: none !important;
-            }
-          }
-        `}</style>
-
-        <section
-          aria-label="لوحة أكاديمية لغتي الرقمية"
-          onTouchStart={(event) => {
-            boardTouchStartX.current =
-              event.touches[0]?.clientX ??
-              null;
-          }}
-          onTouchEnd={(event) => {
-            const startX =
-              boardTouchStartX.current;
-
-            const endX =
-              event.changedTouches[0]
-                ?.clientX;
-
-            boardTouchStartX.current =
-              null;
-
-            if (
-              startX === null ||
-              typeof endX !== "number"
-            ) {
-              return;
-            }
-
-            const distance =
-              endX - startX;
-
-            if (
-              Math.abs(distance) < 45
-            ) {
-              return;
-            }
-
-            if (distance > 0) {
-              showPreviousSlide();
-            } else {
-              showNextSlide();
-            }
-          }}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: "11px",
+          marginBottom: "12px",
+        }}
+      >
+        <div
           style={{
-            position: "relative",
-            overflow: "hidden",
-            borderRadius: "28px",
-            border:
-              "1px solid rgba(250,204,21,.38)",
+            width: "48px",
+            height: "48px",
+            borderRadius: "16px",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+            fontSize: "27px",
             background:
-              "linear-gradient(135deg,#071b16 0%,#0b2f25 42%,#123d31 72%,#071b16 100%)",
+              "linear-gradient(135deg,#fff0a8,#fff9dc)",
+            border: "1px solid #efd77b",
             boxShadow:
-              "0 18px 44px rgba(5,46,34,.22), inset 0 1px 0 rgba(255,255,255,.08)",
-            color: "#ffffff",
-            minHeight: "300px",
-            isolation: "isolate",
+              "0 7px 18px rgba(161,121,15,.12)",
           }}
         >
-          <div
-            className="academy-firsts-glow"
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              width: "260px",
-              height: "260px",
-              borderRadius: "50%",
-              background: `radial-gradient(circle,${accent}40 0%,${accent}00 70%)`,
-              top: "-120px",
-              right: "-70px",
-              animation:
-                "academyBillboardGlow 5s ease-in-out infinite",
-              pointerEvents: "none",
-            }}
-          />
+          ðŸ†
+        </div>
 
-          <div
+        <div style={{ minWidth: 0 }}>
+          <strong
             style={{
-              position: "relative",
-              zIndex: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent:
-                "space-between",
-              gap: "12px",
-              padding:
-                "16px 18px 8px",
-              flexWrap: "wrap",
+              display: "block",
+              color: "#6f5200",
+              fontSize: "16px",
+              fontWeight: 900,
             }}
           >
-            <div
+            Ø£ÙˆØ§Ø¦Ù„ Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠ
+          </strong>
+
+          <span
+            style={{
+              display: "block",
+              marginTop: "2px",
+              color: "#7a7465",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+          >
+            Ù„Ø­Ø¸Ø§Øª ØªØ§Ø±ÙŠØ®ÙŠØ© Ù†ÙØ®Ø± Ø¨Ù‡Ø§ âœ¨
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "grid",
+          gap: "8px",
+        }}
+      >
+        {academyMilestones.map(
+          (milestone, index) => (
+            <article
+              key={milestone.id}
               style={{
-                display: "flex",
+                display: "grid",
+                gridTemplateColumns:
+                  "44px minmax(0,1fr) auto",
                 alignItems: "center",
-                gap: "11px",
+                gap: "10px",
+                padding: "10px",
+                borderRadius: "16px",
+                background:
+                  index === 0
+                    ? "linear-gradient(135deg,#fff8df,#ffffff)"
+                    : "#ffffff",
+                border:
+                  index === 0
+                    ? "1px solid #f0d98d"
+                    : "1px solid #ece9df",
               }}
             >
               <div
-                style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "15px",
-                  display: "grid",
-                  placeItems: "center",
-                  fontSize: "27px",
-                  color: "#5c4300",
-                  background:
-                    "linear-gradient(135deg,#fde68a,#facc15)",
-                  border:
-                    "1px solid rgba(255,255,255,.35)",
-                  boxShadow:
-                    "0 7px 20px rgba(250,204,21,.16)",
-                  flexShrink: 0,
-                }}
-              >
-                🏆
-              </div>
-
-              <div>
-                <strong
-                  style={{
-                    display: "block",
-                    fontSize:
-                      "clamp(17px,2.5vw,22px)",
-                    fontWeight: 900,
-                  }}
-                >
-                  لوحة أكاديمية لغتي
-                </strong>
-
-                <span
-                  style={{
-                    display: "block",
-                    marginTop: "2px",
-                    color: "#d1fae5",
-                    fontSize: "12px",
-                    fontWeight: 800,
-                  }}
-                >
-                  إنجازات • إعلانات • فعاليات • مسابقات
-                </span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "7px",
-                padding: "7px 11px",
-                borderRadius: "999px",
-                background:
-                  "rgba(255,255,255,.08)",
-                border:
-                  "1px solid rgba(255,255,255,.12)",
-                color: accent,
-                fontSize: "11px",
-                fontWeight: 900,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <span
                 aria-hidden="true"
                 style={{
-                  width: "7px",
-                  height: "7px",
-                  borderRadius: "50%",
-                  background: accent,
-                  boxShadow: `0 0 0 4px ${accent}22`,
-                }}
-              />
-              اللوحة المباشرة
-            </div>
-          </div>
-
-          <div
-            key={activeSlide.id}
-            className="academy-firsts-slide"
-            style={{
-              position: "relative",
-              zIndex: 2,
-              minHeight: "176px",
-              display: "grid",
-              gridTemplateColumns:
-                isMilestone
-                  ? "minmax(72px,100px) minmax(0,1fr) auto"
-                  : "minmax(72px,100px) minmax(0,1fr)",
-              alignItems: "center",
-              gap:
-                "clamp(13px,3vw,24px)",
-              padding:
-                "clamp(18px,3vw,26px) clamp(18px,4vw,34px)",
-              animation:
-                "academyBillboardEnter .55s ease both",
-            }}
-          >
-            <div
-              aria-hidden="true"
-              style={{
-                width:
-                  "clamp(72px,10vw,96px)",
-                height:
-                  "clamp(72px,10vw,96px)",
-                borderRadius: "26px",
-                display: "grid",
-                placeItems: "center",
-                fontSize:
-                  "clamp(38px,6vw,58px)",
-                background:
-                  "linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.06))",
-                border:
-                  "1px solid rgba(255,255,255,.16)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,.12), 0 12px 30px rgba(0,0,0,.14)",
-              }}
-            >
-              {activeSlide.icon}
-            </div>
-
-            <div
-              style={{ minWidth: 0 }}
-            >
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  marginBottom: "6px",
-                  color: accent,
-                  fontSize: "12px",
-                  fontWeight: 900,
-                }}
-              >
-                ✨ {activeSlide.eyebrow}
-              </span>
-
-              <strong
-                style={{
-                  display: "block",
-                  color: "#ffffff",
-                  fontSize:
-                    isMilestone
-                      ? "clamp(24px,5vw,42px)"
-                      : "clamp(23px,4.5vw,38px)",
-                  lineHeight: 1.25,
-                  fontWeight: 900,
-                  overflow: "hidden",
-                  textOverflow:
-                    "ellipsis",
-                  whiteSpace:
-                    isMilestone
-                      ? "nowrap"
-                      : "normal",
-                  textShadow:
-                    "0 3px 16px rgba(0,0,0,.18)",
-                }}
-              >
-                {activeSlide.title}
-              </strong>
-
-              <div
-                style={{
-                  marginTop: "8px",
-                  color: "#d1fae5",
-                  fontSize:
-                    "clamp(13px,2.3vw,17px)",
-                  lineHeight: 1.7,
-                  fontWeight: 800,
-                }}
-              >
-                {activeSlide.message}
-              </div>
-            </div>
-
-            {activeSlide.kind ===
-              "milestone" && (
-              <div
-                className="academy-firsts-points"
-                style={{
-                  minWidth: "78px",
-                  padding: "12px 13px",
-                  borderRadius: "20px",
-                  textAlign: "center",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "14px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "23px",
                   background:
-                    "linear-gradient(145deg,#fff8d8,#fde68a)",
-                  color: "#6b4d00",
-                  border:
-                    "1px solid rgba(255,255,255,.45)",
-                  boxShadow:
-                    "0 10px 25px rgba(250,204,21,.13)",
+                    index === 0
+                      ? "#fff1b8"
+                      : "#f6f3ff",
                 }}
               >
-                <strong
-                  style={{
-                    display: "block",
-                    fontSize:
-                      "clamp(22px,4vw,32px)",
-                    lineHeight: 1,
-                    fontWeight: 900,
-                  }}
-                >
-                  {activeSlide.points}
-                </strong>
-
-                <span
-                  style={{
-                    display: "block",
-                    marginTop: "5px",
-                    fontSize: "10px",
-                    fontWeight: 900,
-                  }}
-                >
-                  نقطة
-                </span>
-              </div>
-            )}
-          </div>
-
-          {academyBoardSlides.length >
-            1 && (
-            <div
-              style={{
-                position: "relative",
-                zIndex: 3,
-                display: "flex",
-                alignItems: "center",
-                justifyContent:
-                  "center",
-                gap: "8px",
-                padding:
-                  "0 16px 13px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={
-                  showPreviousSlide
-                }
-                aria-label="الشريحة السابقة"
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  border:
-                    "1px solid rgba(255,255,255,.16)",
-                  background:
-                    "rgba(255,255,255,.08)",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  fontSize: "17px",
-                  fontWeight: 900,
-                }}
-              >
-                ›
-              </button>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent:
-                    "center",
-                  gap: "6px",
-                  flex: 1,
-                  flexWrap: "wrap",
-                }}
-              >
-                {academyBoardSlides.map(
-                  (slide, index) => (
-                    <button
-                      key={slide.id}
-                      type="button"
-                      onClick={() =>
-                        setActiveBoardSlideIndex(
-                          index
-                        )
-                      }
-                      aria-label={`عرض الشريحة ${index + 1}`}
-                      style={{
-                        width:
-                          index ===
-                          activeBoardSlideIndex
-                            ? "26px"
-                            : "8px",
-                        height: "8px",
-                        borderRadius:
-                          "999px",
-                        border: 0,
-                        padding: 0,
-                        background:
-                          index ===
-                          activeBoardSlideIndex
-                            ? accent
-                            : "rgba(255,255,255,.28)",
-                        cursor: "pointer",
-                        transition:
-                          "width .25s ease, background .25s ease",
-                      }}
-                    />
-                  )
+                {getMilestoneIcon(
+                  milestone.pointsReached
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={showNextSlide}
-                aria-label="الشريحة التالية"
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  border:
-                    "1px solid rgba(255,255,255,.16)",
-                  background:
-                    "rgba(255,255,255,.08)",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  fontSize: "17px",
-                  fontWeight: 900,
-                }}
-              >
-                ‹
-              </button>
-            </div>
-          )}
-
-          {academyBoardSettings
-            .tickerEnabled && (
-            <div
-              style={{
-                position: "relative",
-                zIndex: 4,
-                display: "grid",
-                gridTemplateColumns:
-                  "auto minmax(0,1fr)",
-                alignItems: "center",
-                minHeight: "38px",
-                borderTop:
-                  "1px solid rgba(255,255,255,.10)",
-                background:
-                  "rgba(0,0,0,.17)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  alignSelf: "stretch",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0 13px",
-                  background: accent,
-                  color: "#17251f",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {tickerLabel}
-              </div>
-
-              <div
-                style={{
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  direction: "ltr",
-                }}
-              >
-                <span
-                  className="academy-firsts-ticker"
+              <div style={{ minWidth: 0 }}>
+                <strong
                   style={{
-                    display:
-                      "inline-block",
-                    minWidth: "100%",
-                    padding: "0 18px",
-                    color: "#ecfdf5",
-                    fontSize: "11px",
-                    fontWeight: 800,
-                    direction: "rtl",
-                    animation:
-                      "academyTickerMove 13s linear infinite",
+                    display: "block",
+                    color: "#24382f",
+                    fontSize: "14px",
+                    fontWeight: 900,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {academyBoardSettings
-                    .tickerText}
-                  &nbsp;&nbsp; ✦
-                  &nbsp;&nbsp;
-                  {activeSlide.eyebrow}
-                  {" — "}
-                  {activeSlide.title}
+                  {getPublicStudentName(
+                    milestone.studentName
+                  )}
+                </strong>
+
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: "3px",
+                    color: "#6b756f",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {milestone.title}
                 </span>
               </div>
-            </div>
-          )}
-        </section>
-      </div>
-    );
-  })()}
 
-{/* أبطال الأكاديمية في أسبوع */}
+              <div
+                style={{
+                  minWidth: "48px",
+                  textAlign: "center",
+                  padding: "7px 8px",
+                  borderRadius: "12px",
+                  background: "#f7f3ff",
+                  color: "#6d4bc3",
+                  fontWeight: 900,
+                  fontSize: "12px",
+                }}
+              >
+                {milestone.pointsReached}
+
+                <div
+                  style={{
+                    marginTop: "1px",
+                    fontSize: "9px",
+                    color: "#8477a4",
+                  }}
+                >
+                  Ù†Ù‚Ø·Ø©
+                </div>
+              </div>
+            </article>
+          )
+        )}
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          marginTop: "10px",
+          paddingTop: "9px",
+          borderTop:
+            "1px dashed #e5ddc3",
+          color: "#7b6a34",
+          fontSize: "11px",
+          fontWeight: 800,
+          textAlign: "center",
+        }}
+      >
+        ðŸŒŸ ÙƒÙ„ Ø¥Ù†Ø¬Ø§Ø² Ø¬Ø¯ÙŠØ¯ ÙŠÙƒØªØ¨ Ø³Ø·Ø±Ù‹Ø§ ÙÙŠ ØªØ§Ø±ÙŠØ® Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©
+      </div>
+    </section>
+  </div>
+)}
+
+{/* Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© ÙÙŠ Ø£Ø³Ø¨ÙˆØ¹ */}
 
 <section
   style={{
@@ -1988,7 +1390,7 @@ useEffect(() => {
     overflow: "hidden",
   }}
 >
-  {/* زخرفة */}
+  {/* Ø²Ø®Ø±ÙØ© */}
 
   <div
     style={{
@@ -2004,7 +1406,7 @@ useEffect(() => {
     }}
   />
 
-  {/* رأس الشريط */}
+  {/* Ø±Ø£Ø³ Ø§Ù„Ø´Ø±ÙŠØ· */}
 
   <div
     style={{
@@ -2044,7 +1446,7 @@ useEffect(() => {
           flexShrink: 0,
         }}
       >
-        🏆
+        ðŸ†
       </div>
 
       <div>
@@ -2056,7 +1458,7 @@ useEffect(() => {
             fontWeight: 900,
           }}
         >
-          أبطال الأكاديمية في أسبوع
+          Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© ÙÙŠ Ø£Ø³Ø¨ÙˆØ¹
         </strong>
 
         <span
@@ -2068,8 +1470,8 @@ useEffect(() => {
             fontWeight: 700,
           }}
         >
-          ✨ نحتفي بالإنجاز والتطور
-          والالتزام
+          âœ¨ Ù†Ø­ØªÙÙŠ Ø¨Ø§Ù„Ø¥Ù†Ø¬Ø§Ø² ÙˆØ§Ù„ØªØ·ÙˆØ±
+          ÙˆØ§Ù„Ø§Ù„ØªØ²Ø§Ù…
         </span>
       </div>
     </div>
@@ -2089,11 +1491,11 @@ useEffect(() => {
         whiteSpace: "nowrap",
       }}
     >
-      اكتشف أبطال الأسبوع ←
+      Ø§ÙƒØªØ´Ù Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹ â†
     </Link>
   </div>
 
-  {/* الأبطال الثلاثة */}
+  {/* Ø§Ù„Ø£Ø¨Ø·Ø§Ù„ Ø§Ù„Ø«Ù„Ø§Ø«Ø© */}
 
   {weeklyHeroes.length > 0 ? (
     <div
@@ -2113,9 +1515,9 @@ useEffect(() => {
             hero.weeklyTrack ===
             "achievement"
               ? {
-                  icon: "🥇",
+                  icon: "ðŸ¥‡",
                   label:
-                    "الأكثر إنجازًا",
+                    "Ø§Ù„Ø£ÙƒØ«Ø± Ø¥Ù†Ø¬Ø§Ø²Ù‹Ø§",
                   background:
                     "#fffaf0",
                   border:
@@ -2126,9 +1528,9 @@ useEffect(() => {
               : hero.weeklyTrack ===
                 "progress"
               ? {
-                  icon: "🌱",
+                  icon: "ðŸŒ±",
                   label:
-                    "الأكثر تطورًا",
+                    "Ø§Ù„Ø£ÙƒØ«Ø± ØªØ·ÙˆØ±Ù‹Ø§",
                   background:
                     "#f0fdf4",
                   border:
@@ -2137,9 +1539,9 @@ useEffect(() => {
                     "#15803d",
                 }
               : {
-                  icon: "⭐",
+                  icon: "â­",
                   label:
-                    "الأكثر التزامًا",
+                    "Ø§Ù„Ø£ÙƒØ«Ø± Ø§Ù„ØªØ²Ø§Ù…Ù‹Ø§",
                   background:
                     "#eff6ff",
                   border:
@@ -2165,7 +1567,7 @@ useEffect(() => {
                 minWidth: 0,
               }}
             >
-              {/* الأفاتار */}
+              {/* Ø§Ù„Ø£ÙØ§ØªØ§Ø± */}
 
               <div
                 style={{
@@ -2206,7 +1608,7 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* بيانات البطل */}
+              {/* Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¨Ø·Ù„ */}
 
               <div
                 style={{
@@ -2298,7 +1700,7 @@ useEffect(() => {
                         800,
                     }}
                   >
-                    ✨ {hero.badge}
+                    âœ¨ {hero.badge}
                   </span>
                 )}
               </div>
@@ -2317,8 +1719,8 @@ useEffect(() => {
         fontWeight: 700,
       }}
     >
-      🌟 قريبًا نحتفي هنا بأبطال
-      هذا الأسبوع.
+      ðŸŒŸ Ù‚Ø±ÙŠØ¨Ù‹Ø§ Ù†Ø­ØªÙÙŠ Ù‡Ù†Ø§ Ø¨Ø£Ø¨Ø·Ø§Ù„
+      Ù‡Ø°Ø§ Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹.
     </div>
   )}
 </section>
@@ -2335,22 +1737,22 @@ useEffect(() => {
 
       <WeeklyPicks />
 
-      {/* بوابات الأكاديمية */}
+      {/* Ø¨ÙˆØ§Ø¨Ø§Øª Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© */}
 
       <section className="academy-gates academy-gates--compact">
         <div className="academy-gates-header">
           <span className="section-label">
-            بوابات الأكاديمية
+            Ø¨ÙˆØ§Ø¨Ø§Øª Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©
           </span>
 
           <h2>
-            اختر بوابتك إلى
-            أكاديمية لغتي
+            Ø§Ø®ØªØ± Ø¨ÙˆØ§Ø¨ØªÙƒ Ø¥Ù„Ù‰
+            Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠ
           </h2>
 
           <p>
-            وصول سريع وواضح لكل
-            طالب وولي أمر ومعلم.
+            ÙˆØµÙˆÙ„ Ø³Ø±ÙŠØ¹ ÙˆÙˆØ§Ø¶Ø­ Ù„ÙƒÙ„
+            Ø·Ø§Ù„Ø¨ ÙˆÙˆÙ„ÙŠ Ø£Ù…Ø± ÙˆÙ…Ø¹Ù„Ù….
           </p>
         </div>
 
@@ -2360,28 +1762,28 @@ useEffect(() => {
             className="academy-gate academy-gate--featured student-gate"
           >
             <span className="academy-gate-icon">
-              🎒
+              ðŸŽ’
             </span>
 
             <div className="academy-gate-content">
               <span className="academy-gate-label">
-                بوابة الطالب
+                Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„Ø·Ø§Ù„Ø¨
               </span>
 
               <h3>
-                ابدأ رحلتك
-                التعليمية
+                Ø§Ø¨Ø¯Ø£ Ø±Ø­Ù„ØªÙƒ
+                Ø§Ù„ØªØ¹Ù„ÙŠÙ…ÙŠØ©
               </h3>
 
               <p>
-                تابع خطتك وواجباتك
-                ودروسك وإنجازاتك.
+                ØªØ§Ø¨Ø¹ Ø®Ø·ØªÙƒ ÙˆÙˆØ§Ø¬Ø¨Ø§ØªÙƒ
+                ÙˆØ¯Ø±ÙˆØ³Ùƒ ÙˆØ¥Ù†Ø¬Ø§Ø²Ø§ØªÙƒ.
               </p>
 
               <span className="academy-gate-action">
-                دخول الطالب
+                Ø¯Ø®ÙˆÙ„ Ø§Ù„Ø·Ø§Ù„Ø¨
                 <span aria-hidden="true">
-                  ←
+                  â†
                 </span>
               </span>
             </div>
@@ -2393,21 +1795,21 @@ useEffect(() => {
               className="academy-gate academy-gate--small parent-gate"
             >
               <span className="academy-gate-icon">
-                🤝
+                ðŸ¤
               </span>
 
               <div className="academy-gate-content">
                 <span className="academy-gate-label">
-                  شريك النجاح
+                  Ø´Ø±ÙŠÙƒ Ø§Ù„Ù†Ø¬Ø§Ø­
                 </span>
 
                 <h3>
-                  دخول ولي الأمر
+                  Ø¯Ø®ÙˆÙ„ ÙˆÙ„ÙŠ Ø§Ù„Ø£Ù…Ø±
                 </h3>
 
                 <p>
-                  تابع تقدم ابنك
-                  واحتفِ بإنجازاته.
+                  ØªØ§Ø¨Ø¹ ØªÙ‚Ø¯Ù… Ø§Ø¨Ù†Ùƒ
+                  ÙˆØ§Ø­ØªÙÙ Ø¨Ø¥Ù†Ø¬Ø§Ø²Ø§ØªÙ‡.
                 </p>
               </div>
 
@@ -2415,7 +1817,7 @@ useEffect(() => {
                 className="academy-gate-arrow"
                 aria-hidden="true"
               >
-                ←
+                â†
               </span>
             </Link>
 
@@ -2424,21 +1826,21 @@ useEffect(() => {
               className="academy-gate academy-gate--small teacher-gate"
             >
               <span className="academy-gate-icon">
-                👨‍🏫
+                ðŸ‘¨â€ðŸ«
               </span>
 
               <div className="academy-gate-content">
                 <span className="academy-gate-label">
-                  بوابة المعلم
+                  Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„Ù…Ø¹Ù„Ù…
                 </span>
 
                 <h3>
-                  دخول المعلم
+                  Ø¯Ø®ÙˆÙ„ Ø§Ù„Ù…Ø¹Ù„Ù…
                 </h3>
 
                 <p>
-                  إدارة الطلاب والدروس
-                  والواجبات والأبطال.
+                  Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø·Ù„Ø§Ø¨ ÙˆØ§Ù„Ø¯Ø±ÙˆØ³
+                  ÙˆØ§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª ÙˆØ§Ù„Ø£Ø¨Ø·Ø§Ù„.
                 </p>
               </div>
 
@@ -2446,7 +1848,7 @@ useEffect(() => {
                 className="academy-gate-arrow"
                 aria-hidden="true"
               >
-                ←
+                â†
               </span>
             </Link>
           </div>
@@ -2457,18 +1859,18 @@ useEffect(() => {
         <div className="section-heading">
           <div>
             <span className="section-label">
-              أقسام الأكاديمية
+              Ø£Ù‚Ø³Ø§Ù… Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©
             </span>
 
             <h2>
-              اختر رحلتك
-              التعليمية
+              Ø§Ø®ØªØ± Ø±Ø­Ù„ØªÙƒ
+              Ø§Ù„ØªØ¹Ù„ÙŠÙ…ÙŠØ©
             </h2>
           </div>
 
           <p>
-            اضغط على القسم الذي
-            ترغب في البدء به
+            Ø§Ø¶ØºØ· Ø¹Ù„Ù‰ Ø§Ù„Ù‚Ø³Ù… Ø§Ù„Ø°ÙŠ
+            ØªØ±ØºØ¨ ÙÙŠ Ø§Ù„Ø¨Ø¯Ø¡ Ø¨Ù‡
           </p>
         </div>
 
@@ -2505,7 +1907,7 @@ useEffect(() => {
                 </div>
 
                 <span className="card-arrow">
-                  ←
+                  â†
                 </span>
               </Link>
             )
@@ -2515,24 +1917,24 @@ useEffect(() => {
 
       <section className="support-banner">
         <div className="support-icon">
-          🌱
+          ðŸŒ±
         </div>
 
         <div className="support-text">
           <span>
-            زاوية مخصصة للتأسيس
+            Ø²Ø§ÙˆÙŠØ© Ù…Ø®ØµØµØ© Ù„Ù„ØªØ£Ø³ÙŠØ³
           </span>
 
           <h2>
-            هل تحتاج إلى مساعدة
-            في القراءة؟
+            Ù‡Ù„ ØªØ­ØªØ§Ø¬ Ø¥Ù„Ù‰ Ù…Ø³Ø§Ø¹Ø¯Ø©
+            ÙÙŠ Ø§Ù„Ù‚Ø±Ø§Ø¡Ø©ØŸ
           </h2>
 
           <p>
-            ابدأ رحلة الدعم من
-            الحروف والأصوات، ثم
-            انتقل إلى المقاطع
-            والكلمات والجمل.
+            Ø§Ø¨Ø¯Ø£ Ø±Ø­Ù„Ø© Ø§Ù„Ø¯Ø¹Ù… Ù…Ù†
+            Ø§Ù„Ø­Ø±ÙˆÙ ÙˆØ§Ù„Ø£ØµÙˆØ§ØªØŒ Ø«Ù…
+            Ø§Ù†ØªÙ‚Ù„ Ø¥Ù„Ù‰ Ø§Ù„Ù…Ù‚Ø§Ø·Ø¹
+            ÙˆØ§Ù„ÙƒÙ„Ù…Ø§Øª ÙˆØ§Ù„Ø¬Ù…Ù„.
           </p>
         </div>
 
@@ -2540,12 +1942,12 @@ useEffect(() => {
           href="/support"
           className="support-button"
         >
-          ابدأ رحلة الدعم
-          <span> ←</span>
+          Ø§Ø¨Ø¯Ø£ Ø±Ø­Ù„Ø© Ø§Ù„Ø¯Ø¹Ù…
+          <span> â†</span>
         </Link>
       </section>
 
-      {/* الهوية الرسمية للأكاديمية */}
+      {/* Ø§Ù„Ù‡ÙˆÙŠØ© Ø§Ù„Ø±Ø³Ù…ÙŠØ© Ù„Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© */}
 
       <section
         style={{
@@ -2598,7 +2000,7 @@ useEffect(() => {
                 0,
             }}
           >
-            🏫
+            ðŸ«
           </div>
 
           <div
@@ -2620,7 +2022,7 @@ useEffect(() => {
                   "3px",
               }}
             >
-              الهوية الرسمية
+              Ø§Ù„Ù‡ÙˆÙŠØ© Ø§Ù„Ø±Ø³Ù…ÙŠØ©
             </div>
 
             <h2
@@ -2635,7 +2037,7 @@ useEffect(() => {
                   1.5,
               }}
             >
-              ابتدائية ومتوسطة زيد بن الخطاب والشهداء
+              Ø§Ø¨ØªØ¯Ø§Ø¦ÙŠØ© ÙˆÙ…ØªÙˆØ³Ø·Ø© Ø²ÙŠØ¯ Ø¨Ù† Ø§Ù„Ø®Ø·Ø§Ø¨ ÙˆØ§Ù„Ø´Ù‡Ø¯Ø§Ø¡
             </h2>
 
             <div
@@ -2656,11 +2058,11 @@ useEffect(() => {
               }}
             >
               <span>
-                📍 محايل عسير
+                ðŸ“ Ù…Ø­Ø§ÙŠÙ„ Ø¹Ø³ÙŠØ±
               </span>
 
               <span>
-                👨‍🏫 بإشراف الأستاذ / إبراهيم أحمد
+                ðŸ‘¨â€ðŸ« Ø¨Ø¥Ø´Ø±Ø§Ù Ø§Ù„Ø£Ø³ØªØ§Ø° / Ø¥Ø¨Ø±Ø§Ù‡ÙŠÙ… Ø£Ø­Ù…Ø¯
               </span>
             </div>
 
@@ -2686,7 +2088,7 @@ useEffect(() => {
                   "ltr",
               }}
             >
-              ✉️ t267707@asrb.moe.gov.sa
+              âœ‰ï¸ t267707@asrb.moe.gov.sa
             </a>
           </div>
 
@@ -2708,14 +2110,14 @@ useEffect(() => {
                 "nowrap",
             }}
           >
-            📚 نتعلّم… نقرأ… نبدع
+            ðŸ“š Ù†ØªØ¹Ù„Ù‘Ù…â€¦ Ù†Ù‚Ø±Ø£â€¦ Ù†Ø¨Ø¯Ø¹
           </div>
         </div>
       </section>
 
       <footer className="academy-footer">
         <span>
-          أكاديمية لغتي الرقمية © 2026
+          Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ© Ù„ØºØªÙŠ Ø§Ù„Ø±Ù‚Ù…ÙŠØ© Â© 2026
         </span>
       </footer>
     </main>

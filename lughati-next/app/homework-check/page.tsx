@@ -204,7 +204,7 @@ async function confirmHomework() {
 
   try {
     setSaving(true);
-    setMessage("جارٍ إرسال تأكيدك وإضافة مكافأتك...");
+    setMessage("جارٍ إرسال تأكيد إنجازك إلى المعلم...");
 
     let receivedReward = false;
 
@@ -244,21 +244,19 @@ async function confirmHomework() {
           : 0;
 
       if (!alreadyCompleted) {
-        receivedReward = true;
+  receivedReward = false;
 
-        transaction.set(
-          studentReference,
-          {
-            studentId,
-            studentName,
-            classroom,
-            points: currentPoints + 10,
-            stars: currentStars + 1,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+  transaction.set(
+    studentReference,
+    {
+      studentId,
+      studentName,
+      classroom,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
 
       transaction.set(
         completionReference,
@@ -282,14 +280,18 @@ async function confirmHomework() {
           teacherReviewed: completionSnapshot.exists()
             ? completionSnapshot.data().teacherReviewed === true
             : false,
+rewardGranted:
+  completionSnapshot.data()?.rewardGranted === true,
+awardedPoints:
+  typeof completionSnapshot.data()?.awardedPoints === "number"
+    ? completionSnapshot.data()?.awardedPoints ?? 0
+    : 0,
 
-          rewardGranted:
-            alreadyCompleted ||
-            completionSnapshot.data()?.rewardGranted === true ||
-            receivedReward,
-
-          awardedPoints: receivedReward ? 10 : 0,
-          awardedStars: receivedReward ? 1 : 0,
+awardedStars:
+  typeof completionSnapshot.data()?.awardedStars === "number"
+    ? completionSnapshot.data()?.awardedStars ?? 0
+    : 0,
+    
 
           updatedAt: serverTimestamp(),
         },
@@ -315,15 +317,9 @@ async function confirmHomework() {
     setCompleted(true);
     setCompletedAt(time);
 
-    if (receivedReward) {
-      setMessage(
-        `أحسنت يا ${studentName}! حصلت على نجمة ⭐ و10 نقاط، وتم إرسال إنجازك إلى المعلم ✅`
-      );
-    } else {
-      setMessage(
-        `تم تحديث تأكيد واجبك يا ${studentName}، وقد حصلت على مكافأة هذا الواجب سابقًا ✅`
-      );
-    }
+    setMessage(
+  `أحسنت يا ${studentName}! تم إرسال إنجازك إلى المعلم ✅ وستُحتسب النقاط بعد مراجعة الواجب واعتماده.`
+);
   } catch (error) {
     console.error(error);
     setMessage(
@@ -591,8 +587,8 @@ async function confirmHomework() {
           ) : (
             <div style={styles.completedBox}>
               <strong>
-                أحسنت يا {studentName}! حصلت على نجمة ⭐
-              </strong>
+  أحسنت يا {studentName}! تم تسجيل إنجازك ✅
+</strong>
 
               <span>الواجب: {homework.title}</span>
               <span>طريقة الإنجاز: {method}</span>

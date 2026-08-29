@@ -9,9 +9,9 @@ import {
   setDoc,
   updateDoc,
   query,
-where,
-getDoc,
-runTransaction,
+  where,
+  runTransaction,
+  arrayUnion,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { checkAndRegisterPointMilestones } from "../../lib/academyMilestones";
@@ -733,13 +733,23 @@ if (
     );
 
     transaction.set(
-      studentReference,
-      {
-        points: newPoints,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+  studentReference,
+  {
+    points: newPoints,
+    pointsHistory: arrayUnion({
+      reason: "اعتماد واجب منصة مدرستي",
+      points: 2,
+      stars: 0,
+      category: "مدرستي",
+      date: new Date().toLocaleDateString("en-CA", {
+        timeZone: "Asia/Riyadh",
+      }),
+      createdAt: new Date(),
+    }),
+    updatedAt: serverTimestamp(),
+  },
+  { merge: true }
+);
 
     transaction.set(
       completionReference,
@@ -806,6 +816,16 @@ if (
       studentReference,
       {
         points: newPoints,
+        pointsHistory: arrayUnion({
+          reason: "اعتماد الواجب الإبداعي",
+          points: 4,
+          stars: 0,
+          category: "واجب إبداعي",
+          date: new Date().toLocaleDateString("en-CA", {
+            timeZone: "Asia/Riyadh",
+          }),
+          createdAt: new Date(),
+        }),
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -965,18 +985,7 @@ async function approveReading(row: StudentHomeworkRow) {
 
     await saveDailyReadingRecord(row);
 
-    const readingProgress =
-      await getReadingProgress(row.studentId);
-
-    if (
-      readingProgress.readingDays > 0 &&
-      readingProgress.readingDays % 5 === 0
-    ) {
-      await grantReadingCycleReward(
-        row,
-        readingProgress.completedCycles
-      );
-    }
+   
 
     setCompletions((currentCompletions) =>
       currentCompletions.map((completion) =>
@@ -1145,6 +1154,16 @@ async function approveSolution(row: StudentHomeworkRow) {
       studentReference,
       {
         points: newPoints,
+        pointsHistory: arrayUnion({
+          reason: "اعتماد واجب الكتاب/الدفتر",
+          points: 3,
+          stars: 0,
+          category: "واجب معتمد",
+          date: new Date().toLocaleDateString("en-CA", {
+            timeZone: "Asia/Riyadh",
+          }),
+          createdAt: new Date(),
+        }),
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -1222,17 +1241,6 @@ async function rejectSolution(row: StudentHomeworkRow) {
     setUpdatingId("");
   }
 }
-async function getStudentReadingDays(studentId: string) {
-  const readingQuery = query(
-    collection(db, "dailyReadingRecords"),
-    where("studentId", "==", studentId),
-    where("approved", "==", true)
-  );
-
-  const readingSnapshot = await getDocs(readingQuery);
-
-  return readingSnapshot.size;
-}
   function formatDueDate(dateValue: string) {
     if (!dateValue) return "غير محدد";
 
@@ -1244,135 +1252,6 @@ async function getStudentReadingDays(studentId: string) {
       day: "numeric",
     });
   }
-  async function getReadingProgress(studentId: string) {
-  const readingDays = await getStudentReadingDays(studentId);
-
-  const completedCycles = Math.floor(readingDays / 5);
-  const progressInCurrentCycle = readingDays % 5;
-
-  return {
-    readingDays,
-    completedCycles,
-    progressInCurrentCycle,
-  };
-}
-async function saveReadingCycleReward(
-  row: StudentHomeworkRow,
-  cycleNumber: number
-) {
-  if (cycleNumber <= 0) {
-    return;
-  }
-
-  const rewardId = `${row.studentId}_reading-cycle-${cycleNumber}`;
-
-  await setDoc(
-    doc(db, "readingCycleRewards", rewardId),
-    {
-      studentId: row.studentId,
-      studentName: row.studentName,
-      classroom: row.classroom,
-      cycleNumber,
-      readingDaysRequired: cycleNumber * 5,
-      rewardType: "reading-five-days",
-      points: 50,
-      granted: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-}
-async function grantReadingCycleReward(
-  row: StudentHomeworkRow,
-  cycleNumber: number
-) {
-  if (cycleNumber <= 0) {
-    return;
-  }
-
-  const rewardId =
-    `${row.studentId}_reading-cycle-${cycleNumber}`;
-
-  const rewardReference = doc(
-    db,
-    "readingCycleRewards",
-    rewardId
-  );
-
-  const studentReference = doc(
-    db,
-    "students",
-    row.studentId
-  );
-
-  await runTransaction(db, async (transaction) => {
-    const rewardSnapshot =
-      await transaction.get(rewardReference);
-
-    const studentSnapshot =
-      await transaction.get(studentReference);
-
-    // إذا مُنحت مكافأة هذه الدورة سابقًا، لا نفعل شيئًا.
-    if (
-      rewardSnapshot.exists() &&
-      rewardSnapshot.data().granted === true
-    ) {
-      return;
-    }
-
-    const currentPoints =
-      studentSnapshot.exists() &&
-      typeof studentSnapshot.data().points === "number"
-        ? studentSnapshot.data().points
-        : 0;
-
-    const newPoints = currentPoints + 50;
-
-    await checkAndRegisterPointMilestones(
-      transaction,
-      {
-        studentId: row.studentId,
-        studentName: row.studentName,
-        classroom: row.classroom,
-        previousPoints: currentPoints,
-        newPoints,
-        rewardType: "reading-five-days",
-      }
-    );
-
-    // إضافة 50 نقطة إلى رصيد الطالب الحقيقي.
-    transaction.set(
-      studentReference,
-      {
-        studentId: row.studentId,
-        studentName: row.studentName,
-        classroom: row.classroom,
-        points: newPoints,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    // إغلاق مكافأة هذه الدورة نهائيًا.
-    transaction.set(
-      rewardReference,
-      {
-        studentId: row.studentId,
-        studentName: row.studentName,
-        classroom: row.classroom,
-        cycleNumber,
-        readingDaysRequired: cycleNumber * 5,
-        rewardType: "reading-five-days",
-        points: 50,
-        granted: true,
-        grantedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
-}
 const today = new Date();
 
 const todayDateKey = [
