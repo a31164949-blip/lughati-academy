@@ -248,7 +248,11 @@ export async function GET() {
       adminDb.collection("weeklyPlanViews").get(),
       adminDb.collection("homeworkCompletions").get(),
       adminDb.collection("reading-submissions").get(),
-      adminDb.collection("dailyCompletions").get(),
+      adminDb
+        .collection("dailyCompletions")
+        .where("date", ">=", startDate)
+        .where("date", "<=", endDate)
+        .get(),
     ]);
 
     const rows = new Map<string, EngagementRow>();
@@ -364,7 +368,7 @@ export async function GET() {
 
       const readingDate =
         typeof data.readingDate === "string" && data.readingDate.trim()
-          ? data.readingDate.trim().slice(0, 5)
+          ? data.readingDate.trim().slice(0, 10)
           : firstDateKey(data, ["reviewedAt", "approvedAt", "createdAt"]);
 
       if (!isInsideWeek(readingDate, startDate, endDate)) return;
@@ -384,7 +388,7 @@ export async function GET() {
 
       const dateKey =
         typeof data.date === "string" && data.date.trim()
-          ? data.date.trim().slice(0, 5)
+          ? data.date.trim().slice(0, 10)
           : firstDateKey(data, ["completedAt", "updatedAt", "createdAt"]);
 
       if (!isInsideWeek(dateKey, startDate, endDate)) return;
