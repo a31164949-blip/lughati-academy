@@ -15,6 +15,16 @@ type PublicAnnouncement = {
   updatedAt: number;
 };
 
+type PublicAnnouncementsPayload = {
+  success: true;
+  announcements: PublicAnnouncement[];
+};
+
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+let cachedPayload: PublicAnnouncementsPayload | null = null;
+let cachedAt = 0;
+
 function toMillis(value: unknown): number {
   if (
     value &&
@@ -32,12 +42,43 @@ function toMillis(value: unknown): number {
   return 0;
 }
 
+function jsonWithCache(
+  payload: PublicAnnouncementsPayload,
+  cacheState: "HIT" | "MISS" | "STALE"
+) {
+  return NextResponse.json(payload, {
+    status: 200,
+    headers: {
+      "Cache-Control":
+        "public, s-maxage=600, stale-while-revalidate=120",
+      "X-Announcements-Cache": cacheState,
+    },
+  });
+}
+
 export async function GET() {
+  const now = Date.now();
+
+  if (
+    cachedPayload &&
+    now - cachedAt < CACHE_TTL_MS
+  ) {
+    return jsonWithCache(
+      cachedPayload,
+      "HIT"
+    );
+  }
+
   try {
     const { adminDb } = getFirebaseAdmin();
 
+    /*
+      نقرأ الإعلانات المنشورة فقط بدل قراءة المجموعة كاملة،
+      ثم نرتبها محليًا حتى لا نحتاج إلى فهرس مركب إضافي.
+    */
     const snapshot = await adminDb
       .collection("announcements")
+      .where("published", "==", true)
       .get();
 
     const announcements: PublicAnnouncement[] =
@@ -65,17 +106,13 @@ export async function GET() {
 
             pinned: data.pinned === true,
 
-            published: data.published === true,
+            published: true,
 
             createdAt: toMillis(data.createdAt),
 
             updatedAt: toMillis(data.updatedAt),
           };
         })
-        .filter(
-          (announcement) =>
-            announcement.published
-        )
         .sort((a, b) => {
           if (a.pinned !== b.pinned) {
             return a.pinned ? -1 : 1;
@@ -107,15 +144,30 @@ export async function GET() {
           );
         });
 
-    return NextResponse.json({
+    const payload: PublicAnnouncementsPayload = {
       success: true,
       announcements,
-    });
+    };
+
+    cachedPayload = payload;
+    cachedAt = now;
+
+    return jsonWithCache(
+      payload,
+      "MISS"
+    );
   } catch (error) {
     console.error(
       "Public announcements error:",
       error
     );
+
+    if (cachedPayload) {
+      return jsonWithCache(
+        cachedPayload,
+        "STALE"
+      );
+    }
 
     return NextResponse.json(
       {
@@ -126,6 +178,10 @@ export async function GET() {
       },
       {
         status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Announcements-Cache": "ERROR",
+        },
       }
     );
   }

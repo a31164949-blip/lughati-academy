@@ -25,6 +25,29 @@ const WEIGHTS = {
   weeklyLogin: 1,
 } as const;
 
+const CACHE_TTL_MS = 60 * 60 * 1000;
+
+type RankingItem = {
+  rank: number;
+  studentId: string;
+  studentName: string;
+  score: number;
+};
+
+type WeeklyEngagementPayload = {
+  success: true;
+  title: string;
+  weekStart: string;
+  weekEnd: string;
+  weights: typeof WEIGHTS;
+  rankings: RankingItem[];
+  updatedAt: string;
+  displayActive: boolean;
+};
+
+let cachedPayload: WeeklyEngagementPayload | null = null;
+let cachedAt = 0;
+
 function getRiyadhDateKey(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Riyadh",
@@ -32,6 +55,51 @@ function getRiyadhDateKey(date = new Date()) {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+
+function getRiyadhClockParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Riyadh",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+
+  return {
+    weekday: values.weekday || "",
+    hour: Number(values.hour || 0),
+    minute: Number(values.minute || 0),
+  };
+}
+
+function isTopFiveDisplayWindow(date = new Date()) {
+  const { weekday, hour, minute } =
+    getRiyadhClockParts(date);
+
+  const minutes = hour * 60 + minute;
+
+  // الخميس من 12:00 ظهرًا حتى نهاية اليوم.
+  if (weekday === "Thu") {
+    return minutes >= 12 * 60;
+  }
+
+  // الجمعة كاملة.
+  if (weekday === "Fri") {
+    return true;
+  }
+
+  // السبت حتى 4:00 عصرًا، والساعة 4:00 نفسها هي وقت الإيقاف.
+  if (weekday === "Sat") {
+    return minutes < 16 * 60;
+  }
+
+  return false;
 }
 
 function addDays(dateKey: string, days: number) {
@@ -120,8 +188,54 @@ function getPublicStudentName(fullName: string) {
 
 export async function GET() {
   try {
-    const { adminDb } = getFirebaseAdmin();
+    const now = Date.now();
+
+    if (
+      cachedPayload &&
+      now - cachedAt < CACHE_TTL_MS
+    ) {
+      return NextResponse.json(
+        cachedPayload,
+        {
+          headers: {
+            "Cache-Control":
+              "public, s-maxage=3600, stale-while-revalidate=300",
+            "X-Engagement-Cache": "HIT",
+          },
+        }
+      );
+    }
+
     const { startDate, endDate } = getWeekRange();
+
+    /*
+      خارج نافذة التكريم لا نقرأ Firestore إطلاقًا.
+      العرض المعتمد:
+      الخميس 12:00 ظهرًا -> السبت 4:00 عصرًا بتوقيت الرياض.
+    */
+    if (!isTopFiveDisplayWindow()) {
+      return NextResponse.json(
+        {
+          success: true,
+          title: "الأكثر تفاعلًا هذا الأسبوع",
+          weekStart: startDate,
+          weekEnd: endDate,
+          weights: WEIGHTS,
+          rankings: [],
+          updatedAt: new Date().toISOString(),
+          displayActive: false,
+        },
+        {
+          headers: {
+            "Cache-Control":
+              "public, s-maxage=300, stale-while-revalidate=300",
+            "X-Engagement-Display": "INACTIVE",
+          },
+        }
+      );
+    }
+
+    const { adminDb } = getFirebaseAdmin();
 
     const [
       studentsSnapshot,
@@ -250,7 +364,7 @@ export async function GET() {
 
       const readingDate =
         typeof data.readingDate === "string" && data.readingDate.trim()
-          ? data.readingDate.trim().slice(0, 10)
+          ? data.readingDate.trim().slice(0, 5)
           : firstDateKey(data, ["reviewedAt", "approvedAt", "createdAt"]);
 
       if (!isInsideWeek(readingDate, startDate, endDate)) return;
@@ -270,7 +384,7 @@ export async function GET() {
 
       const dateKey =
         typeof data.date === "string" && data.date.trim()
-          ? data.date.trim().slice(0, 10)
+          ? data.date.trim().slice(0, 5)
           : firstDateKey(data, ["completedAt", "updatedAt", "createdAt"]);
 
       if (!isInsideWeek(dateKey, startDate, endDate)) return;
@@ -303,7 +417,7 @@ export async function GET() {
         }
         return a.studentName.localeCompare(b.studentName, "ar");
       })
-      .slice(0, 10)
+      .slice(0, 5)
       .map((row, index) => ({
         rank: index + 1,
         studentId: row.studentId,
@@ -311,24 +425,45 @@ export async function GET() {
         score: row.score,
       }));
 
+    const payload: WeeklyEngagementPayload = {
+      success: true,
+      title: "الأكثر تفاعلًا هذا الأسبوع",
+      weekStart: startDate,
+      weekEnd: endDate,
+      weights: WEIGHTS,
+      rankings: ranked,
+      updatedAt: new Date().toISOString(),
+      displayActive: true,
+    };
+
+    cachedPayload = payload;
+    cachedAt = now;
+
     return NextResponse.json(
-      {
-        success: true,
-        title: "الأكثر تفاعلًا هذا الأسبوع",
-        weekStart: startDate,
-        weekEnd: endDate,
-        weights: WEIGHTS,
-        rankings: ranked,
-        updatedAt: new Date().toISOString(),
-      },
+      payload,
       {
         headers: {
-          "Cache-Control": "no-store, max-age=0",
+          "Cache-Control":
+            "public, s-maxage=3600, stale-while-revalidate=300",
+          "X-Engagement-Cache": "MISS",
         },
       }
     );
   } catch (error) {
     console.error("تعذر حساب ترتيب التفاعل الأسبوعي:", error);
+
+    if (cachedPayload) {
+      return NextResponse.json(
+        cachedPayload,
+        {
+          headers: {
+            "Cache-Control":
+              "public, s-maxage=3600, stale-while-revalidate=300",
+            "X-Engagement-Cache": "STALE",
+          },
+        }
+      );
+    }
 
     return NextResponse.json(
       {

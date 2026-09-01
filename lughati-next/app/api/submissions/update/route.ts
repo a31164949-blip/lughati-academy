@@ -9,7 +9,8 @@ const allowedStatuses = [
   "مرفوض",
 ] as const;
 
-type AllowedStatus = (typeof allowedStatuses)[number];
+type AllowedStatus =
+  (typeof allowedStatuses)[number];
 
 type UpdateRequest = {
   id?: string;
@@ -17,9 +18,12 @@ type UpdateRequest = {
   note?: string;
 };
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request
+) {
   try {
-    const body = (await request.json()) as UpdateRequest;
+    const body =
+      (await request.json()) as UpdateRequest;
 
     const id =
       typeof body.id === "string"
@@ -37,55 +41,89 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "معرّف العمل غير موجود",
+          message:
+            "معرّف العمل غير موجود",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    if (!status || !allowedStatuses.includes(status)) {
+    if (
+      !status ||
+      !allowedStatuses.includes(status)
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "حالة العمل غير صحيحة",
+          message:
+            "حالة العمل غير صحيحة",
         },
-        { status: 400 }
-      );
-    }
-
-    const { adminDb } = getFirebaseAdmin();
-
-    const submissionRef = adminDb
-      .collection("submissions")
-      .doc(id);
-
-    const submissionSnapshot = await submissionRef.get();
-
-    if (!submissionSnapshot.exists) {
-      return NextResponse.json(
         {
-          success: false,
-          message: "لم يتم العثور على العمل",
-        },
-        { status: 404 }
+          status: 400,
+        }
       );
     }
+
+    const { adminDb } =
+      getFirebaseAdmin();
+
+    const submissionRef =
+      adminDb
+        .collection("studentWorks")
+        .doc(id);
 
     await submissionRef.update({
       status,
       note,
-      updatedAt: FieldValue.serverTimestamp(),
-      reviewedAt: FieldValue.serverTimestamp(),
+      updatedAt:
+        FieldValue.serverTimestamp(),
+      reviewedAt:
+        FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({
       success: true,
-      message: "تم تحديث حالة العمل بنجاح",
+      message:
+        "تم تحديث حالة العمل بنجاح",
       status,
       id,
     });
   } catch (error) {
-    console.error("UPDATE SUBMISSION ERROR:", error);
+    console.error(
+      "UPDATE SUBMISSION ERROR:",
+      error
+    );
+
+    const errorCode =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error
+        ? String(
+            (
+              error as {
+                code?: unknown;
+              }
+            ).code
+          )
+        : "";
+
+    if (
+      errorCode === "5" ||
+      errorCode === "not-found"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "لم يتم العثور على العمل",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -95,7 +133,9 @@ export async function POST(request: Request) {
             ? error.message
             : "حدث خطأ غير متوقع أثناء تحديث العمل",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

@@ -3,11 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
-  doc,
   getDocs,
-  runTransaction,
-  serverTimestamp,
-  setDoc,
+  query,
+  where,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -23,6 +21,79 @@ type Homework = {
   published: boolean;
   createdAt?: Timestamp | null;
 };
+
+
+const HOMEWORK_CACHE_DURATION_MS =
+  5 * 60 * 1000;
+
+const PUBLISHED_HOMEWORKS_CACHE_KEY =
+  "student-published-homeworks-cache-v1";
+
+type CachedHomework = Omit<
+  Homework,
+  "createdAt"
+> & {
+  createdAtMilliseconds: number;
+};
+
+function readPublishedHomeworksCache():
+  CachedHomework[] | null {
+  try {
+    const raw = sessionStorage.getItem(
+      PUBLISHED_HOMEWORKS_CACHE_KEY
+    );
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as {
+      cachedAt?: number;
+      homeworks?: CachedHomework[];
+    };
+
+    if (
+      typeof parsed.cachedAt !== "number" ||
+      Date.now() - parsed.cachedAt >=
+        HOMEWORK_CACHE_DURATION_MS ||
+      !Array.isArray(parsed.homeworks)
+    ) {
+      sessionStorage.removeItem(
+        PUBLISHED_HOMEWORKS_CACHE_KEY
+      );
+
+      return null;
+    }
+
+    return parsed.homeworks;
+  } catch (error) {
+    console.warn(
+      "تعذر قراءة ذاكرة الواجبات المؤقتة:",
+      error
+    );
+
+    return null;
+  }
+}
+
+function savePublishedHomeworksCache(
+  homeworks: CachedHomework[]
+) {
+  try {
+    sessionStorage.setItem(
+      PUBLISHED_HOMEWORKS_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        homeworks,
+      })
+    );
+  } catch (error) {
+    console.warn(
+      "تعذر حفظ ذاكرة الواجبات المؤقتة:",
+      error
+    );
+  }
+}
 
 export default function HomeworkCheckPage() {
   const [studentId] = useState(() => {
@@ -72,50 +143,128 @@ useEffect(() => {
   void loadLatestHomework(
     classroom,
     studentId,
-    studentName
+    studentName,
+    false
   );
 }, [classroom, studentId, studentName]);
 
   async function loadLatestHomework(
     studentClassroom: string,
     savedStudentId: string,
-    savedStudentName: string
+    savedStudentName: string,
+    forceRefresh = false
   ) {
     try {
       setLoadingHomework(true);
       setHomeworkError("");
 
-      const snapshot = await getDocs(collection(db, "homeworks"));
+      let publishedHomeworks =
+        !forceRefresh
+          ? readPublishedHomeworksCache()
+          : null;
 
-      const suitableHomeworks: Homework[] = snapshot.docs
-        .map((homeworkDocument) => {
-          const data = homeworkDocument.data();
+      if (!publishedHomeworks) {
+        /*
+          تحسين مهم:
+          سابقًا كانت الصفحة تقرأ كل homeworks
+          ثم تستبعد غير المنشور محليًا.
 
-          return {
-            id: homeworkDocument.id,
-            title: data.title || "واجب دون عنوان",
-            instructions: data.instructions || "",
-            targetClass: data.targetClass || "الفصلان",
-            dueDate: data.dueDate || "",
-            published: data.published === true,
-            createdAt: data.createdAt || null,
-          };
-        })
-        .filter((item) => {
-          const suitableClass =
-            item.targetClass === "الفصلان" ||
-            item.targetClass === studentClassroom;
+          الآن Firestore يعيد الواجبات المنشورة فقط.
+          هذا الاستعلام يستخدم فهرسًا بسيطًا على published
+          ولا يحتاج إلى تحميل المسودات أو الواجبات غير المنشورة.
+        */
+        const snapshot = await getDocs(
+          query(
+            collection(db, "homeworks"),
+            where("published", "==", true)
+          )
+        );
 
-          return item.published && suitableClass;
-        })
-        .sort((first, second) => {
-          const firstTime = first.createdAt?.toMillis?.() || 0;
-          const secondTime = second.createdAt?.toMillis?.() || 0;
+        publishedHomeworks =
+          snapshot.docs.map(
+            (homeworkDocument) => {
+              const data =
+                homeworkDocument.data();
 
-          return secondTime - firstTime;
-        });
+              return {
+                id:
+                  homeworkDocument.id,
+                title:
+                  data.title ||
+                  "واجب دون عنوان",
+                instructions:
+                  data.instructions || "",
+                targetClass:
+                  data.targetClass ||
+                  "الفصلان",
+                dueDate:
+                  data.dueDate || "",
+                published: true,
+                createdAtMilliseconds:
+                  typeof data.createdAt
+                    ?.toMillis ===
+                  "function"
+                    ? data.createdAt.toMillis()
+                    : 0,
+              } as CachedHomework;
+            }
+          );
 
-      const latestHomework = suitableHomeworks[0] || null;
+        savePublishedHomeworksCache(
+          publishedHomeworks
+        );
+      }
+
+      /*
+        نفلتر حسب فصل الطالب محليًا.
+        بهذه الطريقة لا نحتاج إلى استعلام مركب
+        قد يتطلب Composite Index في Firestore.
+      */
+      const suitableHomeworks =
+        publishedHomeworks
+          .filter((item) => {
+            const suitableClass =
+              item.targetClass ===
+                "الفصلان" ||
+              item.targetClass ===
+                studentClassroom;
+
+            return suitableClass;
+          })
+          .sort(
+            (first, second) =>
+              second.createdAtMilliseconds -
+              first.createdAtMilliseconds
+          );
+
+      const latestCachedHomework =
+        suitableHomeworks[0] ||
+        null;
+
+      const latestHomework: Homework | null =
+        latestCachedHomework
+          ? {
+              id:
+                latestCachedHomework.id,
+              title:
+                latestCachedHomework.title,
+              instructions:
+                latestCachedHomework.instructions,
+              targetClass:
+                latestCachedHomework.targetClass,
+              dueDate:
+                latestCachedHomework.dueDate,
+              published: true,
+              createdAt:
+                latestCachedHomework
+                  .createdAtMilliseconds > 0
+                  ? Timestamp.fromMillis(
+                      latestCachedHomework
+                        .createdAtMilliseconds
+                    )
+                  : null,
+            }
+          : null;
 
       setHomework(latestHomework);
 
@@ -123,6 +272,7 @@ useEffect(() => {
         setHomeworkError(
           "لا يوجد واجب منشور لفصلك حاليًا. استمتع بوقتك يا بطل 🌟"
         );
+
         return;
       }
 
@@ -180,124 +330,102 @@ useEffect(() => {
   
 async function confirmHomework() {
   if (!homework) {
-    setMessage("لا يوجد واجب منشور حاليًا.");
+    setMessage(
+      "لا يوجد واجب منشور حاليًا."
+    );
     return;
   }
 
   if (!method) {
-    setMessage("اختر أولًا أين أنجزت واجبك يا بطل 📚");
+    setMessage(
+      "اختر أولًا أين أنجزت واجبك يا بطل 📚"
+    );
     return;
   }
 
-  if (!studentId || studentId === "student-demo") {
-    setMessage("سجّل دخولك أولًا حتى يصل تأكيدك إلى المعلم.");
+  if (
+    !studentId ||
+    studentId === "student-demo"
+  ) {
+    setMessage(
+      "سجّل دخولك أولًا حتى يصل تأكيدك إلى المعلم."
+    );
     return;
   }
 
-  const time = new Date().toLocaleString("ar-SA", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const time =
+    new Date().toLocaleString(
+      "ar-SA",
+      {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Riyadh",
+      }
+    );
 
-  const completionId = `${studentId}-${homework.id}`;
-  const storageKey = `${studentId}-${homework.id}`;
+  const storageKey =
+    `${studentId}-${homework.id}`;
 
   try {
     setSaving(true);
-    setMessage("جارٍ إرسال تأكيد إنجازك إلى المعلم...");
 
-    let receivedReward = false;
+    setMessage(
+      "جارٍ إرسال تأكيد إنجازك إلى المعلم..."
+    );
 
-    await runTransaction(db, async (transaction) => {
-      const completionReference = doc(
-        db,
-        "homeworkCompletions",
-        completionId
-      );
+    const response = await fetch(
+      "/api/homework-completion",
+      {
+        method: "POST",
 
-      const studentReference = doc(db, "students", studentId);
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
 
-      const completionSnapshot = await transaction.get(
-        completionReference
-      );
-
-      const studentSnapshot = await transaction.get(
-        studentReference
-      );
-
-      const alreadyCompleted =
-        completionSnapshot.exists() &&
-        completionSnapshot.data().completed === true;
-
-      const studentData = studentSnapshot.exists()
-        ? studentSnapshot.data()
-        : {};
-
-      const currentPoints =
-        typeof studentData.points === "number"
-          ? studentData.points
-          : 0;
-
-      const currentStars =
-        typeof studentData.stars === "number"
-          ? studentData.stars
-          : 0;
-
-      if (!alreadyCompleted) {
-  receivedReward = false;
-
-  transaction.set(
-    studentReference,
-    {
-      studentId,
-      studentName,
-      classroom,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-}
-
-      transaction.set(
-        completionReference,
-        {
-          completionId,
-          homeworkId: homework.id,
-          homeworkTitle: homework.title,
-          homeworkInstructions: homework.instructions,
-          homeworkDueDate: homework.dueDate,
-          targetClass: homework.targetClass,
-
+        body: JSON.stringify({
           studentId,
           studentName,
           classroom,
 
+          homeworkId:
+            homework.id,
+
+          homeworkTitle:
+            homework.title,
+
+          homeworkInstructions:
+            homework.instructions,
+
+          homeworkDueDate:
+            homework.dueDate,
+
+          targetClass:
+            homework.targetClass,
+
           method,
-          completed: true,
-          completedAtText: time,
-          completedAt: serverTimestamp(),
 
-          teacherReviewed: completionSnapshot.exists()
-            ? completionSnapshot.data().teacherReviewed === true
-            : false,
-rewardGranted:
-  completionSnapshot.data()?.rewardGranted === true,
-awardedPoints:
-  typeof completionSnapshot.data()?.awardedPoints === "number"
-    ? completionSnapshot.data()?.awardedPoints ?? 0
-    : 0,
+          completedAtText:
+            time,
+        }),
+      }
+    );
 
-awardedStars:
-  typeof completionSnapshot.data()?.awardedStars === "number"
-    ? completionSnapshot.data()?.awardedStars ?? 0
-    : 0,
-    
+    const result =
+      (await response.json()) as {
+        success?: boolean;
+        code?: string;
+        message?: string;
+      };
 
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
+    if (!response.ok) {
+      setMessage(
+        result.message ||
+          "تعذر إرسال إنجاز الواجب."
       );
-    });
+
+      return;
+    }
 
     localStorage.setItem(
       `lughati-homework-completed-${storageKey}`,
@@ -318,17 +446,22 @@ awardedStars:
     setCompletedAt(time);
 
     setMessage(
-  `أحسنت يا ${studentName}! تم إرسال إنجازك إلى المعلم ✅ وستُحتسب النقاط بعد مراجعة الواجب واعتماده.`
-);
+      `أحسنت يا ${studentName}! تم إرسال إنجازك إلى المعلم ✅ وستُحتسب النقاط بعد مراجعة الواجب واعتماده.`
+    );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "HOMEWORK SUBMISSION ERROR:",
+      error
+    );
+
     setMessage(
-      "تعذر إرسال التأكيد أو إضافة المكافأة. تحقق من الاتصال ثم حاول مرة أخرى."
+      "تعذر إرسال التأكيد. تحقق من الاتصال ثم حاول مرة أخرى."
     );
   } finally {
     setSaving(false);
   }
 }
+
   function resetHomework() {
     if (!homework) return;
 
@@ -455,7 +588,12 @@ awardedStars:
           <button
             type="button"
             onClick={() =>
-              loadLatestHomework(classroom, studentId, studentName)
+              loadLatestHomework(
+                classroom,
+                studentId,
+                studentName,
+                true
+              )
             }
             style={styles.reloadButton}
           >

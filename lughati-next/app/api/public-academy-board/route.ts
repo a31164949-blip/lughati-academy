@@ -40,6 +40,29 @@ type PublicAcademyBoardSettings = {
   tickerText: string;
 };
 
+type PublicAcademyHero = {
+  id: string;
+  studentFirstName: string;
+  title: string;
+  badge: string;
+  achievementsCount: number;
+  imageUrl: string;
+  photoConsent: boolean;
+  published: boolean;
+  weeklyTrack:
+    | "achievement"
+    | "progress"
+    | "commitment";
+};
+
+type PublicAcademyBoardPayload = {
+  success: true;
+  settings: PublicAcademyBoardSettings;
+  slides: PublicAcademyBoardSlide[];
+  milestones: PublicAcademyMilestone[];
+  heroes: PublicAcademyHero[];
+};
+
 const defaultAcademyBoardSettings: PublicAcademyBoardSettings = {
   enabled: true,
   intervalSeconds: 6,
@@ -47,6 +70,11 @@ const defaultAcademyBoardSettings: PublicAcademyBoardSettings = {
   tickerText:
     "🌟 كل إنجاز جديد يكتب اسمًا جديدًا في تاريخ أكاديمية لغتي",
 };
+
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+let cachedPayload: PublicAcademyBoardPayload | null = null;
+let cachedAt = 0;
 
 function toMillis(value: unknown): number {
   if (
@@ -74,14 +102,42 @@ function getRiyadhDateKey(date = new Date()) {
   }).format(date);
 }
 
+function jsonWithCache(
+  payload: PublicAcademyBoardPayload,
+  cacheState: "HIT" | "MISS" | "STALE"
+) {
+  return NextResponse.json(payload, {
+    status: 200,
+    headers: {
+      // اللوحة عامة؛ يسمح هذا لكاش CDN بتقليل استدعاءات الـ API في الإنتاج.
+      "Cache-Control":
+        "public, s-maxage=1800, stale-while-revalidate=300",
+      "X-Academy-Board-Cache": cacheState,
+    },
+  });
+}
+
 export async function GET() {
+  const now = Date.now();
+
+  if (
+    cachedPayload &&
+    now - cachedAt < CACHE_TTL_MS
+  ) {
+    return jsonWithCache(
+      cachedPayload,
+      "HIT"
+    );
+  }
+
   try {
     const { adminDb } = getFirebaseAdmin();
 
+    // لوحة الصفحة الرئيسية أصبحت مخصصة للإعلانات المهمة فقط.
+    // لذلك نقرأ الإعدادات وشرائح اللوحة فقط، ولا نقرأ الإنجازات أو الأبطال هنا.
     const [
       settingsSnapshot,
       slidesSnapshot,
-      milestonesSnapshot,
     ] = await Promise.all([
       adminDb
         .collection("academyBoardSettings")
@@ -90,10 +146,6 @@ export async function GET() {
 
       adminDb
         .collection("academyBoardSlides")
-        .get(),
-
-      adminDb
-        .collection("academyMilestones")
         .get(),
     ]);
 
@@ -213,75 +265,39 @@ export async function GET() {
             first.createdAtMilliseconds
         );
 
-    const milestones: PublicAcademyMilestone[] =
-      milestonesSnapshot.docs
-        .map((document) => {
-          const data =
-            document.data() ?? {};
+    // أبقينا الحقلين في الاستجابة للتوافق مع الصفحة الحالية،
+    // لكن دون أي قراءة إضافية من Firestore.
+    const milestones: PublicAcademyMilestone[] = [];
+    const heroes: PublicAcademyHero[] = [];
 
-          return {
-            id: document.id,
-
-            title:
-              typeof data.title === "string"
-                ? data.title
-                : "إنجاز جديد في أكاديمية لغتي",
-
-            badgeTitle:
-              typeof data.badgeTitle === "string"
-                ? data.badgeTitle
-                : "",
-
-            studentName:
-              typeof data.studentName === "string"
-                ? data.studentName
-                : "",
-
-            pointsReached:
-              typeof data.pointsReached === "number"
-                ? data.pointsReached
-                : 1,
-
-            boardVisible:
-              data.boardVisible !== false,
-
-            boardStartDate:
-              typeof data.boardStartDate === "string"
-                ? data.boardStartDate
-                : "",
-
-            boardEndDate:
-              typeof data.boardEndDate === "string"
-                ? data.boardEndDate
-                : "",
-
-            createdAtMilliseconds:
-              toMillis(data.createdAt) ||
-              toMillis(data.updatedAt),
-          };
-        })
-        .filter(
-          (milestone) =>
-            milestone.studentName
-              .trim() !== ""
-        )
-        .sort(
-          (first, second) =>
-            second.createdAtMilliseconds -
-            first.createdAtMilliseconds
-        );
-
-    return NextResponse.json({
+    const payload: PublicAcademyBoardPayload = {
       success: true,
       settings,
       slides,
       milestones,
-    });
+      heroes,
+    };
+
+    cachedPayload = payload;
+    cachedAt = now;
+
+    return jsonWithCache(
+      payload,
+      "MISS"
+    );
   } catch (error) {
     console.error(
       "Public academy board error:",
       error
     );
+
+    // إذا تعطل Firestore مؤقتًا نعرض آخر نسخة ناجحة بدل إسقاط اللوحة.
+    if (cachedPayload) {
+      return jsonWithCache(
+        cachedPayload,
+        "STALE"
+      );
+    }
 
     return NextResponse.json(
       {
@@ -290,11 +306,16 @@ export async function GET() {
           defaultAcademyBoardSettings,
         slides: [],
         milestones: [],
+        heroes: [],
         message:
           "تعذر تحميل لوحة الأكاديمية.",
       },
       {
         status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Academy-Board-Cache": "ERROR",
+        },
       }
     );
   }

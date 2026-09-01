@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-  addDoc,
-  collection,
-  serverTimestamp,
   doc,
-getDoc,
+  getDoc,
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
@@ -423,33 +420,56 @@ async function uploadAudioToCloudinary(audioFile: Blob) {
 
       const audioUrl = await uploadAudioToCloudinary(audioBlob);
 
-setIsSavingReading(true);
-const studentId =
-  localStorage.getItem("student-id") || "student-demo";
+      setIsSavingReading(true);
 
-const studentName =
-  localStorage.getItem("student-name") || "طالب";
+      const studentId =
+        localStorage.getItem("student-id") || "student-demo";
 
-const studentClassroom =
-  localStorage.getItem("student-classroom") || "";
+      const studentName =
+        localStorage.getItem("student-name") || "طالب";
 
-await addDoc(collection(db, "reading-submissions"), {
-  studentId,
-  studentName,
-  studentClassroom,
-  audioUrl,
-  durationSeconds: recordingSeconds,
-  status: "pending",
-  readingDate: new Date().toISOString().slice(0, 10),
-  createdAt: serverTimestamp(),
-});
+      const studentClassroom =
+        localStorage.getItem("student-classroom") || "";
 
-setSendMessage(
-  "⏳ تم إرسال قراءتك للمعلم، وهي الآن بانتظار المراجعة."
-);
+      const response = await fetch(
+        "/api/reading-submission",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            studentId,
+            studentName,
+            studentClassroom,
+            audioUrl,
+            durationSeconds: recordingSeconds,
+          }),
+        }
+      );
+
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          code?: string;
+          message?: string;
+        };
+
+      if (!response.ok) {
+        setSendMessage(
+          result.message ||
+            "❌ تعذر إرسال القراءة للمعلم."
+        );
+        return;
+      }
+
+      setSendMessage(
+        result.message ||
+          "⏳ تم إرسال قراءتك للمعلم، وهي الآن بانتظار المراجعة."
+      );
     } catch (error) {
       console.error(error);
-      setSendMessage("❌ تعذر رفع التسجيل. حاول مرة أخرى.");
+      setSendMessage("❌ تعذر رفع التسجيل أو إرساله. حاول مرة أخرى.");
     } finally {
   setIsUploadingAudio(false);
   setIsSavingReading(false);
