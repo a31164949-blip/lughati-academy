@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   doc,
   getDoc,
@@ -59,8 +58,7 @@ const emptyForm: FormData = {
 };
 
 export default function StudentCaseStudyPage() {
-  const searchParams = useSearchParams();
-  const requiredMode = searchParams.get("required") === "1";
+  const [requiredMode, setRequiredMode] = useState(false);
 
   const [formData, setFormData] = useState<FormData>(emptyForm);
 
@@ -85,6 +83,15 @@ export default function StudentCaseStudyPage() {
   }
 
   useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    setRequiredMode(
+      params.get("required") === "1"
+    );
+
     async function loadCaseStudy() {
       const savedStudentId =
         window.localStorage.getItem("student-id") ?? "";
