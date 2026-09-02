@@ -6,6 +6,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
+  where,
   serverTimestamp,
   setDoc,
   writeBatch,
@@ -35,6 +37,120 @@ type StudentPlanViewer = {
 };
 
 type PlanViewFilter = "الكل" | "اطلعوا" | "لم يطلعوا";
+
+
+type CachedStudent = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  classroom: string;
+};
+
+type WeeklyPlanViewRecord = {
+  studentId: string;
+  weekTitle: string;
+  firstViewedAt?: unknown;
+  lastViewedAt?: unknown;
+  viewCount: number;
+};
+
+const CACHE_DURATION_MS = 5 * 60 * 1000;
+const WEEKLY_PLAN_STUDENTS_CACHE_KEY =
+  "teacher-weekly-plan-students-cache-v1";
+
+function getCachedValue<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      cachedAt?: number;
+      value?: T;
+    };
+
+    if (
+      typeof parsed.cachedAt !== "number" ||
+      Date.now() - parsed.cachedAt >= CACHE_DURATION_MS
+    ) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed.value ?? null;
+  } catch (error) {
+    console.warn(`تعذر قراءة الذاكرة المؤقتة: ${key}`, error);
+    return null;
+  }
+}
+
+function setCachedValue<T>(key: string, value: T) {
+  try {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        value,
+      })
+    );
+  } catch (error) {
+    console.warn(`تعذر حفظ الذاكرة المؤقتة: ${key}`, error);
+  }
+}
+
+async function loadActiveStudentsCached(): Promise<CachedStudent[]> {
+  const cached =
+    getCachedValue<CachedStudent[]>(
+      WEEKLY_PLAN_STUDENTS_CACHE_KEY
+    );
+
+  if (cached) {
+    return cached;
+  }
+
+  const studentsSnapshot = await getDocs(
+    collection(db, "students")
+  );
+
+  const loadedStudents: CachedStudent[] =
+    studentsSnapshot.docs
+      .map((studentDocument) => {
+        const data = studentDocument.data();
+
+        if (data.active === false) {
+          return null;
+        }
+
+        const logicalStudentId =
+          typeof data.studentId === "string" &&
+          data.studentId.trim()
+            ? data.studentId.trim()
+            : studentDocument.id;
+
+        return {
+          id: studentDocument.id,
+          studentId: logicalStudentId,
+          studentName:
+            typeof data.studentName === "string"
+              ? data.studentName
+              : "طالب",
+          classroom:
+            typeof data.classroom === "string"
+              ? data.classroom
+              : "",
+        };
+      })
+      .filter(
+        (student): student is CachedStudent =>
+          student !== null
+      );
+
+  setCachedValue(
+    WEEKLY_PLAN_STUDENTS_CACHE_KEY,
+    loadedStudents
+  );
+
+  return loadedStudents;
+}
 
 const initialDays: DayPlan[] = [
   {
@@ -276,119 +392,171 @@ export default function WeeklyPlanPage() {
       try {
         setIsLoadingViews(true);
 
-        const [studentsSnapshot, viewsSnapshot] =
-          await Promise.all([
-            getDocs(collection(db, "students")),
-            getDocs(collection(db, "weeklyPlanViews")),
-          ]);
+        const currentWeekTitle =
+          weekTitle.trim();
+
+        /*
+          الطلاب يحمّلون مرة واحدة فقط
+          خلال 5 دقائق، ويعاد استخدامهم
+          أيضًا عند إرسال الإشعارات.
+        */
+        const students =
+          await loadActiveStudentsCached();
+
+        /*
+          لا نحمّل كل تاريخ weeklyPlanViews.
+          عند وجود عنوان للأسبوع نقرأ
+          سجلات هذا الأسبوع فقط.
+        */
+        const viewsReference =
+          collection(db, "weeklyPlanViews");
+
+        const viewsSnapshot =
+          currentWeekTitle
+            ? await getDocs(
+                query(
+                  viewsReference,
+                  where(
+                    "weekTitle",
+                    "==",
+                    currentWeekTitle
+                  )
+                )
+              )
+            : await getDocs(
+                viewsReference
+              );
 
         if (!active) {
           return;
         }
 
-        const currentWeekTitle = weekTitle.trim();
-
-        const matchingViews = viewsSnapshot.docs
-          .map((viewDocument) => {
-            const data = viewDocument.data();
-
-            return {
-              studentId:
-                typeof data.studentId === "string"
-                  ? data.studentId
-                  : "",
-              weekTitle:
-                typeof data.weekTitle === "string"
-                  ? data.weekTitle
-                  : "",
-              firstViewedAt: data.firstViewedAt,
-              lastViewedAt: data.lastViewedAt,
-              viewCount:
-                typeof data.viewCount === "number"
-                  ? data.viewCount
-                  : 0,
-            };
-          })
-          .filter((view) =>
-            currentWeekTitle
-              ? view.weekTitle === currentWeekTitle
-              : true
-          );
-
-        const loadedViewers: StudentPlanViewer[] =
-          studentsSnapshot.docs
-            .map((studentDocument) => {
-              const data = studentDocument.data();
-
-              if (data.active === false) {
-                return null;
-              }
-
-              const logicalStudentId =
-                typeof data.studentId === "string" &&
-                data.studentId.trim()
-                  ? data.studentId.trim()
-                  : studentDocument.id;
-
-              // صفحة الطالب تحفظ document id في localStorage،
-              // لذلك ندعم document id وstudentId معًا.
-              const view = matchingViews.find(
-                (item) =>
-                  item.studentId === studentDocument.id ||
-                  item.studentId === logicalStudentId
-              );
-
-              const formatTimestamp = (value: unknown) => {
-                if (
-                  value &&
-                  typeof value === "object" &&
-                  "toDate" in value &&
-                  typeof (value as { toDate?: unknown }).toDate ===
-                    "function"
-                ) {
-                  return (
-                    value as { toDate: () => Date }
-                  )
-                    .toDate()
-                    .toLocaleString("ar-SA");
-                }
-
-                return "";
-              };
+        const matchingViews:
+          WeeklyPlanViewRecord[] =
+          viewsSnapshot.docs.map(
+            (viewDocument) => {
+              const data =
+                viewDocument.data();
 
               return {
-                id: studentDocument.id,
-                studentId: logicalStudentId,
-                studentName:
-                  typeof data.studentName === "string"
-                    ? data.studentName
-                    : "طالب",
-                classroom:
-                  typeof data.classroom === "string"
-                    ? data.classroom
+                studentId:
+                  typeof data.studentId ===
+                  "string"
+                    ? data.studentId
                     : "",
+                weekTitle:
+                  typeof data.weekTitle ===
+                  "string"
+                    ? data.weekTitle
+                    : "",
+                firstViewedAt:
+                  data.firstViewedAt,
+                lastViewedAt:
+                  data.lastViewedAt,
+                viewCount:
+                  typeof data.viewCount ===
+                  "number"
+                    ? data.viewCount
+                    : 0,
+              };
+            }
+          );
+
+        const viewsByStudentId =
+          new Map<
+            string,
+            WeeklyPlanViewRecord
+          >();
+
+        matchingViews.forEach((view) => {
+          if (view.studentId) {
+            viewsByStudentId.set(
+              view.studentId,
+              view
+            );
+          }
+        });
+
+        const formatTimestamp = (
+          value: unknown
+        ) => {
+          if (
+            value &&
+            typeof value === "object" &&
+            "toDate" in value &&
+            typeof (
+              value as {
+                toDate?: unknown;
+              }
+            ).toDate === "function"
+          ) {
+            return (
+              value as {
+                toDate: () => Date;
+              }
+            )
+              .toDate()
+              .toLocaleString(
+                "ar-SA"
+              );
+          }
+
+          return "";
+        };
+
+        const loadedViewers:
+          StudentPlanViewer[] =
+          students
+            .map((student) => {
+              /*
+                ندعم document id وstudentId معًا
+                لأن بعض سجلات المشاهدة القديمة
+                قد تكون استخدمت document id.
+              */
+              const view =
+                viewsByStudentId.get(
+                  student.id
+                ) ||
+                viewsByStudentId.get(
+                  student.studentId
+                );
+
+              return {
+                id: student.id,
+                studentId:
+                  student.studentId,
+                studentName:
+                  student.studentName,
+                classroom:
+                  student.classroom,
                 viewed: Boolean(view),
-                firstViewedAtText: view
-                  ? formatTimestamp(view.firstViewedAt)
-                  : "",
-                lastViewedAtText: view
-                  ? formatTimestamp(view.lastViewedAt)
-                  : "",
-                viewCount: view?.viewCount ?? 0,
+                firstViewedAtText:
+                  view
+                    ? formatTimestamp(
+                        view.firstViewedAt
+                      )
+                    : "",
+                lastViewedAtText:
+                  view
+                    ? formatTimestamp(
+                        view.lastViewedAt
+                      )
+                    : "",
+                viewCount:
+                  view?.viewCount ?? 0,
               };
             })
-            .filter(
-              (student): student is StudentPlanViewer =>
-                student !== null
-            )
-            .sort((first, second) =>
-              first.studentName.localeCompare(
-                second.studentName,
-                "ar"
-              )
+            .sort(
+              (first, second) =>
+                first.studentName.localeCompare(
+                  second.studentName,
+                  "ar"
+                )
             );
 
-        setPlanViewers(loadedViewers);
+        setPlanViewers(
+          loadedViewers
+        );
       } catch (error) {
         console.error(
           "تعذر تحميل سجل الاطلاع على الخطة:",
@@ -549,43 +717,32 @@ export default function WeeklyPlanPage() {
   }
 
   async function notifyStudentsAboutWeeklyPlan() {
-    const studentsSnapshot =
-      await getDocs(
-        collection(db, "students")
-      );
+    /*
+      بدل قراءة students من Firestore مرة أخرى،
+      نعيد استخدام نفس قائمة الطلاب المحفوظة.
+    */
+    const students =
+      await loadActiveStudentsCached();
 
     const batch =
       writeBatch(db);
 
     let notificationCount = 0;
 
-    studentsSnapshot.docs.forEach(
-      (studentDocument) => {
-        const studentData =
-          studentDocument.data();
-
-        if (studentData.active === false) {
-          return;
-        }
-
-        const studentId =
-          typeof studentData.studentId ===
-          "string" &&
-          studentData.studentId.trim()
-            ? studentData.studentId.trim()
-            : studentDocument.id;
-
+    students.forEach(
+      (student) => {
         const notificationReference =
           doc(
             db,
             "studentNotifications",
-            `weekly-plan-${studentId}`
+            `weekly-plan-${student.studentId}`
           );
 
         batch.set(
           notificationReference,
           {
-            studentId,
+            studentId:
+              student.studentId,
 
             title:
               "🗓️ تم نشر خطتك الأسبوعية",

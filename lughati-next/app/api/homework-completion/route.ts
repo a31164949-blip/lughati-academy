@@ -47,8 +47,23 @@ function getRiyadhHour() {
   );
 }
 
+function getSaudiDateKey(
+  date = new Date()
+) {
+  return new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "Asia/Riyadh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }
+  ).format(date);
+}
+
 function isHomeworkWindowOpen() {
-  const hour = getRiyadhHour();
+  const hour =
+    getRiyadhHour();
 
   return (
     hour >= SUBMISSIONS_OPEN_HOUR &&
@@ -60,12 +75,16 @@ export async function POST(
   request: Request
 ) {
   try {
-    if (!isHomeworkWindowOpen()) {
+    if (
+      !isHomeworkWindowOpen()
+    ) {
       return NextResponse.json(
         {
           success: false,
+
           code:
             "HOMEWORK_SUBMISSIONS_CLOSED",
+
           message:
             "🌙 استقبال الواجبات متاح يوميًا من الساعة 1:00 ظهرًا حتى 10:00 مساءً بتوقيت الرياض.",
         },
@@ -146,6 +165,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           message:
             "بيانات الواجب غير مكتملة",
         },
@@ -157,6 +177,17 @@ export async function POST(
 
     const { adminDb } =
       getFirebaseAdmin();
+
+    /*
+     * تاريخ اليوم بتوقيت الرياض.
+     *
+     * نحفظه داخل وثيقة الإنجاز حتى
+     * نستطيع لاحقًا الاستعلام عن
+     * واجبات اليوم فقط بدل قراءة
+     * جميع واجبات الطالب.
+     */
+    const dateKey =
+      getSaudiDateKey();
 
     const completionId =
       `${studentId}-${homeworkId}`;
@@ -185,16 +216,25 @@ export async function POST(
           completionSnapshot.data()
             ?.completed === true;
 
+        /*
+         * منع تكرار تسجيل
+         * نفس الواجب.
+         */
         if (alreadyCompleted) {
           return;
         }
 
+        /*
+         * تحديث بيانات الطالب
+         * الأساسية عند الحاجة.
+         */
         transaction.set(
           studentReference,
           {
             studentId,
             studentName,
             classroom,
+
             updatedAt:
               FieldValue.serverTimestamp(),
           },
@@ -203,6 +243,9 @@ export async function POST(
           }
         );
 
+        /*
+         * تسجيل إنجاز الواجب.
+         */
         transaction.set(
           completionReference,
           {
@@ -218,17 +261,35 @@ export async function POST(
             studentName,
             classroom,
 
+            /*
+             * مثال:
+             * 2026-09-01
+             *
+             * مهم لتقليل قراءات
+             * Firestore لاحقًا.
+             */
+            date: dateKey,
+
             method,
+
             completed: true,
+
             completedAtText,
 
             completedAt:
               FieldValue.serverTimestamp(),
 
-            teacherReviewed: false,
-            rewardGranted: false,
-            awardedPoints: 0,
-            awardedStars: 0,
+            teacherReviewed:
+              false,
+
+            rewardGranted:
+              false,
+
+            awardedPoints:
+              0,
+
+            awardedStars:
+              0,
 
             updatedAt:
               FieldValue.serverTimestamp(),
@@ -240,11 +301,14 @@ export async function POST(
       }
     );
 
-    return NextResponse.json({
-      success: true,
-      message:
-        "تم إرسال إنجاز الواجب إلى المعلم ✅",
-    });
+    return NextResponse.json(
+      {
+        success: true,
+
+        message:
+          "تم إرسال إنجاز الواجب إلى المعلم ✅",
+      }
+    );
   } catch (error) {
     console.error(
       "HOMEWORK COMPLETION ERROR:",
@@ -254,6 +318,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
+
         message:
           error instanceof Error
             ? error.message

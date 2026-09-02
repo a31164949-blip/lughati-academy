@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export const runtime = "nodejs";
@@ -19,138 +20,91 @@ type StudentItem = {
   active: boolean;
 };
 
-type StudentsPayload = {
-  success: true;
-  students: StudentItem[];
-  source: "cache" | "firestore" | "stale-cache";
-};
-
-const CACHE_TTL_MS = 10 * 60 * 1000;
-
-let cachedStudents: StudentItem[] | null = null;
-let cachedAt = 0;
-
-function jsonWithCache(
-  payload: StudentsPayload,
-  cacheState: "HIT" | "MISS" | "STALE"
-) {
-  return NextResponse.json(payload, {
-    status: 200,
-    headers: {
-      /*
-        القائمة عامة لصفحة الدخول ولا تحتوي على رمز الدخول.
-        يسمح هذا لـ CDN بإعادة نفس القائمة للطلاب بدل إعادة
-        قراءة Firestore لكل زيارة.
-      */
-      "Cache-Control":
-        "public, s-maxage=600, stale-while-revalidate=300",
-      "X-Students-Cache": cacheState,
-    },
-  });
-}
-
-export async function GET() {
-  const now = Date.now();
-
-  // كاش داخل عملية الخادم.
-  if (
-    cachedStudents &&
-    now - cachedAt < CACHE_TTL_MS
-  ) {
-    return jsonWithCache(
-      {
-        success: true,
-        students: cachedStudents,
-        source: "cache",
-      },
-      "HIT"
-    );
-  }
-
-  try {
+/*
+  هذا الكاش أهم من الكاش السابق:
+  Next.js يحتفظ بنتيجة الاستعلام لمدة 10 دقائق،
+  بدل الاعتماد فقط على ذاكرة عملية الخادم.
+*/
+const getCachedStudents = unstable_cache(
+  async (): Promise<StudentItem[]> => {
     const { adminDb } = getFirebaseAdmin();
 
-    /*
-      صفحة الدخول تحتاج الطلاب النشطين فقط.
-      هذا يمنع قراءة الطلاب المؤرشفين أو غير النشطين.
-    */
-    const snapshot =
-      await adminDb
-        .collection("students")
-        .where("active", "==", true)
-        .get();
+    const snapshot = await adminDb
+      .collection("students")
+      .where("active", "==", true)
+      .get();
 
-    const students: StudentItem[] =
-      snapshot.docs
-        .map((studentDocument) => {
-          const data =
-            studentDocument.data() as StudentData;
+    return snapshot.docs
+      .map((studentDocument) => {
+        const data =
+          studentDocument.data() as StudentData;
 
-          return {
-            id: studentDocument.id,
+        return {
+          id: studentDocument.id,
 
-            studentId:
-              typeof data.studentId === "string" &&
-              data.studentId.trim()
-                ? data.studentId
-                : studentDocument.id,
+          studentId:
+            typeof data.studentId === "string" &&
+            data.studentId.trim()
+              ? data.studentId
+              : studentDocument.id,
 
-            studentName:
-              typeof data.studentName === "string" &&
-              data.studentName.trim()
-                ? data.studentName
-                : "طالب",
+          studentName:
+            typeof data.studentName === "string" &&
+            data.studentName.trim()
+              ? data.studentName
+              : "طالب",
 
-            classroom:
-              typeof data.classroom === "string"
-                ? data.classroom
-                : "",
+          classroom:
+            typeof data.classroom === "string"
+              ? data.classroom
+              : "",
 
-            active: true,
-          };
-        })
-        .sort(
-          (
-            firstStudent,
-            secondStudent
-          ) =>
-            firstStudent.studentName.localeCompare(
-              secondStudent.studentName,
-              "ar"
-            )
-        );
+          active: true,
+        };
+      })
+      .sort((firstStudent, secondStudent) =>
+        firstStudent.studentName.localeCompare(
+          secondStudent.studentName,
+          "ar"
+        )
+      );
+  },
+  ["login-active-students"],
+  {
+    revalidate: 600,
+    tags: ["login-active-students"],
+  }
+);
 
-    cachedStudents = students;
-    cachedAt = now;
+export async function GET() {
+  try {
+    const students = await getCachedStudents();
 
-    return jsonWithCache(
+    return NextResponse.json(
       {
         success: true,
         students,
-        source: "firestore",
       },
-      "MISS"
+      {
+        status: 200,
+        headers: {
+          /*
+            كاش إضافي للمتصفح وCDN.
+            القائمة لا تحتوي على رمز دخول الطالب.
+          */
+          "Cache-Control":
+            "public, s-maxage=600, stale-while-revalidate=300",
+
+          "X-Students-Cache":
+            "NEXT-DATA-CACHE",
+        },
+      }
     );
   } catch (error) {
     console.error(
       "Students API error:",
       error
     );
-
-    /*
-      إذا تعذر Firestore مؤقتًا ولدينا نسخة سابقة،
-      نستمر في تشغيل صفحة الدخول بها.
-    */
-    if (cachedStudents) {
-      return jsonWithCache(
-        {
-          success: true,
-          students: cachedStudents,
-          source: "stale-cache",
-        },
-        "STALE"
-      );
-    }
 
     return NextResponse.json(
       {

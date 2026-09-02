@@ -8,11 +8,10 @@ export const runtime = "nodejs";
  * مهام اليوم:
  * 1 و4: مهام تدريبية يمكن للطالب تأكيدها.
  * 2: لا تُحتسب بالضغط؛ تُعد منجزة بعد اعتماد واجب اليوم.
- * 3: لا تُحتسب بالضغط؛ تُعد منجزة بعد اعتماد قراءة اليوم.
  *
+ * القراءة ليست من مهام اليوم هنا؛ لها مسار مستقل في رحلة القراءة.
  * لا توجد نقاط مباشرة لمجرد الضغط على أي مهمة.
  * نقاط الواجب (+3) تأتي من مسار اعتماد الواجب الرسمي.
- * مكافأة القراءة (+50) تأتي من دورة 5 قراءات معتمدة.
  */
 const tasks = [
   {
@@ -24,12 +23,6 @@ const tasks = [
   {
     id: 2,
     title: "حل الواجب اليومي",
-    rewardPoints: 0,
-    rewardStars: 0,
-  },
-  {
-    id: 3,
-    title: "القراءة اليومية",
     rewardPoints: 0,
     rewardStars: 0,
   },
@@ -207,67 +200,6 @@ async function getHomeworkStatusForDate(
   return "pending";
 }
 
-async function getReadingStatusForDate(
-  studentDocId: string,
-  dateKey: string
-): Promise<DailyProofStatus> {
-  const { adminDb } =
-    getFirebaseAdmin();
-
-  const snapshot =
-    await adminDb
-      .collection("reading-submissions")
-      .where(
-        "studentId",
-        "==",
-        studentDocId
-      )
-      .get();
-
-  const todayRows =
-    snapshot.docs
-      .map((document) => ({
-        id: document.id,
-        data: document.data() ?? {},
-      }))
-      .filter(({ data }) =>
-        data.readingDate === dateKey
-      )
-      .sort((first, second) => {
-        const firstMillis =
-          first.data.createdAt
-            ?.toMillis?.() ?? 0;
-        const secondMillis =
-          second.data.createdAt
-            ?.toMillis?.() ?? 0;
-
-        return secondMillis -
-          firstMillis;
-      });
-
-  if (todayRows.length === 0) {
-    return "none";
-  }
-
-  const latestStatus =
-    todayRows[0].data.status;
-
-  if (
-    latestStatus === "approved"
-  ) {
-    return "approved";
-  }
-
-  if (
-    latestStatus === "redo" ||
-    latestStatus === "rejected"
-  ) {
-    return "rejected";
-  }
-
-  return "pending";
-}
-
 export async function GET(
   request: Request
 ) {
@@ -329,25 +261,15 @@ export async function GET(
       );
     }
 
-    const [
-      homeworkStatus,
-      readingStatus,
-    ] = await Promise.all([
-      getHomeworkStatusForDate(
+    const homeworkStatus =
+      await getHomeworkStatusForDate(
         studentDocId,
         dateKey
-      ),
-      getReadingStatusForDate(
-        studentDocId,
-        dateKey
-      ),
-    ]);
+      );
 
     const hasApprovedHomeworkToday =
       homeworkStatus === "approved";
 
-    const hasApprovedReadingToday =
-      readingStatus === "approved";
 
     const studentData =
       studentSnapshot.data() ?? {};
@@ -381,15 +303,6 @@ export async function GET(
       completedSet.delete(2);
     }
 
-    // المهمة 3 لا تصبح مكتملة إلا
-    // بعد اعتماد قراءة اليوم.
-    if (
-      hasApprovedReadingToday
-    ) {
-      completedSet.add(3);
-    } else {
-      completedSet.delete(3);
-    }
 
     const completedTaskIds =
       Array.from(completedSet).sort(
@@ -448,28 +361,13 @@ export async function GET(
 
       completedTaskIds,
       hasApprovedHomeworkToday,
-      hasApprovedReadingToday,
       homeworkStatus,
-      readingStatus,
       smartFollowUp:
   studentData.smartFollowUp &&
   typeof studentData.smartFollowUp ===
     "object"
     ? studentData.smartFollowUp
     : null,
-      readingCycleProgress:
-        typeof readingProgressData
-          .totalApprovedDays === "number"
-          ? (
-              readingProgressData
-                .totalApprovedDays > 0 &&
-              readingProgressData
-                .totalApprovedDays % 5 === 0
-                ? 5
-                : readingProgressData
-                    .totalApprovedDays % 5
-            )
-          : 0,
     });
   } catch (error) {
     console.error(
@@ -567,44 +465,12 @@ export async function POST(
       );
     }
 
-    if (task.id === 3) {
-      return NextResponse.json(
-        {
-          success: false,
-          code:
-            "READING_APPROVAL_REQUIRED",
-          message:
-            "سجّل قراءتك من رحلة القراءة. كل 5 قراءات معتمدة = +50 نقطة.",
-        },
-        { status: 409 }
-      );
-    }
 
     const { adminDb } =
       getFirebaseAdmin();
 
     const dateKey =
       getSaudiDateKey();
-
-    const [
-      homeworkStatus,
-      readingStatus,
-    ] = await Promise.all([
-      getHomeworkStatusForDate(
-        studentDocId,
-        dateKey
-      ),
-      getReadingStatusForDate(
-        studentDocId,
-        dateKey
-      ),
-    ]);
-
-    const hasApprovedHomeworkToday =
-      homeworkStatus === "approved";
-
-    const hasApprovedReadingToday =
-      readingStatus === "approved";
 
     const studentRef =
       adminDb
@@ -732,25 +598,31 @@ export async function POST(
             }
           );
 
-          if (
-            hasApprovedHomeworkToday
-          ) {
-            completedIdsBefore.add(2);
-          }
 
-          if (
-            hasApprovedReadingToday
-          ) {
-            completedIdsBefore.add(3);
-          }
+          const confirmableTaskIds =
+            tasks
+              .filter(
+                (item) =>
+                  item.id !== 2
+              )
+              .map((item) => item.id);
+
+          const completedConfirmableBefore =
+            confirmableTaskIds.filter(
+              (id) =>
+                completedIdsBefore.has(id)
+            ).length;
 
           const willCompleteAll =
+            confirmableTaskIds.includes(
+              task.id
+            ) &&
             !completedIdsBefore.has(
               task.id
             ) &&
-            completedIdsBefore.size +
+            completedConfirmableBefore +
               1 ===
-              tasks.length;
+              confirmableTaskIds.length;
 
           const grantDailyBonus =
             willCompleteAll &&

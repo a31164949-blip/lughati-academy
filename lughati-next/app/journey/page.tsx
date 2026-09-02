@@ -18,6 +18,8 @@ import {
   query,
   updateDoc,
   where,
+  orderBy,
+  limit,
   type Timestamp,
 } from "firebase/firestore";
 
@@ -159,14 +161,6 @@ const dailyTasks = [
     href: "/homeworks",
   },
   {
-    id: 3,
-    title: "القراءة اليومية",
-    reward: "5 قراءات معتمدة = +50 نقطة",
-    icon: "🎙️",
-    actionLabel: "🎙️ سجّل قراءتك",
-    href: "/reading-journey",
-  },
-  {
     id: 4,
     title: "مراجعة كلمات الإملاء",
     reward: "مهمة تدريبية دون نقاط مباشرة",
@@ -203,12 +197,6 @@ type JourneyData = {
     | "pending"
     | "approved"
     | "rejected";
-  readingStatus?:
-    | "none"
-    | "pending"
-    | "approved"
-    | "rejected";
-  readingCycleProgress?: number;
   smartFollowUp?: StudentSmartFollowUp | null;
   message?: string;
 };
@@ -317,21 +305,6 @@ const [
   >("none");
 
   const [
-    readingStatus,
-    setReadingStatus,
-  ] = useState<
-    "none" |
-    "pending" |
-    "approved" |
-    "rejected"
-  >("none");
-
-  const [
-    readingCycleProgress,
-    setReadingCycleProgress,
-  ] = useState(0);
-
-  const [
     savingTaskId,
     setSavingTaskId,
   ] =
@@ -381,37 +354,123 @@ const [
   );
   
   useEffect(() => {
+    let active = true;
+
     const unsubscribe =
       onAuthStateChanged(
         auth,
         async (currentUser) => {
-  setUser(currentUser);
+          if (!active) {
+            return;
+          }
 
-  if (currentUser) {
-    const tokenResult =
-      await currentUser.getIdTokenResult();
+          // لا يوجد مستخدم مسجل
+          if (!currentUser) {
+            setUser(null);
+            return;
+          }
 
-    console.log(
-      "🔎 student-id المحلي:",
-      window.localStorage.getItem(
-        "student-id"
-      )
-    );
+          try {
+            /*
+              لا نسمح لبقية صفحة الرحلة
+              بالبدء قبل التحقق من دراسة الحالة.
+            */
+            const token =
+              await currentUser.getIdToken();
 
-    console.log(
-      "🔎 studentDocId في التوكن:",
-      tokenResult.claims.studentDocId
-    );
+            const response =
+              await fetch(
+                "/api/case-study-status",
+                {
+                  method: "GET",
+                  headers: {
+                    Authorization:
+                      `Bearer ${token}`,
+                  },
+                  cache: "no-store",
+                }
+              );
 
-    console.log(
-      "🔎 studentId في التوكن:",
-      tokenResult.claims.studentId
-    );
-  }
-}
+            const data =
+              await response.json();
+
+            if (!active) {
+              return;
+            }
+
+            if (
+              !response.ok ||
+              !data.success
+            ) {
+              throw new Error(
+                data.message ||
+                  "تعذر التحقق من دراسة الحالة."
+              );
+            }
+
+            /*
+              إذا لم تكتمل دراسة الحالة:
+              لا نضع المستخدم في state،
+              وبالتالي لا تبدأ بقية قراءات الرحلة.
+            */
+            if (
+              data.completed !== true
+            ) {
+              window.location.replace(
+                "/parent/case-study?required=1"
+              );
+
+              return;
+            }
+
+            /*
+              دراسة الحالة مكتملة:
+              الآن فقط نفتح بقية الرحلة.
+            */
+            setUser(currentUser);
+
+            const tokenResult =
+              await currentUser.getIdTokenResult();
+
+            console.log(
+              "🔎 student-id المحلي:",
+              window.localStorage.getItem(
+                "student-id"
+              )
+            );
+
+            console.log(
+              "🔎 studentDocId في التوكن:",
+              tokenResult.claims.studentDocId
+            );
+
+            console.log(
+              "🔎 studentId في التوكن:",
+              tokenResult.claims.studentId
+            );
+          } catch (error) {
+            console.error(
+              "تعذر التحقق من دراسة الحالة:",
+              error
+            );
+
+            /*
+              بما أن الدراسة أصبحت إلزامية،
+              لا نفتح الرحلة إذا فشل التحقق.
+            */
+            setUser(null);
+
+            alert(
+              "تعذر التحقق من دراسة الحالة حاليًا. يرجى المحاولة مرة أخرى."
+            );
+          }
+        }
       );
 
-    return unsubscribe;
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -429,9 +488,11 @@ const [
     }
 
     const notificationsQuery = query(
-      collection(db, "studentNotifications"),
-      where("studentId", "==", studentId)
-    );
+  collection(db, "studentNotifications"),
+  where("studentId", "==", studentId),
+  orderBy("createdAt", "desc"),
+  limit(20)
+);
 
     const unsubscribeNotifications = onSnapshot(
       notificationsQuery,
@@ -656,18 +717,6 @@ try {
             "none"
         );
 
-        setReadingStatus(
-          data.readingStatus ??
-            "none"
-        );
-
-        setReadingCycleProgress(
-          typeof data.readingCycleProgress ===
-            "number"
-            ? data.readingCycleProgress
-            : 0
-        );
-
         const savedFollowUp =
           data.smartFollowUp;
 
@@ -819,7 +868,9 @@ useEffect(() => {
 
 
   const completedCount =
-    completedTasks.length;
+    dailyTasks.filter((task) =>
+      completedTasks.includes(task.id)
+    ).length;
 
   const allTasksCompleted =
     completedCount ===
@@ -910,58 +961,6 @@ useEffect(() => {
       };
     }
 
-    if (taskId === 3) {
-      if (
-        readingStatus ===
-        "approved"
-      ) {
-        return {
-          label:
-            `✅ قراءة معتمدة ${readingCycleProgress}/5`,
-          background:
-            "#dcfce7",
-          color: "#08734b",
-          disabled: true,
-        };
-      }
-
-      if (
-        readingStatus ===
-        "pending"
-      ) {
-        return {
-          label:
-            "⏳ بانتظار الاعتماد",
-          background:
-            "#fff7d6",
-          color: "#8a6200",
-          disabled: false,
-        };
-      }
-
-      if (
-        readingStatus ===
-        "rejected"
-      ) {
-        return {
-          label:
-            "🔄 أعد تسجيل قراءتك",
-          background:
-            "#fff0f0",
-          color: "#b42318",
-          disabled: false,
-        };
-      }
-
-      return {
-        label:
-          "🎙️ سجّل قراءتك",
-        background:
-          "#eef8ff",
-        color: "#185b89",
-        disabled: false,
-      };
-    }
 
     return {
       label:
@@ -2541,7 +2540,7 @@ useEffect(() => {
               أكملت جميع مهام اليوم بنجاح ✅
               <strong>
                 {" "}
-                وتُحتسب مكافآت الواجب والقراءة من الإنجازات المعتمدة فقط.
+                وتُحتسب مكافأة الواجب بعد اعتماد المعلم فقط.
               </strong>
             </p>
           </section>

@@ -45,10 +45,10 @@ export default function LoginPage() {
       setLoading(true);
       setMessage("");
 
-      const response = await fetch("/api/students", {
-        method: "GET",
-        cache: "no-store",
-      });
+     const response = await fetch("/api/students", {
+  method: "GET",
+  cache: "default",
+});
 
       const contentType =
         response.headers.get("content-type") || "";

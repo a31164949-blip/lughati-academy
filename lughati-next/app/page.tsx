@@ -4,13 +4,6 @@ import WeeklyGames from "./components/WeeklyGames";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import {
-  collection,
-  getDocs,
-} from "firebase/firestore";
-
-import { db } from "../firebase";
-
 import WeeklyPicks from "./components/WeeklyPicks";
 import HomeworkReminder from "./components/HomeworkReminder";
 import AcademicJourney from "./components/AcademicJourney";
@@ -108,6 +101,22 @@ type WeeklyEngagementStudent = {
   studentName: string;
   score: number;
   movement: number;
+};
+
+type PointsChampion = {
+  studentId: string;
+  studentName: string;
+  points: number;
+};
+
+type WeeklyEngagementCache = {
+  rankings: Array<{
+    rank?: number;
+    studentId?: string;
+    studentName?: string;
+    score?: number;
+  }>;
+  pointsChampion: PointsChampion | null;
 };
 
 type AcademyBoardDisplaySlide =
@@ -293,6 +302,58 @@ const academicJourneyEvents: AcademicJourneyEvent[] = [
   },
 ];
 
+
+const PUBLIC_API_CACHE_MS = 10 * 60 * 1000;
+
+type PublicApiCacheEntry<T> = {
+  cachedAt: number;
+  data: T;
+};
+
+function readPublicApiCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as PublicApiCacheEntry<T>;
+
+    if (
+      typeof parsed.cachedAt !== "number" ||
+      Date.now() - parsed.cachedAt >= PUBLIC_API_CACHE_MS
+    ) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writePublicApiCache<T>(key: string, data: T) {
+  try {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        data,
+      })
+    );
+  } catch {
+    // التخزين المؤقت اختياري.
+  }
+}
+
+const ANNOUNCEMENTS_CACHE_KEY =
+  "academy-home-public-announcements-v1";
+
+const ACADEMY_BOARD_CACHE_KEY =
+  "academy-home-public-board-v1";
+
+const WEEKLY_ENGAGEMENT_CACHE_KEY =
+  "academy-home-weekly-engagement-v1";
+
 export default function Home() {
   const [points] = useState(0);
   const [stars] = useState(0);
@@ -356,6 +417,11 @@ export default function Home() {
     weeklyEngagement,
     setWeeklyEngagement,
   ] = useState<WeeklyEngagementStudent[]>([]);
+
+  const [
+    pointsChampion,
+    setPointsChampion,
+  ] = useState<PointsChampion | null>(null);
 
   const previousEngagementRanks =
     useRef<Map<string, number>>(new Map());
@@ -466,15 +532,29 @@ useEffect(() => {
  * تحميل الإعلانات.
  */
 useEffect(() => {
+  let active = true;
+
   async function loadAnnouncements() {
     try {
       setAnnouncementsLoading(true);
+
+      const cached =
+        readPublicApiCache<AcademyAnnouncement[]>(
+          ANNOUNCEMENTS_CACHE_KEY
+        );
+
+      if (cached) {
+        if (active) {
+          setAnnouncements(cached);
+        }
+        return;
+      }
 
       const response = await fetch(
         "/api/public-announcements",
         {
           method: "GET",
-          cache: "no-store",
+          cache: "default",
         }
       );
 
@@ -482,11 +562,9 @@ useEffect(() => {
         await response.text();
 
       if (!responseText.trim()) {
-        console.warn(
-          "استجابة الإعلانات فارغة."
-        );
-
-        setAnnouncements([]);
+        if (active) {
+          setAnnouncements([]);
+        }
         return;
       }
 
@@ -496,381 +574,397 @@ useEffect(() => {
       };
 
       try {
-        data = JSON.parse(
-          responseText
-        );
-      } catch (parseError) {
-        console.error(
-          "استجابة الإعلانات ليست JSON صالحًا:",
-          responseText,
-          parseError
-        );
-
-        setAnnouncements([]);
+        data = JSON.parse(responseText);
+      } catch {
+        if (active) {
+          setAnnouncements([]);
+        }
         return;
       }
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        setAnnouncements([]);
+      if (!response.ok || !data.success) {
+        if (active) {
+          setAnnouncements([]);
+        }
         return;
       }
 
-      setAnnouncements(
-        Array.isArray(
-          data.announcements
-        )
+      const rows =
+        Array.isArray(data.announcements)
           ? data.announcements
-          : []
+          : [];
+
+      writePublicApiCache(
+        ANNOUNCEMENTS_CACHE_KEY,
+        rows
       );
+
+      if (active) {
+        setAnnouncements(rows);
+      }
     } catch (error) {
-      console.error(
+      console.warn(
         "تعذر تحميل نبض الأكاديمية:",
         error
       );
 
-      setAnnouncements([]);
+      if (active) {
+        setAnnouncements([]);
+      }
     } finally {
-      setAnnouncementsLoading(
-        false
-      );
+      if (active) {
+        setAnnouncementsLoading(false);
+      }
     }
   }
 
   void loadAnnouncements();
+
+  return () => {
+    active = false;
+  };
 }, []);
-
-  /*
-   * تحميل الأبطال المنشورين فقط.
-   */
-  useEffect(() => {
-    async function loadHeroes() {
-      try {
-        const snapshot =
-          await getDocs(
-            collection(
-              db,
-              "academyHeroes"
-            )
-          );
-
-        const loadedHeroes =
-          snapshot.docs
-            .map(
-              (
-                document
-              ) => {
-                const data =
-                  document.data();
-
-                return {
-                  id: document.id,
-
-                  studentFirstName:
-                    typeof data.studentFirstName ===
-                    "string"
-                      ? data.studentFirstName
-                      : "بطل الأكاديمية",
-
-                  title:
-                    typeof data.title ===
-                    "string"
-                      ? data.title
-                      : "بطل الأكاديمية",
-
-                  badge:
-                    typeof data.badge ===
-                    "string"
-                      ? data.badge
-                      : "",
-
-                  achievementsCount:
-                    typeof data.achievementsCount ===
-                    "number"
-                      ? data.achievementsCount
-                      : 0,
-
-                  imageUrl:
-                    typeof data.imageUrl ===
-                    "string"
-                      ? data.imageUrl
-                      : "",
-
-                  photoConsent:
-                    data.photoConsent ===
-                    true,
-
-                  published:
-                    data.published ===
-                    true,
-                    weeklyTrack:
-  data.weeklyTrack === "progress"
-    ? "progress"
-    : data.weeklyTrack === "commitment"
-    ? "commitment"
-    : "achievement",
-                } satisfies AcademyHero;
-              }
-            )
-            .filter(
-              (hero) =>
-                hero.published &&
-                hero.photoConsent
-            );
-
-        setHeroes(
-          loadedHeroes
-        );
-      } catch (error) {
-        console.error(
-          "تعذر تحميل أبطال الأكاديمية:",
-          error
-        );
-
-        setHeroes([]);
-      }
-    }
-
-    void loadHeroes();
-  }, []);
-
-
   /*
    * تحميل لوحة الأكاديمية العامة من API آمن.
    * يمنع القراءة المباشرة من Firestore للزوار.
    */
   useEffect(() => {
-    async function loadPublicAcademyBoard() {
-      try {
-        const response = await fetch(
-          "/api/public-academy-board",
-          {
-            method: "GET",
-            cache: "no-store",
+  let active = true;
+
+  function applyBoardData(data: {
+    settings?: AcademyBoardSettings;
+    slides?: AcademyBoardManualSlide[];
+    milestones?: AcademyMilestone[];
+    heroes?: AcademyHero[];
+  }) {
+    if (!active) return;
+
+    setAcademyBoardSettings(
+      data.settings &&
+      typeof data.settings === "object"
+        ? {
+            enabled:
+              data.settings.enabled !== false,
+            intervalSeconds:
+              typeof data.settings.intervalSeconds ===
+                "number" &&
+              data.settings.intervalSeconds >= 3
+                ? Math.min(
+                    30,
+                    data.settings.intervalSeconds
+                  )
+                : defaultAcademyBoardSettings.intervalSeconds,
+            tickerEnabled:
+              data.settings.tickerEnabled !== false,
+            tickerText:
+              typeof data.settings.tickerText ===
+                "string" &&
+              data.settings.tickerText.trim()
+                ? data.settings.tickerText
+                : defaultAcademyBoardSettings.tickerText,
           }
-        );
+        : defaultAcademyBoardSettings
+    );
 
-        const responseText =
-          await response.text();
+    setAcademyBoardManualSlides(
+      Array.isArray(data.slides)
+        ? data.slides
+        : []
+    );
 
-        if (!responseText.trim()) {
-          console.warn(
-            "استجابة لوحة الأكاديمية فارغة."
-          );
+    setAcademyMilestones(
+      Array.isArray(data.milestones)
+        ? data.milestones
+        : []
+    );
 
-          setAcademyMilestones([]);
-          setAcademyBoardManualSlides([]);
-          setAcademyBoardSettings(
-            defaultAcademyBoardSettings
-          );
-          return;
-        }
+    setHeroes(
+      Array.isArray(data.heroes)
+        ? data.heroes
+        : []
+    );
+  }
 
-        let data: {
-          success?: boolean;
+  async function loadPublicAcademyBoard() {
+    try {
+      const cached =
+        readPublicApiCache<{
           settings?: AcademyBoardSettings;
           slides?: AcademyBoardManualSlide[];
           milestones?: AcademyMilestone[];
-        };
-
-        try {
-          data = JSON.parse(
-            responseText
-          );
-        } catch (parseError) {
-          console.error(
-            "استجابة لوحة الأكاديمية ليست JSON صالحًا:",
-            responseText,
-            parseError
-          );
-
-          setAcademyMilestones([]);
-          setAcademyBoardManualSlides([]);
-          setAcademyBoardSettings(
-            defaultAcademyBoardSettings
-          );
-          return;
-        }
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          console.error(
-            "تعذر تحميل لوحة الأكاديمية من API.",
-            data
-          );
-
-          setAcademyMilestones([]);
-          setAcademyBoardManualSlides([]);
-          setAcademyBoardSettings(
-            defaultAcademyBoardSettings
-          );
-          return;
-        }
-
-        setAcademyBoardSettings(
-          data.settings &&
-          typeof data.settings === "object"
-            ? {
-                enabled:
-                  data.settings.enabled !== false,
-                intervalSeconds:
-                  typeof data.settings.intervalSeconds ===
-                    "number" &&
-                  data.settings.intervalSeconds >= 3
-                    ? Math.min(
-                        30,
-                        data.settings.intervalSeconds
-                      )
-                    : defaultAcademyBoardSettings.intervalSeconds,
-                tickerEnabled:
-                  data.settings.tickerEnabled !== false,
-                tickerText:
-                  typeof data.settings.tickerText ===
-                    "string" &&
-                  data.settings.tickerText.trim()
-                    ? data.settings.tickerText
-                    : defaultAcademyBoardSettings.tickerText,
-              }
-            : defaultAcademyBoardSettings
+          heroes?: AcademyHero[];
+        }>(
+          ACADEMY_BOARD_CACHE_KEY
         );
 
-        setAcademyBoardManualSlides(
-          Array.isArray(data.slides)
-            ? data.slides
-            : []
-        );
-
-        setAcademyMilestones(
-          Array.isArray(data.milestones)
-            ? data.milestones
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "تعذر تحميل لوحة الأكاديمية:",
-          error
-        );
-
-        setAcademyMilestones([]);
-        setAcademyBoardManualSlides([]);
-        setAcademyBoardSettings(
-          defaultAcademyBoardSettings
-        );
+      if (cached) {
+        applyBoardData(cached);
+        return;
       }
-    }
 
-    void loadPublicAcademyBoard();
-  }, []);
+      const response = await fetch(
+        "/api/public-academy-board",
+        {
+          method: "GET",
+          cache: "default",
+        }
+      );
+
+      const responseText =
+        await response.text();
+
+      if (!responseText.trim()) {
+        return;
+      }
+
+      let data: {
+        success?: boolean;
+        settings?: AcademyBoardSettings;
+        slides?: AcademyBoardManualSlide[];
+        milestones?: AcademyMilestone[];
+        heroes?: AcademyHero[];
+      };
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        return;
+      }
+
+      if (!response.ok || !data.success) {
+        return;
+      }
+
+      const cacheValue = {
+        settings: data.settings,
+        slides: data.slides,
+        milestones: data.milestones,
+        heroes: data.heroes,
+      };
+
+      writePublicApiCache(
+        ACADEMY_BOARD_CACHE_KEY,
+        cacheValue
+      );
+
+      applyBoardData(cacheValue);
+    } catch (error) {
+      console.warn(
+        "تعذر تحميل لوحة الأكاديمية:",
+        error
+      );
+    }
+  }
+
+  void loadPublicAcademyBoard();
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   useEffect(() => {
-    let cancelled = false;
+  let cancelled = false;
 
-    async function loadWeeklyEngagement() {
-      try {
-        const response = await fetch(
-          "/api/public-weekly-engagement",
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
+  function normalizePointsChampion(
+    value: unknown
+  ): PointsChampion | null {
+    if (
+      !value ||
+      typeof value !== "object"
+    ) {
+      return null;
+    }
 
-        const text = await response.text();
-        const data = text
-          ? JSON.parse(text)
-          : {};
+    const row =
+      value as Partial<PointsChampion>;
 
-        if (
-          !response.ok ||
-          data?.success !== true ||
-          !Array.isArray(data?.rankings)
-        ) {
-          throw new Error(
-            data?.message ||
-              "تعذر تحميل ترتيب التفاعل."
-          );
-        }
+    if (
+      typeof row.studentId !== "string" ||
+      typeof row.studentName !== "string" ||
+      typeof row.points !== "number"
+    ) {
+      return null;
+    }
 
-        if (cancelled) return;
+    return {
+      studentId: row.studentId,
+      studentName: row.studentName,
+      points: row.points,
+    };
+  }
 
-        const oldRanks =
-          previousEngagementRanks.current;
+  function applyWeeklyEngagement(
+    rankings: Array<{
+      rank?: number;
+      studentId?: string;
+      studentName?: string;
+      score?: number;
+    }>,
+    champion: PointsChampion | null
+  ) {
+    if (cancelled) return;
 
-        const nextRows: WeeklyEngagementStudent[] =
-          data.rankings.map(
-            (item: {
+    const oldRanks =
+      previousEngagementRanks.current;
+
+    const nextRows:
+      WeeklyEngagementStudent[] =
+      rankings.map((item) => {
+        const rank =
+          typeof item.rank === "number"
+            ? item.rank
+            : 0;
+
+        const studentId =
+          typeof item.studentId === "string"
+            ? item.studentId
+            : "";
+
+        const previousRank =
+          oldRanks.get(studentId);
+
+        return {
+          rank,
+          studentId,
+          studentName:
+            typeof item.studentName === "string"
+              ? item.studentName
+              : "طالب الأكاديمية",
+          score:
+            typeof item.score === "number"
+              ? item.score
+              : 0,
+          movement:
+            typeof previousRank === "number"
+              ? previousRank - rank
+              : 0,
+        };
+      });
+
+    previousEngagementRanks.current =
+      new Map(
+        nextRows.map((row) => [
+          row.studentId,
+          row.rank,
+        ])
+      );
+
+    setWeeklyEngagement(nextRows);
+    setPointsChampion(champion);
+  }
+
+  async function loadWeeklyEngagement(
+    forceRefresh = false
+  ) {
+    try {
+      if (!forceRefresh) {
+        const cached =
+          readPublicApiCache<
+            WeeklyEngagementCache |
+            Array<{
               rank?: number;
               studentId?: string;
               studentName?: string;
               score?: number;
-            }) => {
-              const rank =
-                typeof item.rank === "number"
-                  ? item.rank
-                  : 0;
-
-              const studentId =
-                typeof item.studentId === "string"
-                  ? item.studentId
-                  : "";
-
-              const previousRank =
-                oldRanks.get(studentId);
-
-              return {
-                rank,
-                studentId,
-                studentName:
-                  typeof item.studentName === "string"
-                    ? item.studentName
-                    : "طالب الأكاديمية",
-                score:
-                  typeof item.score === "number"
-                    ? item.score
-                    : 0,
-                movement:
-                  typeof previousRank === "number"
-                    ? previousRank - rank
-                    : 0,
-              };
-            }
+            }>
+          >(
+            WEEKLY_ENGAGEMENT_CACHE_KEY
           );
 
-        previousEngagementRanks.current =
-          new Map(
-            nextRows.map((row) => [
-              row.studentId,
-              row.rank,
-            ])
-          );
+        if (cached) {
+          // دعم الكاش القديم حتى لا يتعطل أي مستخدم لديه نسخة سابقة.
+          if (Array.isArray(cached)) {
+            applyWeeklyEngagement(
+              cached,
+              null
+            );
+          } else {
+            applyWeeklyEngagement(
+              Array.isArray(cached.rankings)
+                ? cached.rankings
+                : [],
+              normalizePointsChampion(
+                cached.pointsChampion
+              )
+            );
+          }
 
-        setWeeklyEngagement(nextRows);
-      } catch (error) {
-        console.error(
-          "تعذر تحميل الأكثر تفاعلًا هذا الأسبوع:",
-          error
-        );
+          return;
+        }
       }
+
+      const response = await fetch(
+        "/api/public-weekly-engagement",
+        {
+          method: "GET",
+          cache: "default",
+        }
+      );
+
+      const responseText =
+        await response.text();
+
+      let data: {
+        success?: boolean;
+        rankings?: Array<{
+          rank?: number;
+          studentId?: string;
+          studentName?: string;
+          score?: number;
+        }>;
+        pointsChampion?: PointsChampion | null;
+      } = {};
+
+      if (responseText.trim()) {
+        try {
+          data = JSON.parse(
+            responseText
+          );
+        } catch {
+          return;
+        }
+      }
+
+      if (
+        !response.ok ||
+        data.success !== true ||
+        !Array.isArray(data.rankings)
+      ) {
+        return;
+      }
+
+      const champion =
+        normalizePointsChampion(
+          data.pointsChampion
+        );
+
+      writePublicApiCache(
+        WEEKLY_ENGAGEMENT_CACHE_KEY,
+        {
+          rankings: data.rankings,
+          pointsChampion: champion,
+        } satisfies WeeklyEngagementCache
+      );
+
+      applyWeeklyEngagement(
+        data.rankings,
+        champion
+      );
+    } catch (error) {
+      console.warn(
+        "تعذر تحميل أبطال الأكاديمية هذا الأسبوع:",
+        error
+      );
     }
+  }
 
-    void loadWeeklyEngagement();
+  void loadWeeklyEngagement();
 
-    const timer = window.setInterval(
-      () => {
-        void loadWeeklyEngagement();
-      },
-      30000
-    );
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, []);
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
 
   /*
@@ -938,20 +1032,6 @@ useEffect(() => {
 
   const academyBoardSlides:
     AcademyBoardDisplaySlide[] = [
-      ...(weeklyEngagement.length > 0
-        ? [
-            {
-              id: "weekly-engagement-top-10",
-              kind: "engagement" as const,
-              icon: "🔥",
-              eyebrow: "ترتيب مباشر • Top 10",
-              title: "الأكثر تفاعلًا هذا الأسبوع",
-              message:
-                "يتغير ترتيب الطلاب تلقائيًا حسب تفاعلهم الحقيقي داخل الأكاديمية.",
-              rankings: weeklyEngagement,
-            },
-          ]
-        : []),
       ...academyBoardManualSlides.map(
         (slide) => ({
           id: `manual-${slide.id}`,
@@ -969,55 +1049,6 @@ useEffect(() => {
           category: slide.category,
         })
       ),
-      ...academyMilestones
-        .filter((milestone) => {
-          if (!milestone.boardVisible) {
-            return false;
-          }
-
-          const riyadhDateKey =
-            new Intl.DateTimeFormat(
-              "en-CA",
-              {
-                timeZone:
-                  "Asia/Riyadh",
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-              }
-            ).format(new Date());
-
-          const hasStarted =
-            !milestone.boardStartDate ||
-            riyadhDateKey >=
-              milestone.boardStartDate;
-
-          const hasNotEnded =
-            !milestone.boardEndDate ||
-            riyadhDateKey <=
-              milestone.boardEndDate;
-
-          return (
-            hasStarted &&
-            hasNotEnded
-          );
-        })
-        .map((milestone) => ({
-          id: `milestone-${milestone.id}`,
-          kind: "milestone" as const,
-          icon: getMilestoneIcon(
-            milestone.pointsReached
-          ),
-          eyebrow:
-            milestone.badgeTitle ||
-            "إنجاز تاريخي",
-          title: getPublicStudentName(
-            milestone.studentName
-          ),
-          message: milestone.title,
-          points:
-            milestone.pointsReached,
-        })),
     ];
 
   useEffect(() => {
@@ -1611,7 +1642,588 @@ useEffect(() => {
         </a>
       </section>
 
-{/* لوحة الأكاديمية الرقمية — إنجازات + إعلانات + فعاليات + مسابقات */}
+
+{/* أبطال الأكاديمية — بطل النقاط وبطل التفاعل وأفضل خمسة */}
+{(pointsChampion || weeklyEngagement.length > 0) && (
+  <section
+    aria-label="أبطال الأكاديمية"
+    className="academy-champions"
+  >
+    <style>{`
+      @keyframes championsGlow {
+        0%, 100% {
+          opacity: .42;
+          transform: scale(1);
+        }
+        50% {
+          opacity: .72;
+          transform: scale(1.08);
+        }
+      }
+
+      @keyframes championCrownFloat {
+        0%, 100% {
+          transform: translateY(0) rotate(-3deg);
+        }
+        50% {
+          transform: translateY(-5px) rotate(3deg);
+        }
+      }
+
+      @keyframes championCardEnter {
+        from {
+          opacity: 0;
+          transform: translateY(12px) scale(.985);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .academy-champions {
+        max-width: 1148px;
+        margin: 20px auto 10px;
+        padding: clamp(18px, 3vw, 28px);
+        border-radius: 32px;
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+        color: #ffffff;
+        background:
+          radial-gradient(circle at 12% 10%, rgba(250,204,21,.16), transparent 30%),
+          radial-gradient(circle at 90% 85%, rgba(56,189,248,.12), transparent 28%),
+          linear-gradient(135deg,#061813 0%,#0a2b22 48%,#123d31 100%);
+        border: 1px solid rgba(250,204,21,.32);
+        box-shadow:
+          0 22px 54px rgba(5,46,34,.22),
+          inset 0 1px 0 rgba(255,255,255,.08);
+      }
+
+      .academy-champions::before {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        top: -145px;
+        right: -75px;
+        background:
+          radial-gradient(circle,rgba(250,204,21,.22),rgba(250,204,21,0) 70%);
+        animation: championsGlow 5s ease-in-out infinite;
+        pointer-events: none;
+        z-index: -1;
+      }
+
+      .academy-champion-spotlights {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 14px;
+      }
+
+      .academy-champion-card {
+        min-width: 0;
+        border-radius: 22px;
+        padding: 18px;
+        position: relative;
+        overflow: hidden;
+        animation: championCardEnter .55s ease both;
+      }
+
+      .academy-champion-card--points {
+        background:
+          linear-gradient(135deg,rgba(250,204,21,.19),rgba(245,158,11,.08));
+        border: 1px solid rgba(253,224,71,.34);
+      }
+
+      .academy-champion-card--engagement {
+        background:
+          linear-gradient(135deg,rgba(56,189,248,.17),rgba(14,165,233,.07));
+        border: 1px solid rgba(125,211,252,.28);
+      }
+
+      .academy-champion-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 19px;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        font-size: 34px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.13);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      }
+
+      .academy-champion-crown {
+        display: inline-block;
+        animation: championCrownFloat 2.4s ease-in-out infinite;
+      }
+
+      .academy-top-five-grid {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 9px 12px;
+      }
+
+      @media (max-width: 760px) {
+        .academy-champion-spotlights,
+        .academy-top-five-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .academy-champions {
+          margin-left: 12px;
+          margin-right: 12px;
+          border-radius: 26px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .academy-champions::before,
+        .academy-champion-card,
+        .academy-champion-crown {
+          animation: none !important;
+        }
+      }
+    `}</style>
+
+    <div
+      style={{
+        position: "relative",
+        zIndex: 1,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap",
+          marginBottom: "18px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "13px",
+          }}
+        >
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "18px",
+              display: "grid",
+              placeItems: "center",
+              fontSize: "31px",
+              color: "#5c4300",
+              background:
+                "linear-gradient(135deg,#fef3c7,#facc15)",
+              border:
+                "1px solid rgba(255,255,255,.4)",
+              boxShadow:
+                "0 9px 24px rgba(250,204,21,.18)",
+              flexShrink: 0,
+            }}
+          >
+            🏆
+          </div>
+
+          <div>
+            <span
+              style={{
+                display: "block",
+                color: "#fde68a",
+                fontSize: "12px",
+                fontWeight: 900,
+                marginBottom: "3px",
+                letterSpacing: ".2px",
+              }}
+            >
+              ✨ تكريم أسبوعي
+            </span>
+
+            <strong
+              style={{
+                display: "block",
+                fontSize:
+                  "clamp(23px,4vw,36px)",
+                lineHeight: 1.2,
+                fontWeight: 900,
+              }}
+            >
+              أبطال أكاديمية لغتي
+            </strong>
+
+            <span
+              style={{
+                display: "block",
+                marginTop: "5px",
+                color: "#d1fae5",
+                fontSize: "12px",
+                fontWeight: 800,
+              }}
+            >
+              إنجاز • تفاعل • استمرار
+            </span>
+          </div>
+        </div>
+
+        <span
+          style={{
+            padding: "8px 12px",
+            borderRadius: "999px",
+            background:
+              "rgba(250,204,21,.11)",
+            border:
+              "1px solid rgba(250,204,21,.24)",
+            color: "#fde68a",
+            fontSize: "11px",
+            fontWeight: 900,
+            whiteSpace: "nowrap",
+          }}
+        >
+          الخميس 12 ظهرًا ← السبت 4 عصرًا
+        </span>
+      </div>
+
+      <div className="academy-champion-spotlights">
+        {pointsChampion && (
+          <article
+            className="academy-champion-card academy-champion-card--points"
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+              }}
+            >
+              <div className="academy-champion-icon">
+                <span className="academy-champion-crown">
+                  👑
+                </span>
+              </div>
+
+              <div
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#fde68a",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    marginBottom: "4px",
+                  }}
+                >
+                  بطل النقاط
+                </span>
+
+                <strong
+                  style={{
+                    display: "block",
+                    overflow: "hidden",
+                    textOverflow:
+                      "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontSize:
+                      "clamp(19px,3vw,27px)",
+                    fontWeight: 900,
+                  }}
+                >
+                  {pointsChampion.studentName}
+                </strong>
+
+                <span
+                  style={{
+                    display:
+                      "inline-flex",
+                    alignItems:
+                      "center",
+                    gap: "6px",
+                    marginTop: "8px",
+                    padding:
+                      "6px 10px",
+                    borderRadius:
+                      "999px",
+                    background:
+                      "rgba(250,204,21,.13)",
+                    color: "#fef3c7",
+                    fontSize: "12px",
+                    fontWeight: 900,
+                  }}
+                >
+                  ⭐ {pointsChampion.points} نقطة
+                </span>
+              </div>
+            </div>
+          </article>
+        )}
+
+        {weeklyEngagement[0] && (
+          <article
+            className="academy-champion-card academy-champion-card--engagement"
+            style={{
+              animationDelay: ".08s",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+              }}
+            >
+              <div className="academy-champion-icon">
+                🔥
+              </div>
+
+              <div
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#bae6fd",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    marginBottom: "4px",
+                  }}
+                >
+                  بطل التفاعل
+                </span>
+
+                <strong
+                  style={{
+                    display: "block",
+                    overflow: "hidden",
+                    textOverflow:
+                      "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontSize:
+                      "clamp(19px,3vw,27px)",
+                    fontWeight: 900,
+                  }}
+                >
+                  {weeklyEngagement[0].studentName}
+                </strong>
+
+                <span
+                  style={{
+                    display:
+                      "inline-flex",
+                    alignItems:
+                      "center",
+                    gap: "6px",
+                    marginTop: "8px",
+                    padding:
+                      "6px 10px",
+                    borderRadius:
+                      "999px",
+                    background:
+                      "rgba(56,189,248,.13)",
+                    color: "#e0f2fe",
+                    fontSize: "12px",
+                    fontWeight: 900,
+                  }}
+                >
+                  ⚡ {weeklyEngagement[0].score} تفاعل
+                </span>
+              </div>
+            </div>
+          </article>
+        )}
+      </div>
+
+      {pointsChampion &&
+        weeklyEngagement[0] &&
+        pointsChampion.studentId ===
+          weeklyEngagement[0].studentId && (
+          <div
+            style={{
+              margin: "12px 0 0",
+              padding: "9px 12px",
+              borderRadius: "14px",
+              textAlign: "center",
+              background:
+                "rgba(255,255,255,.065)",
+              border:
+                "1px solid rgba(255,255,255,.09)",
+              color: "#fef3c7",
+              fontSize: "12px",
+              fontWeight: 900,
+            }}
+          >
+            🌟 بطل مميز هذا الأسبوع: جمع صدارة النقاط والتفاعل معًا!
+          </div>
+        )}
+
+      {weeklyEngagement.length > 0 && (
+        <div
+          style={{
+            marginTop: "18px",
+            paddingTop: "17px",
+            borderTop:
+              "1px solid rgba(255,255,255,.09)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent:
+                "space-between",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginBottom: "11px",
+            }}
+          >
+            <strong
+              style={{
+                fontSize: "15px",
+                fontWeight: 900,
+                color: "#ffffff",
+              }}
+            >
+              🏅 قائمة الأكثر تفاعلًا
+            </strong>
+
+            <span
+              style={{
+                color: "#a7f3d0",
+                fontSize: "11px",
+                fontWeight: 800,
+              }}
+            >
+              أفضل خمسة أبطال هذا الأسبوع
+            </span>
+          </div>
+
+          <div className="academy-top-five-grid">
+            {weeklyEngagement
+              .slice(0, 5)
+              .map((row) => {
+                const medal =
+                  row.rank === 1
+                    ? "🥇"
+                    : row.rank === 2
+                    ? "🥈"
+                    : row.rank === 3
+                    ? "🥉"
+                    : row.rank === 4
+                    ? "⭐"
+                    : "🌟";
+
+                return (
+                  <div
+                    key={row.studentId}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "44px minmax(0,1fr) auto",
+                      alignItems:
+                        "center",
+                      gap: "9px",
+                      minHeight: "50px",
+                      padding: "8px 10px",
+                      borderRadius:
+                        "15px",
+                      background:
+                        row.rank <= 3
+                          ? "rgba(255,255,255,.095)"
+                          : "rgba(255,255,255,.055)",
+                      border:
+                        row.rank <= 3
+                          ? "1px solid rgba(250,204,21,.16)"
+                          : "1px solid rgba(255,255,255,.07)",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        textAlign:
+                          "center",
+                        fontSize:
+                          row.rank <= 3
+                            ? "21px"
+                            : "18px",
+                      }}
+                    >
+                      {medal}
+                    </strong>
+
+                    <span
+                      style={{
+                        minWidth: 0,
+                        overflow:
+                          "hidden",
+                        textOverflow:
+                          "ellipsis",
+                        whiteSpace:
+                          "nowrap",
+                        fontSize:
+                          "13px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {row.studentName}
+                    </span>
+
+                    <span
+                      style={{
+                        minWidth:
+                          "62px",
+                        padding:
+                          "6px 9px",
+                        borderRadius:
+                          "10px",
+                        textAlign:
+                          "center",
+                        background:
+                          "rgba(56,189,248,.11)",
+                        color:
+                          "#bae6fd",
+                        fontSize:
+                          "11px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      {row.score} تفاعل
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      <p
+        style={{
+          margin: "14px 0 0",
+          textAlign: "center",
+          color: "#a7f3d0",
+          fontSize: "11px",
+          fontWeight: 800,
+          lineHeight: 1.7,
+        }}
+      >
+        ✨ استمر في التعلم والإنجاز؛ فقد يكون اسمك بين أبطال الأسبوع القادم.
+      </p>
+    </div>
+  </section>
+)}
+
+{/* لوحة الأكاديمية — لا تظهر إلا عند وجود إعلان أو فعالية أو مسابقة مهمة */}
+
 {academyBoardSettings.enabled &&
   academyBoardSlides.length > 0 &&
   (() => {
@@ -1662,7 +2274,7 @@ useEffect(() => {
       isMilestone
         ? "خبر الإنجاز"
         : isEngagement
-        ? "Top 10"
+        ? "Top 5"
         : activeSlide.category === "event"
         ? "فعالية"
         : activeSlide.category ===
@@ -1736,7 +2348,7 @@ useEffect(() => {
         `}</style>
 
         <section
-          aria-label="لوحة أكاديمية لغتي الرقمية"
+          aria-label="لوحة إعلانات الأكاديمية الرقمية"
           onTouchStart={(event) => {
             boardTouchStartX.current =
               event.touches[0]?.clientX ??
@@ -1858,7 +2470,7 @@ useEffect(() => {
                     fontWeight: 900,
                   }}
                 >
-                  لوحة أكاديمية لغتي
+                  لوحة إعلانات الأكاديمية
                 </strong>
 
                 <span
@@ -1870,7 +2482,7 @@ useEffect(() => {
                     fontWeight: 800,
                   }}
                 >
-                  إنجازات • إعلانات • فعاليات • مسابقات
+                  إعلانات مهمة • فعاليات • مسابقات
                 </span>
               </div>
             </div>
@@ -1965,7 +2577,7 @@ useEffect(() => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  تحديث تلقائي كل 30 ثانية
+                  أبطال الأسبوع
                 </span>
               </div>
 
@@ -2102,7 +2714,7 @@ useEffect(() => {
                   lineHeight: 1.7,
                 }}
               >
-                يحتسب الترتيب التفاعل الحقيقي لهذا الأسبوع، ويبدأ من جديد تلقائيًا كل يوم أحد.
+                يظهر أبطال الأسبوع من الخميس الساعة 12 ظهرًا حتى السبت الساعة 4 عصرًا.
               </p>
             </div>
           ) : (

@@ -49,6 +49,96 @@ type PaperStudent = {
 const paperTableColumns =
   "minmax(220px, 2fr) minmax(120px, 0.8fr) 120px minmax(190px, 1fr)";
 
+
+const CACHE_DURATION_MS = 5 * 60 * 1000;
+const QUIZ_RESULTS_CACHE_KEY = "teacher-quizzes-results-cache-v1";
+const PAPER_STUDENTS_CACHE_KEY = "teacher-quizzes-students-cache-v1";
+
+type CachedTeacherQuizResult = Omit<TeacherQuizResult, "parentViewedAt"> & {
+  parentViewedAtMillis: number | null;
+};
+
+function getCachedValue<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      cachedAt?: number;
+      value?: T;
+    };
+
+    if (
+      typeof parsed.cachedAt !== "number" ||
+      Date.now() - parsed.cachedAt >= CACHE_DURATION_MS
+    ) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed.value ?? null;
+  } catch (error) {
+    console.warn(`تعذر قراءة الذاكرة المؤقتة: ${key}`, error);
+    return null;
+  }
+}
+
+function setCachedValue<T>(key: string, value: T) {
+  try {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        value,
+      })
+    );
+  } catch (error) {
+    console.warn(`تعذر حفظ الذاكرة المؤقتة: ${key}`, error);
+  }
+}
+
+function clearQuizResultsCache() {
+  try {
+    sessionStorage.removeItem(QUIZ_RESULTS_CACHE_KEY);
+  } catch (error) {
+    console.warn("تعذر حذف ذاكرة نتائج الاختبارات.", error);
+  }
+}
+
+function toCachedQuizResult(
+  result: TeacherQuizResult
+): CachedTeacherQuizResult {
+  const { parentViewedAt, ...rest } = result;
+  const parentViewedDate = parentViewedAt?.toDate?.() ?? null;
+
+  return {
+    ...rest,
+    parentViewedAtMillis: parentViewedDate
+      ? parentViewedDate.getTime()
+      : null,
+  };
+}
+
+function fromCachedQuizResult(
+  result: CachedTeacherQuizResult
+): TeacherQuizResult {
+  const {
+    parentViewedAtMillis,
+    ...rest
+  } = result;
+
+  return {
+    ...rest,
+    parentViewedAt:
+      typeof parentViewedAtMillis === "number"
+        ? {
+            toDate: () =>
+              new Date(parentViewedAtMillis),
+          }
+        : null,
+  };
+}
+
 function normalizeClassroom(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ");
   if (normalized.includes("جميع")) return "all";
@@ -82,7 +172,7 @@ export default function TeacherQuizzesPage() {
 
   const [totalScore, setTotalScore] = useState("");
   const [teacherResultNote, setTeacherResultNote] = useState("");
-  const [paperStudents, setPaperStudents] = useState<PaperStudent[]>([]);
+  const [allPaperStudents, setAllPaperStudents] = useState<PaperStudent[]>([]);
   const [paperScores, setPaperScores] = useState<Record<string, string>>({});
   const [paperFiles, setPaperFiles] = useState<Record<string, File | null>>({});
 
@@ -106,6 +196,27 @@ export default function TeacherQuizzesPage() {
     }
     return 0;
   }, [assessmentType, questions, totalScore]);
+
+  const paperStudents = useMemo(() => {
+    if (assessmentType !== "ورقي") {
+      return [];
+    }
+
+    return allPaperStudents
+      .filter((student) => {
+        if (classroom === "جميع طلاب الصف الثاني") {
+          return true;
+        }
+
+        return (
+          normalizeClassroom(student.classroom) ===
+          normalizeClassroom(classroom)
+        );
+      })
+      .sort((a, b) =>
+        a.studentName.localeCompare(b.studentName, "ar")
+      );
+  }, [allPaperStudents, assessmentType, classroom]);
 
   useEffect(() => {
     async function loadQuizForEditing() {
@@ -157,119 +268,333 @@ export default function TeacherQuizzesPage() {
   }, [editQuizId]);
 
   useEffect(() => {
+    let active = true;
+
     async function loadQuizResultsForTeacher() {
       try {
         setQuizResultsLoading(true);
         setQuizResultsError("");
-        const snapshot = await getDocs(collection(db, "quizResults"));
-        const loadedResults: TeacherQuizResult[] = await Promise.all(
-          snapshot.docs.map(async (docSnap) => {
-            const data = docSnap.data();
-            const resultQuizId =
-              typeof data.quizId === "string" ? data.quizId : "";
-            let quizQuestions: Question[] = [];
-            if (resultQuizId) {
-              const quizSnapshot = await getDoc(doc(db, "quizzes", resultQuizId));
-              if (quizSnapshot.exists()) {
-                const quizData = quizSnapshot.data();
-                if (Array.isArray(quizData.questions)) {
-                  quizQuestions = quizData.questions as Question[];
-                }
+
+        const cachedResults =
+          getCachedValue<CachedTeacherQuizResult[]>(
+            QUIZ_RESULTS_CACHE_KEY
+          );
+
+        if (cachedResults) {
+          if (active) {
+            setQuizResults(
+              cachedResults.map(fromCachedQuizResult)
+            );
+          }
+          return;
+        }
+
+        const snapshot = await getDocs(
+          collection(db, "quizResults")
+        );
+
+        const rawResults = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+
+          return {
+            docSnap,
+            data,
+            resultQuizId:
+              typeof data.quizId === "string"
+                ? data.quizId
+                : "",
+          };
+        });
+
+        /*
+          بدل قراءة وثيقة الاختبار مرة لكل نتيجة طالب،
+          نجلب كل اختبار فريد مرة واحدة فقط.
+        */
+        const uniqueQuizIds = Array.from(
+          new Set(
+            rawResults
+              .map((item) => item.resultQuizId)
+              .filter(Boolean)
+          )
+        );
+
+        const questionsByQuizId =
+          new Map<string, Question[]>();
+
+        await Promise.all(
+          uniqueQuizIds.map(async (resultQuizId) => {
+            try {
+              const quizSnapshot = await getDoc(
+                doc(db, "quizzes", resultQuizId)
+              );
+
+              if (!quizSnapshot.exists()) {
+                questionsByQuizId.set(
+                  resultQuizId,
+                  []
+                );
+                return;
               }
+
+              const quizData =
+                quizSnapshot.data();
+
+              questionsByQuizId.set(
+                resultQuizId,
+                Array.isArray(
+                  quizData.questions
+                )
+                  ? (quizData.questions as Question[])
+                  : []
+              );
+            } catch (error) {
+              console.error(
+                `تعذر تحميل أسئلة الاختبار ${resultQuizId}:`,
+                error
+              );
+
+              questionsByQuizId.set(
+                resultQuizId,
+                []
+              );
             }
-            return {
+          })
+        );
+
+        const loadedResults: TeacherQuizResult[] =
+          rawResults.map(
+            ({
+              docSnap,
+              data,
+              resultQuizId,
+            }) => ({
               id: docSnap.id,
               quizId: resultQuizId,
               quizTitle:
-                typeof data.quizTitle === "string"
+                typeof data.quizTitle ===
+                "string"
                   ? data.quizTitle
                   : "اختبار لغتي",
               studentId:
-                typeof data.studentId === "string" ? data.studentId : "",
+                typeof data.studentId ===
+                "string"
+                  ? data.studentId
+                  : "",
               studentName:
-                typeof data.studentName === "string" ? data.studentName : "",
+                typeof data.studentName ===
+                "string"
+                  ? data.studentName
+                  : "",
               studentScore:
-                typeof data.studentScore === "number" ? data.studentScore : 0,
+                typeof data.studentScore ===
+                "number"
+                  ? data.studentScore
+                  : 0,
               totalScore:
-                typeof data.totalScore === "number" ? data.totalScore : 0,
-              parentViewed: data.parentViewed === true,
+                typeof data.totalScore ===
+                "number"
+                  ? data.totalScore
+                  : 0,
+              parentViewed:
+                data.parentViewed === true,
               viewedFrom:
-                typeof data.viewedFrom === "string" ? data.viewedFrom : "",
-              parentViewedAt: data.parentViewedAt ?? null,
+                typeof data.viewedFrom ===
+                "string"
+                  ? data.viewedFrom
+                  : "",
+              parentViewedAt:
+                data.parentViewedAt ?? null,
               answers:
-                data.answers && typeof data.answers === "object"
-                  ? (data.answers as Record<string, string | number>)
+                data.answers &&
+                typeof data.answers ===
+                  "object"
+                  ? (data.answers as Record<
+                      string,
+                      string | number
+                    >)
                   : {},
-              quizQuestions,
-              needsTeacherReview: data.needsTeacherReview === true,
+              quizQuestions:
+                questionsByQuizId.get(
+                  resultQuizId
+                ) ?? [],
+              needsTeacherReview:
+                data.needsTeacherReview ===
+                true,
               reviewStatus:
-                typeof data.reviewStatus === "string"
+                typeof data.reviewStatus ===
+                "string"
                   ? data.reviewStatus
                   : "completed",
               autoScore:
-                typeof data.autoScore === "number" ? data.autoScore : 0,
+                typeof data.autoScore ===
+                "number"
+                  ? data.autoScore
+                  : 0,
               autoTotal:
-                typeof data.autoTotal === "number" ? data.autoTotal : 0,
+                typeof data.autoTotal ===
+                "number"
+                  ? data.autoTotal
+                  : 0,
               manualScores:
-                data.manualScores && typeof data.manualScores === "object"
-                  ? (data.manualScores as Record<string, number>)
+                data.manualScores &&
+                typeof data.manualScores ===
+                  "object"
+                  ? (data.manualScores as Record<
+                      string,
+                      number
+                    >)
                   : {},
               manualScoreTotal:
-                typeof data.manualScoreTotal === "number"
+                typeof data.manualScoreTotal ===
+                "number"
                   ? data.manualScoreTotal
                   : 0,
-            };
-          })
-        );
+            })
+          );
+
+        if (!active) {
+          return;
+        }
+
         setQuizResults(loadedResults);
+
+        setCachedValue(
+          QUIZ_RESULTS_CACHE_KEY,
+          loadedResults.map(
+            toCachedQuizResult
+          )
+        );
       } catch (error) {
-        console.error("تعذر تحميل نتائج الطلاب للمعلم:", error);
-        setQuizResults([]);
-        setQuizResultsError("تعذر تحميل متابعة نتائج الطلاب حاليًا.");
+        console.error(
+          "تعذر تحميل نتائج الطلاب للمعلم:",
+          error
+        );
+
+        if (active) {
+          setQuizResults([]);
+          setQuizResultsError(
+            "تعذر تحميل متابعة نتائج الطلاب حاليًا."
+          );
+        }
       } finally {
-        setQuizResultsLoading(false);
+        if (active) {
+          setQuizResultsLoading(false);
+        }
       }
     }
+
     void loadQuizResultsForTeacher();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
+    let active = true;
+
     async function loadPaperStudents() {
       if (assessmentType !== "ورقي") {
-        setPaperStudents([]);
         return;
       }
+
+      if (allPaperStudents.length > 0) {
+        return;
+      }
+
       try {
-        const snapshot = await getDocs(collection(db, "students"));
-        const loadedStudents = snapshot.docs
-          .map((studentDoc) => {
-            const data = studentDoc.data();
-            return {
-              id: studentDoc.id,
-              studentId: String(data.studentId ?? studentDoc.id),
-              studentName: String(data.studentName ?? data.name ?? "طالب دون اسم"),
-              classroom: String(data.classroom ?? "غير محدد"),
-              active: data.active !== false && data.archived !== true,
-            };
-          })
-          .filter((student) => {
-            if (!student.active) return false;
-            if (classroom === "جميع طلاب الصف الثاني") return true;
-            return (
-              normalizeClassroom(student.classroom) ===
-              normalizeClassroom(classroom)
+        const cachedStudents =
+          getCachedValue<PaperStudent[]>(
+            PAPER_STUDENTS_CACHE_KEY
+          );
+
+        if (cachedStudents) {
+          if (active) {
+            setAllPaperStudents(
+              cachedStudents
             );
-          })
-          .sort((a, b) => a.studentName.localeCompare(b.studentName, "ar"))
-          .map(({ active: _active, ...student }) => student);
-        setPaperStudents(loadedStudents);
+          }
+          return;
+        }
+
+        /*
+          نقرأ الطلاب مرة واحدة فقط،
+          ثم يتم فلترة الفصل محليًا بواسطة useMemo.
+        */
+        const snapshot = await getDocs(
+          collection(db, "students")
+        );
+
+        const loadedStudents: PaperStudent[] =
+          snapshot.docs
+            .map((studentDoc) => {
+              const data =
+                studentDoc.data();
+
+              return {
+                id: studentDoc.id,
+                studentId: String(
+                  data.studentId ??
+                    studentDoc.id
+                ),
+                studentName: String(
+                  data.studentName ??
+                    data.name ??
+                    "طالب دون اسم"
+                ),
+                classroom: String(
+                  data.classroom ??
+                    "غير محدد"
+                ),
+                active:
+                  data.active !== false &&
+                  data.archived !== true,
+              };
+            })
+            .filter(
+              (student) =>
+                student.active
+            )
+            .map(
+              ({
+                active: _active,
+                ...student
+              }) => student
+            );
+
+        if (!active) {
+          return;
+        }
+
+        setAllPaperStudents(
+          loadedStudents
+        );
+
+        setCachedValue(
+          PAPER_STUDENTS_CACHE_KEY,
+          loadedStudents
+        );
       } catch (error) {
-        console.error("تعذر تحميل طلاب الاختبار الورقي:", error);
-        setPaperStudents([]);
+        console.error(
+          "تعذر تحميل طلاب الاختبار الورقي:",
+          error
+        );
+
+        if (active) {
+          setAllPaperStudents([]);
+        }
       }
     }
+
     void loadPaperStudents();
-  }, [assessmentType, classroom]);
+
+    return () => {
+      active = false;
+    };
+  }, [
+    assessmentType,
+    allPaperStudents.length,
+  ]);
 
   function updateQuestionText(questionId: number, value: string) {
     setQuestions((currentQuestions) =>
@@ -411,6 +736,7 @@ export default function TeacherQuizzesPage() {
     const quizData = buildQuizData(published);
     if (quizId) {
       await updateDoc(doc(db, "quizzes", quizId), quizData);
+      clearQuizResultsCache();
       return quizId;
     }
     const quizReference = await addDoc(collection(db, "quizzes"), {
@@ -418,6 +744,7 @@ export default function TeacherQuizzesPage() {
       createdAt: serverTimestamp(),
     });
     setQuizId(quizReference.id);
+    clearQuizResultsCache();
     return quizReference.id;
   }
 
@@ -514,6 +841,8 @@ export default function TeacherQuizzesPage() {
           { merge: true }
         );
       }
+      clearQuizResultsCache();
+
       setMessage(
         `✅ تم حفظ وإرسال نتائج ${studentsWithScores.length} طالبًا للأسر`
       );
@@ -540,6 +869,8 @@ export default function TeacherQuizzesPage() {
         needsTeacherReview: false,
         reviewedAt: serverTimestamp(),
       });
+      clearQuizResultsCache();
+
       setQuizResults((currentResults) =>
         currentResults.map((currentResult) =>
           currentResult.id === result.id

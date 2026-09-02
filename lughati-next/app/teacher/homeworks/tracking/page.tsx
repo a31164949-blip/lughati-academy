@@ -5,6 +5,8 @@ import {
   collection,
   doc,
   getDocs,
+  query,
+  where,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -114,6 +116,78 @@ function homeworkAppliesToStudent(
   return targetClass === classroom;
 }
 
+
+const CACHE_DURATION_MS = 5 * 60 * 1000;
+const HOMEWORK_TRACKING_STUDENTS_CACHE_KEY =
+  "homework-tracking-students-v1";
+const HOMEWORK_TRACKING_HOMEWORKS_CACHE_KEY =
+  "homework-tracking-homeworks-v1";
+
+type CachedHomework = Omit<Homework, "dueDate"> & {
+  dueDate: string | number | null;
+};
+
+function getCachedValue<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      cachedAt?: number;
+      value?: T;
+    };
+
+    if (
+      typeof parsed.cachedAt !== "number" ||
+      Date.now() - parsed.cachedAt >= CACHE_DURATION_MS
+    ) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedValue<T>(key: string, value: T) {
+  try {
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        value,
+      })
+    );
+  } catch {
+    // تجاهل تعذر التخزين المؤقت؛ الصفحة تستمر بالعمل من Firestore.
+  }
+}
+
+function serializeDueDate(value: unknown): string | number | null {
+  if (!value) return null;
+
+  if (value instanceof Timestamp) {
+    return value.toMillis();
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toMillis" in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+
+  return null;
+}
+
 export default function HomeworkTrackingPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
@@ -129,195 +203,216 @@ export default function HomeworkTrackingPage() {
   useState<string | null>(null);
   const [rejectingCompletionId, setRejectingCompletionId] =
   useState<string | null>(null);
-const fetchTrackingData = useCallback(async () => {
-  const [
-    studentsSnapshot,
-    homeworksSnapshot,
-    completionsSnapshot,
-  ] = await Promise.all([
-    getDocs(collection(db, "students")),
-    getDocs(collection(db, "homeworks")),
-    getDocs(collection(db, "homeworkCompletions")),
-  ]);
+const fetchBaseTrackingData = useCallback(
+  async (forceRefresh = false) => {
+    let loadedStudents =
+      !forceRefresh
+        ? getCachedValue<Student[]>(
+            HOMEWORK_TRACKING_STUDENTS_CACHE_KEY
+          )
+        : null;
 
-  const loadedStudents: Student[] =
-    studentsSnapshot.docs
-      .map((studentDocument) => {
-        const data =
-          studentDocument.data();
+    let loadedHomeworks =
+      !forceRefresh
+        ? getCachedValue<CachedHomework[]>(
+            HOMEWORK_TRACKING_HOMEWORKS_CACHE_KEY
+          )
+        : null;
 
-        return {
-          id: studentDocument.id,
+    if (!loadedStudents) {
+      const studentsSnapshot = await getDocs(
+        collection(db, "students")
+      );
 
-          studentId:
-            typeof data.studentId === "string"
-              ? data.studentId
-              : studentDocument.id,
+      loadedStudents = studentsSnapshot.docs
+        .map((studentDocument) => {
+          const data = studentDocument.data();
 
-          studentName:
-            typeof data.studentName === "string"
-              ? data.studentName
-              : typeof data.name === "string"
-                ? data.name
-                : "طالب",
-
-          classroom:
-            typeof data.classroom === "string"
-              ? data.classroom
-              : "غير محدد",
-
-          active:
-            data.active !== false,
-        };
-      })
-      .filter(
-        (student) =>
-          student.active
-      )
-      .sort(
-        (first, second) =>
+          return {
+            id: studentDocument.id,
+            studentId:
+              typeof data.studentId === "string"
+                ? data.studentId
+                : studentDocument.id,
+            studentName:
+              typeof data.studentName === "string"
+                ? data.studentName
+                : typeof data.name === "string"
+                  ? data.name
+                  : "طالب",
+            classroom:
+              typeof data.classroom === "string"
+                ? data.classroom
+                : "غير محدد",
+            active: data.active !== false,
+          };
+        })
+        .filter((student) => student.active)
+        .sort((first, second) =>
           first.studentName.localeCompare(
             second.studentName,
             "ar"
           )
+        );
+
+      setCachedValue(
+        HOMEWORK_TRACKING_STUDENTS_CACHE_KEY,
+        loadedStudents
+      );
+    }
+
+    if (!loadedHomeworks) {
+      /*
+        تحسين مهم:
+        لا نحمّل كل الواجبات ثم نستبعد غير المنشور محليًا.
+        Firestore يعيد الواجبات المنشورة فقط.
+      */
+      const homeworksSnapshot = await getDocs(
+        query(
+          collection(db, "homeworks"),
+          where("published", "==", true)
+        )
       );
 
-  const loadedHomeworks: Homework[] =
-    homeworksSnapshot.docs
-      .map((homeworkDocument) => {
-        const data =
-          homeworkDocument.data();
+      const mappedHomeworks: Homework[] =
+        homeworksSnapshot.docs
+          .map((homeworkDocument) => {
+            const data = homeworkDocument.data();
+
+            return {
+              id: homeworkDocument.id,
+              title:
+                typeof data.title === "string"
+                  ? data.title
+                  : "واجب دون عنوان",
+              instructions:
+                typeof data.instructions === "string"
+                  ? data.instructions
+                  : "",
+              targetClass:
+                typeof data.targetClass === "string"
+                  ? data.targetClass
+                  : typeof data.classroom === "string"
+                    ? data.classroom
+                    : "الفصلان",
+              dueDate: data.dueDate ?? null,
+              published: true,
+              createdAtMilliseconds:
+                getMilliseconds(data.createdAt) ||
+                getMilliseconds(data.updatedAt),
+            };
+          })
+          .sort(
+            (first, second) =>
+              second.createdAtMilliseconds -
+              first.createdAtMilliseconds
+          );
+
+      setCachedValue<CachedHomework[]>(
+        HOMEWORK_TRACKING_HOMEWORKS_CACHE_KEY,
+        mappedHomeworks.map((homework) => ({
+          ...homework,
+          dueDate: serializeDueDate(homework.dueDate),
+        }))
+      );
+
+      return {
+        loadedStudents,
+        loadedHomeworks: mappedHomeworks,
+      };
+    }
+
+    return {
+      loadedStudents,
+      loadedHomeworks: loadedHomeworks.map(
+        (homework) => ({
+          ...homework,
+          dueDate: homework.dueDate,
+        })
+      ) as Homework[],
+    };
+  },
+  []
+);
+
+const fetchCompletionsForHomework = useCallback(
+  async (homeworkId: string) => {
+    if (!homeworkId) {
+      return [] as Completion[];
+    }
+
+    /*
+      أكبر تحسين في الصفحة:
+      سابقًا كانت الصفحة تقرأ مجموعة homeworkCompletions كاملة.
+      الآن نقرأ سجلات الواجب المحدد فقط.
+    */
+    const completionsSnapshot = await getDocs(
+      query(
+        collection(db, "homeworkCompletions"),
+        where("homeworkId", "==", homeworkId)
+      )
+    );
+
+    return completionsSnapshot.docs.map(
+      (completionDocument) => {
+        const data = completionDocument.data();
+
+        const completedAtText =
+          typeof data.completedAtText === "string"
+            ? data.completedAtText
+            : data.completedAt &&
+                typeof data.completedAt.toDate === "function"
+              ? data.completedAt
+                  .toDate()
+                  .toLocaleString("ar-SA")
+              : "";
 
         return {
-          id:
-            homeworkDocument.id,
-
-          title:
-            typeof data.title === "string"
-              ? data.title
-              : "واجب دون عنوان",
-
-          instructions:
-            typeof data.instructions === "string"
-              ? data.instructions
+          id: completionDocument.id,
+          homeworkId:
+            typeof data.homeworkId === "string"
+              ? data.homeworkId
               : "",
-
-          targetClass:
-            typeof data.targetClass === "string"
-              ? data.targetClass
-              : typeof data.classroom === "string"
-                ? data.classroom
-                : "الفصلان",
-
-          dueDate:
-            data.dueDate ?? null,
-
-          published:
-            data.published === true,
-
-          createdAtMilliseconds:
-            getMilliseconds(
-              data.createdAt
-            ) ||
-            getMilliseconds(
-              data.updatedAt
-            ),
+          studentId:
+            typeof data.studentId === "string"
+              ? data.studentId
+              : "",
+          studentName:
+            typeof data.studentName === "string"
+              ? data.studentName
+              : "طالب",
+          classroom:
+            typeof data.classroom === "string"
+              ? data.classroom
+              : "",
+          completed:
+            data.completed === true ||
+            data.status === "completed",
+          teacherApproved:
+            data.teacherApproved === true,
+          teacherRejected:
+            data.teacherRejected === true ||
+            data.reviewStatus === "needs-revision",
+          teacherNote:
+            typeof data.teacherNote === "string"
+              ? data.teacherNote
+              : "",
+          completedAtText,
+          pointsAwarded:
+            data.pointsAwarded === true,
+          pointsAwardedValue:
+            typeof data.pointsAwardedValue === "number"
+              ? data.pointsAwardedValue
+              : 0,
         };
-      })
-      .filter(
-        (homework) =>
-          homework.published
-      )
-      .sort(
-        (first, second) =>
-          second.createdAtMilliseconds -
-          first.createdAtMilliseconds
-      );
+      }
+    );
+  },
+  []
+);
 
-  const loadedCompletions:
-    Completion[] =
-      completionsSnapshot.docs.map(
-        (completionDocument) => {
-          const data =
-            completionDocument.data();
-
-          const completedAtText =
-            typeof data.completedAtText ===
-            "string"
-              ? data.completedAtText
-              : data.completedAt &&
-                  typeof data.completedAt
-                    .toDate === "function"
-                ? data.completedAt
-                    .toDate()
-                    .toLocaleString(
-                      "ar-SA"
-                    )
-                : "";
-
-          return {
-            id:
-              completionDocument.id,
-
-            homeworkId:
-              typeof data.homeworkId === "string"
-                ? data.homeworkId
-                : "",
-
-            studentId:
-              typeof data.studentId === "string"
-                ? data.studentId
-                : "",
-
-            studentName:
-              typeof data.studentName === "string"
-                ? data.studentName
-                : "طالب",
-
-            classroom:
-              typeof data.classroom === "string"
-                ? data.classroom
-                : "",
-
-            completed:
-              data.completed === true ||
-              data.status === "completed",
-
-            teacherApproved:
-              data.teacherApproved === true,
-
-            teacherRejected:
-              data.teacherRejected === true ||
-              data.reviewStatus === "needs-revision",
-
-            teacherNote:
-              typeof data.teacherNote === "string"
-                ? data.teacherNote
-                : "",
-
-            completedAtText,
-
-            pointsAwarded:
-              data.pointsAwarded === true,
-
-            pointsAwardedValue:
-              typeof data.pointsAwardedValue ===
-              "number"
-                ? data.pointsAwardedValue
-                : 0,
-          };
-        }
-      );
-
-  return {
-    loadedStudents,
-    loadedHomeworks,
-    loadedCompletions,
-  };
-}, []);
-
-const loadData =
-  useCallback(async () => {
+const loadData = useCallback(
+  async (forceRefresh = true) => {
     try {
       setLoading(true);
       setError("");
@@ -325,45 +420,30 @@ const loadData =
       const {
         loadedStudents,
         loadedHomeworks,
-        loadedCompletions,
-      } =
-        await fetchTrackingData();
+      } = await fetchBaseTrackingData(forceRefresh);
 
-      setStudents(
-        loadedStudents
-      );
+      setStudents(loadedStudents);
+      setHomeworks(loadedHomeworks);
 
-      setHomeworks(
-        loadedHomeworks
-      );
+      const homeworkId =
+        selectedHomeworkId &&
+        loadedHomeworks.some(
+          (homework) =>
+            homework.id === selectedHomeworkId
+        )
+          ? selectedHomeworkId
+          : loadedHomeworks[0]?.id ?? "";
 
-      setCompletions(
-        loadedCompletions
-      );
+      setSelectedHomeworkId(homeworkId);
 
-      setSelectedHomeworkId(
-        (current) => {
-          if (
-            current &&
-            loadedHomeworks.some(
-              (homework) =>
-                homework.id ===
-                current
-            )
-          ) {
-            return current;
-          }
+      const loadedCompletions =
+        await fetchCompletionsForHomework(
+          homeworkId
+        );
 
-          return (
-            loadedHomeworks[0]?.id ??
-            ""
-          );
-        }
-      );
+      setCompletions(loadedCompletions);
     } catch (loadError) {
-      console.error(
-        loadError
-      );
+      console.error(loadError);
 
       setError(
         "تعذر تحميل بيانات متابعة الواجبات. حاول مرة أخرى."
@@ -371,7 +451,14 @@ const loadData =
     } finally {
       setLoading(false);
     }
-  }, [fetchTrackingData]);
+  },
+  [
+    fetchBaseTrackingData,
+    fetchCompletionsForHomework,
+    selectedHomeworkId,
+  ]
+);
+
 const approveHomeworkCompletion = async (
   completion: Completion
 ) => {
@@ -625,19 +712,18 @@ useEffect(() => {
 
   async function loadInitialData() {
     try {
+      setLoading(true);
+      setError("");
+
       const {
         loadedStudents,
         loadedHomeworks,
-        loadedCompletions,
-      } = await fetchTrackingData();
+      } = await fetchBaseTrackingData(false);
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       setStudents(loadedStudents);
       setHomeworks(loadedHomeworks);
-      setCompletions(loadedCompletions);
 
       setSelectedHomeworkId((current) => {
         if (
@@ -671,7 +757,50 @@ useEffect(() => {
   return () => {
     active = false;
   };
-}, [fetchTrackingData]);
+}, [fetchBaseTrackingData]);
+
+useEffect(() => {
+  let active = true;
+
+  async function loadSelectedHomeworkCompletions() {
+    if (!selectedHomeworkId) {
+      setCompletions([]);
+      return;
+    }
+
+    try {
+      const loadedCompletions =
+        await fetchCompletionsForHomework(
+          selectedHomeworkId
+        );
+
+      if (active) {
+        setCompletions(loadedCompletions);
+      }
+    } catch (loadError) {
+      console.error(
+        "تعذر تحميل إنجازات الواجب المحدد:",
+        loadError
+      );
+
+      if (active) {
+        setError(
+          "تعذر تحميل إنجازات الواجب المحدد."
+        );
+      }
+    }
+  }
+
+  void loadSelectedHomeworkCompletions();
+
+  return () => {
+    active = false;
+  };
+}, [
+  selectedHomeworkId,
+  fetchCompletionsForHomework,
+]);
+
   const selectedHomework = useMemo(
     () =>
       homeworks.find(
@@ -785,7 +914,7 @@ useEffect(() => {
 
         <button
           type="button"
-          onClick={() => void loadData()}
+          onClick={() => void loadData(true)}
           style={styles.refreshButton}
         >
           تحديث البيانات 🔄

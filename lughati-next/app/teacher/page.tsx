@@ -1,4 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  collection,
+  getDocs,
+} from "firebase/firestore";
+
+import { db } from "../../firebase";
 
 const sections = [
   {
@@ -36,6 +45,12 @@ const sections = [
     description:
       "الاستماع إلى تسجيلات القراءة واعتمادها أو طلب إعادة التسجيل.",
     href: "/teacher/reading-submissions",
+  },
+  {
+    title: "📖 رحلات القراءة",
+    description:
+      "متابعة رحلة كل طالب في القراءة، وعدد الأيام، والتسجيلات، والقراءات المعتمدة، وآخر قراءة.",
+    href: "/teacher/reading-journeys",
   },
   {
     title: "👨‍🎓 إدارة الطلاب",
@@ -79,15 +94,12 @@ const sections = [
       "إدارة إنجازات الطلاب والإعلانات والفعاليات والمسابقات المعروضة في الصفحة الرئيسية.",
     href: "/teacher/academy-board",
   },
-
-  // 🎮 إدارة الألعاب والتحديات
   {
     title: "🎮 إدارة الألعاب والتحديات",
     description:
       "تحديد لعبة الأسبوع، تحدي العائلة، وتحديث كلمات ومحتوى الألعاب.",
     href: "/teacher/games",
   },
-
   {
     title: "👑 تاج لغتي",
     description:
@@ -127,13 +139,136 @@ const sections = [
 ];
 
 export default function TeacherDashboardPage() {
+const [
+  homeworkNotificationCount,
+  setHomeworkNotificationCount,
+] = useState(0);
+
+const [
+  messageNotificationCount,
+  setMessageNotificationCount,
+] = useState(0);
+
+const notificationCount =
+  homeworkNotificationCount +
+  messageNotificationCount;
+
+useEffect(() => {
+  let active = true;
+
+  async function loadNotificationCount() {
+    try {
+      const [
+        homeworkSnapshot,
+        messagesSnapshot,
+      ] = await Promise.all([
+        getDocs(
+          collection(
+            db,
+            "homeworkCompletions"
+          )
+        ),
+
+        getDocs(
+          collection(
+            db,
+            "studentTeacherMessages"
+          )
+        ),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      let homeworkCount = 0;
+
+      homeworkSnapshot.docs.forEach(
+        (completionDoc) => {
+          const data =
+            completionDoc.data();
+
+          const hasReadingAudio =
+            typeof data.readingAudioUrl ===
+              "string" &&
+            data.readingAudioUrl.trim() !== "";
+
+          const readingNeedsReview =
+            hasReadingAudio &&
+            data.readingStatus !==
+              "approved" &&
+            data.readingStatus !==
+              "rejected";
+
+          if (readingNeedsReview) {
+            homeworkCount += 1;
+          }
+
+          const hasSolution =
+            typeof data.solutionUrl ===
+              "string" &&
+            data.solutionUrl.trim() !== "";
+
+          const solutionNeedsReview =
+            hasSolution &&
+            data.solutionStatus !==
+              "approved" &&
+            data.solutionStatus !==
+              "rejected";
+
+          if (solutionNeedsReview) {
+            homeworkCount += 1;
+          }
+        }
+      );
+
+      let messagesCount = 0;
+
+      messagesSnapshot.docs.forEach(
+        (messageDoc) => {
+          const data =
+            messageDoc.data();
+
+          const teacherReply =
+            typeof data.teacherReply ===
+              "string"
+              ? data.teacherReply.trim()
+              : "";
+
+          if (!teacherReply) {
+            messagesCount += 1;
+          }
+        }
+      );
+
+      setHomeworkNotificationCount(
+        homeworkCount
+      );
+
+      setMessageNotificationCount(
+        messagesCount
+      );
+    } catch (error) {
+      console.error(
+        "تعذر تحميل عداد الإشعارات:",
+        error
+      );
+    }
+  }
+
+  void loadNotificationCount();
+
+  return () => {
+    active = false;
+  };
+}, []);
+
   return (
     <main
       dir="rtl"
       style={styles.page}
     >
       {/* رأس الصفحة */}
-
       <section style={styles.hero}>
         <div style={styles.icon}>
           👨‍🏫
@@ -153,13 +288,48 @@ export default function TeacherDashboardPage() {
             الذي ترغب في إدارته.
           </p>
         </div>
+
+        {/* 🔔 جرس الإشعارات */}
+        <Link
+          href="/teacher/notifications"
+          style={styles.notificationBell}
+          title="مركز الإشعارات"
+          aria-label={`مركز الإشعارات - ${notificationCount} إشعار`}
+        >
+          <span style={styles.bellIcon}>
+            🔔
+          </span>
+
+          {notificationCount > 0 && (
+            <span
+              style={
+                styles.notificationBadge
+              }
+            >
+              {notificationCount > 99
+                ? "99+"
+                : notificationCount}
+            </span>
+          )}
+
+          <span
+            style={
+              styles.notificationText
+            }
+          >
+            الإشعارات
+          </span>
+        </Link>
       </section>
 
       {/* الإحصاءات */}
-
       <section style={styles.stats}>
         <article style={styles.statCard}>
-          <strong style={styles.statNumber}>
+          <strong
+            style={
+              styles.statNumber
+            }
+          >
             60
           </strong>
 
@@ -169,7 +339,11 @@ export default function TeacherDashboardPage() {
         </article>
 
         <article style={styles.statCard}>
-          <strong style={styles.statNumber}>
+          <strong
+            style={
+              styles.statNumber
+            }
+          >
             2
           </strong>
 
@@ -179,7 +353,11 @@ export default function TeacherDashboardPage() {
         </article>
 
         <article style={styles.statCard}>
-          <strong style={styles.statNumber}>
+          <strong
+            style={
+              styles.statNumber
+            }
+          >
             {sections.length}
           </strong>
 
@@ -190,14 +368,17 @@ export default function TeacherDashboardPage() {
       </section>
 
       {/* أقسام لوحة المعلم */}
-
       <section>
         <div style={styles.heading}>
           <p style={styles.label}>
             الإدارة اليومية
           </p>
 
-          <h2 style={styles.sectionTitle}>
+          <h2
+            style={
+              styles.sectionTitle
+            }
+          >
             أقسام لوحة المعلم
           </h2>
         </div>
@@ -217,6 +398,10 @@ export default function TeacherDashboardPage() {
                 section.href ===
                 "/teacher/games";
 
+              const isReadingJourney =
+                section.href ===
+                "/teacher/reading-journeys";
+
               const cardStyle =
                 isHeroes
                   ? {
@@ -232,6 +417,11 @@ export default function TeacherDashboardPage() {
                   ? {
                       ...styles.card,
                       ...styles.gamesCard,
+                    }
+                  : isReadingJourney
+                  ? {
+                      ...styles.card,
+                      ...styles.readingJourneyCard,
                     }
                   : styles.card;
 
@@ -253,6 +443,12 @@ export default function TeacherDashboardPage() {
                       ...styles.open,
                       color:
                         "#6d28d9",
+                    }
+                  : isReadingJourney
+                  ? {
+                      ...styles.open,
+                      color:
+                        "#0f766e",
                     }
                   : styles.open;
 
@@ -303,7 +499,6 @@ export default function TeacherDashboardPage() {
       </section>
 
       {/* الملاحظة السفلية */}
-
       <section style={styles.note}>
         <span style={styles.noteIcon}>
           ⚡
@@ -316,9 +511,10 @@ export default function TeacherDashboardPage() {
 
           <p style={styles.noteText}>
             يمكنك الوصول مباشرة إلى الجدول
-            المدرسي والسجل الذكي وأبطال
-            الأكاديمية والألعاب والواجبات
-            والاختبارات دون كتابة أي رابط.
+            المدرسي والسجل الذكي ورحلات
+            القراءة وأبطال الأكاديمية والألعاب
+            والواجبات والاختبارات دون كتابة
+            أي رابط.
           </p>
         </div>
       </section>
@@ -335,20 +531,25 @@ const styles: Record<
     padding: "24px",
     background:
       "linear-gradient(180deg, #f2fbf7 0%, #ffffff 100%)",
-    color: "#174d3b",
+    color:
+      "#174d3b",
     fontFamily:
       "Arial, sans-serif",
   },
 
   hero: {
-    maxWidth: "1100px",
+    maxWidth:
+      "1100px",
     margin:
       "0 auto 28px",
-    padding: "28px",
-    display: "flex",
+    padding:
+      "28px",
+    display:
+      "flex",
     alignItems:
       "center",
-    gap: "20px",
+    gap:
+      "20px",
     borderRadius:
       "28px",
     background:
@@ -360,9 +561,12 @@ const styles: Record<
   },
 
   icon: {
-    width: "90px",
-    height: "90px",
-    display: "grid",
+    width:
+      "90px",
+    height:
+      "90px",
+    display:
+      "grid",
     placeItems:
       "center",
     borderRadius:
@@ -383,7 +587,8 @@ const styles: Record<
   },
 
   title: {
-    margin: 0,
+    margin:
+      0,
     fontSize:
       "42px",
     lineHeight:
@@ -401,6 +606,89 @@ const styles: Record<
       1.8,
   },
 
+  /* 🔔 جرس الإشعارات */
+  notificationBell: {
+    position:
+      "relative",
+    marginRight:
+      "auto",
+    minWidth:
+      "105px",
+    padding:
+      "12px 15px",
+    display:
+      "flex",
+    flexDirection:
+      "column",
+    alignItems:
+      "center",
+    justifyContent:
+      "center",
+    gap:
+      "4px",
+    borderRadius:
+      "20px",
+    background:
+      "#f2fbf7",
+    border:
+      "1px solid #cde9dc",
+    color:
+      "#174d3b",
+    textDecoration:
+      "none",
+    boxShadow:
+      "0 7px 20px rgba(23, 77, 59, 0.07)",
+  },
+
+  bellIcon: {
+    fontSize:
+      "31px",
+    lineHeight:
+      1,
+  },
+
+  notificationBadge: {
+    position:
+      "absolute",
+    top:
+      "-8px",
+    right:
+      "-8px",
+    minWidth:
+      "27px",
+    height:
+      "27px",
+    padding:
+      "0 6px",
+    borderRadius:
+      "999px",
+    display:
+      "grid",
+    placeItems:
+      "center",
+    background:
+      "#dc2626",
+    color:
+      "#ffffff",
+    border:
+      "3px solid #ffffff",
+    fontSize:
+      "13px",
+    fontWeight:
+      900,
+    boxSizing:
+      "border-box",
+  },
+
+  notificationText: {
+    fontSize:
+      "13px",
+    fontWeight:
+      900,
+    color:
+      "#176b4d",
+  },
+
   stats: {
     maxWidth:
       "1100px",
@@ -410,7 +698,8 @@ const styles: Record<
       "grid",
     gridTemplateColumns:
       "repeat(3, minmax(0, 1fr))",
-    gap: "16px",
+    gap:
+      "16px",
   },
 
   statCard: {
@@ -422,7 +711,8 @@ const styles: Record<
       "column",
     alignItems:
       "center",
-    gap: "8px",
+    gap:
+      "8px",
     borderRadius:
       "22px",
     background:
@@ -446,7 +736,8 @@ const styles: Record<
   },
 
   sectionTitle: {
-    margin: 0,
+    margin:
+      0,
     fontSize:
       "32px",
   },
@@ -460,7 +751,8 @@ const styles: Record<
       "grid",
     gridTemplateColumns:
       "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "18px",
+    gap:
+      "18px",
   },
 
   card: {
@@ -487,7 +779,6 @@ const styles: Record<
   },
 
   /* 🌟 أبطال الأكاديمية */
-
   heroesCard: {
     background:
       "linear-gradient(135deg, #fffdf2 0%, #fff8d8 100%)",
@@ -498,7 +789,6 @@ const styles: Record<
   },
 
   /* 🎮 الألعاب والتحديات */
-
   gamesCard: {
     background:
       "linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%)",
@@ -509,7 +799,6 @@ const styles: Record<
   },
 
   /* 👑 تاج لغتي */
-
   crownCard: {
     background:
       "linear-gradient(135deg, #fffdf4 0%, #fff3c4 100%)",
@@ -517,6 +806,16 @@ const styles: Record<
       "2px solid #e7c65d",
     boxShadow:
       "0 12px 30px rgba(173, 126, 15, 0.11)",
+  },
+
+  /* 📖 رحلات القراءة */
+  readingJourneyCard: {
+    background:
+      "linear-gradient(135deg, #f0fdfa 0%, #ecfeff 100%)",
+    border:
+      "2px solid #99f6e4",
+    boxShadow:
+      "0 12px 30px rgba(13, 148, 136, 0.10)",
   },
 
   cardTitle: {
@@ -527,12 +826,14 @@ const styles: Record<
   },
 
   cardText: {
-    margin: 0,
+    margin:
+      0,
     color:
       "#668379",
     lineHeight:
       1.8,
-    flex: 1,
+    flex:
+      1,
   },
 
   open: {
@@ -555,7 +856,8 @@ const styles: Record<
       "flex",
     alignItems:
       "center",
-    gap: "15px",
+    gap:
+      "15px",
     borderRadius:
       "22px",
     background:

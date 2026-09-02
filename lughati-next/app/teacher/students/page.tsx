@@ -10,7 +10,28 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
+
 import { db } from "../../../firebase";
+
+const STUDENTS_PAGE_CACHE_KEY =
+  "teacher-students-page-data-v1";
+const STUDENTS_PAGE_CACHE_MS =
+  5 * 60 * 1000;
+
+type StudentsPageCache = {
+  cachedAt: number;
+  students: Array<Record<string, unknown>>;
+  profiles: Record<string, FamilyProfile>;
+};
+
+function clearStudentsPageCache() {
+  try {
+    sessionStorage.removeItem(
+      STUDENTS_PAGE_CACHE_KEY
+    );
+  } catch {}
+}
+
 
 type Student = {
   id: string;
@@ -118,7 +139,57 @@ const [restoringStudentId, setRestoringStudentId] =
       "all" | "never" | "today" | "previous" | "followup"
     >("all");
 
- async function fetchStudentsData() {
+ async function fetchStudentsData(
+  forceRefresh = false
+) {
+  if (!forceRefresh) {
+    try {
+      const raw = sessionStorage.getItem(
+        STUDENTS_PAGE_CACHE_KEY
+      );
+
+      if (raw) {
+        const cached = JSON.parse(
+          raw
+        ) as StudentsPageCache;
+
+        if (
+          Date.now() - cached.cachedAt <
+          STUDENTS_PAGE_CACHE_MS
+        ) {
+          const cachedStudents =
+            (cached.students || []).map(
+              (student) => ({
+                ...student,
+                firstLoginAt:
+                  typeof student.firstLoginAt ===
+                  "number"
+                    ? new Date(
+                        student.firstLoginAt
+                      )
+                    : null,
+                lastLoginAt:
+                  typeof student.lastLoginAt ===
+                  "number"
+                    ? new Date(
+                        student.lastLoginAt
+                      )
+                    : null,
+              })
+            ) as Student[];
+
+          return {
+            loadedStudents:
+              cachedStudents,
+            loadedProfiles:
+              cached.profiles || {},
+          };
+        }
+      }
+    } catch {
+      // إذا فشل الكاش نكمل القراءة من Firestore.
+    }
+  }
   const [
     studentsSnapshot,
     profilesSnapshot,
@@ -305,13 +376,36 @@ archived:
     }
   );
 
+  try {
+    sessionStorage.setItem(
+      STUDENTS_PAGE_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        students: loadedStudents.map(
+          (student) => ({
+            ...student,
+            firstLoginAt:
+              student.firstLoginAt?.getTime() ??
+              null,
+            lastLoginAt:
+              student.lastLoginAt?.getTime() ??
+              null,
+          })
+        ),
+        profiles: loadedProfiles,
+      })
+    );
+  } catch {
+    // التخزين المؤقت اختياري.
+  }
+
   return {
     loadedStudents,
     loadedProfiles,
   };
 }
 
-async function loadStudents() {
+async function loadStudents(forceRefresh = false) {
   try {
     setLoading(true);
     setMessage("");
@@ -320,7 +414,7 @@ async function loadStudents() {
       loadedStudents,
       loadedProfiles,
     } =
-      await fetchStudentsData();
+      await fetchStudentsData(forceRefresh);
 
     setStudents(
       loadedStudents
@@ -473,7 +567,8 @@ async function handleAddStudent() {
       `✅ تمت إضافة ${cleanName} بنجاح.`
     );
 
-    await loadStudents();
+    clearStudentsPageCache();
+    await loadStudents(true);
   } catch (error) {
     console.error(
       "تعذر إضافة الطالب:",
@@ -573,7 +668,8 @@ async function handleSaveStudentEdit() {
       `✅ تم تحديث بيانات ${cleanName} بنجاح.`
     );
 
-    await loadStudents();
+    clearStudentsPageCache();
+    await loadStudents(true);
   } catch (error) {
     console.error(
       "تعذر تعديل الطالب:",
@@ -626,7 +722,8 @@ async function handleMoveStudent(
       `✅ تم نقل ${student.studentName} إلى ${targetClassroom} بنجاح.`
     );
 
-    await loadStudents();
+    clearStudentsPageCache();
+    await loadStudents(true);
   } catch (error) {
     console.error(
       "تعذر نقل الطالب:",
@@ -674,7 +771,8 @@ async function handleArchiveStudent(
       `✅ تمت أرشفة ${student.studentName} بأمان.`
     );
 
-    await loadStudents();
+    clearStudentsPageCache();
+    await loadStudents(true);
   } catch (error) {
     console.error(
       "تعذر أرشفة الطالب:",
@@ -724,7 +822,8 @@ async function handleRestoreStudent(
       `✅ تمت استعادة ${student.studentName} بنجاح.`
     );
 
-    await loadStudents();
+    clearStudentsPageCache();
+    await loadStudents(true);
   } catch (error) {
     console.error(
       "تعذر استعادة الطالب:",
@@ -1084,7 +1183,7 @@ useEffect(() => {
     <button
       type="button"
       onClick={() =>
-        void loadStudents()
+        void loadStudents(true)
       }
       style={styles.refreshButton}
     >

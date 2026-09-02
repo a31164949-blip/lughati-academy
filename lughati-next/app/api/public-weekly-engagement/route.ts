@@ -34,6 +34,12 @@ type RankingItem = {
   score: number;
 };
 
+type PointsChampion = {
+  studentId: string;
+  studentName: string;
+  points: number;
+};
+
 type WeeklyEngagementPayload = {
   success: true;
   title: string;
@@ -41,6 +47,7 @@ type WeeklyEngagementPayload = {
   weekEnd: string;
   weights: typeof WEIGHTS;
   rankings: RankingItem[];
+  pointsChampion: PointsChampion | null;
   updatedAt: string;
   displayActive: boolean;
 };
@@ -222,6 +229,7 @@ export async function GET() {
           weekEnd: endDate,
           weights: WEIGHTS,
           rankings: [],
+          pointsChampion: null,
           updatedAt: new Date().toISOString(),
           displayActive: false,
         },
@@ -258,6 +266,8 @@ export async function GET() {
     const rows = new Map<string, EngagementRow>();
     const aliases = new Map<string, string>();
 
+    let pointsChampion: PointsChampion | null = null;
+
     studentsSnapshot.docs.forEach((studentDoc) => {
       const data = studentDoc.data() as Record<string, unknown>;
 
@@ -266,9 +276,28 @@ export async function GET() {
       }
 
       const logicalId = getStudentDocumentId(data, studentDoc.id);
+      const publicStudentName = getPublicStudentName(getStudentName(data));
+      const studentPoints =
+        typeof data.points === "number" && Number.isFinite(data.points)
+          ? data.points
+          : Number(data.points ?? 0) || 0;
+
+      if (
+        !pointsChampion ||
+        studentPoints > pointsChampion.points ||
+        (studentPoints === pointsChampion.points &&
+          publicStudentName.localeCompare(pointsChampion.studentName, "ar") < 0)
+      ) {
+        pointsChampion = {
+          studentId: studentDoc.id,
+          studentName: publicStudentName,
+          points: studentPoints,
+        };
+      }
+
       const row: EngagementRow = {
         studentId: studentDoc.id,
-        studentName: getPublicStudentName(getStudentName(data)),
+        studentName: publicStudentName,
         score: 0,
         details: {
           weeklyPlan: 0,
@@ -436,6 +465,7 @@ export async function GET() {
       weekEnd: endDate,
       weights: WEIGHTS,
       rankings: ranked,
+      pointsChampion,
       updatedAt: new Date().toISOString(),
       displayActive: true,
     };
@@ -473,6 +503,7 @@ export async function GET() {
       {
         success: false,
         rankings: [],
+        pointsChampion: null,
         message: "تعذر تحميل ترتيب التفاعل حاليًا.",
       },
       { status: 500 }

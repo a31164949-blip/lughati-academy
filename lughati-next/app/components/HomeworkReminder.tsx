@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+} from "react";
+
 import {
   collection,
   doc,
   getDoc,
   getDocs,
-  Timestamp,
+  limit,
+  orderBy,
+  query,
+  where,
+  type Timestamp,
 } from "firebase/firestore";
+
 import { db } from "../../firebase";
 
 type Homework = {
@@ -16,266 +26,363 @@ type Homework = {
   instructions: string;
   targetClass: string;
   dueDate: string;
-   published: boolean;
+  published: boolean;
   createdAt?: Timestamp | null;
   resourceUrl?: string;
-attachmentName?: string;
+  attachmentName?: string;
+};
+
+type HomeworkReminderResult = {
+  studentName: string;
+  homework: Homework | null;
+  visible: boolean;
 };
 
 export default function HomeworkReminder() {
-  const [studentName, setStudentName] = useState("");
-  const [homework, setHomework] = useState<Homework | null>(null);
-  const [visible, setVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [studentName, setStudentName] =
+    useState("");
 
- 
+  const [homework, setHomework] =
+    useState<Homework | null>(null);
 
- async function fetchHomeworkReminderData() {
-  const studentId =
-    localStorage.getItem("student-id") || "";
+  const [visible, setVisible] =
+    useState(false);
 
-  const savedStudentName =
-    localStorage.getItem("student-name") || "";
+  const [loading, setLoading] =
+    useState(true);
 
-  const classroom =
-    localStorage.getItem("student-classroom") || "";
+  async function fetchHomeworkReminderData():
+    Promise<HomeworkReminderResult> {
+    const studentId =
+      localStorage.getItem("student-id") ||
+      "";
 
-  if (
-    !studentId ||
-    !savedStudentName ||
-    !classroom
-  ) {
-    return {
-      studentName: savedStudentName,
-      homework: null as Homework | null,
-      visible: false,
-    };
-  }
+    const savedStudentName =
+      localStorage.getItem(
+        "student-name"
+      ) || "";
 
-  const homeworksSnapshot =
-    await getDocs(
-      collection(db, "homeworks")
-    );
+    const classroom =
+      localStorage.getItem(
+        "student-classroom"
+      ) || "";
 
-  const suitableHomeworks: Homework[] =
-    homeworksSnapshot.docs
-      .map((homeworkDocument) => {
-        const data =
-          homeworkDocument.data();
+    if (
+      !studentId ||
+      !savedStudentName ||
+      !classroom
+    ) {
+      return {
+        studentName:
+          savedStudentName,
 
-        return {
-          id: homeworkDocument.id,
+        homework: null,
 
-          title:
-            data.title ||
-            "واجب جديد",
+        visible: false,
+      };
+    }
 
-          instructions:
-            data.instructions ||
-            "",
+    /*
+     * جلب أحدث واجب منشور ومناسب
+     * لفصل الطالب فقط.
+     *
+     * بدل قراءة جميع الواجبات
+     * ثم تصفيتها داخل المتصفح.
+     */
 
-          targetClass:
-            data.targetClass ||
+    const targetClasses =
+      classroom === "الفصلان"
+        ? ["الفصلان"]
+        : [
             "الفصلان",
+            classroom,
+          ];
 
-          dueDate:
-            data.dueDate ||
-            "",
+    const homeworksQuery =
+      query(
+        collection(
+          db,
+          "homeworks"
+        ),
 
-          createdAt:
-            data.createdAt ||
-            null,
+        where(
+          "published",
+          "==",
+          true
+        ),
 
-          published:
-            data.published === true,
+        where(
+          "targetClass",
+          "in",
+          targetClasses
+        ),
 
-          resourceUrl:
-            typeof data.resourceUrl ===
-            "string"
-              ? data.resourceUrl
-              : "",
+        orderBy(
+          "createdAt",
+          "desc"
+        ),
 
-          attachmentName:
-            typeof data.attachmentName ===
-            "string"
-              ? data.attachmentName
-              : "",
-        };
-      })
-      .filter((item) => {
-        const suitableClass =
-          item.targetClass ===
-            "الفصلان" ||
-          item.targetClass ===
-            classroom;
+        limit(1)
+      );
 
-        return (
-          item.published &&
-          suitableClass
-        );
-      })
-      .sort((first, second) => {
-        const firstTime =
-          first.createdAt?.toMillis?.() ||
-          0;
+    const homeworksSnapshot =
+      await getDocs(
+        homeworksQuery
+      );
 
-        const secondTime =
-          second.createdAt?.toMillis?.() ||
-          0;
+    /*
+     * لا يوجد واجب مناسب.
+     */
 
-        return (
-          secondTime -
-          firstTime
-        );
-      });
+    if (
+      homeworksSnapshot.empty
+    ) {
+      return {
+        studentName:
+          savedStudentName,
 
-  const latestHomework =
-    suitableHomeworks[0] ||
-    null;
+        homework: null,
 
-  if (!latestHomework) {
+        visible: false,
+      };
+    }
+
+    /*
+     * بسبب limit(1)
+     * لدينا أحدث واجب فقط.
+     */
+
+    const homeworkDocument =
+      homeworksSnapshot.docs[0];
+
+    const data =
+      homeworkDocument.data();
+
+    const latestHomework: Homework =
+      {
+        id:
+          homeworkDocument.id,
+
+        title:
+          typeof data.title ===
+          "string"
+            ? data.title
+            : "واجب جديد",
+
+        instructions:
+          typeof data.instructions ===
+          "string"
+            ? data.instructions
+            : "",
+
+        targetClass:
+          typeof data.targetClass ===
+          "string"
+            ? data.targetClass
+            : "الفصلان",
+
+        dueDate:
+          typeof data.dueDate ===
+          "string"
+            ? data.dueDate
+            : "",
+
+        published:
+          data.published === true,
+
+        createdAt:
+          data.createdAt ?? null,
+
+        resourceUrl:
+          typeof data.resourceUrl ===
+          "string"
+            ? data.resourceUrl
+            : "",
+
+        attachmentName:
+          typeof data.attachmentName ===
+          "string"
+            ? data.attachmentName
+            : "",
+      };
+
+    /*
+     * فحص هل الطالب
+     * أنجز هذا الواجب بالفعل.
+     *
+     * هنا نقرأ وثيقة واحدة فقط.
+     */
+
+    const completionId =
+      `${studentId}-${latestHomework.id}`;
+
+    const completionSnapshot =
+      await getDoc(
+        doc(
+          db,
+          "homeworkCompletions",
+          completionId
+        )
+      );
+
+    const alreadyCompleted =
+      completionSnapshot.exists() &&
+      completionSnapshot.data()
+        .completed === true;
+
+    /*
+     * إذا أنجز الطالب الواجب
+     * لا نظهر التذكير.
+     */
+
     return {
       studentName:
         savedStudentName,
+
       homework:
-        null as Homework | null,
-      visible: false,
+        alreadyCompleted
+          ? null
+          : latestHomework,
+
+      visible:
+        !alreadyCompleted,
     };
   }
 
-  const completionId =
-    `${studentId}-${latestHomework.id}`;
+  useEffect(() => {
+    let active = true;
 
-  const completionSnapshot =
-    await getDoc(
-      doc(
-        db,
-        "homeworkCompletions",
-        completionId
-      )
-    );
+    async function loadReminder() {
+      try {
+        const result =
+          await fetchHomeworkReminderData();
 
-  const alreadyCompleted =
-    completionSnapshot.exists() &&
-    completionSnapshot.data()
-      .completed === true;
+        if (!active) {
+          return;
+        }
 
-  return {
-    studentName:
-      savedStudentName,
+        setStudentName(
+          result.studentName
+        );
 
-    homework:
-      alreadyCompleted
-        ? null
-        : latestHomework,
+        setHomework(
+          result.homework
+        );
 
-    visible:
-      !alreadyCompleted,
-  };
-}
+        setVisible(
+          result.visible
+        );
+      } catch (error) {
+        console.error(
+          "تعذر فحص تنبيه الواجب:",
+          error
+        );
 
-useEffect(() => {
-  let active = true;
-
-  async function loadReminder() {
-    try {
-      const result =
-        await fetchHomeworkReminderData();
-
-      if (!active) {
-        return;
-      }
-
-      setStudentName(
-        result.studentName
-      );
-
-      setHomework(
-        result.homework
-      );
-
-      setVisible(
-        result.visible
-      );
-    } catch (error) {
-      console.error(
-        "تعذر فحص تنبيه الواجب:",
-        error
-      );
-
-      if (active) {
-        setHomework(null);
-        setVisible(false);
-      }
-    } finally {
-      if (active) {
-        setLoading(false);
+        if (active) {
+          setHomework(null);
+          setVisible(false);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
     }
-  }
 
-  void loadReminder();
+    void loadReminder();
 
-  return () => {
-    active = false;
-  };
-}, []);
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function openHomework() {
-    window.location.href = "/homework-check";
+    window.location.href =
+      "/homework-check";
   }
 
-  if (loading || !visible || !homework) {
+  if (
+    loading ||
+    !visible ||
+    !homework
+  ) {
     return null;
   }
 
   return (
-    <section dir="rtl" style={styles.card}>
-      <div style={styles.farisAvatar}>👦🏻</div>
+    <section
+      dir="rtl"
+      style={styles.card}
+    >
+      <div
+        style={
+          styles.farisAvatar
+        }
+      >
+        👦🏻
+      </div>
 
-      <div style={styles.content}>
-        <p style={styles.label}>تنبيه من فارس</p>
+      <div
+        style={styles.content}
+      >
+        <p
+          style={styles.label}
+        >
+          تنبيه من فارس
+        </p>
 
-        <h2 style={styles.title}>
-          يا {studentName}، لديك واجب بانتظارك ⭐
+        <h2
+          style={styles.title}
+        >
+          يا {studentName}، لديك
+          واجب بانتظارك ⭐
         </h2>
 
-        <p style={styles.text}>
-          واجبك الحالي: <strong>{homework.title}</strong>
+        <p
+          style={styles.text}
+        >
+          واجبك الحالي:{" "}
+          <strong>
+            {homework.title}
+          </strong>
         </p>
 
         {homework.instructions && (
-          <p style={styles.instructions}>
-            {homework.instructions}
+          <p
+            style={
+              styles.instructions
+            }
+          >
+            {
+              homework.instructions
+            }
           </p>
         )}
+
+        {homework.resourceUrl && (
+          <a
+            href={
+              homework.resourceUrl
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            style={
+              styles.attachment
+            }
+          >
+            📎 فتح المرفق
+            {homework.attachmentName
+              ? ` — ${homework.attachmentName}`
+              : ""}
+          </a>
+        )}
       </div>
-{homework.resourceUrl && (
-  <a
-    href={homework.resourceUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{
-      display: "block",
-      marginTop: "14px",
-      padding: "12px 16px",
-      borderRadius: "14px",
-      background: "#eff6ff",
-      border: "1px solid #bfdbfe",
-      color: "#1d4ed8",
-      fontWeight: 800,
-      textAlign: "center",  
-      textDecoration: "none",
-    }}
-  >
-    📎 فتح المرفق
-    {homework.attachmentName
-      ? ` — ${homework.attachmentName}`
-      : ""}
-  </a>
-)}
+
       <button
         type="button"
-        onClick={openHomework}
+        onClick={
+          openHomework
+        }
         style={styles.button}
       >
         اذهب إلى الواجب
@@ -284,32 +391,50 @@ useEffect(() => {
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<
+  string,
+  CSSProperties
+> = {
   card: {
     maxWidth: "1100px",
     margin: "22px auto",
     padding: "22px",
+
     display: "flex",
     alignItems: "center",
     gap: "18px",
     flexWrap: "wrap",
+
     borderRadius: "25px",
+
     background:
       "linear-gradient(135deg, #fff8d8 0%, #fffdf3 100%)",
-    border: "2px solid #f2d97b",
-    boxShadow: "0 12px 32px rgba(151, 111, 0, 0.12)",
+
+    border:
+      "2px solid #f2d97b",
+
+    boxShadow:
+      "0 12px 32px rgba(151, 111, 0, 0.12)",
+
     color: "#604900",
   },
 
   farisAvatar: {
     width: "82px",
     height: "82px",
+
     display: "grid",
     placeItems: "center",
+
     flexShrink: 0,
+
     borderRadius: "50%",
+
     background: "#ffffff",
-    border: "4px solid #f4df8f",
+
+    border:
+      "4px solid #f4df8f",
+
     fontSize: "48px",
   },
 
@@ -319,36 +444,75 @@ const styles: Record<string, React.CSSProperties> = {
 
   label: {
     margin: "0 0 5px",
+
     color: "#9a7100",
+
     fontWeight: 900,
   },
 
   title: {
     margin: "0 0 8px",
+
     color: "#6b5000",
-    fontSize: "clamp(21px, 4vw, 29px)",
+
+    fontSize:
+      "clamp(21px, 4vw, 29px)",
   },
 
   text: {
     margin: "0 0 7px",
+
     lineHeight: 1.8,
   },
 
   instructions: {
     margin: 0,
+
     color: "#806817",
+
     lineHeight: 1.8,
+  },
+
+  attachment: {
+    display: "block",
+
+    marginTop: "14px",
+
+    padding: "12px 16px",
+
+    borderRadius: "14px",
+
+    background: "#eff6ff",
+
+    border:
+      "1px solid #bfdbfe",
+
+    color: "#1d4ed8",
+
+    fontWeight: 800,
+
+    textAlign: "center",
+
+    textDecoration: "none",
   },
 
   button: {
     padding: "15px 21px",
+
     border: "none",
+
     borderRadius: "16px",
+
     background: "#16845f",
+
     color: "#ffffff",
+
     fontSize: "17px",
+
     fontWeight: 900,
+
     cursor: "pointer",
+
     whiteSpace: "nowrap",
   },
 };

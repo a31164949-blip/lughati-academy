@@ -5,11 +5,10 @@ import {
   collection,
   doc,
   getDocs,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
   query,
   where,
+  serverTimestamp,
+  updateDoc,
   runTransaction,
   arrayUnion,
 } from "firebase/firestore";
@@ -18,6 +17,15 @@ import { checkAndRegisterPointMilestones } from "../../lib/academyMilestones";
 type ClassroomFilter = "الكل" | "الثاني أ" | "الثاني ب";
 type StatusFilter = "الكل" | "لم يؤكد" | "بانتظار المراجعة" | "تمت المراجعة";
 type DailyCompletionFilter = "الكل" | "المنجزون" | "لم ينجزوا";
+
+const TRACKING_CACHE_KEY = "teacher-homework-tracking-cache";
+const TRACKING_CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+
+function invalidateTrackingCache() {
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(TRACKING_CACHE_KEY);
+  }
+}
 
 type Student = {
   id: string;
@@ -51,10 +59,6 @@ type Completion = {
 teacherNote?: string;
   solutionUrl?: string;
   solutionStatus?: "pending" | "approved" | "rejected";
-  readingAudioUrl: string;
-readingDurationSeconds: number;
-readingReviewed: boolean;
-readingStatus: "pending" | "approved" | "rejected";
   
 };
 type DailyCompletion = {
@@ -79,10 +83,6 @@ type StudentHomeworkRow = {
 teacherNote?: string;
   solutionUrl?: string;
   solutionStatus?: "pending" | "approved" | "rejected";
-  readingAudioUrl: string;
-readingDurationSeconds: number;
-readingReviewed: boolean;
-readingStatus: "pending" | "approved" | "rejected";
   status: "لم يؤكد" | "بانتظار المراجعة" | "تمت المراجعة";
 };
 
@@ -107,206 +107,228 @@ const [dailyCompletions, setDailyCompletions] =
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
- const fetchTrackingData = useCallback(async () => {
-  const [
-    studentsSnapshot,
-    homeworksSnapshot,
-    completionsSnapshot,
-    dailyCompletionsSnapshot,
-  ] = await Promise.all([
-    getDocs(collection(db, "students")),
-    getDocs(collection(db, "homeworks")),
-    getDocs(collection(db, "homeworkCompletions")),
-    getDocs(collection(db, "dailyCompletions")),
-  ]);
+const fetchTrackingData = useCallback(
+  async (forceRefresh = false) => {
+    /*
+      نستخدم الكاش للبيانات الأساسية فقط:
+      الطلاب + الواجبات + مهام اليوم.
 
-  const loadedStudents: Student[] =
-    studentsSnapshot.docs
-      .map((studentDocument) => {
-        const data =
-          studentDocument.data();
+      إنجازات الواجبات لن نحفظها هنا بعد الآن،
+      لأنها ستُقرأ حسب الواجب المحدد فقط.
+    */
+    if (
+      !forceRefresh &&
+      typeof window !== "undefined"
+    ) {
+      try {
+        const cachedText =
+          sessionStorage.getItem(
+            TRACKING_CACHE_KEY
+          );
 
-        return {
-          id: studentDocument.id,
+        if (cachedText) {
+          const cached =
+            JSON.parse(cachedText);
 
-          studentId:
-            data.studentId ||
-            studentDocument.id,
-
-          studentName:
-            data.studentName ||
-            "طالب",
-
-          classroom:
-            data.classroom || "",
-
-          active:
-            data.active !== false,
-        };
-      })
-      .filter(
-        (student) =>
-          student.active
-      )
-      .sort(
-        (first, second) =>
-          first.studentId.localeCompare(
-            second.studentId
-          )
-      );
-
-  const loadedHomeworks: Homework[] =
-    homeworksSnapshot.docs
-      .map((homeworkDocument) => {
-        const data =
-          homeworkDocument.data();
-
-        return {
-          id:
-            homeworkDocument.id,
-
-          title:
-            data.title ||
-            "واجب دون عنوان",
-
-          instructions:
-            data.instructions || "",
-
-          targetClass:
-            data.targetClass ||
-            "الفصلان",
-
-          dueDate:
-            data.dueDate || "",
-
-          published:
-            data.published === true,
-
-          createdAtMilliseconds:
-            data.createdAt?.toMillis?.() ||
-            data.updatedAt?.toMillis?.() ||
-            0,
-        };
-      })
-      .sort(
-        (first, second) =>
-          second.createdAtMilliseconds -
-          first.createdAtMilliseconds
-      );
-
-  const loadedCompletions: Completion[] =
-    completionsSnapshot.docs.map(
-      (completionDocument) => {
-        const data =
-          completionDocument.data();
-
-        return {
-          id:
-            completionDocument.id,
-
-          homeworkId:
-            data.homeworkId || "",
-
-          studentId:
-            data.studentId || "",
-
-          studentName:
-            data.studentName ||
-            "طالب",
-
-          classroom:
-            data.classroom || "",
-
-          completionMethod:
-            data.completionMethod ||
-            "",
-
-          completed:
-            data.completed === true ||
-            data.status ===
-              "completed",
-
-          completedAtText:
-            data.completedAtText ||
-            (data.completedAt &&
-            typeof data.completedAt
-              .toDate === "function"
-              ? data.completedAt
-                  .toDate()
-                  .toLocaleString(
-                    "ar-SA"
-                  )
-              : ""),
-
-          teacherReviewed:
-            data.teacherReviewed ===
-            true,
-
-          needsRevision:
-            data.needsRevision ===
-            true,
-
-          teacherNote:
-            typeof data.teacherNote ===
-            "string"
-              ? data.teacherNote
-              : "",
-
-          solutionUrl:
-            typeof data.solutionUrl ===
-            "string"
-              ? data.solutionUrl
-              : "",
-
-          solutionStatus:
-            data.solutionStatus ===
-              "approved" ||
-            data.solutionStatus ===
-              "rejected"
-              ? data.solutionStatus
-              : "pending",
-
-          readingAudioUrl:
-            typeof data.readingAudioUrl ===
-            "string"
-              ? data.readingAudioUrl
-              : "",
-
-          readingDurationSeconds:
-            typeof data.readingDurationSeconds ===
+          const cachedAt =
+            typeof cached.cachedAt ===
             "number"
-              ? data.readingDurationSeconds
-              : 0,
+              ? cached.cachedAt
+              : 0;
 
-          readingReviewed:
-            data.readingReviewed ===
-            true,
+          const cacheIsFresh =
+            Date.now() - cachedAt <
+            TRACKING_CACHE_DURATION;
 
-          readingStatus:
-            data.readingStatus ===
-              "approved" ||
-            data.readingStatus ===
-              "rejected"
-              ? data.readingStatus
-              : data.readingReviewed ===
-                  true
-                ? "approved"
-                : "pending",
-        };
+          if (
+            cacheIsFresh &&
+            Array.isArray(
+              cached.loadedStudents
+            ) &&
+            Array.isArray(
+              cached.loadedHomeworks
+            ) &&
+            Array.isArray(
+              cached.loadedDailyCompletions
+            )
+          ) {
+            return {
+              loadedStudents:
+                cached.loadedStudents as Student[],
+
+              loadedHomeworks:
+                cached.loadedHomeworks as Homework[],
+
+              loadedDailyCompletions:
+                cached.loadedDailyCompletions as DailyCompletion[],
+            };
+          }
+        }
+      } catch (cacheError) {
+        console.warn(
+          "تعذر قراءة الذاكرة المؤقتة لمتابعة الواجبات:",
+          cacheError
+        );
       }
-    );
+    }
 
-  const loadedDailyCompletions:
-    DailyCompletion[] =
+    /*
+      نحتاج من dailyCompletions سجلات اليوم فقط.
+    */
+    const today = new Date();
+
+    const todayDateKey = [
+      today.getFullYear(),
+      String(
+        today.getMonth() + 1
+      ).padStart(2, "0"),
+      String(
+        today.getDate()
+      ).padStart(2, "0"),
+    ].join("-");
+
+    /*
+      لم نعد نقرأ homeworkCompletions هنا.
+    */
+    const [
+      studentsSnapshot,
+      homeworksSnapshot,
+      dailyCompletionsSnapshot,
+    ] = await Promise.all([
+      getDocs(
+        collection(
+          db,
+          "students"
+        )
+      ),
+
+      getDocs(
+        collection(
+          db,
+          "homeworks"
+        )
+      ),
+
+      getDocs(
+        query(
+          collection(
+            db,
+            "dailyCompletions"
+          ),
+          where(
+            "date",
+            "==",
+            todayDateKey
+          )
+        )
+      ),
+    ]);
+
+    const loadedStudents: Student[] =
+      studentsSnapshot.docs
+        .map((studentDocument) => {
+          const data =
+            studentDocument.data();
+
+          return {
+            id:
+              studentDocument.id,
+
+            studentId:
+              data.studentId ||
+              studentDocument.id,
+
+            studentName:
+              data.studentName ||
+              "طالب",
+
+            classroom:
+              data.classroom ||
+              "",
+
+            active:
+              data.active !== false,
+          };
+        })
+        .filter(
+          (student) =>
+            student.active
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            first.studentId.localeCompare(
+              second.studentId
+            )
+        );
+
+    const loadedHomeworks: Homework[] =
+      homeworksSnapshot.docs
+        .map(
+          (
+            homeworkDocument
+          ) => {
+            const data =
+              homeworkDocument.data();
+
+            return {
+              id:
+                homeworkDocument.id,
+
+              title:
+                data.title ||
+                "واجب دون عنوان",
+
+              instructions:
+                data.instructions ||
+                "",
+
+              targetClass:
+                data.targetClass ||
+                "الفصلان",
+
+              dueDate:
+                data.dueDate ||
+                "",
+
+              published:
+                data.published ===
+                true,
+
+              createdAtMilliseconds:
+                data.createdAt
+                  ?.toMillis?.() ||
+                data.updatedAt
+                  ?.toMillis?.() ||
+                0,
+            };
+          }
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            second.createdAtMilliseconds -
+            first.createdAtMilliseconds
+        );
+
+    const loadedDailyCompletions:
+      DailyCompletion[] =
       dailyCompletionsSnapshot.docs.map(
-        (completionDocument) => {
+        (
+          completionDocument
+        ) => {
           const data =
             completionDocument.data();
 
           const completedAtText =
             data.completedAt &&
             typeof data.completedAt
-              .toDate === "function"
+              .toDate ===
+              "function"
               ? data.completedAt
                   .toDate()
                   .toLocaleString(
@@ -343,93 +365,275 @@ const [dailyCompletions, setDailyCompletions] =
                 : "",
 
             completed:
-              data.completed === true,
+              data.completed ===
+              true,
 
             completedAtText,
           };
         }
       );
 
-  return {
-    loadedStudents,
-    loadedHomeworks,
-    loadedCompletions,
-    loadedDailyCompletions,
-  };
-}, []);
-
-const loadData = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError("");
-    setMessage("");
-
-    const {
+    const result = {
       loadedStudents,
       loadedHomeworks,
-      loadedCompletions,
       loadedDailyCompletions,
-    } = await fetchTrackingData();
+    };
 
-    setStudents(
-      loadedStudents
-    );
-
-    setHomeworks(
-      loadedHomeworks
-    );
-
-    setCompletions(
-      loadedCompletions
-    );
-
-    setDailyCompletions(
-      loadedDailyCompletions
-    );
-
-    setSelectedHomeworkId(
-      (currentId) => {
-        const currentStillExists =
-          loadedHomeworks.some(
-            (homework) =>
-              homework.id ===
-              currentId
-          );
-
-        if (
-          currentStillExists
-        ) {
-          return currentId;
-        }
-
-        return (
-          loadedHomeworks[0]?.id ||
-          ""
+    /*
+      نحفظ البيانات الأساسية فقط.
+    */
+    if (
+      typeof window !==
+      "undefined"
+    ) {
+      try {
+        sessionStorage.setItem(
+          TRACKING_CACHE_KEY,
+          JSON.stringify({
+            ...result,
+            cachedAt:
+              Date.now(),
+          })
+        );
+      } catch (
+        cacheError
+      ) {
+        console.warn(
+          "تعذر حفظ الذاكرة المؤقتة لمتابعة الواجبات:",
+          cacheError
         );
       }
-    );
-  } catch (loadError) {
-    console.error(
-      loadError
-    );
+    }
 
-    setError(
-      "تعذر تحميل بيانات الطلاب والواجبات من Firebase."
-    );
-  } finally {
-    setLoading(false);
-  }
-}, [fetchTrackingData]);
+    return result;
+  },
+  []
+);
 
+/*
+  الدالة الجديدة:
+  تقرأ إنجازات الواجب المحدد فقط.
+*/
+const fetchCompletionsForHomework =
+  useCallback(
+    async (
+      homeworkId: string
+    ): Promise<
+      Completion[]
+    > => {
+      if (!homeworkId) {
+        return [];
+      }
+
+      const completionsSnapshot =
+        await getDocs(
+          query(
+            collection(
+              db,
+              "homeworkCompletions"
+            ),
+            where(
+              "homeworkId",
+              "==",
+              homeworkId
+            )
+          )
+        );
+
+      return completionsSnapshot.docs.map(
+        (
+          completionDocument
+        ) => {
+          const data =
+            completionDocument.data();
+
+          return {
+            id:
+              completionDocument.id,
+
+            homeworkId:
+              data.homeworkId ||
+              "",
+
+            studentId:
+              data.studentId ||
+              "",
+
+            studentName:
+              data.studentName ||
+              "طالب",
+
+            classroom:
+              data.classroom ||
+              "",
+
+            completionMethod:
+              data.completionMethod ||
+              "",
+
+            completed:
+              data.completed ===
+                true ||
+              data.status ===
+                "completed",
+
+            completedAtText:
+              data.completedAtText ||
+              (
+                data.completedAt &&
+                typeof data
+                  .completedAt
+                  .toDate ===
+                  "function"
+                  ? data.completedAt
+                      .toDate()
+                      .toLocaleString(
+                        "ar-SA"
+                      )
+                  : ""
+              ),
+
+            teacherReviewed:
+              data.teacherReviewed ===
+              true,
+
+            needsRevision:
+              data.needsRevision ===
+              true,
+
+            teacherNote:
+              typeof data.teacherNote ===
+              "string"
+                ? data.teacherNote
+                : "",
+
+            solutionUrl:
+              typeof data.solutionUrl ===
+              "string"
+                ? data.solutionUrl
+                : "",
+
+            solutionStatus:
+              data.solutionStatus ===
+                "approved" ||
+              data.solutionStatus ===
+                "rejected"
+                ? data.solutionStatus
+                : "pending",
+          };
+        }
+      );
+    },
+    []
+  );
+
+/*
+  زر تحديث البيانات.
+*/
+const loadData =
+  useCallback(
+    async () => {
+      try {
+        setLoading(true);
+        setError("");
+        setMessage("");
+
+        const {
+          loadedStudents,
+          loadedHomeworks,
+          loadedDailyCompletions,
+        } =
+          await fetchTrackingData(
+            true
+          );
+
+        setStudents(
+          loadedStudents
+        );
+
+        setHomeworks(
+          loadedHomeworks
+        );
+
+        setDailyCompletions(
+          loadedDailyCompletions
+        );
+
+        /*
+          نحافظ على الواجب المحدد إذا كان موجودًا.
+        */
+        const homeworkId =
+          selectedHomeworkId &&
+          (
+            loadedHomeworks.some(
+              (
+                homework
+              ) =>
+                homework.id ===
+                selectedHomeworkId
+            ) ||
+            selectedHomeworkId.startsWith(
+              "madrasati_"
+            )
+          )
+            ? selectedHomeworkId
+            : loadedHomeworks[0]
+                ?.id ||
+              "";
+
+        setSelectedHomeworkId(
+          homeworkId
+        );
+
+        /*
+          نحدّث إنجازات الواجب الحالي فقط.
+        */
+        const loadedCompletions =
+          await fetchCompletionsForHomework(
+            homeworkId
+          );
+
+        setCompletions(
+          loadedCompletions
+        );
+      } catch (
+        loadError
+      ) {
+        console.error(
+          loadError
+        );
+
+        setError(
+          "تعذر تحميل بيانات الطلاب والواجبات من Firebase."
+        );
+      } finally {
+        setLoading(
+          false
+        );
+      }
+    },
+    [
+      fetchTrackingData,
+      fetchCompletionsForHomework,
+      selectedHomeworkId,
+    ]
+  );
+
+/*
+  التحميل الأول للصفحة:
+  نقرأ البيانات الأساسية فقط.
+*/
 useEffect(() => {
   let active = true;
 
   async function loadInitialData() {
     try {
+      setLoading(true);
+      setError("");
+
       const {
         loadedStudents,
         loadedHomeworks,
-        loadedCompletions,
         loadedDailyCompletions,
       } =
         await fetchTrackingData();
@@ -446,19 +650,30 @@ useEffect(() => {
         loadedHomeworks
       );
 
-      setCompletions(
-        loadedCompletions
-      );
-
       setDailyCompletions(
         loadedDailyCompletions
       );
 
       setSelectedHomeworkId(
-        (currentId) => {
+        (
+          currentId
+        ) => {
+          /*
+            إذا كان جسر مدرستي محددًا نحافظ عليه.
+          */
+          if (
+            currentId.startsWith(
+              "madrasati_"
+            )
+          ) {
+            return currentId;
+          }
+
           const currentStillExists =
             loadedHomeworks.some(
-              (homework) =>
+              (
+                homework
+              ) =>
                 homework.id ===
                 currentId
             );
@@ -470,12 +685,15 @@ useEffect(() => {
           }
 
           return (
-            loadedHomeworks[0]?.id ||
+            loadedHomeworks[0]
+              ?.id ||
             ""
           );
         }
       );
-    } catch (loadError) {
+    } catch (
+      loadError
+    ) {
       console.error(
         loadError
       );
@@ -487,7 +705,9 @@ useEffect(() => {
       }
     } finally {
       if (active) {
-        setLoading(false);
+        setLoading(
+          false
+        );
       }
     }
   }
@@ -497,7 +717,68 @@ useEffect(() => {
   return () => {
     active = false;
   };
-}, [fetchTrackingData]);
+}, [
+  fetchTrackingData,
+]);
+
+/*
+  عند تغيير الواجب:
+  اقرأ إنجازات ذلك الواجب فقط.
+*/
+useEffect(() => {
+  let active = true;
+
+  async function loadSelectedHomeworkCompletions() {
+    if (
+      !selectedHomeworkId
+    ) {
+      setCompletions(
+        []
+      );
+
+      return;
+    }
+
+    try {
+      const loadedCompletions =
+        await fetchCompletionsForHomework(
+          selectedHomeworkId
+        );
+
+      if (
+        active
+      ) {
+        setCompletions(
+          loadedCompletions
+        );
+      }
+    } catch (
+      loadError
+    ) {
+      console.error(
+        "تعذر تحميل إنجازات الواجب المحدد:",
+        loadError
+      );
+
+      if (
+        active
+      ) {
+        setError(
+          "تعذر تحميل إنجازات الواجب المحدد."
+        );
+      }
+    }
+  }
+
+  void loadSelectedHomeworkCompletions();
+
+  return () => {
+    active = false;
+  };
+}, [
+  selectedHomeworkId,
+  fetchCompletionsForHomework,
+]);
 
   const selectedHomework = useMemo(
     () =>
@@ -546,10 +827,6 @@ useEffect(() => {
           needsRevision: false,
           teacherNote: "",
           solutionUrl: "",
-          readingAudioUrl: "",
-          readingDurationSeconds: 0,
-          readingReviewed: false,
-          readingStatus: "pending",
           status: "لم يؤكد",
         };
       }
@@ -567,10 +844,6 @@ useEffect(() => {
 teacherNote: completion?.teacherNote ?? "",
         solutionUrl: completion.solutionUrl ?? "",
         solutionStatus: completion.solutionStatus ?? "pending",
-        readingAudioUrl: completion.readingAudioUrl,
-readingDurationSeconds: completion.readingDurationSeconds,
-readingReviewed: completion.readingReviewed,
-readingStatus: completion.readingStatus,
         status: completion.teacherReviewed
           ? "تمت المراجعة"
           : "بانتظار المراجعة",
@@ -648,6 +921,8 @@ readingStatus: completion.readingStatus,
   async function toggleReviewed(row: StudentHomeworkRow) {
     if (!row.completionId) return;
 
+    invalidateTrackingCache();
+
     try {
       setUpdatingId(row.completionId);
       setError("");
@@ -676,8 +951,6 @@ readingStatus: completion.readingStatus,
       returnedAt: null,
     }
   : {}),
-    readingReviewed: row.readingReviewed,
-readingStatus: row.readingStatus,
 
     updatedAt: serverTimestamp(),
   }
@@ -873,10 +1146,6 @@ if (
             ? {
                 ...completion,
                 teacherReviewed: newReviewedStatus,
-                readingReviewed:
-  row.readingAudioUrl && newReviewedStatus
-    ? true
-    : false,
               }
             : completion
         )
@@ -894,42 +1163,13 @@ if (
       setUpdatingId("");
     }
   }
-async function saveDailyReadingRecord(row: StudentHomeworkRow) {
-  if (!row.readingAudioUrl) {
-    return;
-  }
-
-  const today = new Date();
-
-  const dateKey = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("-");
-
-  const recordId = `${row.studentId}_${dateKey}`;
-
-  await setDoc(
-    doc(db, "dailyReadingRecords", recordId),
-    {
-      studentId: row.studentId,
-      studentName: row.studentName,
-      classroom: row.classroom,
-      dateKey,
-      readingAudioUrl: row.readingAudioUrl,
-      readingDurationSeconds: row.readingDurationSeconds,
-      approved: true,
-      homeworkCompletionId: row.completionId,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-}
 async function returnHomeworkToStudent(
   row: StudentHomeworkRow,
   note: string
 ) {
   if (!row.completionId) return;
+
+  invalidateTrackingCache();
 
   try {
     setUpdatingId(row.completionId);
@@ -963,126 +1203,12 @@ async function returnHomeworkToStudent(
     setUpdatingId("");
   }
 }
-async function approveReading(row: StudentHomeworkRow) {
-  if (!row.completionId || !row.readingAudioUrl) {
-    return;
-  }
-
-  try {
-    setUpdatingId(row.completionId);
-    setError("");
-    setMessage("جارٍ اعتماد تسجيل القراءة...");
-
-    await updateDoc(
-      doc(db, "homeworkCompletions", row.completionId),
-      {
-        readingReviewed: true,
-        readingStatus: "approved",
-        readingReviewedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }
-    );
-
-    await saveDailyReadingRecord(row);
-
-   
-
-    setCompletions((currentCompletions) =>
-      currentCompletions.map((completion) =>
-        completion.id === row.completionId
-          ? {
-              ...completion,
-              readingReviewed: true,
-              readingStatus: "approved",
-            }
-          : completion
-      )
-    );
-
-    setMessage(
-      `✅ تم اعتماد قراءة ${row.studentName}`
-    );
-  } catch (error) {
-    console.error(error);
-    setError("تعذر اعتماد القراءة، حاول مرة أخرى.");
-  } finally {
-    setUpdatingId("");
-  }
-}
-async function rejectReading(row: StudentHomeworkRow) {
-  if (!row.completionId) {
-    return;
-  }
-
-  try {
-    setUpdatingId(row.completionId);
-    setError("");
-    setMessage("جارٍ رفض تسجيل القراءة...");
-
-    await updateDoc(
-      doc(db, "homeworkCompletions", row.completionId),
-      {
-        readingReviewed: false,
-        readingStatus: "rejected",
-        readingReviewedAt: null,
-        readingRejectedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }
-    );
-
-    const readingQuery = query(
-      collection(db, "dailyReadingRecords"),
-      where(
-        "homeworkCompletionId",
-        "==",
-        row.completionId
-      )
-    );
-
-    const readingSnapshot =
-      await getDocs(readingQuery);
-
-    for (const readingDocument of readingSnapshot.docs) {
-      await updateDoc(
-        doc(
-          db,
-          "dailyReadingRecords",
-          readingDocument.id
-        ),
-        {
-          approved: false,
-          rejectedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }
-      );
-    }
-
-    setCompletions((currentCompletions) =>
-      currentCompletions.map((completion) =>
-        completion.id === row.completionId
-          ? {
-              ...completion,
-              readingReviewed: false,
-              readingStatus: "rejected",
-            }
-          : completion
-      )
-    );
-
-    setMessage(
-      `❌ تم رفض قراءة ${row.studentName} ويحتاج إلى إعادة التسجيل`
-    );
-  } catch (error) {
-    console.error(error);
-    setError("تعذر رفض القراءة، حاول مرة أخرى.");
-  } finally {
-    setUpdatingId("");
-  }
-}
 async function approveSolution(row: StudentHomeworkRow) {
   if (!row.completionId) {
     return;
   }
+
+  invalidateTrackingCache();
 
   try {
     setUpdatingId(row.completionId);
@@ -1206,6 +1332,8 @@ async function rejectSolution(row: StudentHomeworkRow) {
   if (!row.completionId) {
     return;
   }
+
+  invalidateTrackingCache();
 
   try {
     setUpdatingId(row.completionId);
@@ -1905,12 +2033,6 @@ const dailyClassroomOptions = [
   
   onClick={() => {
   const solutionUrl = row.solutionUrl?.trim();
-  const readingAudioUrl = row.readingAudioUrl?.trim();
-
-  if (readingAudioUrl) {
-    window.open(readingAudioUrl, "_blank", "noopener,noreferrer");
-    return;
-  }
 
   if (solutionUrl) {
     window.open(solutionUrl, "_blank", "noopener,noreferrer");
@@ -1937,9 +2059,7 @@ const dailyClassroomOptions = [
     marginBottom: "10px",
   }}
 >
-  {row.readingAudioUrl?.trim()
-  ? "🎙️ تشغيل التسجيل"
-  : row.solutionUrl?.trim()
+  {row.solutionUrl?.trim()
   ? row.completionMethod.includes("صورة")
     ? "📸 عرض الصورة"
     : row.completionMethod.includes("رابط")
@@ -2023,30 +2143,6 @@ const dailyClassroomOptions = [
       </div>
     </div>
   )}
-{row.readingAudioUrl && (
-  <button
-    type="button"
-    onClick={() => {
-      window.open(
-        row.readingAudioUrl,
-        "_blank",
-        "noopener,noreferrer"
-      );
-    }}
-    style={{
-      ...styles.reviewButton,
-      background: "#f0fdf4",
-      color: "#166534",
-      border: "1px solid #bbf7d0",
-      marginBottom: "10px",
-    }}
-  >
-    🎧 استماع للقراءة
-    {row.readingDurationSeconds > 0
-      ? ` — ${row.readingDurationSeconds} ثانية`
-      : ""}
-  </button>
-)}
           <button
                   type="button"
                   disabled={updatingId === row.completionId}
@@ -2125,97 +2221,6 @@ returnHomeworkToStudent(row, note.trim()
         ✏️ ملاحظتك: {row.teacherNote}
       </div>
     )}
-  </div>
-)}
-{row.readingAudioUrl && (
-  <div
-    style={{
-      marginTop: "12px",
-      padding: "12px",
-      borderRadius: "14px",
-      background: "#f8fafc",
-      border: "1px solid #e2e8f0",
-    }}
-  >
-    <div
-      style={{
-        textAlign: "center",
-        marginBottom: "10px",
-        fontWeight: 800,
-        color:
-          row.readingStatus === "approved"
-            ? "#15803d"
-            : row.readingStatus === "rejected"
-              ? "#b91c1c"
-              : "#92400e",
-      }}
-    >
-      {row.readingStatus === "approved"
-        ? "✅ القراءة معتمدة"
-        : row.readingStatus === "rejected"
-          ? "❌ القراءة مرفوضة — يحتاج الطالب إلى إعادة التسجيل"
-          : "⏳ تسجيل القراءة بانتظار قرار المعلم"}
-    </div>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "10px",
-      }}
-    >
-      <button
-        type="button"
-        disabled={
-          updatingId === row.completionId ||
-          row.readingStatus === "approved"
-        }
-        onClick={() => approveReading(row)}
-        style={{
-          padding: "12px",
-          borderRadius: "12px",
-          border: "none",
-          background:
-            row.readingStatus === "approved"
-              ? "#bbf7d0"
-              : "#16a34a",
-          color:
-            row.readingStatus === "approved"
-              ? "#166534"
-              : "#ffffff",
-          fontWeight: 800,
-          cursor: "pointer",
-        }}
-      >
-        ✅ اعتماد القراءة
-      </button>
-
-      <button
-        type="button"
-        disabled={
-          updatingId === row.completionId ||
-          row.readingStatus === "rejected"
-        }
-        onClick={() => rejectReading(row)}
-        style={{
-          padding: "12px",
-          borderRadius: "12px",
-          border: "none",
-          background:
-            row.readingStatus === "rejected"
-              ? "#fecaca"
-              : "#dc2626",
-          color:
-            row.readingStatus === "rejected"
-              ? "#991b1b"
-              : "#ffffff",
-          fontWeight: 800,
-          cursor: "pointer",
-        }}
-      >
-        ❌ رفض القراءة
-      </button>
-    </div>
   </div>
 )}
 </div>

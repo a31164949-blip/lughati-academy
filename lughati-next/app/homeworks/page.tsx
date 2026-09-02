@@ -5,7 +5,9 @@ import Link from "next/link";
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -146,40 +148,44 @@ const [teacherNoteByHomework, setTeacherNoteByHomework] =
   useState<Record<string, string>>({});
   useState<Record<string, "pending" | "approved" | "rejected">>({});
   
-const [student] = useState(() => {
-  if (typeof window === "undefined") {
-    return {
-      id: "",
-      name: "",
-      classroom: "",
-      loggedIn: false,
-    };
-  }
+const [student, setStudent] =
+  useState<StudentData>({
+    id: "",
+    name: "",
+    classroom: "",
+    loggedIn: false,
+  });
 
-  const savedStudent =
-    window.localStorage.getItem(
-      "lughatiStudent"
-    );
+const [studentLoaded, setStudentLoaded] =
+  useState(false);
 
-  const savedLogin =
-    window.localStorage.getItem(
-      "lughatiStudentLoggedIn"
-    ) === "true";
-
-  if (!savedStudent) {
-    return {
-      id: "",
-      name: "",
-      classroom: "",
-      loggedIn: false,
-    };
-  }
-
+useEffect(() => {
   try {
+    const savedStudent =
+      window.localStorage.getItem(
+        "lughatiStudent"
+      );
+
+    const savedLogin =
+      window.localStorage.getItem(
+        "lughatiStudentLoggedIn"
+      ) === "true";
+
+    if (!savedStudent) {
+      setStudent({
+        id: "",
+        name: "",
+        classroom: "",
+        loggedIn: false,
+      });
+
+      return;
+    }
+
     const parsedStudent =
       JSON.parse(savedStudent);
 
-    return {
+    setStudent({
       id: String(
         parsedStudent.id ??
           parsedStudent.studentId ??
@@ -201,24 +207,47 @@ const [student] = useState(() => {
         savedLogin ||
         parsedStudent.loggedIn ===
           true,
-    };
+    });
   } catch (error) {
     console.error(
       "تعذر قراءة بيانات الطالب:",
       error
     );
 
-    return {
+    setStudent({
       id: "",
       name: "",
       classroom: "",
       loggedIn: false,
-    };
+    });
+  } finally {
+    setStudentLoaded(true);
   }
-});
+}, []);
   useEffect(() => {
-    const unsubscribe = onSnapshot(
+    if (!studentLoaded) {
+      return;
+    }
+
+    const targetClasses =
+      student.classroom
+        ? ["الفصلان", student.classroom]
+        : ["الفصلان"];
+
+    const homeworksQuery = query(
       collection(db, "homeworks"),
+      where("published", "==", true),
+      where(
+        "targetClass",
+        "in",
+        targetClasses
+      ),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+
+    const unsubscribe = onSnapshot(
+      homeworksQuery,
       (snapshot) => {
         const items = snapshot.docs.map((document) => ({
           id: document.id,
@@ -237,22 +266,78 @@ const [student] = useState(() => {
     );
 
     return unsubscribe;
-  }, []);
+  }, [student.classroom, studentLoaded]);
 
- useEffect(() => {
-  if (!student.id) {
+useEffect(() => {
+  if (!studentLoaded) {
     return;
   }
 
+  if (!student.id) {
+    setCompletedIds(new Set());
+    setReadingStatusByHomework({});
+    setSolutionStatusByHomework({});
+    setTeacherNoteByHomework({});
+    setCompletionMethodByHomework({});
+    setLoadingCompletions(false);
+    return;
+  }
+
+  if (loading) {
+    return;
+  }
+
+  const homeworkIds = homeworks
+    .map((homework) => homework.id)
+    .filter(Boolean)
+    .slice(0, 10);
+
+  /*
+   * مهم:
+   * Firestore لا يسمح باستخدام
+   * where("in", []) مع قائمة فارغة.
+   */
+  if (homeworkIds.length === 0) {
+    setCompletedIds(new Set());
+    setReadingStatusByHomework({});
+    setSolutionStatusByHomework({});
+    setTeacherNoteByHomework({});
+    setCompletionMethodByHomework({});
+    setLoadingCompletions(false);
+    return;
+  }
+
+  setLoadingCompletions(true);
+
+  /*
+   * بدل قراءة جميع إنجازات الطالب
+   * منذ بداية الأكاديمية،
+   * نقرأ فقط سجلات الواجبات
+   * الظاهرة حاليًا في الصفحة.
+   */
   const completionsQuery = query(
-    collection(db, "homeworkCompletions"),
-    where("studentId", "==", student.id)
+    collection(
+      db,
+      "homeworkCompletions"
+    ),
+    where(
+      "studentId",
+      "==",
+      student.id
+    ),
+    where(
+      "homeworkId",
+      "in",
+      homeworkIds
+    )
   );
 
   const unsubscribe = onSnapshot(
     completionsQuery,
+
     (snapshot) => {
-      const ids = new Set<string>();
+      const ids =
+        new Set<string>();
 
       const readingStatuses: Record<
         string,
@@ -279,39 +364,41 @@ const [student] = useState(() => {
           const data =
             completionDocument.data();
 
-          if (
+          const homeworkId =
             typeof data.homeworkId ===
             "string"
-          ) {
-            teacherNotes[
-              data.homeworkId
-            ] =
-              typeof data.teacherNote ===
-              "string"
-                ? data.teacherNote
-                : "";
+              ? data.homeworkId
+              : "";
 
-            completionMethods[
-              data.homeworkId
-            ] =
-              typeof data.completionMethod ===
-              "string"
-                ? data.completionMethod
-                : "";
+          if (!homeworkId) {
+            return;
           }
+
+          teacherNotes[
+            homeworkId
+          ] =
+            typeof data.teacherNote ===
+            "string"
+              ? data.teacherNote
+              : "";
+
+          completionMethods[
+            homeworkId
+          ] =
+            typeof data.completionMethod ===
+            "string"
+              ? data.completionMethod
+              : "";
 
           const hasSolution =
             typeof data.solutionUrl ===
               "string" &&
-            data.solutionUrl.trim() !== "";
+            data.solutionUrl.trim() !==
+              "";
 
-          if (
-            hasSolution &&
-            typeof data.homeworkId ===
-              "string"
-          ) {
+          if (hasSolution) {
             solutionStatuses[
-              data.homeworkId
+              homeworkId
             ] =
               data.solutionStatus ===
                 "approved" ||
@@ -324,15 +411,12 @@ const [student] = useState(() => {
           const hasReadingAudio =
             typeof data.readingAudioUrl ===
               "string" &&
-            data.readingAudioUrl.trim() !== "";
+            data.readingAudioUrl.trim() !==
+              "";
 
-          if (
-            hasReadingAudio &&
-            typeof data.homeworkId ===
-              "string"
-          ) {
+          if (hasReadingAudio) {
             readingStatuses[
-              data.homeworkId
+              homeworkId
             ] =
               data.readingStatus ===
                 "approved" ||
@@ -343,18 +427,19 @@ const [student] = useState(() => {
           }
 
           if (
-            data.status === "completed" &&
-            typeof data.homeworkId ===
-              "string"
+            data.status ===
+            "completed"
           ) {
             ids.add(
-              data.homeworkId
+              homeworkId
             );
           }
         }
       );
 
-      setCompletedIds(ids);
+      setCompletedIds(
+        ids
+      );
 
       setReadingStatusByHomework(
         readingStatuses
@@ -372,18 +457,30 @@ const [student] = useState(() => {
         completionMethods
       );
 
-      setLoadingCompletions(false);
+      setLoadingCompletions(
+        false
+      );
     },
-    (error) => {
-      console.error(error);
 
-      setLoadingCompletions(false);
+    (error) => {
+      console.error(
+        "تعذر تحميل إنجازات الطالب:",
+        error
+      );
+
+      setLoadingCompletions(
+        false
+      );
     }
   );
 
   return unsubscribe;
-}, [student.id]);
-
+}, [
+  student.id,
+  studentLoaded,
+  loading,
+  homeworks,
+]);
   const publishedHomeworks = useMemo(() => {
     return homeworks
       .filter((homework) => homework.published === true)
@@ -718,6 +815,11 @@ function stopAudioRecording() {
     audioRecorder.stop();
   }
 }
+
+  if (!studentLoaded) {
+    return null;
+  }
+
   return (
     <main
       dir="rtl"

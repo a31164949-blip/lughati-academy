@@ -8,6 +8,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getCountFromServer,
   query,
   serverTimestamp,
   updateDoc,
@@ -440,12 +441,14 @@ if (
           where("approved", "==", true)
         );
 
-        const readingSnapshot =
-          await getDocs(readingQuery);
+        const readingCountSnapshot =
+  await getCountFromServer(
+    readingQuery
+  );
 
-        setReadingDays(
-          readingSnapshot.size
-        );
+setReadingDays(
+  readingCountSnapshot.data().count
+);
       } catch (error) {
         console.error(
           "تعذر تحميل أيام القراءة لولي الأمر:",

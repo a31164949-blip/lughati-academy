@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   doc,
   getDoc,
@@ -58,6 +59,9 @@ const emptyForm: FormData = {
 };
 
 export default function StudentCaseStudyPage() {
+  const searchParams = useSearchParams();
+  const requiredMode = searchParams.get("required") === "1";
+
   const [formData, setFormData] = useState<FormData>(emptyForm);
 
   const [studentId, setStudentId] = useState("");
@@ -240,23 +244,37 @@ export default function StudentCaseStudyPage() {
     try {
       setSaving(true);
 
-      await setDoc(
-        doc(
-          db,
-          "studentCaseStudies",
-          studentId
-        ),
-        {
-          studentId,
-          studentName,
-          ...formData,
-          formType: "student-family-profile",
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+     await setDoc(
+  doc(
+    db,
+    "studentCaseStudies",
+    studentId
+  ),
+  {
+    studentId,
+    studentName,
+    ...formData,
+
+    formType: "student-family-profile",
+
+    // ✅ تثبيت أن دراسة الحالة اكتملت
+    caseStudyCompleted: true,
+
+    // ✅ وقت إكمال دراسة الحالة
+    caseStudyCompletedAt:
+      serverTimestamp(),
+
+    updatedAt: serverTimestamp(),
+  },
+  { merge: true }
+);
 
       setSavedSuccessfully(true);
+
+      if (requiredMode) {
+        window.location.replace("/journey");
+        return;
+      }
 
       alert(
         "✅ تم حفظ ملف الطالب والأسرة بنجاح"
@@ -353,20 +371,22 @@ export default function StudentCaseStudyPage() {
             flexWrap: "wrap",
           }}
         >
-          <Link
-            href="/parent"
-            style={{
-              textDecoration: "none",
-              color: "#147a5b",
-              fontWeight: 800,
-              border: "1px solid #9fd7c4",
-              borderRadius: "14px",
-              padding: "10px 16px",
-              background: "white",
-            }}
-          >
-            ← العودة لصفحة ولي الأمر
-          </Link>
+          {!requiredMode && (
+            <Link
+              href="/parent"
+              style={{
+                textDecoration: "none",
+                color: "#147a5b",
+                fontWeight: 800,
+                border: "1px solid #9fd7c4",
+                borderRadius: "14px",
+                padding: "10px 16px",
+                background: "white",
+              }}
+            >
+              ← العودة لصفحة ولي الأمر
+            </Link>
+          )}
 
           <div
             style={{

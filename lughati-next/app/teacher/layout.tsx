@@ -29,20 +29,45 @@ export default function TeacherLayout({
   useEffect(() => {
     let active = true;
 
+    function normalizeEmail(
+      email: string | null | undefined
+    ) {
+      return email?.trim().toLowerCase() ?? "";
+    }
+
+    /*
+      تسريع التنقل داخل لوحة المعلم:
+      إذا كانت Firebase تعرف المستخدم بالفعل
+      فلا ننتظر حدث onAuthStateChanged.
+    */
+    const currentUser = auth.currentUser;
+
+    if (
+      currentUser &&
+      normalizeEmail(currentUser.email) ===
+        TEACHER_EMAIL
+    ) {
+      setIsAuthorized(true);
+      setIsChecking(false);
+    }
+
     const unsubscribe = onAuthStateChanged(
       auth,
       async (user) => {
         if (!active) return;
 
         const email =
-          user?.email?.trim().toLowerCase() ?? "";
+          normalizeEmail(user?.email);
 
         // لا يوجد مستخدم مسجل
         if (!user) {
           setIsAuthorized(false);
           setIsChecking(false);
 
-          router.replace("/teacher-login");
+          router.replace(
+            "/teacher-login"
+          );
+
           return;
         }
 
@@ -62,7 +87,11 @@ export default function TeacherLayout({
           if (!active) return;
 
           setIsChecking(false);
-          router.replace("/teacher-login");
+
+          router.replace(
+            "/teacher-login"
+          );
+
           return;
         }
 
@@ -81,7 +110,10 @@ export default function TeacherLayout({
   async function handleLogout() {
     try {
       await signOut(auth);
-      router.replace("/teacher-login");
+
+      router.replace(
+        "/teacher-login"
+      );
     } catch (error) {
       console.error(
         "تعذر تسجيل الخروج:",
