@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   serverTimestamp,
@@ -130,6 +131,9 @@ const [showArchivedStudents, setShowArchivedStudents] =
 
 const [restoringStudentId, setRestoringStudentId] =
   useState<string | null>(null);
+
+const [deletingStudentId, setDeletingStudentId] =
+  useState<string | null>(null);
   
   const [classFilter, setClassFilter] =
     useState("الكل");
@@ -138,6 +142,18 @@ const [restoringStudentId, setRestoringStudentId] =
     useState<
       "all" | "never" | "today" | "previous" | "followup"
     >("all");
+
+  const [activeStat, setActiveStat] = useState<
+    | "students"
+    | "classes"
+    | "points"
+    | "profiles"
+    | "activated"
+    | "never"
+    | "today"
+    | "followup"
+    | null
+  >(null);
 
  async function fetchStudentsData(
   forceRefresh = false
@@ -838,6 +854,59 @@ async function handleRestoreStudent(
   }
 }
 
+async function handleDeleteArchivedStudent(
+  student: Student
+) {
+  const firstConfirm =
+    window.confirm(
+      `⚠️ حذف نهائي\n\nهل تريد حذف الطالب:\n${student.studentName}\n\nرقم الطالب: ${student.studentId}\n\nلن يظهر الطالب بعد الحذف في قائمة الطلاب أو المؤرشفين.`
+    );
+
+  if (!firstConfirm) {
+    return;
+  }
+
+  const secondConfirm =
+    window.confirm(
+      `تأكيد أخير ⚠️\n\nسيتم حذف ${student.studentName} نهائيًا من سجل الطلاب.\n\nهل أنت متأكد؟`
+    );
+
+  if (!secondConfirm) {
+    return;
+  }
+
+  try {
+    setDeletingStudentId(student.id);
+    setMessage("");
+
+    await deleteDoc(
+      doc(
+        db,
+        "students",
+        student.id
+      )
+    );
+
+    setMessage(
+      `✅ تم حذف ${student.studentName} نهائيًا من قائمة الطلاب.`
+    );
+
+    clearStudentsPageCache();
+    await loadStudents(true);
+  } catch (error) {
+    console.error(
+      "تعذر حذف الطالب:",
+      error
+    );
+
+    setMessage(
+      "❌ تعذر حذف الطالب. حاول مرة أخرى."
+    );
+  } finally {
+    setDeletingStudentId(null);
+  }
+}
+
 useEffect(() => {
   let active = true;
 
@@ -1123,6 +1192,65 @@ useEffect(() => {
         ]
       : undefined;
 
+  const statStudents = useMemo(() => {
+    if (!activeStat) return [] as Student[];
+
+    if (activeStat === "students" || activeStat === "classes") {
+      return activeStudents;
+    }
+
+    if (activeStat === "points") {
+      return [...activeStudents].sort((a, b) => b.points - a.points);
+    }
+
+    if (activeStat === "profiles") {
+      return activeStudents.filter((student) =>
+        Boolean(profiles[student.studentId])
+      );
+    }
+
+    if (activeStat === "activated") {
+      return activeStudents.filter((student) => student.accountActivated);
+    }
+
+    if (activeStat === "never") {
+      return activeStudents.filter(
+        (student) => !student.accountActivated || student.loginCount === 0
+      );
+    }
+
+    if (activeStat === "today") {
+      return activeStudents.filter((student) => {
+        if (!student.lastLoginAt) return false;
+        const loginDay = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Riyadh",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(student.lastLoginAt);
+        return loginDay === todayInRiyadh;
+      });
+    }
+
+    return activeStudents.filter(needsFollowUp);
+  }, [
+    activeStat,
+    activeStudents,
+    profiles,
+    todayInRiyadh,
+    followUpThreshold,
+  ]);
+
+  const statTitle =
+    activeStat === "students" ? "👨‍🎓 جميع الطلاب" :
+    activeStat === "classes" ? "🏫 الفصول" :
+    activeStat === "points" ? "⭐ تفاصيل النقاط" :
+    activeStat === "profiles" ? "👨‍👩‍👦 ملفات الأسرة المكتملة" :
+    activeStat === "activated" ? "✅ الطلاب الذين فعّلوا الحساب" :
+    activeStat === "never" ? "⏳ الطلاب الذين لم يدخلوا بعد" :
+    activeStat === "today" ? "🟢 الطلاب الذين دخلوا اليوم" :
+    activeStat === "followup" ? "🟠 الطلاب الذين يحتاجون متابعة" : "";
+
   return (
     <main
       dir="rtl"
@@ -1198,6 +1326,7 @@ useEffect(() => {
         <StatCard
           icon="👨‍🎓"
           title="عدد الطلاب"
+          onClick={() => setActiveStat("students")}
           value={
             activeStudents.length
           }
@@ -1206,6 +1335,7 @@ useEffect(() => {
         <StatCard
           icon="🏫"
           title="عدد الفصول"
+          onClick={() => setActiveStat("classes")}
           value={
             new Set(
               activeStudents.map(
@@ -1219,12 +1349,14 @@ useEffect(() => {
         <StatCard
           icon="⭐"
           title="إجمالي النقاط"
+          onClick={() => setActiveStat("points")}
           value={totalPoints}
         />
 
         <StatCard
           icon="👨‍👩‍👦"
           title="ملفات الأسرة المكتملة"
+          onClick={() => setActiveStat("profiles")}
           value={
             completedProfiles
           }
@@ -1233,6 +1365,7 @@ useEffect(() => {
         <StatCard
           icon="✅"
           title="فعّلوا الحساب"
+          onClick={() => setActiveStat("activated")}
           value={
             activatedStudentsCount
           }
@@ -1241,6 +1374,7 @@ useEffect(() => {
         <StatCard
           icon="⏳"
           title="لم يدخلوا بعد"
+          onClick={() => setActiveStat("never")}
           value={
             neverLoggedInCount
           }
@@ -1249,6 +1383,7 @@ useEffect(() => {
         <StatCard
           icon="🟢"
           title="دخلوا اليوم"
+          onClick={() => setActiveStat("today")}
           value={
             loggedInTodayCount
           }
@@ -1257,6 +1392,7 @@ useEffect(() => {
         <StatCard
           icon="🟠"
           title="يحتاجون متابعة"
+          onClick={() => setActiveStat("followup")}
           value={
             needsFollowUpCount
           }
@@ -1688,6 +1824,125 @@ useEffect(() => {
         )}
         
       </section>
+      {activeStat && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() => setActiveStat(null)}
+        >
+          <div
+            style={{ ...styles.modal, maxWidth: "900px" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.modalHeader}>
+              <div>
+                <p style={styles.modalEyebrow}>لوحة متابعة الطلاب</p>
+                <h2 style={styles.modalTitle}>{statTitle}</h2>
+                <p style={styles.modalMeta}>
+                  {activeStat === "classes"
+                    ? `${classrooms.length} فصل`
+                    : `${statStudents.length} طالب`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveStat(null)}
+                style={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+
+            {activeStat === "classes" ? (
+              <div style={{ padding: "18px", display: "grid", gap: "12px" }}>
+                {classrooms.map((classroom) => {
+                  const classStudents = activeStudents.filter(
+                    (student) => student.classroom === classroom
+                  );
+                  return (
+                    <button
+                      key={classroom}
+                      type="button"
+                      onClick={() => {
+                        setClassFilter(classroom);
+                        setLoginFilter("all");
+                        setActiveStat(null);
+                      }}
+                      style={{
+                        border: "1px solid #d1fae5",
+                        background: "#f0fdf4",
+                        borderRadius: "16px",
+                        padding: "16px",
+                        cursor: "pointer",
+                        textAlign: "right",
+                        fontWeight: 900,
+                        color: "#166534",
+                        fontSize: "17px",
+                      }}
+                    >
+                      🏫 {classroom} — {classStudents.length} طالب
+                    </button>
+                  );
+                })}
+              </div>
+            ) : statStudents.length === 0 ? (
+              <div style={styles.empty}>لا توجد نتائج.</div>
+            ) : (
+              <div style={{ ...styles.list, background: "#ffffff" }}>
+                {statStudents.map((student) => (
+                  <article key={student.id} style={styles.studentCard}>
+                    <div style={styles.studentMain}>
+                      <div style={styles.avatar}>
+                        {student.studentName.charAt(0)}
+                      </div>
+                      <div>
+                        <a
+                          href={`/teacher/students/${student.id}`}
+                          style={styles.studentLink}
+                        >
+                          {student.studentName}
+                        </a>
+                        <p style={styles.studentMeta}>
+                          {student.classroom} • {student.studentId}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={styles.details}>
+                      {activeStat === "points" && (
+                        <span>⭐ {student.points} نقطة</span>
+                      )}
+                      {activeStat === "never" && (
+                        <span>🔑 رقم الدخول: {student.loginCode || "غير محدد"}</span>
+                      )}
+                      {(activeStat === "activated" ||
+                        activeStat === "today" ||
+                        activeStat === "followup") && (
+                        <>
+                          <span>🔐 {student.loginCount} دخول</span>
+                          <span>
+                            🕒 {student.lastLoginAt
+                              ? student.lastLoginAt.toLocaleString("ar-SA", {
+                                  timeZone: "Asia/Riyadh",
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                })
+                              : "لا يوجد دخول"}
+                          </span>
+                        </>
+                      )}
+                      {activeStat === "profiles" && (
+                        <span>✅ ملف الأسرة مكتمل</span>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {showArchivedStudents && (
         <div
           style={styles.modalOverlay}
@@ -1790,7 +2045,8 @@ useEffect(() => {
                             )
                           }
                           disabled={
-                            restoringStudentId === student.id
+                            restoringStudentId === student.id ||
+                            deletingStudentId === student.id
                           }
                           style={{
                             ...styles.profileButton,
@@ -1798,11 +2054,13 @@ useEffect(() => {
                             color: "#166534",
                             borderColor: "#86efac",
                             opacity:
-                              restoringStudentId === student.id
+                              restoringStudentId === student.id ||
+                              deletingStudentId === student.id
                                 ? 0.65
                                 : 1,
                             cursor:
-                              restoringStudentId === student.id
+                              restoringStudentId === student.id ||
+                              deletingStudentId === student.id
                                 ? "not-allowed"
                                 : "pointer",
                           }}
@@ -1810,6 +2068,39 @@ useEffect(() => {
                           {restoringStudentId === student.id
                             ? "⏳ جارٍ الاستعادة..."
                             : "♻️ استعادة الطالب"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleDeleteArchivedStudent(
+                              student
+                            )
+                          }
+                          disabled={
+                            deletingStudentId === student.id ||
+                            restoringStudentId === student.id
+                          }
+                          style={{
+                            ...styles.profileButton,
+                            background: "#fef2f2",
+                            color: "#b91c1c",
+                            borderColor: "#fca5a5",
+                            opacity:
+                              deletingStudentId === student.id ||
+                              restoringStudentId === student.id
+                                ? 0.65
+                                : 1,
+                            cursor:
+                              deletingStudentId === student.id ||
+                              restoringStudentId === student.id
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          {deletingStudentId === student.id
+                            ? "⏳ جارٍ الحذف..."
+                            : "🗑️ حذف نهائي"}
                         </button>
                       </div>
                     </article>
@@ -2504,14 +2795,26 @@ function StatCard({
   icon,
   title,
   value,
+  onClick,
 }: {
   icon: string;
   title: string;
   value: number;
+  onClick: () => void;
 }) {
   return (
-    <article
-      style={styles.statCard}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`عرض تفاصيل ${title}`}
+      style={{
+        ...styles.statCard,
+        border: "none",
+        width: "100%",
+        textAlign: "right",
+        cursor: "pointer",
+        fontFamily: "inherit",
+      }}
     >
       <div
         style={styles.statIcon}
@@ -2532,7 +2835,7 @@ function StatCard({
           {value}
         </strong>
       </div>
-    </article>
+    </button>
   );
 }
 

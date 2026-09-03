@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -32,6 +33,8 @@ export default function ReadingSubmissionsPage() {
   const [submissions, setSubmissions] = useState<ReadingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
+  const [cleanupMessage, setCleanupMessage] = useState("");
 
   async function fetchSubmissions() {
     const q = query(
@@ -41,10 +44,113 @@ export default function ReadingSubmissionsPage() {
 
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((item) => ({
+    const rows = snapshot.docs.map((item) => ({
       id: item.id,
       ...item.data(),
     })) as ReadingSubmission[];
+
+    /*
+     * القراءات الجديدة تحفظ studentClassroom مباشرة.
+     * للقراءات القديمة فقط التي لا تحتوي على الفصل،
+     * نجلب فصل الطالب من students.
+     *
+     * نستخدم معرفات فريدة حتى لا تتكرر قراءة
+     * مستند الطالب إذا كان لديه أكثر من تسجيل قديم.
+     */
+    const missingClassroomStudentIds =
+      Array.from(
+        new Set(
+          rows
+            .filter(
+              (item) =>
+                !item.studentClassroom?.trim() &&
+                Boolean(item.studentId?.trim())
+            )
+            .map(
+              (item) =>
+                item.studentId!.trim()
+            )
+        )
+      );
+
+    if (
+      missingClassroomStudentIds.length === 0
+    ) {
+      return rows;
+    }
+
+    const classroomEntries =
+      await Promise.all(
+        missingClassroomStudentIds.map(
+          async (studentId) => {
+            try {
+              const studentSnapshot =
+                await getDoc(
+                  doc(
+                    db,
+                    "students",
+                    studentId
+                  )
+                );
+
+              if (
+                !studentSnapshot.exists()
+              ) {
+                return [
+                  studentId,
+                  "",
+                ] as const;
+              }
+
+              const studentData =
+                studentSnapshot.data();
+
+              const classroom =
+                typeof studentData.classroom ===
+                "string"
+                  ? studentData.classroom.trim()
+                  : "";
+
+              return [
+                studentId,
+                classroom,
+              ] as const;
+            } catch (error) {
+              console.error(
+                `تعذر تحميل فصل الطالب ${studentId}:`,
+                error
+              );
+
+              return [
+                studentId,
+                "",
+              ] as const;
+            }
+          }
+        )
+      );
+
+    const classroomByStudentId =
+      new Map<string, string>(
+        classroomEntries
+      );
+
+    return rows.map(
+      (item) => ({
+        ...item,
+
+        studentClassroom:
+          item.studentClassroom?.trim() ||
+          (
+            item.studentId
+              ? classroomByStudentId.get(
+                  item.studentId.trim()
+                )
+              : ""
+          ) ||
+          "",
+      })
+    );
   }
 
   async function loadSubmissions() {
@@ -247,6 +353,128 @@ export default function ReadingSubmissionsPage() {
           }
         );
       }
+    }
+  }
+
+  async function deleteDuplicateReadings() {
+    if (cleaningDuplicates) {
+      return;
+    }
+
+    const groups = new Map<string, ReadingSubmission[]>();
+
+    for (const submission of submissions) {
+      const studentId =
+        submission.studentId?.trim() || "";
+
+      const readingDate =
+        submission.readingDate?.trim() || "";
+
+      if (!studentId || !readingDate) {
+        continue;
+      }
+
+      const key =
+        `${studentId}__${readingDate}`;
+
+      const currentGroup =
+        groups.get(key) || [];
+
+      currentGroup.push(submission);
+
+      groups.set(
+        key,
+        currentGroup
+      );
+    }
+
+    const duplicateIds: string[] = [];
+
+    for (const group of groups.values()) {
+      if (group.length <= 1) {
+        continue;
+      }
+
+      const approvedSubmission =
+        group.find(
+          (item) =>
+            item.status === "approved"
+        );
+
+      const keeper =
+        approvedSubmission || group[0];
+
+      for (const item of group) {
+        if (item.id !== keeper.id) {
+          duplicateIds.push(item.id);
+        }
+      }
+    }
+
+    if (duplicateIds.length === 0) {
+      setCleanupMessage(
+        "✅ لا توجد قراءات متكررة حاليًا."
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `تم العثور على ${duplicateIds.length} قراءة متكررة.\n\nسيتم الاحتفاظ بقراءة واحدة فقط لكل طالب في كل يوم، مع إعطاء الأولوية للقراءة المعتمدة إن وُجدت.\n\nهل تريد حذف التكرارات الآن؟`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setCleaningDuplicates(true);
+      setCleanupMessage(
+        "⏳ جارٍ حذف القراءات المتكررة..."
+      );
+
+      const batchSize = 10;
+
+      for (
+        let index = 0;
+        index < duplicateIds.length;
+        index += batchSize
+      ) {
+        const batch =
+          duplicateIds.slice(
+            index,
+            index + batchSize
+          );
+
+        await Promise.all(
+          batch.map((submissionId) =>
+            deleteDoc(
+              doc(
+                db,
+                "reading-submissions",
+                submissionId
+              )
+            )
+          )
+        );
+      }
+
+      setCleanupMessage(
+        `✅ تم حذف ${duplicateIds.length} قراءة متكررة بنجاح.`
+      );
+
+      await loadSubmissions();
+    } catch (error) {
+      console.error(
+        "فشل حذف القراءات المتكررة:",
+        error
+      );
+
+      setCleanupMessage(
+        "❌ تعذر حذف بعض القراءات المتكررة. حدّث الصفحة وحاول مرة أخرى."
+      );
+    } finally {
+      setCleaningDuplicates(false);
     }
   }
 
@@ -498,7 +726,53 @@ export default function ReadingSubmissionsPage() {
           >
             استمع إلى قراءة الطالب ثم اعتمدها أو اطلب منه إعادة التسجيل.
           </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              void deleteDuplicateReadings()
+            }
+            disabled={cleaningDuplicates}
+            style={{
+              marginTop: "16px",
+              border: "1px solid rgba(255,255,255,0.55)",
+              borderRadius: "14px",
+              padding: "11px 16px",
+              background: cleaningDuplicates
+                ? "rgba(255,255,255,0.18)"
+                : "white",
+              color: cleaningDuplicates
+                ? "white"
+                : "#087f5b",
+              fontWeight: 900,
+              fontSize: "15px",
+              cursor: cleaningDuplicates
+                ? "not-allowed"
+                : "pointer",
+            }}
+          >
+            {cleaningDuplicates
+              ? "⏳ جارٍ تنظيف التكرارات..."
+              : "🧹 حذف القراءات المتكررة"}
+          </button>
         </div>
+
+        {cleanupMessage && (
+          <div
+            style={{
+              background: "#ffffff",
+              padding: "14px 18px",
+              borderRadius: "14px",
+              textAlign: "center",
+              marginBottom: "16px",
+              border: "1px solid #d9eee7",
+              color: "#163b32",
+              fontWeight: 800,
+            }}
+          >
+            {cleanupMessage}
+          </div>
+        )}
 
         {loading && (
           <div

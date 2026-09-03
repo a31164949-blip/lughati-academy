@@ -101,6 +101,12 @@ const sections = [
     href: "/teacher/games",
   },
   {
+    title: "🕵️ نتائج تحدّي المحقّق",
+    description:
+      "الاطلاع على نتائج المحققين وأوقات الحل، ثم اعتماد الترتيب والنقاط بعد انتهاء التحدي.",
+    href: "/teacher/detective-results",
+  },
+  {
     title: "👑 تاج لغتي",
     description:
       "تقييم القراءة والإملاء، منح الألقاب، وتتويج ملوك القراءة والإملاء.",
@@ -402,6 +408,10 @@ useEffect(() => {
                 section.href ===
                 "/teacher/reading-journeys";
 
+              const isDetectiveResults =
+                section.href ===
+                "/teacher/detective-results";
+
               const cardStyle =
                 isHeroes
                   ? {
@@ -422,6 +432,11 @@ useEffect(() => {
                   ? {
                       ...styles.card,
                       ...styles.readingJourneyCard,
+                    }
+                  : isDetectiveResults
+                  ? {
+                      ...styles.card,
+                      ...styles.detectiveResultsCard,
                     }
                   : styles.card;
 
@@ -449,6 +464,12 @@ useEffect(() => {
                       ...styles.open,
                       color:
                         "#0f766e",
+                    }
+                  : isDetectiveResults
+                  ? {
+                      ...styles.open,
+                      color:
+                        "#b45309",
                     }
                   : styles.open;
 
@@ -796,6 +817,16 @@ const styles: Record<
       "2px solid #c4b5fd",
     boxShadow:
       "0 12px 30px rgba(91, 33, 182, 0.10)",
+  },
+
+  /* 🕵️ نتائج تحدّي المحقّق */
+  detectiveResultsCard: {
+    background:
+      "linear-gradient(135deg, #fffaf0 0%, #fff3d6 100%)",
+    border:
+      "2px solid #f4c76b",
+    boxShadow:
+      "0 12px 30px rgba(180, 110, 20, 0.11)",
   },
 
   /* 👑 تاج لغتي */

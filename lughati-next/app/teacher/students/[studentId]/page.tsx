@@ -12,6 +12,22 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../../../firebase";
+type Achievement = {
+  id: string;
+  title: string;
+  icon: string;
+  category: "القراءة" | "الإملاء";
+  source: "reading" | "spelling";
+  reason: string;
+  achievedAt:
+    | Date
+    | {
+        seconds?: number;
+        nanoseconds?: number;
+      };
+  rewardId?: string;
+};
+
 type Student = {
   studentName?: string;
   className?: string;
@@ -96,6 +112,7 @@ journey?: {
   lastActivityAt?: Date;
 };
 teacherMessage?: string;
+achievements?: Achievement[];
 };
 const BADGE_OPTIONS = [
   {
@@ -358,6 +375,48 @@ const formatBadgeDate = (
 
   return "تاريخ غير متوفر";
 };
+
+const achievementIcon = (title: string) => {
+  if (title.includes("ملك")) return "👑";
+  if (title.includes("بطل")) return "🦸";
+  return "🌟";
+};
+
+const toDateValue = (
+  value:
+    | Date
+    | {
+        seconds?: number;
+        nanoseconds?: number;
+      }
+    | undefined
+) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (value.seconds) return new Date(value.seconds * 1000);
+  return null;
+};
+
+const formatAchievementDate = (
+  value:
+    | Date
+    | {
+        seconds?: number;
+        nanoseconds?: number;
+      }
+    | undefined
+) => {
+  const date = toDateValue(value);
+
+  if (!date) return "تاريخ غير متوفر";
+
+  return date.toLocaleDateString("ar-SA", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
   const [showAttendanceHistory, setShowAttendanceHistory] = useState(false);
 const [attendanceStatus, setAttendanceStatus] = useState<
   "حاضر" | "غائب" | "متأخر"
@@ -476,48 +535,88 @@ const pointsToNextLevel = Math.max(
   const achievementStreak = student.achievementStreak ?? 0;
 const goldenIndex = student.goldenIndex ?? 0;
 const latestReading = student.latestReading;
-
-const isReadingKing =
-  !!latestReading &&
-  latestReading.errors === 0 &&
-  latestReading.fluency === "ممتاز" &&
-  latestReading.expression === "معبّر";
-
-const isReadingHero =
-  !!latestReading &&
-  !isReadingKing &&
-  latestReading.errors <= 2 &&
-  ["ممتاز", "جيد جدًا"].includes(latestReading.fluency);
-
 const readingHistory = student.readingHistory ?? [];
-
-const isReadingStar =
-  !isReadingKing &&
-  !isReadingHero &&
-  readingHistory.length >= 2 &&
-  readingHistory[readingHistory.length - 1].errors <
-    readingHistory[readingHistory.length - 2].errors;
-    const latestSpelling = student.latestSpelling;
-
-const isSpellingKing =
-  !!latestSpelling &&
-  latestSpelling.errors === 0 &&
-  latestSpelling.level === "ممتاز";
-
-const isSpellingHero =
-  !!latestSpelling &&
-  !isSpellingKing &&
-  latestSpelling.errors <= 2 &&
-  ["ممتاز", "جيد جدًا"].includes(latestSpelling.level);
-
+const latestSpelling = student.latestSpelling;
 const spellingHistory = student.spellingHistory ?? [];
 
-const isSpellingStar =
-  !isSpellingKing &&
-  !isSpellingHero &&
-  spellingHistory.length >= 2 &&
-  spellingHistory[spellingHistory.length - 1].errors <
-    spellingHistory[spellingHistory.length - 2].errors;
+/*
+  سجل الإنجازات الدائم:
+  - الإنجازات الجديدة تُحفظ داخل student.achievements.
+  - الإنجازات القديمة التي مُنحت قبل إضافة هذا النظام تُستعاد من pointsHistory،
+    لذلك لا يختفي لقب سابق مثل "بطل القراءة".
+*/
+const achievementTitles = [
+  "ملك القراءة",
+  "بطل القراءة",
+  "نجم القراءة",
+  "ملك الإملاء",
+  "بطل الإملاء",
+  "نجم الإملاء",
+] as const;
+
+const legacyAchievements: Achievement[] = (student.pointsHistory ?? [])
+  .map((entry, index) => {
+    // بعض السجلات القديمة كانت تحفظ اسم اللقب داخل reason فقط،
+    // لذلك نستخرجه من badge أولًا ثم من نص السبب كخطة استرجاع تاريخية.
+    const recoveredTitle = achievementTitles.find(
+      (title) => entry.badge === title || entry.reason?.includes(title)
+    );
+
+    if (!recoveredTitle) return null;
+
+    const isReading =
+      recoveredTitle.includes("القراءة") || entry.category === "قراءة";
+
+    return {
+      id:
+        entry.rewardId ??
+        `legacy-${isReading ? "reading" : "spelling"}-${recoveredTitle}-${index}`,
+      title: recoveredTitle,
+      icon: achievementIcon(recoveredTitle),
+      category: isReading ? "القراءة" : "الإملاء",
+      source: isReading ? "reading" : "spelling",
+      reason: entry.reason,
+      achievedAt: entry.createdAt ?? new Date(0),
+      rewardId: entry.rewardId,
+    } as Achievement;
+  })
+  .filter((achievement): achievement is Achievement => achievement !== null);
+
+const allAchievements = [
+  ...(student.achievements ?? []),
+  ...legacyAchievements,
+];
+
+const getAchievement = (title: string) => {
+  const matching = allAchievements.filter(
+    (achievement) => achievement.title === title
+  );
+
+  if (matching.length === 0) return null;
+
+  return [...matching].sort((a, b) => {
+    const aDate = toDateValue(a.achievedAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const bDate = toDateValue(b.achievedAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    return aDate - bDate;
+  })[0];
+};
+
+const readingKingAchievement = getAchievement("ملك القراءة");
+const readingHeroAchievement = getAchievement("بطل القراءة");
+const readingStarAchievement = getAchievement("نجم القراءة");
+
+const spellingKingAchievement = getAchievement("ملك الإملاء");
+const spellingHeroAchievement = getAchievement("بطل الإملاء");
+const spellingStarAchievement = getAchievement("نجم الإملاء");
+
+const isReadingKing = !!readingKingAchievement;
+const isReadingHero = !!readingHeroAchievement;
+const isReadingStar = !!readingStarAchievement;
+
+const isSpellingKing = !!spellingKingAchievement;
+const isSpellingHero = !!spellingHeroAchievement;
+const isSpellingStar = !!spellingStarAchievement;
+
     const attendanceHistory = student.attendanceHistory ?? [];
 
 const attendanceCount = attendanceHistory.filter(
@@ -717,6 +816,24 @@ async function handleSaveReading() {
           }
         : null;
 
+    const readingAchievementAlreadyExists =
+      !!readingReward.badge &&
+      !!getAchievement(readingReward.badge);
+
+    const newReadingAchievement: Achievement | null =
+      readingReward.badge && !readingAchievementAlreadyExists
+        ? {
+            id: `achievement-${rewardId}`,
+            title: readingReward.badge,
+            icon: achievementIcon(readingReward.badge),
+            category: "القراءة",
+            source: "reading",
+            reason: readingReward.message,
+            achievedAt: new Date(),
+            rewardId,
+          }
+        : null;
+
     await updateDoc(studentRef, {
       latestReading: newReading,
       readingHistory: arrayUnion(newReading),
@@ -724,6 +841,11 @@ async function handleSaveReading() {
         ? {
             points: increment(readingReward.points),
             pointsHistory: arrayUnion(readingPointEntry),
+          }
+        : {}),
+      ...(newReadingAchievement
+        ? {
+            achievements: arrayUnion(newReadingAchievement),
           }
         : {}),
     });
@@ -742,6 +864,12 @@ async function handleSaveReading() {
             readingPointEntry,
           ]
         : student.pointsHistory ?? [],
+      achievements: newReadingAchievement
+        ? [
+            ...(student.achievements ?? []),
+            newReadingAchievement,
+          ]
+        : student.achievements ?? [],
     } as Student);
 
     alert(
@@ -808,6 +936,24 @@ async function handleSaveSpelling() {
           }
         : null;
 
+    const spellingAchievementAlreadyExists =
+      !!spellingReward.badge &&
+      !!getAchievement(spellingReward.badge);
+
+    const newSpellingAchievement: Achievement | null =
+      spellingReward.badge && !spellingAchievementAlreadyExists
+        ? {
+            id: `achievement-${rewardId}`,
+            title: spellingReward.badge,
+            icon: achievementIcon(spellingReward.badge),
+            category: "الإملاء",
+            source: "spelling",
+            reason: spellingReward.message,
+            achievedAt: new Date(),
+            rewardId,
+          }
+        : null;
+
     await updateDoc(studentRef, {
       latestSpelling: newSpelling,
       spellingHistory: arrayUnion(newSpelling),
@@ -815,6 +961,11 @@ async function handleSaveSpelling() {
         ? {
             points: increment(spellingReward.points),
             pointsHistory: arrayUnion(spellingPointEntry),
+          }
+        : {}),
+      ...(newSpellingAchievement
+        ? {
+            achievements: arrayUnion(newSpellingAchievement),
           }
         : {}),
     });
@@ -833,6 +984,12 @@ async function handleSaveSpelling() {
             spellingPointEntry,
           ]
         : student.pointsHistory ?? [],
+      achievements: newSpellingAchievement
+        ? [
+            ...(student.achievements ?? []),
+            newSpellingAchievement,
+          ]
+        : student.achievements ?? [],
     } as Student);
 
     alert(
@@ -3002,42 +3159,48 @@ style={{
 >
   📚 عرض سجل القراءات
 </button>     <div style={isReadingKing ? styles.badgeActive : styles.badge}>
-  <span>👑</span>
+  <span>{isReadingKing ? "👑" : "🔒"}</span>
 
   <div>
     <strong>ملك القراءة</strong>
 
     <p style={styles.badgeText}>
-      {isReadingKing
-        ? "مستحق الوسام: قراءة متقنة بلا أخطاء"
-        : "يتطلب صفر أخطاء وطلاقة ممتازة وتعبيرًا معبّرًا"}
+      {readingKingAchievement
+        ? `✅ تم تحقيق اللقب — ${formatAchievementDate(
+            readingKingAchievement.achievedAt
+          )}`
+        : "لم يتحقق بعد — يتطلب صفر أخطاء وطلاقة ممتازة وتعبيرًا معبّرًا"}
     </p>
   </div>
 </div>
 
 <div style={isReadingHero ? styles.badgeActive : styles.badge}>
-  <span>🦸</span>
+  <span>{isReadingHero ? "🦸" : "🔒"}</span>
 
   <div>
     <strong>بطل القراءة</strong>
 
     <p style={styles.badgeText}>
-      {isReadingHero
-        ? "مستحق الوسام: قراءة جيدة بأخطاء قليلة"
-        : "يتطلب خطأين أو أقل وطلاقة ممتازة أو جيدة جدًا"}
+      {readingHeroAchievement
+        ? `✅ تم تحقيق اللقب — ${formatAchievementDate(
+            readingHeroAchievement.achievedAt
+          )}`
+        : "لم يتحقق بعد — يتطلب خطأين أو أقل وطلاقة ممتازة أو جيدة جدًا"}
     </p>
   </div>
 </div>
           <div style={isReadingStar ? styles.badgeActive : styles.badge}>
-  <span>🌟</span>
+  <span>{isReadingStar ? "🌟" : "🔒"}</span>
 
   <div>
     <strong>نجم القراءة</strong>
 
     <p style={styles.badgeText}>
-      {isReadingStar
-        ? "مستحق الوسام: تحسّن عدد الأخطاء عن القراءة السابقة"
-        : "يتطلب وجود قراءتين وانخفاض الأخطاء في القراءة الأخيرة"}
+      {readingStarAchievement
+        ? `✅ تم تحقيق اللقب — ${formatAchievementDate(
+            readingStarAchievement.achievedAt
+          )}`
+        : "لم يتحقق بعد — يتطلب وجود قراءتين وانخفاض الأخطاء في القراءة الأخيرة"}
     </p>
   </div>
 </div>
@@ -3340,43 +3503,49 @@ style={{
   📚 عرض سجل الإملاء
 </button>
           <div style={isSpellingKing ? styles.badgeActive : styles.badge}>
-  <span>👑</span>
+  <span>{isSpellingKing ? "👑" : "🔒"}</span>
 
   <div>
     <strong>ملك الإملاء</strong>
 
     <p style={styles.badgeText}>
-      {isSpellingKing
-        ? "مستحق الوسام: إملاء متقن بلا أخطاء"
-        : "يتطلب صفر أخطاء ومستوى ممتاز"}
+      {spellingKingAchievement
+        ? `✅ تم تحقيق اللقب — ${formatAchievementDate(
+            spellingKingAchievement.achievedAt
+          )}`
+        : "لم يتحقق بعد — يتطلب صفر أخطاء ومستوى ممتاز"}
     </p>
   </div>
 </div>
 
           <div style={isSpellingHero ? styles.badgeActive : styles.badge}>
-  <span>🦸</span>
+  <span>{isSpellingHero ? "🦸" : "🔒"}</span>
 
   <div>
     <strong>بطل الإملاء</strong>
 
     <p style={styles.badgeText}>
-      {isSpellingHero
-        ? "مستحق الوسام: إملاء جيد بأخطاء قليلة"
-        : "يتطلب خطأين أو أقل ومستوى ممتاز أو جيد جدًا"}
+      {spellingHeroAchievement
+        ? `✅ تم تحقيق اللقب — ${formatAchievementDate(
+            spellingHeroAchievement.achievedAt
+          )}`
+        : "لم يتحقق بعد — يتطلب خطأين أو أقل ومستوى ممتاز أو جيد جدًا"}
     </p>
   </div>
 </div>
 
           <div style={isSpellingStar ? styles.badgeActive : styles.badge}>
-  <span>🌟</span>
+  <span>{isSpellingStar ? "🌟" : "🔒"}</span>
 
   <div>
     <strong>نجم الإملاء</strong>
 
     <p style={styles.badgeText}>
-      {isSpellingStar
-        ? "مستحق الوسام: تحسّن عدد الأخطاء عن الإملاء السابق"
-        : "يتطلب وجود تقييمين وانخفاض الأخطاء في التقييم الأخير"}
+      {spellingStarAchievement
+        ? `✅ تم تحقيق اللقب — ${formatAchievementDate(
+            spellingStarAchievement.achievedAt
+          )}`
+        : "لم يتحقق بعد — يتطلب وجود تقييمين وانخفاض الأخطاء في التقييم الأخير"}
     </p>
   </div>
 </div>
@@ -3469,37 +3638,41 @@ style={{
       <section style={styles.timelineSection}>
         <h2 style={styles.sectionTitle}>📜 رحلة الإنجازات</h2>
 
-        <div style={styles.timelineItem}>
-          <span style={styles.timelineIcon}>🎨</span>
-          <div>
-            <strong>نُشر عمل جديد في معرض الطلاب</strong>
-            <p style={styles.timelineText}>اليوم</p>
+        {allAchievements.length > 0 ? (
+          [...allAchievements]
+            .sort((a, b) => {
+              const aDate = toDateValue(a.achievedAt)?.getTime() ?? 0;
+              const bDate = toDateValue(b.achievedAt)?.getTime() ?? 0;
+              return bDate - aDate;
+            })
+            .slice(0, 8)
+            .map((achievement, index) => (
+              <div
+                key={`${achievement.id}-${index}`}
+                style={styles.timelineItem}
+              >
+                <span style={styles.timelineIcon}>{achievement.icon}</span>
+                <div>
+                  <strong>حصل على لقب {achievement.title}</strong>
+                  <p style={styles.timelineText}>
+                    {formatAchievementDate(achievement.achievedAt)}
+                  </p>
+                </div>
+              </div>
+            ))
+        ) : (
+          <div
+            style={{
+              padding: "20px",
+              textAlign: "center",
+              color: "#64748b",
+              background: "#f8fafc",
+              borderRadius: "16px",
+            }}
+          >
+            🌱 لا توجد إنجازات قراءة أو إملاء محفوظة للطالب حتى الآن.
           </div>
-        </div>
-
-        <div style={styles.timelineItem}>
-          <span style={styles.timelineIcon}>✍️</span>
-          <div>
-            <strong>حصل على لقب بطل الإملاء</strong>
-            <p style={styles.timelineText}>منذ يومين</p>
-          </div>
-        </div>
-
-        <div style={styles.timelineItem}>
-          <span style={styles.timelineIcon}>⭐</span>
-          <div>
-            <strong>حصل على 10 نقاط جديدة</strong>
-            <p style={styles.timelineText}>منذ 3 أيام</p>
-          </div>
-        </div>
-
-        <div style={styles.timelineItem}>
-          <span style={styles.timelineIcon}>📖</span>
-          <div>
-            <strong>أتم قراءة نص جديد</strong>
-            <p style={styles.timelineText}>منذ أسبوع</p>
-          </div>
-        </div>
+        )}
       </section>
     </main>
   );

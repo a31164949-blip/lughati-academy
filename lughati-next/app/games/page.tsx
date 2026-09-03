@@ -8,6 +8,19 @@ import {
 
 const games = [
   {
+    id: "detective",
+    icon: "🕵️",
+    title: "تحدّي المحقّق",
+    shortTitle: "حلّ القضية",
+    description:
+      "قضية خاصة ليوم واحد! اقرأ الأدلة، اربط التفاصيل، واكتشف الحل الصحيح بأسرع وقت.",
+    href: "/games/detective",
+    status: "متاحة الآن",
+    badge: "🏆 جائزة لأسرع المحققين",
+    background:
+      "linear-gradient(135deg, #07111f 0%, #102a43 48%, #8a5a12 100%)",
+  },
+  {
     id: "missing-word",
     icon: "🧩",
     title: "الكلمة المفقودة",
