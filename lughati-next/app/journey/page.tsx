@@ -236,7 +236,36 @@ type StudentNotification = {
 
   createdAt?: Timestamp | null;
 };
+type WeeklySummary = {
+  success: boolean;
 
+  shouldShow: boolean;
+  parentViewed: boolean;
+
+  weekKey: string;
+  weekStart: string;
+  weekEnd: string;
+
+  studentName: string;
+
+  status:
+    | "excellent"
+    | "good"
+    | "needs-follow-up";
+
+  statusLabel: string;
+
+  readingDays: number;
+
+  homeworkSubmitted: number;
+  homeworkApproved: number;
+
+  activityDays: number;
+
+  weeklyPoints: number;
+
+  message?: string;
+};
 
 export default function JourneyPage() {
   const [studentName, setStudentName] =
@@ -253,7 +282,22 @@ useEffect(() => {
 }, []);
   const [user, setUser] =
     useState<User | null>(null);
+const [
+  weeklySummary,
+  setWeeklySummary,
+] = useState<WeeklySummary | null>(
+  null
+);
 
+const [
+  weeklySummaryLoading,
+  setWeeklySummaryLoading,
+] = useState(false);
+
+const [
+  savingWeeklySummaryView,
+  setSavingWeeklySummaryView,
+] = useState(false);
   const [notifications, setNotifications] =
     useState<StudentNotification[]>([]);
 
@@ -375,8 +419,8 @@ const [
               لا نسمح لبقية صفحة الرحلة
               بالبدء قبل التحقق من دراسة الحالة.
             */
-            const token =
-              await currentUser.getIdToken();
+          const token =
+  await currentUser.getIdToken(true);
 
             const response =
               await fetch(
@@ -430,7 +474,7 @@ const [
             setUser(currentUser);
 
             const tokenResult =
-              await currentUser.getIdTokenResult();
+              await currentUser.getIdTokenResult(true);
 
             console.log(
               "🔎 student-id المحلي:",
@@ -780,91 +824,144 @@ try {
 
     void loadJourneyData();
   }, [user]);
-useEffect(() => {
-  if (!user) {
-    return;
-  }
-
-  const currentUser = user;
-
-  async function loadCrownData() {
-    try {
-      setCrownLoading(true);
-
-      const token =
-        await currentUser.getIdToken();
-
-      const response =
-        await fetch(
-          "/api/student-crown",
-          {
-            method: "GET",
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-            cache: "no-store",
-          }
-        );
-
-      const data =
-        (await response.json()) as CrownData;
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "تعذر تحميل تاج لغتي."
-        );
-      }
-
-      setReadingKingCount(
-        typeof data.readingKingCount ===
-          "number"
-          ? data.readingKingCount
-          : 0
-      );
-
-      setSpellingKingCount(
-        typeof data.spellingKingCount ===
-          "number"
-          ? data.spellingKingCount
-          : 0
-      );
-
-      setMasteryCount(
-        typeof data.masteryCount ===
-          "number"
-          ? data.masteryCount
-          : 0
-      );
-
-      setLatestCrownAchievement(
-        data.latestAchievement ??
-          null
-      );
-    } catch (error) {
-      console.error(
-        "تعذر تحميل تاج لغتي:",
-        error
-      );
-
-      setReadingKingCount(0);
-      setSpellingKingCount(0);
-      setMasteryCount(0);
-
-      setLatestCrownAchievement(
-        null
-      );
-    } finally {
-      setCrownLoading(false);
+  useEffect(() => {
+    if (!user) {
+      setWeeklySummary(null);
+      return;
     }
-  }
 
-  void loadCrownData();
-}, [user]);
+    const currentUser = user;
+
+    async function loadWeeklySummary() {
+      try {
+        setWeeklySummaryLoading(true);
+
+        const token =
+          await currentUser.getIdToken();
+
+        const response =
+          await fetch(
+            "/api/weekly-summary",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
+
+        const data =
+          (await response.json()) as WeeklySummary;
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "تعذر تحميل موجز الأسبوع."
+          );
+        }
+
+        setWeeklySummary(data);
+      } catch (error) {
+        console.error(
+          "تعذر تحميل موجز الأسبوع:",
+          error
+        );
+
+        setWeeklySummary(null);
+      } finally {
+        setWeeklySummaryLoading(false);
+      }
+    }
+
+    void loadWeeklySummary();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const currentUser = user;
+
+    async function loadCrownData() {
+      try {
+        setCrownLoading(true);
+
+        const token =
+          await currentUser.getIdToken();
+
+        const response =
+          await fetch(
+            "/api/student-crown",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
+
+        const data =
+          (await response.json()) as CrownData;
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "تعذر تحميل تاج لغتي."
+          );
+        }
+
+        setReadingKingCount(
+          typeof data.readingKingCount ===
+            "number"
+            ? data.readingKingCount
+            : 0
+        );
+
+        setSpellingKingCount(
+          typeof data.spellingKingCount ===
+            "number"
+            ? data.spellingKingCount
+            : 0
+        );
+
+        setMasteryCount(
+          typeof data.masteryCount ===
+            "number"
+            ? data.masteryCount
+            : 0
+        );
+
+        setLatestCrownAchievement(
+          data.latestAchievement ?? null
+        );
+      } catch (error) {
+        console.error(
+          "تعذر تحميل تاج لغتي:",
+          error
+        );
+
+        setReadingKingCount(0);
+        setSpellingKingCount(0);
+        setMasteryCount(0);
+        setLatestCrownAchievement(null);
+      } finally {
+        setCrownLoading(false);
+      }
+    }
+
+    void loadCrownData();
+  }, [user]);
 
 
   const completedCount =
@@ -1105,6 +1202,281 @@ useEffect(() => {
         paddingBottom: "50px",
       }}
     >
+      {weeklySummary?.shouldShow && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 12000,
+            background: "rgba(15, 23, 42, 0.68)",
+            backdropFilter: "blur(6px)",
+            display: "grid",
+            placeItems: "center",
+            padding: "18px",
+          }}
+        >
+          <div
+            style={{
+              width: "min(560px, 100%)",
+              maxHeight: "92vh",
+              overflowY: "auto",
+              borderRadius: "30px",
+              background:
+                "linear-gradient(145deg,#ffffff 0%,#f4fff8 58%,#fffaf0 100%)",
+              border: "2px solid #b9e4cc",
+              boxShadow: "0 28px 80px rgba(0,0,0,.28)",
+              padding: "26px 22px",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                textAlign: "center",
+                marginBottom: "20px",
+              }}
+            >
+              <div
+                style={{
+                  width: "86px",
+                  height: "86px",
+                  margin: "0 auto 14px",
+                  borderRadius: "24px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "48px",
+                  background:
+                    "linear-gradient(135deg,#dff8ea,#fff3bd)",
+                  border: "2px solid #c4e8d4",
+                }}
+              >
+                📊
+              </div>
+
+              <div
+                style={{
+                  color: "#8a6500",
+                  fontWeight: 900,
+                  fontSize: "13px",
+                  marginBottom: "5px",
+                }}
+              >
+                ولي أمري العزيز 🌟
+              </div>
+
+              <h2
+                style={{
+                  margin: "0 0 8px",
+                  color: "#126b49",
+                  fontSize: "clamp(25px,5vw,34px)",
+                  lineHeight: 1.4,
+                }}
+              >
+                موجز مستوى هذا الأسبوع
+              </h2>
+
+              <p
+                style={{
+                  margin: 0,
+                  color: "#607268",
+                  lineHeight: 1.8,
+                  fontWeight: 700,
+                }}
+              >
+                هذا موجز تقدمي خلال الأسبوع الدراسي.
+              </p>
+            </div>
+
+            <div
+              style={{
+                padding: "16px",
+                borderRadius: "20px",
+                background:
+                  weeklySummary.status === "excellent"
+                    ? "#ecfdf5"
+                    : weeklySummary.status === "good"
+                    ? "#fffbea"
+                    : "#fff7ed",
+                border:
+                  weeklySummary.status === "excellent"
+                    ? "1px solid #b9e7cf"
+                    : weeklySummary.status === "good"
+                    ? "1px solid #f0dfa3"
+                    : "1px solid #f1c8a8",
+                textAlign: "center",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  color: "#64748b",
+                  marginBottom: "5px",
+                }}
+              >
+                المستوى العام
+              </div>
+
+              <strong
+                style={{
+                  display: "block",
+                  color:
+                    weeklySummary.status === "excellent"
+                      ? "#08734b"
+                      : weeklySummary.status === "good"
+                      ? "#8a6200"
+                      : "#b45309",
+                  fontSize: "24px",
+                }}
+              >
+                {weeklySummary.statusLabel}
+              </strong>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(150px,1fr))",
+                gap: "11px",
+                marginBottom: "16px",
+              }}
+            >
+              <div style={weeklySummaryMetricStyle}>
+                <span>📖 القراءة</span>
+                <strong>{weeklySummary.readingDays} / 5 أيام</strong>
+              </div>
+              <div style={weeklySummaryMetricStyle}>
+                <span>📝 الواجبات المعتمدة</span>
+                <strong>{weeklySummary.homeworkApproved}</strong>
+              </div>
+              <div style={weeklySummaryMetricStyle}>
+                <span>📤 الواجبات المرفوعة</span>
+                <strong>{weeklySummary.homeworkSubmitted}</strong>
+              </div>
+              <div style={weeklySummaryMetricStyle}>
+                <span>🚀 أيام النشاط</span>
+                <strong>{weeklySummary.activityDays} / 5</strong>
+              </div>
+              <div style={weeklySummaryMetricStyle}>
+                <span>⭐ نقاط الأسبوع</span>
+                <strong>{weeklySummary.weeklyPoints}</strong>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "15px",
+                borderRadius: "18px",
+                background:
+                  "linear-gradient(135deg,#eef8ff,#ffffff)",
+                border: "1px solid #d8eaf5",
+                color: "#476174",
+                lineHeight: 1.8,
+                fontWeight: 700,
+                marginBottom: "18px",
+              }}
+            >
+              🦸 فارس يقول: استمروا في دعم بطل لغتي بالقراءة اليومية وإنجاز المهام، فكل تقدم صغير يصنع فرقًا كبيرًا.
+            </div>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "11px",
+                padding: "15px",
+                borderRadius: "18px",
+                background: "#f8fafc",
+                border: "2px solid #d9e5df",
+                cursor: savingWeeklySummaryView
+                  ? "default"
+                  : "pointer",
+                fontWeight: 900,
+                color: "#17352a",
+              }}
+            >
+              <input
+                type="checkbox"
+                disabled={savingWeeklySummaryView}
+                onChange={async (event) => {
+                  if (!event.target.checked || !user) {
+                    return;
+                  }
+
+                  try {
+                    setSavingWeeklySummaryView(true);
+                    const token = await user.getIdToken();
+                    const response = await fetch(
+                      "/api/weekly-summary",
+                      {
+                        method: "POST",
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                        },
+                      }
+                    );
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                      throw new Error(
+                        data.message || "تعذر تسجيل الاطلاع."
+                      );
+                    }
+
+                    setWeeklySummary((current) =>
+                      current
+                        ? {
+                            ...current,
+                            shouldShow: false,
+                            parentViewed: true,
+                          }
+                        : null
+                    );
+                  } catch (error) {
+                    console.error(
+                      "تعذر تسجيل اطلاع ولي الأمر:",
+                      error
+                    );
+                    event.target.checked = false;
+                    alert(
+                      "تعذر تسجيل الاطلاع حاليًا، حاول مرة أخرى."
+                    );
+                  } finally {
+                    setSavingWeeklySummaryView(false);
+                  }
+                }}
+                style={{
+                  width: "22px",
+                  height: "22px",
+                  accentColor: "#168a63",
+                  flexShrink: 0,
+                }}
+              />
+
+              <span>
+                {savingWeeklySummaryView
+                  ? "جارٍ تسجيل الاطلاع..."
+                  : "لقد اطّلعت على مستوى ابني"}
+              </span>
+            </label>
+
+            <p
+              style={{
+                margin: "12px 0 0",
+                textAlign: "center",
+                color: "#7b8b83",
+                fontSize: "12px",
+                lineHeight: 1.7,
+                fontWeight: 700,
+              }}
+            >
+              ستغلق هذه النافذة بعد تسجيل اطلاع ولي الأمر.
+            </p>
+          </div>
+        </div>
+      )}
+
     {celebrationNotification && (
   <div
     style={{
@@ -3186,6 +3558,20 @@ const cardStyle = {
   marginBottom: "20px",
   boxShadow:
     "0 10px 28px rgba(38, 105, 75, 0.1)",
+};
+
+const weeklySummaryMetricStyle = {
+  padding: "15px",
+  borderRadius: "17px",
+  background: "#ffffff",
+  border: "1px solid #dfece5",
+  display: "grid",
+  gap: "7px",
+  textAlign: "center" as const,
+  color: "#126b49",
+  fontWeight: 900,
+  boxShadow:
+    "0 5px 14px rgba(20, 90, 60, 0.05)",
 };
 
 const headerButtonStyle = {
