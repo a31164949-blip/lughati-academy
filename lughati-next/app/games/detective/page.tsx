@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type GradeId =
@@ -449,8 +448,8 @@ function getAcademyStudent() {
 }
 
 export default function DetectiveChallengePage() {
-  const searchParams = useSearchParams();
-  const isPreview = searchParams.get("preview") === "1";
+  const [isPreview, setIsPreview] =
+    useState(false);
   const [academyStudent, setAcademyStudent] =
     useState<{
       studentId: string;
@@ -514,6 +513,17 @@ export default function DetectiveChallengePage() {
           EVENT_END_AT
         )
     );
+
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    setIsPreview(
+      params.get("preview") === "1"
+    );
+  }, []);
 
   const questions = useMemo(
     () =>
