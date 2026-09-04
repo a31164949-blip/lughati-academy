@@ -15,54 +15,91 @@ import { db } from "../../firebase";
 
 type AcademyHero = {
   id: string;
+  studentId: string;
   studentFirstName: string;
   title: string;
   badge: string;
   achievementsCount: number;
+  honorCount: number;
   imageUrl: string;
   photoConsent: boolean;
   published: boolean;
+  weeklyTrack:
+    | "classHero"
+    | "academyAchievement"
+    | "academyProgress";
+  weekKey: string;
+  weekLabel: string;
 };
 
-function getWeekRangeLabel() {
-  const now = new Date();
-
-  const weekday =
+function getCurrentWeekInfo() {
+  const parts =
     new Intl.DateTimeFormat(
-      "en-US",
+      "en-CA",
       {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
         weekday: "short",
         timeZone: "Asia/Riyadh",
       }
-    ).format(now);
+    ).formatToParts(new Date());
 
-  const dayIndex: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
+  const get = (
+    type: Intl.DateTimeFormatPartTypes
+  ) =>
+    parts.find(
+      (part) => part.type === type
+    )?.value ?? "";
 
-  const currentDay =
-    dayIndex[weekday] ?? 0;
+  const weekdayIndex:
+    Record<string, number> = {
+      Sat: 0,
+      Sun: 1,
+      Mon: 2,
+      Tue: 3,
+      Wed: 4,
+      Thu: 5,
+      Fri: 6,
+    };
+
+  const currentIndex =
+    weekdayIndex[get("weekday")] ?? 0;
+
+  const currentUtc =
+    new Date(
+      Date.UTC(
+        Number(get("year")),
+        Number(get("month")) - 1,
+        Number(get("day"))
+      )
+    );
 
   const start =
-    new Date(now);
+    new Date(currentUtc);
 
-  start.setDate(
-    start.getDate() -
-      currentDay
+  start.setUTCDate(
+    currentUtc.getUTCDate() -
+      currentIndex
   );
 
   const end =
     new Date(start);
 
-  end.setDate(
-    start.getDate() + 6
+  end.setUTCDate(
+    start.getUTCDate() + 6
   );
+
+  const ymd = (date: Date) =>
+    [
+      date.getUTCFullYear(),
+      String(
+        date.getUTCMonth() + 1
+      ).padStart(2, "0"),
+      String(
+        date.getUTCDate()
+      ).padStart(2, "0"),
+    ].join("-");
 
   const formatter =
     new Intl.DateTimeFormat(
@@ -70,18 +107,27 @@ function getWeekRangeLabel() {
       {
         day: "numeric",
         month: "long",
-        timeZone: "Asia/Riyadh",
+        timeZone: "UTC",
       }
     );
 
-  return `${formatter.format(
-    start
-  )} — ${formatter.format(
-    end
-  )}`;
+  return {
+    key: ymd(start),
+    label: `${formatter.format(
+      start
+    )} — ${formatter.format(
+      end
+    )}`,
+  };
 }
 
 export default function HeroesPage() {
+  const currentWeek =
+    useMemo(
+      () => getCurrentWeekInfo(),
+      []
+    );
+
   const [
     heroes,
     setHeroes,
@@ -113,69 +159,137 @@ export default function HeroesPage() {
             )
           );
 
+        const allHeroRecords =
+          snapshot.docs.map(
+            (document) => {
+              const data =
+                document.data();
+
+              return {
+                id: document.id,
+                studentId:
+                  typeof data.studentId ===
+                  "string"
+                    ? data.studentId
+                    : "",
+                studentFirstName:
+                  typeof data.studentFirstName ===
+                  "string"
+                    ? data.studentFirstName
+                    : "بطل الأكاديمية",
+                title:
+                  typeof data.title ===
+                  "string"
+                    ? data.title
+                    : "بطل الأكاديمية",
+                badge:
+                  typeof data.badge ===
+                  "string"
+                    ? data.badge
+                    : "",
+                achievementsCount:
+                  typeof data.achievementsCount ===
+                  "number"
+                    ? data.achievementsCount
+                    : 0,
+                imageUrl:
+                  typeof data.imageUrl ===
+                  "string"
+                    ? data.imageUrl
+                    : "",
+                photoConsent:
+                  data.photoConsent === true,
+                published:
+                  data.published === true,
+                weeklyTrack:
+                  data.weeklyTrack === "classHero" ||
+                  data.weeklyTrack === "academyAchievement" ||
+                  data.weeklyTrack === "academyProgress"
+                    ? data.weeklyTrack
+                    : data.weeklyTrack === "progress" ||
+                      data.weeklyTrack === "commitment"
+                    ? "academyProgress"
+                    : "academyAchievement",
+                weekKey:
+                  typeof data.weekKey ===
+                  "string"
+                    ? data.weekKey
+                    : "",
+                weekLabel:
+                  typeof data.weekLabel ===
+                  "string"
+                    ? data.weekLabel
+                    : "",
+              };
+            }
+          );
+
+        // كل أسبوع يُحسب تكريمًا واحدًا للطالب،
+        // حتى لو ظهر في أكثر من مسار خلال الأسبوع نفسه.
+        const honorWeeksByStudent =
+          new Map<string, Set<string>>();
+
+        allHeroRecords.forEach(
+          (hero) => {
+            if (
+              !hero.studentId ||
+              !hero.weekKey
+            ) {
+              return;
+            }
+
+            const weeks =
+              honorWeeksByStudent.get(
+                hero.studentId
+              ) ?? new Set<string>();
+
+            weeks.add(hero.weekKey);
+
+            honorWeeksByStudent.set(
+              hero.studentId,
+              weeks
+            );
+          }
+        );
+
         const loadedHeroes =
-          snapshot.docs
-            .map(
-              (
-                document
-              ) => {
-                const data =
-                  document.data();
-
-                return {
-                  id:
-                    document.id,
-
-                  studentFirstName:
-                    typeof data.studentFirstName ===
-                    "string"
-                      ? data.studentFirstName
-                      : "بطل الأكاديمية",
-
-                  title:
-                    typeof data.title ===
-                    "string"
-                      ? data.title
-                      : "بطل الأكاديمية",
-
-                  badge:
-                    typeof data.badge ===
-                    "string"
-                      ? data.badge
-                      : "",
-
-                  achievementsCount:
-                    typeof data.achievementsCount ===
-                    "number"
-                      ? data.achievementsCount
-                      : 0,
-
-                  imageUrl:
-                    typeof data.imageUrl ===
-                    "string"
-                      ? data.imageUrl
-                      : "",
-
-                  photoConsent:
-                    data.photoConsent ===
-                    true,
-
-                  published:
-                    data.published ===
-                    true,
-                } satisfies AcademyHero;
-              }
-            )
+          allHeroRecords
             .filter(
               (hero) =>
                 hero.published &&
-                hero.photoConsent
+                hero.photoConsent &&
+                hero.weekKey ===
+                  currentWeek.key
             )
-            .sort(
-              (a, b) =>
-                b.achievementsCount -
-                a.achievementsCount
-            );
+            .map(
+              (hero) =>
+                ({
+                  ...hero,
+                  honorCount:
+                    honorWeeksByStudent.get(
+                      hero.studentId
+                    )?.size ?? 1,
+                }) satisfies AcademyHero
+            )
+            .sort((a, b) => {
+              const order: Record<
+                string,
+                number
+              > = {
+                classHero: 0,
+                academyAchievement: 1,
+                academyProgress: 2,
+              };
+
+              return (
+                (order[
+                  String(a.weeklyTrack)
+                ] ?? 99) -
+                (order[
+                  String(b.weeklyTrack)
+                ] ?? 99)
+              );
+            });
 
         if (!active) {
           return;
@@ -208,14 +322,10 @@ export default function HeroesPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentWeek.key]);
 
   const weekLabel =
-    useMemo(
-      () =>
-        getWeekRangeLabel(),
-      []
-    );
+    currentWeek.label;
 
   const topHeroes =
     heroes.slice(0, 3);
@@ -388,11 +498,11 @@ export default function HeroesPage() {
               }}
             >
               نحتفي كل أسبوع
-              بجهود أبطالنا
-              وتقدمهم واستمرارهم،
-              لأن كل خطوة إلى
-              الأمام تستحق
-              الاحتفاء.
+              ببطل من الفصل
+              وبطلين من الأكاديمية،
+              تقديرًا للمشاركة
+              والإنجاز والتطور
+              والالتزام.
             </p>
 
             <div
@@ -546,8 +656,8 @@ export default function HeroesPage() {
                       800,
                   }}
                 >
-                  التكريم للجهد
-                  والتقدم والاستمرار
+                  بطل من الفصل
+                  وبطلان من الأكاديمية
                 </span>
               </div>
 
@@ -743,6 +853,57 @@ export default function HeroesPage() {
   );
 }
 
+function getTrackInfo(
+  track: AcademyHero["weeklyTrack"]
+) {
+  if (track === "classHero") {
+    return {
+      icon: "🏫",
+      label: "بطل الفصل",
+    };
+  }
+
+  if (
+    track ===
+    "academyProgress"
+  ) {
+    return {
+      icon: "🌱",
+      label:
+        "بطل التطور والالتزام في الأكاديمية",
+    };
+  }
+
+  return {
+    icon: "🥇",
+    label:
+      "بطل الإنجاز في الأكاديمية",
+  };
+}
+
+
+function getHonorCountLabel(
+  count?: number
+) {
+  const safeCount =
+    typeof count === "number" &&
+    Number.isFinite(count) &&
+    count > 0
+      ? count
+      : 1;
+
+  if (safeCount === 1) {
+    return "🏆 التكريم الأول";
+  }
+
+  if (safeCount === 2) {
+    return "🏆 تُوِّج مرتين";
+  }
+
+  return `🏆 تُوِّج ${safeCount} مرات`;
+}
+
+
 function HeroPodiumCard({
   hero,
   rank,
@@ -750,12 +911,16 @@ function HeroPodiumCard({
   hero: AcademyHero;
   rank: number;
 }) {
+  const trackInfo =
+    getTrackInfo(
+      hero.weeklyTrack
+    );
+
   const rankInfo =
     rank === 1
       ? {
-          medal: "🥇",
-          label:
-            "المركز الأول",
+          medal: trackInfo.icon,
+          label: trackInfo.label,
           background:
             "linear-gradient(180deg,#fff9df,#ffffff)",
           border:
@@ -763,18 +928,16 @@ function HeroPodiumCard({
         }
       : rank === 2
       ? {
-          medal: "🥈",
-          label:
-            "المركز الثاني",
+          medal: trackInfo.icon,
+          label: trackInfo.label,
           background:
             "linear-gradient(180deg,#f4f7fa,#ffffff)",
           border:
             "#cbd5e1",
         }
       : {
-          medal: "🥉",
-          label:
-            "المركز الثالث",
+          medal: trackInfo.icon,
+          label: trackInfo.label,
           background:
             "linear-gradient(180deg,#fff3e7,#ffffff)",
           border:
@@ -873,6 +1036,33 @@ function HeroPodiumCard({
       >
         {hero.title}
       </p>
+
+      <div
+        style={{
+          display:
+            "inline-flex",
+          marginTop:
+            "10px",
+          padding:
+            "7px 11px",
+          borderRadius:
+            "999px",
+          background:
+            "#fff8dc",
+          border:
+            "1px solid #f3df9b",
+          color:
+            "#7a5900",
+          fontSize:
+            "12px",
+          fontWeight:
+            900,
+        }}
+      >
+        {getHonorCountLabel(
+          hero.honorCount
+        )}
+      </div>
 
       {hero.badge && (
         <div

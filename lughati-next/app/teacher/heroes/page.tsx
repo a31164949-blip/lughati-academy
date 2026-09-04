@@ -19,9 +19,9 @@ import {
 import { db } from "../../../firebase";
 
 type WeeklyHeroTrack =
-  | "achievement"
-  | "progress"
-  | "commitment";
+  | "classHero"
+  | "academyAchievement"
+  | "academyProgress";
 
 type LegacyHeroCategory =
   | "reading"
@@ -37,6 +37,16 @@ type StudentOption = {
   name: string;
   classroom: string;
   photoConsent: boolean;
+};
+
+type WeeklyStudentStats = {
+  points: number;
+  readingCount: number;
+  spellingCount: number;
+  achievementsCount: number;
+  badgesCount: number;
+  streak: number;
+  highlights: string[];
 };
 
 type SavedHero = {
@@ -67,31 +77,31 @@ const weeklyTrackOptions: {
   description: string;
 }[] = [
   {
-    key: "achievement",
-    label: "الأكثر إنجازًا",
+    key: "classHero",
+    label: "بطل الفصل",
+    icon: "🏫",
+    defaultTitle: "بطل الفصل",
+    defaultBadge: "بطل الفصل لهذا الأسبوع",
+    description:
+      "يختاره المعلم بناءً على المشاركة والتفاعل والقراءة والسلوك والتحسن داخل الفصل.",
+  },
+  {
+    key: "academyAchievement",
+    label: "بطل الإنجاز في الأكاديمية",
     icon: "🥇",
     defaultTitle: "بطل الإنجاز",
-    defaultBadge: "الأكثر إنجازًا هذا الأسبوع",
+    defaultBadge: "بطل الإنجاز في الأكاديمية لهذا الأسبوع",
     description:
-      "للطالب الذي حقق إنجازات ونقاطًا مميزة خلال الأسبوع.",
+      "للطالب الأبرز في الإنجازات والنقاط والنشاط داخل الأكاديمية خلال الأسبوع.",
   },
   {
-    key: "progress",
-    label: "الأكثر تطورًا",
+    key: "academyProgress",
+    label: "بطل التطور والالتزام في الأكاديمية",
     icon: "🌱",
-    defaultTitle: "بطل التطور",
-    defaultBadge: "الأكثر تطورًا هذا الأسبوع",
+    defaultTitle: "بطل التطور والالتزام",
+    defaultBadge: "بطل التطور والالتزام في الأكاديمية لهذا الأسبوع",
     description:
-      "للطالب الذي أظهر تحسنًا واضحًا مقارنة بمستواه السابق.",
-  },
-  {
-    key: "commitment",
-    label: "الأكثر التزامًا",
-    icon: "⭐",
-    defaultTitle: "بطل الالتزام",
-    defaultBadge: "الأكثر التزامًا هذا الأسبوع",
-    description:
-      "للطالب الأكثر مواظبة على التعلم والقراءة والواجبات.",
+      "للطالب الذي أظهر تطورًا واضحًا والتزامًا مستمرًا بالتعلم والقراءة والمهام.",
   },
 ];
 
@@ -133,27 +143,24 @@ function getWeeklyTrack(
   legacyCategory?: unknown
 ): WeeklyHeroTrack {
   if (
-    value === "achievement" ||
-    value === "progress" ||
-    value === "commitment"
+    value === "classHero" ||
+    value === "academyAchievement" ||
+    value === "academyProgress"
   ) {
     return value;
   }
 
+  // توافق مع السجلات القديمة.
   if (
-    legacyCategory === "progress"
+    value === "progress" ||
+    value === "commitment" ||
+    legacyCategory === "progress" ||
+    legacyCategory === "commitment"
   ) {
-    return "progress";
+    return "academyProgress";
   }
 
-  if (
-    legacyCategory ===
-    "commitment"
-  ) {
-    return "commitment";
-  }
-
-  return "achievement";
+  return "academyAchievement";
 }
 
 function getRiyadhDateParts() {
@@ -195,15 +202,17 @@ function getCurrentWeekInfo() {
   const riyadh =
     getRiyadhDateParts();
 
+  // أسبوع التكريم يبدأ السبت وينتهي الجمعة.
+  // بذلك يمكن إعلان الأبطال يوم السبت وإبقاؤهم ظاهرين طوال الأسبوع.
   const weekdayIndex:
     Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
+      Sat: 0,
+      Sun: 1,
+      Mon: 2,
+      Tue: 3,
+      Wed: 4,
+      Thu: 5,
+      Fri: 6,
     };
 
   const currentIndex =
@@ -302,7 +311,7 @@ export default function TeacherHeroesPage() {
     setWeeklyTrack,
   ] =
     useState<WeeklyHeroTrack>(
-      "achievement"
+      "classHero"
     );
 
   const [
@@ -360,6 +369,19 @@ export default function TeacherHeroesPage() {
     statusMessage,
     setStatusMessage,
   ] = useState("");
+
+  const [
+    weeklyStudentStats,
+    setWeeklyStudentStats,
+  ] =
+    useState<WeeklyStudentStats | null>(
+      null
+    );
+
+  const [
+    isLoadingStudentStats,
+    setIsLoadingStudentStats,
+  ] = useState(false);
 
   async function loadSavedHeroes() {
     const heroesSnapshot =
@@ -619,6 +641,335 @@ export default function TeacherHeroesPage() {
       ]
     );
 
+  function convertToDate(
+    value: unknown
+  ): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return value;
+    }
+
+    if (
+      typeof value === "object" &&
+      value !== null
+    ) {
+      const timestampLike = value as {
+        toDate?: () => Date;
+        seconds?: number;
+      };
+
+      if (
+        typeof timestampLike.toDate ===
+        "function"
+      ) {
+        return timestampLike.toDate();
+      }
+
+      if (
+        typeof timestampLike.seconds ===
+        "number"
+      ) {
+        return new Date(
+          timestampLike.seconds * 1000
+        );
+      }
+    }
+
+    return null;
+  }
+
+  function isDateInCurrentWeek(
+    value: unknown
+  ) {
+    const date =
+      convertToDate(value);
+
+    if (!date) {
+      return false;
+    }
+
+    // currentWeek.key يمثل السبت حسب توقيت الرياض.
+    const start = new Date(
+      `${currentWeek.key}T00:00:00+03:00`
+    );
+
+    const end = new Date(start);
+
+    end.setDate(
+      end.getDate() + 7
+    );
+
+    return (
+      date >= start &&
+      date < end
+    );
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSelectedStudentStats() {
+      if (!selectedStudentId) {
+        setWeeklyStudentStats(null);
+        setAchievementsCount(0);
+        setReadingCount(0);
+        setSpellingCount(0);
+        setIsLoadingStudentStats(false);
+        return;
+      }
+
+      try {
+        setIsLoadingStudentStats(true);
+        setWeeklyStudentStats(null);
+
+        const studentSnapshot =
+          await getDoc(
+            doc(
+              db,
+              "students",
+              selectedStudentId
+            )
+          );
+
+        if (!active) {
+          return;
+        }
+
+        if (!studentSnapshot.exists()) {
+          setWeeklyStudentStats(null);
+          setAchievementsCount(0);
+          setReadingCount(0);
+          setSpellingCount(0);
+          return;
+        }
+
+        const data =
+          studentSnapshot.data();
+
+        const pointsHistory =
+          Array.isArray(
+            data.pointsHistory
+          )
+            ? data.pointsHistory
+            : [];
+
+        const readingHistory =
+          Array.isArray(
+            data.readingHistory
+          )
+            ? data.readingHistory
+            : [];
+
+        const spellingHistory =
+          Array.isArray(
+            data.spellingHistory
+          )
+            ? data.spellingHistory
+            : [];
+
+        const achievements =
+          Array.isArray(
+            data.achievements
+          )
+            ? data.achievements
+            : [];
+
+        const badges =
+          Array.isArray(
+            data.badges
+          )
+            ? data.badges
+            : [];
+
+        const weeklyPoints =
+          pointsHistory
+            .filter(
+              (item: Record<string, unknown>) =>
+                isDateInCurrentWeek(
+                  item.createdAt
+                )
+            )
+            .reduce(
+              (
+                total: number,
+                item: Record<string, unknown>
+              ) =>
+                total +
+                (typeof item.points ===
+                "number"
+                  ? item.points
+                  : 0),
+              0
+            );
+
+        const weeklyReadings =
+          readingHistory.filter(
+            (item: Record<string, unknown>) =>
+              isDateInCurrentWeek(
+                item.createdAt
+              )
+          );
+
+        const weeklySpellings =
+          spellingHistory.filter(
+            (item: Record<string, unknown>) =>
+              isDateInCurrentWeek(
+                item.createdAt
+              )
+          );
+
+        const weeklyAchievements =
+          achievements.filter(
+            (item: Record<string, unknown>) =>
+              isDateInCurrentWeek(
+                item.achievedAt
+              )
+          );
+
+        const weeklyBadges =
+          badges.filter(
+            (item: Record<string, unknown>) =>
+              isDateInCurrentWeek(
+                item.awardedAt
+              )
+          );
+
+        // نزيل التكرار إذا كان الإنجاز نفسه محفوظًا كإنجاز وكوسام.
+        const highlightMap =
+          new Map<string, string>();
+
+        weeklyAchievements.forEach(
+          (item: Record<string, unknown>) => {
+            const title =
+              typeof item.title ===
+              "string"
+                ? item.title
+                : "إنجاز جديد";
+
+            const icon =
+              typeof item.icon ===
+              "string"
+                ? item.icon
+                : "🌟";
+
+            const key =
+              typeof item.rewardId ===
+              "string" &&
+              item.rewardId
+                ? item.rewardId
+                : title;
+
+            highlightMap.set(
+              key,
+              `${icon} ${title}`
+            );
+          }
+        );
+
+        weeklyBadges.forEach(
+          (item: Record<string, unknown>) => {
+            const title =
+              typeof item.title ===
+              "string"
+                ? item.title
+                : "وسام جديد";
+
+            const icon =
+              typeof item.icon ===
+              "string"
+                ? item.icon
+                : "🏅";
+
+            const key =
+              typeof item.rewardId ===
+              "string" &&
+              item.rewardId
+                ? item.rewardId
+                : title;
+
+            if (!highlightMap.has(key)) {
+              highlightMap.set(
+                key,
+                `${icon} ${title}`
+              );
+            }
+          }
+        );
+
+        const highlights =
+          Array.from(
+            highlightMap.values()
+          ).slice(0, 5);
+
+        const stats:
+          WeeklyStudentStats = {
+          points: weeklyPoints,
+          readingCount:
+            weeklyReadings.length,
+          spellingCount:
+            weeklySpellings.length,
+          achievementsCount:
+            highlightMap.size,
+          badgesCount:
+            weeklyBadges.length,
+          streak:
+            typeof data.achievementStreak ===
+            "number"
+              ? data.achievementStreak
+              : 0,
+          highlights,
+        };
+
+        setWeeklyStudentStats(
+          stats
+        );
+
+        // نحفظ لقطة الأرقام نفسها مع بطل الأسبوع عند الاعتماد.
+        setAchievementsCount(
+          stats.achievementsCount
+        );
+        setReadingCount(
+          stats.readingCount
+        );
+        setSpellingCount(
+          stats.spellingCount
+        );
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        console.error(
+          "تعذر تحميل إنجازات الطالب الأسبوعية:",
+          error
+        );
+
+        setWeeklyStudentStats(null);
+        setAchievementsCount(0);
+        setReadingCount(0);
+        setSpellingCount(0);
+      } finally {
+        if (active) {
+          setIsLoadingStudentStats(
+            false
+          );
+        }
+      }
+    }
+
+    void loadSelectedStudentStats();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    selectedStudentId,
+    currentWeek.key,
+  ]);
+
   const selectedTrackInfo =
     weeklyTrackOptions.find(
       (item) =>
@@ -641,16 +992,84 @@ export default function TeacherHeroesPage() {
       ]
     );
 
+  // عدد مرات التكريم التاريخية لكل طالب.
+  // نحسب كل أسبوع مرة واحدة فقط للطالب حتى لو حصل على أكثر من مسار في الأسبوع نفسه.
+  const heroWinsByStudent =
+    useMemo(() => {
+      const weeksByStudent =
+        new Map<string, Set<string>>();
+
+      savedHeroes.forEach((hero) => {
+        if (!hero.studentId) {
+          return;
+        }
+
+        const weekIdentity =
+          hero.weekKey ||
+          hero.weekLabel ||
+          hero.id;
+
+        const studentWeeks =
+          weeksByStudent.get(
+            hero.studentId
+          ) ?? new Set<string>();
+
+        studentWeeks.add(
+          weekIdentity
+        );
+
+        weeksByStudent.set(
+          hero.studentId,
+          studentWeeks
+        );
+      });
+
+      const counts =
+        new Map<string, number>();
+
+      weeksByStudent.forEach(
+        (weeks, studentId) => {
+          counts.set(
+            studentId,
+            weeks.size
+          );
+        }
+      );
+
+      return counts;
+    }, [savedHeroes]);
+
+  const selectedStudentHeroWins =
+    selectedStudentId
+      ? heroWinsByStudent.get(
+          selectedStudentId
+        ) ?? 0
+      : 0;
+
+  const archivedHeroes =
+    useMemo(
+      () =>
+        savedHeroes.filter(
+          (hero) =>
+            hero.weekKey !==
+            currentWeek.key
+        ),
+      [
+        savedHeroes,
+        currentWeek.key,
+      ]
+    );
+
   function resetForm() {
     setSelectedStudentId("");
     setWeeklyTrack(
-      "achievement"
+      "classHero"
     );
     setCustomTitle(
-      "بطل الإنجاز"
+      "بطل الفصل"
     );
     setBadge(
-      "الأكثر إنجازًا هذا الأسبوع"
+      "بطل الفصل لهذا الأسبوع"
     );
     setImageUrl("");
     setAchievementsCount(
@@ -797,7 +1216,9 @@ export default function TeacherHeroesPage() {
             selectedStudent.classroom,
 
           category:
-            weeklyTrack,
+            weeklyTrack === "academyProgress"
+              ? "progress"
+              : "achievement",
 
           weeklyTrack,
 
@@ -901,8 +1322,8 @@ export default function TeacherHeroesPage() {
               </h1>
 
               <p className="mt-3 max-w-3xl leading-8 text-emerald-50">
-                اختر ثلاثة أبطال أسبوعيًا عبر مسارات مستقلة:
-                الأكثر إنجازًا، الأكثر تطورًا، والأكثر التزامًا.
+                اختر ثلاثة أبطال أسبوعيًا: بطل واحد من الفصل،
+                وبطلان من الأكاديمية للإنجاز والتطور والالتزام.
               </p>
 
               <div className="mt-4 inline-flex rounded-full bg-white/15 px-4 py-2 font-black text-emerald-50">
@@ -995,6 +1416,7 @@ export default function TeacherHeroesPage() {
                 setSelectedStudentId(
                   event.target.value
                 );
+                setWeeklyStudentStats(null);
                 setStatusMessage("");
               }}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 font-bold"
@@ -1010,6 +1432,11 @@ export default function TeacherHeroesPage() {
                     value={student.id}
                   >
                     {student.name} — {student.classroom}
+                    {" — 🏆 "}
+                    {heroWinsByStudent.get(
+                      student.id
+                    ) ?? 0}
+                    {" مرة"}
                   </option>
                 )
               )}
@@ -1026,6 +1453,116 @@ export default function TeacherHeroesPage() {
                 {selectedStudent.photoConsent
                   ? "✅ الأسرة موافقة على النشر في الواجهة العامة."
                   : "⚠️ لا توجد موافقة أسرة على النشر للزوار."}
+              </div>
+            )}
+
+            {selectedStudent && (
+              <div className="mt-4 rounded-3xl border border-sky-200 bg-sky-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-sky-600">
+                      📊 إنجازات هذا الأسبوع
+                    </p>
+
+                    <h3 className="mt-1 text-xl font-black text-slate-800">
+                      {selectedStudent.name}
+                    </h3>
+
+                    <span className="mt-3 inline-flex rounded-full bg-amber-100 px-3 py-2 text-sm font-black text-amber-800">
+                      🏆 عدد مرات التكريم:{" "}
+                      {selectedStudentHeroWins}
+                    </span>
+                  </div>
+
+                  <span className="rounded-full bg-white px-3 py-2 text-sm font-black text-sky-700">
+                    🗓️ {currentWeek.label}
+                  </span>
+                </div>
+
+                {isLoadingStudentStats ? (
+                  <div className="mt-5 rounded-2xl bg-white p-5 text-center font-black text-sky-700">
+                    ⏳ جارٍ تحميل إنجازات الطالب...
+                  </div>
+                ) : weeklyStudentStats ? (
+                  <>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                      <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                        <div className="text-2xl">⭐</div>
+                        <p className="mt-2 text-sm font-bold text-slate-500">
+                          نقاط الأسبوع
+                        </p>
+                        <strong className="mt-1 block text-2xl text-emerald-700">
+                          {weeklyStudentStats.points}
+                        </strong>
+                      </div>
+
+                      <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                        <div className="text-2xl">📖</div>
+                        <p className="mt-2 text-sm font-bold text-slate-500">
+                          القراءات
+                        </p>
+                        <strong className="mt-1 block text-2xl text-emerald-700">
+                          {weeklyStudentStats.readingCount}
+                        </strong>
+                      </div>
+
+                      <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                        <div className="text-2xl">✍️</div>
+                        <p className="mt-2 text-sm font-bold text-slate-500">
+                          الإملاء
+                        </p>
+                        <strong className="mt-1 block text-2xl text-emerald-700">
+                          {weeklyStudentStats.spellingCount}
+                        </strong>
+                      </div>
+
+                      <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                        <div className="text-2xl">🏅</div>
+                        <p className="mt-2 text-sm font-bold text-slate-500">
+                          الإنجازات
+                        </p>
+                        <strong className="mt-1 block text-2xl text-emerald-700">
+                          {weeklyStudentStats.achievementsCount}
+                        </strong>
+                      </div>
+
+                      <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                        <div className="text-2xl">🔥</div>
+                        <p className="mt-2 text-sm font-bold text-slate-500">
+                          سلسلة الإنجاز
+                        </p>
+                        <strong className="mt-1 block text-2xl text-emerald-700">
+                          {weeklyStudentStats.streak}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {weeklyStudentStats.highlights.length > 0 && (
+                      <div className="mt-4 rounded-2xl bg-white p-4">
+                        <p className="font-black text-slate-800">
+                          ✨ أبرز إنجازاته
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {weeklyStudentStats.highlights.map(
+                            (highlight, index) => (
+                              <span
+                                key={`${highlight}-${index}`}
+                                className="rounded-full bg-amber-50 px-3 py-2 text-sm font-black text-amber-800"
+                              >
+                                {highlight}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="mt-5 rounded-2xl bg-white p-5 text-center font-bold text-slate-500">
+                    لا توجد بيانات أسبوعية مسجلة لهذا الطالب حتى الآن.
+                  </div>
+                )}
               </div>
             )}
           </article>
@@ -1237,31 +1774,30 @@ export default function TeacherHeroesPage() {
           </p>
         )}
 
-        <section className="mt-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-black text-slate-800">
-                🏆 سجل أبطال الأكاديمية
+                🏆 أبطال هذا الأسبوع
               </h2>
 
               <p className="mt-2 text-slate-500">
-                يظهر هنا أبطال الأسبوع الحالي والأسابيع السابقة.
+                الأبطال المختارون للأسبوع الحالي: {currentWeek.label}
               </p>
             </div>
 
             <span className="rounded-full bg-emerald-50 px-4 py-2 font-black text-emerald-700">
-              {savedHeroes.length} سجل
+              {currentWeekHeroes.length} من 3
             </span>
           </div>
 
-          {savedHeroes.length ===
-          0 ? (
+          {currentWeekHeroes.length === 0 ? (
             <div className="rounded-2xl bg-slate-50 p-8 text-center font-bold text-slate-500">
-              لا يوجد أبطال محفوظون حتى الآن.
+              لم يتم اختيار أبطال هذا الأسبوع حتى الآن.
             </div>
           ) : (
             <div className="grid gap-3">
-              {savedHeroes.map(
+              {currentWeekHeroes.map(
                 (hero) => {
                   const track =
                     weeklyTrackOptions.find(
@@ -1270,15 +1806,19 @@ export default function TeacherHeroesPage() {
                         hero.weeklyTrack
                     );
 
+                  const totalWins =
+                    heroWinsByStudent.get(
+                      hero.studentId
+                    ) ?? 0;
+
                   return (
                     <article
                       key={hero.id}
-                      className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4"
                     >
                       <div className="flex items-center gap-3">
                         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-2xl shadow-sm">
-                          {track?.icon ??
-                            "🌟"}
+                          {track?.icon ?? "🌟"}
                         </div>
 
                         <div>
@@ -1289,14 +1829,13 @@ export default function TeacherHeroesPage() {
                           </h3>
 
                           <p className="mt-1 text-sm font-bold text-slate-500">
-                            {track?.label ??
-                              "تكريم"}
-                            {" • "}
-                            {hero.weekLabel ||
-                              "سجل سابق"}
-                            {" • "}
-                            ⭐{" "}
-                            {hero.achievementsCount}
+                            {track?.label ?? "تكريم"}
+                            {" • 🏆 "}
+                            {totalWins}
+                            {" "}
+                            {totalWins === 1
+                              ? "مرة"
+                              : "مرات"}
                           </p>
                         </div>
                       </div>
@@ -1334,15 +1873,102 @@ export default function TeacherHeroesPage() {
           )}
         </section>
 
+        <section className="mt-6 rounded-3xl border border-amber-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-black text-slate-800">
+                🗂️ أرشيف أبطال الأكاديمية
+              </h2>
+
+              <p className="mt-2 text-slate-500">
+                تنتقل الأسابيع السابقة إلى هنا تلقائيًا، ويظهر عدد مرات تكريم كل طالب.
+              </p>
+            </div>
+
+            <span className="rounded-full bg-amber-50 px-4 py-2 font-black text-amber-800">
+              {archivedHeroes.length} سجل مؤرشف
+            </span>
+          </div>
+
+          {archivedHeroes.length === 0 ? (
+            <div className="rounded-2xl bg-slate-50 p-8 text-center font-bold text-slate-500">
+              لا توجد أسابيع سابقة في الأرشيف حتى الآن.
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {archivedHeroes.map(
+                (hero) => {
+                  const track =
+                    weeklyTrackOptions.find(
+                      (item) =>
+                        item.key ===
+                        hero.weeklyTrack
+                    );
+
+                  const totalWins =
+                    heroWinsByStudent.get(
+                      hero.studentId
+                    ) ?? 0;
+
+                  return (
+                    <article
+                      key={hero.id}
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-2xl shadow-sm">
+                          {track?.icon ?? "🌟"}
+                        </div>
+
+                        <div>
+                          <h3 className="font-black text-slate-800">
+                            {hero.studentFirstName}
+                            {" — "}
+                            {hero.title}
+                          </h3>
+
+                          <p className="mt-1 text-sm font-bold text-slate-500">
+                            {track?.label ?? "تكريم"}
+                            {" • "}
+                            {hero.weekLabel ||
+                              "سجل سابق"}
+                          </p>
+
+                          <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
+                            🏆 مجموع مرات التكريم:{" "}
+                            {totalWins}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleEditHero(
+                            hero
+                          )
+                        }
+                        className="rounded-xl bg-white px-4 py-2 font-black text-slate-700 shadow-sm"
+                      >
+                        ✏️ عرض / تعديل
+                      </button>
+                    </article>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </section>
+
         <section className="mt-6 rounded-3xl border border-violet-200 bg-violet-50 p-5">
           <h2 className="text-xl font-black text-violet-800">
             💡 فلسفة التكريم
           </h2>
 
           <p className="mt-2 leading-8 text-violet-900">
-            لا نكرّم الدرجات فقط؛ بل نحتفي بالإنجاز والتطور
-            والالتزام، حتى يستطيع كل طالب أن يجد طريقه إلى منصة
-            الأبطال.
+            نكرّم بطلًا من الفصل تقديرًا للمشاركة والتفاعل والتحسن،
+            وبطلين من الأكاديمية تقديرًا للإنجاز والتطور والالتزام،
+            حتى تتنوع فرص الوصول إلى منصة الأبطال.
           </p>
         </section>
 
