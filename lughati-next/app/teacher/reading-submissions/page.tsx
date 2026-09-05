@@ -29,12 +29,35 @@ type ReadingSubmission = {
   status?: string;
 };
 
+type AudioStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "error";
+
 export default function ReadingSubmissionsPage() {
   const [submissions, setSubmissions] = useState<ReadingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
   const [cleanupMessage, setCleanupMessage] = useState("");
+
+  const [
+    audioStatuses,
+    setAudioStatuses,
+  ] = useState<Record<string, AudioStatus>>({});
+
+  function setAudioStatus(
+    submissionId: string,
+    status: AudioStatus
+  ) {
+    setAudioStatuses(
+      (current) => ({
+        ...current,
+        [submissionId]: status,
+      })
+    );
+  }
 
   async function fetchSubmissions() {
     const q = query(
@@ -160,6 +183,32 @@ export default function ReadingSubmissionsPage() {
       const rows = await fetchSubmissions();
 
       setSubmissions(rows);
+
+      setAudioStatuses(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          rows.forEach(
+            (item) => {
+              if (
+                !item.audioUrl?.trim()
+              ) {
+                next[item.id] =
+                  "error";
+              } else if (
+                !next[item.id]
+              ) {
+                next[item.id] =
+                  "idle";
+              }
+            }
+          );
+
+          return next;
+        }
+      );
     } catch (error) {
       console.error("فشل تحميل القراءات:", error);
     } finally {
@@ -176,6 +225,32 @@ export default function ReadingSubmissionsPage() {
 
         if (active) {
           setSubmissions(rows);
+
+          setAudioStatuses(
+            (current) => {
+              const next = {
+                ...current,
+              };
+
+              rows.forEach(
+                (item) => {
+                  if (
+                    !item.audioUrl?.trim()
+                  ) {
+                    next[item.id] =
+                      "error";
+                  } else if (
+                    !next[item.id]
+                  ) {
+                    next[item.id] =
+                      "idle";
+                  }
+                }
+              );
+
+              return next;
+            }
+          );
         }
       } catch (error) {
         console.error("فشل تحميل القراءات:", error);
@@ -808,7 +883,13 @@ export default function ReadingSubmissionsPage() {
           }}
         >
           {submissions.map(
-            (submission) => (
+            (submission) => {
+              const audioStatus =
+                audioStatuses[
+                  submission.id
+                ] || "idle";
+
+              return (
               <div
                 key={submission.id}
                 style={{
@@ -877,18 +958,205 @@ export default function ReadingSubmissionsPage() {
                   </div>
                 </div>
 
-                {submission.audioUrl && (
-                  <audio
-                    controls
-                    src={
-                      submission.audioUrl
-                    }
+                {submission.audioUrl ? (
+                  <div
                     style={{
-                      width: "100%",
                       marginBottom:
                         "16px",
+                      padding:
+                        "14px",
+                      borderRadius:
+                        "16px",
+                      background:
+                        "#f8fafc",
+                      border:
+                        "1px solid #e2e8f0",
                     }}
-                  />
+                  >
+                    <audio
+                      key={
+                        submission.audioUrl
+                      }
+                      controls
+                      playsInline
+                      preload="metadata"
+                      src={
+                        submission.audioUrl
+                      }
+                      onLoadStart={() =>
+                        setAudioStatus(
+                          submission.id,
+                          "loading"
+                        )
+                      }
+                      onLoadedMetadata={() =>
+                        setAudioStatus(
+                          submission.id,
+                          "ready"
+                        )
+                      }
+                      onCanPlay={() =>
+                        setAudioStatus(
+                          submission.id,
+                          "ready"
+                        )
+                      }
+                      onPlay={() =>
+                        setAudioStatus(
+                          submission.id,
+                          "ready"
+                        )
+                      }
+                      onError={() =>
+                        setAudioStatus(
+                          submission.id,
+                          "error"
+                        )
+                      }
+                      style={{
+                        width: "100%",
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        marginTop:
+                          "10px",
+                        display:
+                          "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems:
+                          "center",
+                        gap:
+                          "10px",
+                        flexWrap:
+                          "wrap",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight:
+                            800,
+                          fontSize:
+                            "13px",
+                          color:
+                            audioStatus ===
+                            "ready"
+                              ? "#047857"
+                              : audioStatus ===
+                                  "error"
+                                ? "#be123c"
+                                : "#64748b",
+                        }}
+                      >
+                        {audioStatus ===
+                        "ready"
+                          ? "✅ التسجيل جاهز للاستماع."
+                          : audioStatus ===
+                              "error"
+                            ? "⚠️ تعذر تشغيل التسجيل داخل المشغل."
+                            : "⏳ جارٍ تجهيز بيانات التسجيل..."}
+                      </div>
+
+                      <a
+                        href={
+                          submission.audioUrl
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color:
+                            "#087f5b",
+                          fontWeight:
+                            900,
+                          textDecoration:
+                            "none",
+                          border:
+                            "1px solid #a7f3d0",
+                          background:
+                            "#ffffff",
+                          borderRadius:
+                            "10px",
+                          padding:
+                            "7px 11px",
+                          fontSize:
+                            "13px",
+                        }}
+                      >
+                        🔗 فتح التسجيل مباشرة
+                      </a>
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop:
+                          "8px",
+                        color:
+                          "#64748b",
+                        fontSize:
+                          "13px",
+                        fontWeight:
+                          700,
+                      }}
+                    >
+                      ⏱️ مدة التسجيل المحفوظة:{" "}
+                      {
+                        submission.durationSeconds ||
+                        0
+                      }{" "}
+                      ثانية
+                    </div>
+
+                    {audioStatus ===
+                      "error" && (
+                      <div
+                        style={{
+                          marginTop:
+                            "10px",
+                          padding:
+                            "10px",
+                          borderRadius:
+                            "12px",
+                          background:
+                            "#fff1f2",
+                          border:
+                            "1px solid #fecdd3",
+                          color:
+                            "#9f1239",
+                          fontWeight:
+                            800,
+                          lineHeight:
+                            1.7,
+                          fontSize:
+                            "13px",
+                        }}
+                      >
+                        إذا لم يعمل التسجيل داخل المشغل، استخدم زر «فتح التسجيل مباشرة». وإذا لم يعمل الرابط أيضًا، فالمشكلة في رابط أو ملف التسجيل نفسه.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      marginBottom:
+                        "16px",
+                      padding:
+                        "12px",
+                      borderRadius:
+                        "12px",
+                      background:
+                        "#fff1f2",
+                      border:
+                        "1px solid #fecdd3",
+                      color:
+                        "#be123c",
+                      fontWeight:
+                        800,
+                    }}
+                  >
+                    ❌ لا يوجد رابط تسجيل محفوظ لهذه القراءة.
+                  </div>
                 )}
 
                 <div
@@ -956,7 +1224,8 @@ export default function ReadingSubmissionsPage() {
                   </button>
                 </div>
               </div>
-            )
+              );
+            }
           )}
         </div>
       </div>

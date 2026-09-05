@@ -3,7 +3,13 @@ import {
   FieldValue,
 } from "firebase-admin/firestore";
 
-import { getFirebaseAdmin } from "../../../firebase-admin";
+import {
+  getFirebaseAdmin,
+} from "../../../firebase-admin";
+
+import {
+  getStudentSubmissionWindow,
+} from "../../lib/studentSubmissionWindow";
 
 type ReadingSubmissionRequest = {
   studentId?: string;
@@ -14,25 +20,33 @@ type ReadingSubmissionRequest = {
   readingDate?: string;
 };
 
-const SUBMISSIONS_OPEN_HOUR = 13;
-const SUBMISSIONS_CLOSE_HOUR = 22;
-
 /*
- * الوقت المعتمد في الأكاديمية:
- * توقيت الرياض
+ * =====================================================
+ * تاريخ اليوم حسب توقيت الرياض
+ * =====================================================
+ *
+ * مثال:
+ * 2026-09-05
+ *
+ * نستخدم تاريخ الرياض حتى لا يتأثر
+ * بتاريخ جهاز الطالب أو مكان الخادم.
  */
-function getRiyadhTimeParts() {
+function getRiyadhDate() {
   const formatter =
     new Intl.DateTimeFormat(
-      "en-US",
+      "en-CA",
       {
-        timeZone: "Asia/Riyadh",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
+        timeZone:
+          "Asia/Riyadh",
+
+        year:
+          "numeric",
+
+        month:
+          "2-digit",
+
+        day:
+          "2-digit",
       }
     );
 
@@ -41,72 +55,45 @@ function getRiyadhTimeParts() {
       new Date()
     );
 
-  const getPart = (
-    type: Intl.DateTimeFormatPartTypes
-  ) =>
+  const year =
     parts.find(
-      (part) => part.type === type
+      (part) =>
+        part.type === "year"
     )?.value ?? "";
 
-  return {
-    year: getPart("year"),
-    month: getPart("month"),
-    day: getPart("day"),
+  const month =
+    parts.find(
+      (part) =>
+        part.type === "month"
+    )?.value ?? "";
 
-    hour: Number(
-      getPart("hour") || "0"
-    ),
-
-    minute: Number(
-      getPart("minute") || "0"
-    ),
-  };
-}
-
-/*
- * هل استقبال القراءة مفتوح؟
- *
- * من 1 ظهرًا
- * حتى قبل 10 مساءً
- */
-function isReadingWindowOpen() {
-  const { hour } =
-    getRiyadhTimeParts();
-
-  return (
-    hour >= SUBMISSIONS_OPEN_HOUR &&
-    hour < SUBMISSIONS_CLOSE_HOUR
-  );
-}
-
-/*
- * تاريخ اليوم حسب توقيت الرياض
- *
- * مثال:
- * 2026-09-03
- */
-function getRiyadhDate() {
-  const {
-    year,
-    month,
-    day,
-  } = getRiyadhTimeParts();
+  const day =
+    parts.find(
+      (part) =>
+        part.type === "day"
+    )?.value ?? "";
 
   return `${year}-${month}-${day}`;
 }
 
 /*
- * إنشاء معرف ثابت لقراءة الطالب اليومية.
+ * =====================================================
+ * معرف القراءة اليومية
+ * =====================================================
  *
- * بهذا يصبح لكل طالب مستند واحد فقط
- * في اليوم الواحد.
+ * لكل طالب مستند واحد فقط في اليوم.
+ *
+ * مثال:
+ * student-001_2026-09-05
  */
 function getDailySubmissionId(
   studentId: string,
   readingDate: string
 ) {
   const safeStudentId =
-    encodeURIComponent(studentId);
+    encodeURIComponent(
+      studentId
+    );
 
   return `${safeStudentId}_${readingDate}`;
 }
@@ -116,21 +103,17 @@ function getDailySubmissionId(
  * GET
  * =====================================================
  *
- * تستخدمه صفحة رحلة القراءة عند فتحها
- * لمعرفة:
- *
+ * تستخدمه صفحة رحلة القراءة لمعرفة:
  * هل أرسل الطالب قراءة اليوم؟
- *
- * مثال:
- *
- * /api/reading-submission?studentId=123
  */
 export async function GET(
   request: Request
 ) {
   try {
     const url =
-      new URL(request.url);
+      new URL(
+        request.url
+      );
 
     const studentId =
       (
@@ -141,33 +124,47 @@ export async function GET(
 
     if (
       !studentId ||
-      studentId === "student-demo"
+      studentId ===
+        "student-demo"
     ) {
       return NextResponse.json(
         {
-          success: false,
-          hasSubmittedToday: false,
+          success:
+            false,
+
+          hasSubmittedToday:
+            false,
+
           message:
             "معرف الطالب غير متوفر",
         },
         {
-          status: 400,
+          status:
+            400,
         }
       );
     }
 
+    /*
+      لا نعتمد التاريخ القادم
+      من المتصفح.
+
+      الخادم يحدد تاريخ اليوم
+      حسب توقيت الرياض.
+    */
     const readingDate =
       getRiyadhDate();
 
-    const { adminDb } =
+    const {
+      adminDb,
+    } =
       getFirebaseAdmin();
 
     /*
-     * أولًا:
-     * نبحث عن المستند الجديد ذي المعرف الثابت.
-     *
-     * هذا لا يحتاج إلى قراءة المجموعة كاملة.
-     */
+      أولًا:
+      نبحث عن المستند الجديد
+      ذي المعرف الثابت.
+    */
     const dailySubmissionId =
       getDailySubmissionId(
         studentId,
@@ -189,24 +186,29 @@ export async function GET(
     if (
       dailySubmissionSnap.exists
     ) {
-      return NextResponse.json({
-        success: true,
-        hasSubmittedToday: true,
-        readingDate,
-      });
+      return NextResponse.json(
+        {
+          success:
+            true,
+
+          hasSubmittedToday:
+            true,
+
+          readingDate,
+        }
+      );
     }
 
     /*
-     * دعم التسجيلات القديمة:
-     *
-     * لأن القراءات السابقة كانت تحفظ
-     * بمعرفات عشوائية بواسطة add().
-     *
-     * لذلك نتحقق أيضًا من وجود قراءة
-     * للطالب في تاريخ اليوم.
-     *
-     * limit(1) لتقليل قراءات Firestore.
-     */
+      دعم التسجيلات القديمة:
+
+      في النظام القديم كانت القراءات
+      تحفظ بمعرفات عشوائية.
+
+      لذلك نتحقق أيضًا من وجود
+      قراءة قديمة لنفس الطالب
+      في تاريخ اليوم.
+    */
     const oldSubmissionSnapshot =
       await adminDb
         .collection(
@@ -225,14 +227,17 @@ export async function GET(
         .limit(1)
         .get();
 
-    return NextResponse.json({
-      success: true,
+    return NextResponse.json(
+      {
+        success:
+          true,
 
-      hasSubmittedToday:
-        !oldSubmissionSnapshot.empty,
+        hasSubmittedToday:
+          !oldSubmissionSnapshot.empty,
 
-      readingDate,
-    });
+        readingDate,
+      }
+    );
   } catch (error) {
     console.error(
       "CHECK READING SUBMISSION ERROR:",
@@ -241,13 +246,18 @@ export async function GET(
 
     return NextResponse.json(
       {
-        success: false,
-        hasSubmittedToday: false,
+        success:
+          false,
+
+        hasSubmittedToday:
+          false,
+
         message:
           "تعذر التحقق من قراءة اليوم",
       },
       {
-        status: 500,
+        status:
+          500,
       }
     );
   }
@@ -260,36 +270,66 @@ export async function GET(
  *
  * إرسال قراءة الطالب.
  *
- * القاعدة:
+ * القواعد:
  *
- * قراءة واحدة فقط لكل طالب يوميًا.
+ * 1) استقبال أعمال الطلاب:
+ *    من 1:00 ظهرًا إلى 10:00 مساءً.
+ *
+ * 2) قراءة واحدة فقط
+ *    لكل طالب يوميًا.
+ *
+ * هذا المسار خاص بالطالب فقط.
+ * المعلم لا يستخدمه عند المراجعة.
  */
 export async function POST(
   request: Request
 ) {
   try {
     /*
-     * منع الإرسال خارج الوقت المحدد.
+     * =================================================
+     * فحص وقت استقبال أعمال الطلاب
+     * =================================================
+     *
+     * المصدر الآن مركزي:
+     *
+     * app/lib/studentSubmissionWindow.ts
      */
-    if (!isReadingWindowOpen()) {
+    const submissionWindow =
+      getStudentSubmissionWindow();
+
+    if (
+      !submissionWindow.isOpen
+    ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
 
           code:
             "READING_SUBMISSIONS_CLOSED",
 
           message:
-            "🌙 استقبال تسجيلات القراءة متاح يوميًا من الساعة 1:00 ظهرًا حتى 10:00 مساءً بتوقيت الرياض.",
+            submissionWindow.message,
+
+          opensAt:
+            submissionWindow.opensAt,
+
+          closesAt:
+            submissionWindow.closesAt,
+
+          timeZone:
+            submissionWindow.timeZone,
         },
         {
-          status: 403,
+          status:
+            403,
         }
       );
     }
 
     const body =
-      (await request.json()) as ReadingSubmissionRequest;
+      (await request.json()) as
+        ReadingSubmissionRequest;
 
     const studentId =
       typeof body.studentId ===
@@ -344,7 +384,8 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
 
           code:
             "INVALID_READING_DATA",
@@ -353,18 +394,22 @@ export async function POST(
             "بيانات القراءة غير مكتملة",
         },
         {
-          status: 400,
+          status:
+            400,
         }
       );
     }
 
-    const { adminDb } =
+    const {
+      adminDb,
+    } =
       getFirebaseAdmin();
 
     /*
-     * لا نعتمد التاريخ القادم من المتصفح.
+     * لا نعتمد readingDate
+     * القادم من المتصفح.
      *
-     * الخادم هو الذي يحدد اليوم
+     * الخادم يحدد اليوم
      * حسب توقيت الرياض.
      */
     const readingDate =
@@ -378,8 +423,9 @@ export async function POST(
      * قبل النظام الجديد كانت add()
      * تنشئ معرفًا عشوائيًا.
      *
-     * لذلك نتحقق من عدم وجود قراءة قديمة
-     * للطالب في اليوم نفسه.
+     * لذلك نتحقق من عدم وجود
+     * قراءة قديمة للطالب
+     * في اليوم نفسه.
      */
     const existingOldSubmission =
       await adminDb
@@ -404,7 +450,8 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
 
           code:
             "DAILY_READING_EXISTS",
@@ -413,7 +460,8 @@ export async function POST(
             "📖 لقد أرسلت قراءة اليوم بالفعل. يُسمح لك بإرسال قراءة واحدة فقط يوميًا 🌟",
         },
         {
-          status: 409,
+          status:
+            409,
         }
       );
     }
@@ -423,11 +471,7 @@ export async function POST(
      * المستند اليومي الثابت
      * =================================================
      *
-     * الطالب + التاريخ
-     *
-     * مثال:
-     *
-     * 12345_2026-09-03
+     * الطالب + التاريخ.
      */
     const dailySubmissionId =
       getDailySubmissionId(
@@ -449,21 +493,23 @@ export async function POST(
      * Transaction
      * =================================================
      *
-     * هذه أهم طبقة حماية.
-     *
      * حتى لو:
      *
-     * - ضغط الطالب مرتين بسرعة
-     * - فتح جهازين
-     * - حدث تحديث للصفحة
-     * - وصل طلبان في اللحظة نفسها
+     * - ضغط الطالب مرتين بسرعة.
+     * - استخدم جهازين.
+     * - حدث تحديث للصفحة.
+     * - وصل طلبان في اللحظة نفسها.
      *
-     * لن يتم إنشاء أكثر من قراءة واحدة.
+     * فلن يتم إنشاء أكثر
+     * من قراءة واحدة.
      */
-    let alreadyExists = false;
+    let alreadyExists =
+      false;
 
     await adminDb.runTransaction(
-      async (transaction) => {
+      async (
+        transaction
+      ) => {
         const submissionSnap =
           await transaction.get(
             submissionRef
@@ -472,7 +518,9 @@ export async function POST(
         if (
           submissionSnap.exists
         ) {
-          alreadyExists = true;
+          alreadyExists =
+            true;
+
           return;
         }
 
@@ -480,7 +528,9 @@ export async function POST(
           submissionRef,
           {
             studentId,
+
             studentName,
+
             studentClassroom,
 
             audioUrl,
@@ -492,24 +542,32 @@ export async function POST(
 
             readingDate,
 
+            source:
+              "reading-journey",
+
             createdAt:
-              FieldValue.serverTimestamp(),
+              FieldValue
+                .serverTimestamp(),
 
             updatedAt:
-              FieldValue.serverTimestamp(),
+              FieldValue
+                .serverTimestamp(),
           }
         );
       }
     );
 
     /*
-     * إذا كان الطلب الثاني وصل
-     * بعد إنشاء الطلب الأول.
-     */
-    if (alreadyExists) {
+      إذا كان طلب ثانٍ وصل
+      بعد إنشاء الطلب الأول.
+    */
+    if (
+      alreadyExists
+    ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
 
           code:
             "DAILY_READING_EXISTS",
@@ -518,32 +576,40 @@ export async function POST(
             "📖 لقد أرسلت قراءة اليوم بالفعل. يُسمح لك بإرسال قراءة واحدة فقط يوميًا 🌟",
         },
         {
-          status: 409,
+          status:
+            409,
         }
       );
     }
 
-    return NextResponse.json({
-      success: true,
+    return NextResponse.json(
+      {
+        success:
+          true,
 
-      id:
-        submissionRef.id,
+        id:
+          submissionRef.id,
 
-      readingDate,
+        readingDate,
 
-      message:
-        "⏳ تم إرسال قراءتك للمعلم، وهي الآن بانتظار المراجعة.",
-    });
+        message:
+          "⏳ تم إرسال قراءتك للمعلم، وهي الآن بانتظار المراجعة.",
+      },
+      {
+        status:
+          200,
+      }
+    );
   } catch (error) {
     /*
-     * transaction.create يمكن أن يفشل
-     * إذا سبق طلب آخر وأنشأ المستند
+     * transaction.create
+     * يمكن أن يفشل إذا سبق
+     * طلب آخر وأنشأ المستند
      * في نفس اللحظة.
-     *
-     * لذلك نفحص الخطأ أيضًا.
      */
     const errorCode =
-      typeof error === "object" &&
+      typeof error ===
+        "object" &&
       error !== null &&
       "code" in error
         ? String(
@@ -560,13 +626,15 @@ export async function POST(
      * ALREADY_EXISTS = 6
      */
     if (
-      errorCode === "6" ||
+      errorCode ===
+        "6" ||
       errorCode ===
         "already-exists"
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
 
           code:
             "DAILY_READING_EXISTS",
@@ -575,7 +643,8 @@ export async function POST(
             "📖 لقد أرسلت قراءة اليوم بالفعل. يُسمح لك بإرسال قراءة واحدة فقط يوميًا 🌟",
         },
         {
-          status: 409,
+          status:
+            409,
         }
       );
     }
@@ -587,7 +656,8 @@ export async function POST(
 
     return NextResponse.json(
       {
-        success: false,
+        success:
+          false,
 
         message:
           error instanceof Error
@@ -595,7 +665,8 @@ export async function POST(
             : "تعذر إرسال تسجيل القراءة",
       },
       {
-        status: 500,
+        status:
+          500,
       }
     );
   }

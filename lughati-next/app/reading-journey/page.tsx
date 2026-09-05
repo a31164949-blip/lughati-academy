@@ -8,6 +8,11 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import {
+  getStudentSubmissionWindow,
+  STUDENT_SUBMISSION_OPEN_TEXT,
+  STUDENT_SUBMISSION_CLOSE_TEXT,
+} from "../lib/studentSubmissionWindow";
 
 function getRiyadhDateKey() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -36,6 +41,10 @@ export default function ReadingJourneyPage() {
   const [totalApprovedDays, setTotalApprovedDays] = useState(0);
   const [approvedDates, setApprovedDates] = useState<string[]>([]);
 
+  const [submissionWindow, setSubmissionWindow] = useState(() =>
+    getStudentSubmissionWindow()
+  );
+
   const [hasSubmittedToday, setHasSubmittedToday] =
     useState(false);
 
@@ -45,6 +54,25 @@ export default function ReadingJourneyPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    function refreshSubmissionWindow() {
+      setSubmissionWindow(
+        getStudentSubmissionWindow()
+      );
+    }
+
+    refreshSubmissionWindow();
+
+    const intervalId = window.setInterval(
+      refreshSubmissionWindow,
+      30 * 1000
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadReadingProgress() {
@@ -153,6 +181,18 @@ export default function ReadingJourneyPage() {
   }, [audioPreviewUrl]);
 
   async function startRecording() {
+    const currentWindow =
+      getStudentSubmissionWindow();
+
+    setSubmissionWindow(currentWindow);
+
+    if (!currentWindow.isOpen) {
+      setSendMessage(
+        currentWindow.message
+      );
+      return;
+    }
+
     if (hasSubmittedToday) {
       setSendMessage(
         "📖 لقد أرسلت قراءة اليوم بالفعل. يُسمح لك بإرسال قراءة واحدة فقط يوميًا 🌟"
@@ -308,6 +348,18 @@ export default function ReadingJourneyPage() {
   }
 
   async function sendReading() {
+    const currentWindow =
+      getStudentSubmissionWindow();
+
+    setSubmissionWindow(currentWindow);
+
+    if (!currentWindow.isOpen) {
+      setSendMessage(
+        currentWindow.message
+      );
+      return;
+    }
+
     if (!audioBlob) return;
 
     if (hasSubmittedToday) {
@@ -630,6 +682,88 @@ export default function ReadingJourneyPage() {
           </div>
         </div>
 
+        <Link
+          href="/reading-journey/fluency-levels"
+          style={{
+            display: "block",
+            textDecoration: "none",
+            color: "inherit",
+            marginBottom: "24px",
+          }}
+        >
+          <div
+            style={{
+              background:
+                "linear-gradient(135deg, #fff7ed, #fffbeb)",
+              borderRadius: "24px",
+              padding: "24px",
+              border: "1px solid #fed7aa",
+              boxShadow:
+                "0 8px 24px rgba(0,0,0,0.05)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 900,
+                    color: "#b45309",
+                    marginBottom: "6px",
+                  }}
+                >
+                  🏔️ تحدي المستويات الثمانية
+                </div>
+
+                <h2
+                  style={{
+                    margin: 0,
+                    color: "#92400e",
+                    fontSize: "26px",
+                  }}
+                >
+                  قمة الطلاقة
+                </h2>
+
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    color: "#78716c",
+                    lineHeight: 1.8,
+                    fontWeight: 700,
+                  }}
+                >
+                  قراءاتك المنزلية تقرّبك من اختبار
+                  المستوى التالي حتى تصل إلى المستوى
+                  الثامن 💎
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: "white",
+                  border: "1px solid #fdba74",
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  color: "#9a3412",
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                عرض المستويات ←
+              </div>
+            </div>
+          </div>
+        </Link>
+
         <div
           style={{
             background: "white",
@@ -663,6 +797,46 @@ export default function ReadingJourneyPage() {
             واستمع إليها قبل إرسالها
             للمعلم.
           </p>
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "16px 18px",
+              borderRadius: "18px",
+              border: submissionWindow.isOpen
+                ? "1px solid #a7f3d0"
+                : "1px solid #fed7aa",
+              background: submissionWindow.isOpen
+                ? "#ecfdf5"
+                : "#fff7ed",
+              color: submissionWindow.isOpen
+                ? "#047857"
+                : "#9a3412",
+              textAlign: "center",
+              lineHeight: 1.8,
+              fontWeight: 800,
+            }}
+          >
+            <div
+              style={{
+                fontSize: "17px",
+                fontWeight: 900,
+                marginBottom: "4px",
+              }}
+            >
+              {submissionWindow.isOpen
+                ? "🟢 استقبال القراءة متاح الآن"
+                : "🌙 استقبال القراءة مغلق الآن"}
+            </div>
+
+            <div>
+              تستقبل الأكاديمية قراءات الطلاب يوميًا من{" "}
+              <strong>{STUDENT_SUBMISSION_OPEN_TEXT}</strong>{" "}
+              حتى{" "}
+              <strong>{STUDENT_SUBMISSION_CLOSE_TEXT}</strong>{" "}
+              بتوقيت الرياض.
+            </div>
+          </div>
 
           {isCheckingTodayReading && (
             <div
@@ -773,7 +947,8 @@ export default function ReadingJourneyPage() {
                     }
                     disabled={
                       isUploadingAudio ||
-                      isSavingReading
+                      isSavingReading ||
+                      !submissionWindow.isOpen
                     }
                     style={{
                       width:
@@ -789,21 +964,25 @@ export default function ReadingJourneyPage() {
                       fontWeight: 900,
                       background:
                         isUploadingAudio ||
-                        isSavingReading
+                        isSavingReading ||
+                        !submissionWindow.isOpen
                           ? "#94a3b8"
                           : "#087f5b",
                       color:
                         "white",
                       cursor:
                         isUploadingAudio ||
-                        isSavingReading
+                        isSavingReading ||
+                        !submissionWindow.isOpen
                           ? "not-allowed"
                           : "pointer",
                       marginTop:
                         "12px",
                     }}
                   >
-                    🎙️ ابدأ القراءة
+                    {submissionWindow.isOpen
+                      ? "🎙️ ابدأ القراءة"
+                      : "🌙 استقبال القراءة مغلق الآن"}
                   </button>
                 )}
 
@@ -941,7 +1120,8 @@ export default function ReadingJourneyPage() {
                   disabled={
                     isUploadingAudio ||
                     isSavingReading ||
-                    !audioBlob
+                    !audioBlob ||
+                    !submissionWindow.isOpen
                   }
                   onClick={
                     sendReading
@@ -958,7 +1138,8 @@ export default function ReadingJourneyPage() {
                     background:
                       isUploadingAudio ||
                       isSavingReading ||
-                      !audioBlob
+                      !audioBlob ||
+                      !submissionWindow.isOpen
                         ? "#94a3b8"
                         : "#087f5b",
                     color: "white",
@@ -967,15 +1148,18 @@ export default function ReadingJourneyPage() {
                     cursor:
                       isUploadingAudio ||
                       isSavingReading ||
-                      !audioBlob
+                      !audioBlob ||
+                      !submissionWindow.isOpen
                         ? "not-allowed"
                         : "pointer",
                   }}
                 >
-                  {isUploadingAudio ||
-                  isSavingReading
-                    ? "⏳ جارٍ رفع القراءة..."
-                    : "📤 أرسل قراءتي للمعلم"}
+                  {!submissionWindow.isOpen
+                    ? "🌙 استقبال القراءة مغلق الآن"
+                    : isUploadingAudio ||
+                        isSavingReading
+                      ? "⏳ جارٍ رفع القراءة..."
+                      : "📤 أرسل قراءتي للمعلم"}
                 </button>
               </>
             )}

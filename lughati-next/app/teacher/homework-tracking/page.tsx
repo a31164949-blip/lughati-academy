@@ -106,6 +106,8 @@ const [dailyCompletions, setDailyCompletions] =
   const [updatingId, setUpdatingId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [syncingCreativeWorks, setSyncingCreativeWorks] =
+    useState(false);
 
 const fetchTrackingData = useCallback(
   async (forceRefresh = false) => {
@@ -1123,10 +1125,18 @@ if (
     body: JSON.stringify({
       studentName: row.studentName,
       studentId: row.studentId,
+      title:
+        selectedHomework?.title ||
+        "واجب إبداعي",
       type: "واجب إبداعي",
       fileUrl: row.solutionUrl,
       classroom: row.classroom,
       note: "نُشر تلقائيًا بعد اعتماد المعلم",
+      source:
+        "teacher-approved-creative-homework",
+      sourceCompletionId:
+        row.completionId,
+      autoApprove: true,
     }),
   });
 
@@ -1369,6 +1379,65 @@ async function rejectSolution(row: StudentHomeworkRow) {
     setUpdatingId("");
   }
 }
+async function syncCreativeWorks() {
+  const confirmed = window.confirm(
+    "سيتم مزامنة الواجبات الإبداعية المعتمدة مع المعرض دون إضافة أي نقاط جديدة. هل تريد المتابعة؟"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setSyncingCreativeWorks(true);
+    setError("");
+    setMessage(
+      "جارٍ مزامنة الواجبات الإبداعية مع المعرض..."
+    );
+
+    const response = await fetch(
+      "/api/submissions/sync-creative",
+      {
+        method: "POST",
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message ||
+          "تعذر تنفيذ المزامنة."
+      );
+    }
+
+    setMessage(
+      `${result.message}
+
+فُحص: ${result.checked ?? 0}
+أعمال إبداعية عُثر عليها: ${result.creativeFound ?? 0}
+أضيفت للمعرض: ${result.published ?? 0}
+تم إصلاح نشرها: ${result.updatedExisting ?? 0}
+موجودة مسبقًا: ${result.alreadyExists ?? 0}
+بدون مرفق: ${result.skippedNoImage ?? 0}
+أخطاء: ${result.failed ?? 0}`
+    );
+  } catch (syncError) {
+    console.error(
+      "تعذر مزامنة الواجبات الإبداعية:",
+      syncError
+    );
+
+    setError(
+      syncError instanceof Error
+        ? syncError.message
+        : "تعذر مزامنة الواجبات الإبداعية."
+    );
+  } finally {
+    setSyncingCreativeWorks(false);
+  }
+}
+
   function formatDueDate(dateValue: string) {
     if (!dateValue) return "غير محدد";
 
@@ -1772,6 +1841,32 @@ const dailyClassroomOptions = [
   style={styles.refreshButton}
 >
   {loading ? "جارٍ تحديث البيانات…" : "تحديث البيانات"}
+</button>
+
+<button
+  type="button"
+  onClick={syncCreativeWorks}
+  disabled={syncingCreativeWorks}
+  style={{
+    marginTop: "12px",
+    width: "100%",
+    border: "1px solid #a7f3d0",
+    borderRadius: "16px",
+    background: syncingCreativeWorks
+      ? "#ecfdf5"
+      : "#d1fae5",
+    padding: "14px 18px",
+    color: "#065f46",
+    fontSize: "16px",
+    fontWeight: 900,
+    cursor: syncingCreativeWorks
+      ? "wait"
+      : "pointer",
+  }}
+>
+  {syncingCreativeWorks
+    ? "🔄 جارٍ مزامنة الأعمال الإبداعية..."
+    : "🎨 مزامنة الواجبات الإبداعية مع المعرض"}
 </button>
       </section>
 

@@ -12,6 +12,7 @@ type StudentWork = {
   note: string;
   status: string;
   publishedToGallery: boolean;
+  published: boolean;
   createdAt?: {
     toDate?: () => Date;
   } | null;
@@ -99,19 +100,33 @@ export async function GET() {
                 ? data.status
                 : "pending",
 
-            publishedToGallery:
-              data.publishedToGallery === true,
+               publishedToGallery:
+  data.publishedToGallery === true,
+
+published:
+  data.published === true,
 
             createdAt:
               data.createdAt ?? null,
           };
         })
-        .filter(
-          (submission) =>
-            submission.status === "approved" &&
-            submission.publishedToGallery === true &&
-            submission.fileUrl.trim() !== ""
-        );
+         .filter(
+  (submission) => {
+    const isApproved =
+      submission.status === "approved" ||
+      submission.status === "معتمد";
+
+    const isPublished =
+      submission.publishedToGallery === true ||
+      submission.published === true;
+
+    return (
+      isApproved &&
+      isPublished &&
+      submission.fileUrl.trim() !== ""
+    );
+  }
+);
 
     /*
      * ثانيًا:

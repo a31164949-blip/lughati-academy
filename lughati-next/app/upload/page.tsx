@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
+
 import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
+  getStudentSubmissionWindow,
+  STUDENT_SUBMISSION_CLOSE_TEXT,
+  STUDENT_SUBMISSION_OPEN_TEXT,
+} from "../lib/studentSubmissionWindow";
 
 type WorkType =
   | "image"
@@ -19,6 +19,16 @@ type UploadResult = {
   resource_type?: string;
   public_id?: string;
   duration?: number;
+};
+
+type CreateWorkResult = {
+  success?: boolean;
+  id?: string;
+  code?: string;
+  message?: string;
+  opensAt?: string;
+  closesAt?: string;
+  timeZone?: string;
 };
 
 const CLOUDINARY_CLOUD_NAME =
@@ -40,17 +50,25 @@ export default function UploadWorkPage() {
   const [file, setFile] =
     useState<File | null>(null);
 
-  const [previewUrl, setPreviewUrl] =
-    useState("");
+  const [
+    previewUrl,
+    setPreviewUrl,
+  ] = useState("");
 
-  const [uploading, setUploading] =
-    useState(false);
+  const [
+    uploading,
+    setUploading,
+  ] = useState(false);
 
-  const [successMessage, setSuccessMessage] =
-    useState("");
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
   function getStudentData() {
     try {
@@ -68,14 +86,19 @@ export default function UploadWorkPage() {
         return {
           studentId:
             studentId || "",
+
           studentName:
             "طالب الأكاديمية",
-          classroom: "",
+
+          classroom:
+            "",
         };
       }
 
       const parsed =
-        JSON.parse(savedStudent);
+        JSON.parse(
+          savedStudent
+        );
 
       return {
         studentId:
@@ -96,10 +119,14 @@ export default function UploadWorkPage() {
       };
     } catch {
       return {
-        studentId: "",
+        studentId:
+          "",
+
         studentName:
           "طالب الأكاديمية",
-        classroom: "",
+
+        classroom:
+          "",
       };
     }
   }
@@ -108,7 +135,15 @@ export default function UploadWorkPage() {
     type: WorkType
   ) {
     setWorkType(type);
+
     setFile(null);
+
+    if (previewUrl) {
+      URL.revokeObjectURL(
+        previewUrl
+      );
+    }
+
     setPreviewUrl("");
     setSuccessMessage("");
     setErrorMessage("");
@@ -125,7 +160,48 @@ export default function UploadWorkPage() {
       return;
     }
 
-    setFile(selectedFile);
+    /*
+      فحص الوقت قبل السماح للطالب
+      حتى باختيار ملف جديد.
+
+      الخادم سيعيد الفحص لاحقًا
+      عند الإرسال الفعلي أيضًا.
+    */
+    const submissionWindow =
+      getStudentSubmissionWindow();
+
+    if (!submissionWindow.isOpen) {
+      event.target.value = "";
+
+      setFile(null);
+
+      if (previewUrl) {
+        URL.revokeObjectURL(
+          previewUrl
+        );
+      }
+
+      setPreviewUrl("");
+
+      setSuccessMessage("");
+
+      setErrorMessage(
+        submissionWindow.message
+      );
+
+      return;
+    }
+
+    if (previewUrl) {
+      URL.revokeObjectURL(
+        previewUrl
+      );
+    }
+
+    setFile(
+      selectedFile
+    );
+
     setErrorMessage("");
     setSuccessMessage("");
 
@@ -145,7 +221,9 @@ export default function UploadWorkPage() {
           selectedFile
         );
 
-      setPreviewUrl(url);
+      setPreviewUrl(
+        url
+      );
     }
   }
 
@@ -165,8 +243,13 @@ export default function UploadWorkPage() {
       CLOUDINARY_UPLOAD_PRESET
     );
 
+    /*
+      Cloudinary يستخدم video
+      للصوت والفيديو.
+    */
     const resourceType =
-      workType === "image"
+      workType ===
+      "image"
         ? "image"
         : "video";
 
@@ -174,13 +257,17 @@ export default function UploadWorkPage() {
       await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
         {
-          method: "POST",
-          body: formData,
+          method:
+            "POST",
+
+          body:
+            formData,
         }
       );
 
     const data =
-      (await response.json()) as UploadResult;
+      (await response.json()) as
+        UploadResult;
 
     if (
       !response.ok ||
@@ -195,10 +282,29 @@ export default function UploadWorkPage() {
   }
 
   async function submitWork() {
+    /*
+      أول فحص:
+      من واجهة الطالب قبل البدء
+      في رفع الملف إلى Cloudinary.
+    */
+    const submissionWindow =
+      getStudentSubmissionWindow();
+
+    if (!submissionWindow.isOpen) {
+      setSuccessMessage("");
+
+      setErrorMessage(
+        submissionWindow.message
+      );
+
+      return;
+    }
+
     if (!file) {
       setErrorMessage(
         "اختر ملفًا أولًا."
       );
+
       return;
     }
 
@@ -206,78 +312,142 @@ export default function UploadWorkPage() {
       setErrorMessage(
         "اكتب عنوان العمل."
       );
+
       return;
     }
 
     try {
       setUploading(true);
+
       setErrorMessage("");
+
       setSuccessMessage("");
 
       const student =
         getStudentData();
 
+      if (
+        !student.studentId
+      ) {
+        throw new Error(
+          "تعذر تحديد حساب الطالب. سجّل الدخول من جديد."
+        );
+      }
+
+      /*
+        رفع الملف أولًا إلى Cloudinary.
+      */
       const uploaded =
         await uploadToCloudinary(
           file
         );
 
-      await addDoc(
-        collection(
-          db,
-          "studentWorks"
-        ),
-        {
-          studentId:
-            student.studentId,
+      if (
+        !uploaded.secure_url
+      ) {
+        throw new Error(
+          "تعذر الحصول على رابط الملف المرفوع."
+        );
+      }
 
-          studentName:
-            student.studentName,
+      /*
+        ثاني فحص — وهو الأهم:
+        الخادم يتحقق من الوقت مرة أخرى.
 
-          classroom:
-            student.classroom,
+        حتى لو بقيت الصفحة مفتوحة
+        وانتقلت الساعة إلى ما بعد 10 مساءً،
+        لن يتم إنشاء العمل في Firestore.
+      */
+      const response =
+        await fetch(
+          "/api/student-works/create",
+          {
+            method:
+              "POST",
 
-          title:
-            title.trim(),
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-          note:
-            note.trim(),
+            body:
+              JSON.stringify({
+                studentId:
+                  student.studentId,
 
-          workType,
+                studentName:
+                  student.studentName,
 
-          fileUrl:
-            uploaded.secure_url,
+                classroom:
+                  student.classroom,
 
-          cloudinaryPublicId:
-            uploaded.public_id ||
-            "",
+                title:
+                  title.trim(),
 
-          duration:
-            typeof uploaded.duration ===
-            "number"
-              ? uploaded.duration
-              : null,
+                note:
+                  note.trim(),
 
-          status:
-            "pending",
+                workType,
 
-          approved: false,
+                fileUrl:
+                  uploaded.secure_url,
 
-          publishedToGallery:
-            false,
+                cloudinaryPublicId:
+                  uploaded.public_id ||
+                  "",
 
-          createdAt:
-            serverTimestamp(),
+                duration:
+                  typeof uploaded.duration ===
+                  "number"
+                    ? uploaded.duration
+                    : null,
+              }),
+          }
+        );
+
+      const result =
+        (await response.json()) as
+          CreateWorkResult;
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        /*
+          إذا أغلق الوقت أثناء رفع الملف،
+          سيعيد الخادم 403 ورسالة الأكاديمية.
+        */
+        if (
+          result.code ===
+          "STUDENT_SUBMISSION_CLOSED"
+        ) {
+          throw new Error(
+            result.message ||
+              "انتهى وقت استقبال الأعمال لهذا اليوم."
+          );
         }
-      );
+
+        throw new Error(
+          result.message ||
+            "تعذر إرسال العمل."
+        );
+      }
 
       setSuccessMessage(
-        "تم إرسال عملك للمعلم، وهو الآن بانتظار المراجعة ✅"
+        result.message ||
+          "تم إرسال عملك للمعلم، وهو الآن بانتظار المراجعة ✅"
       );
 
       setTitle("");
       setNote("");
       setFile(null);
+
+      if (previewUrl) {
+        URL.revokeObjectURL(
+          previewUrl
+        );
+      }
+
       setPreviewUrl("");
     } catch (error) {
       console.error(
@@ -285,35 +455,57 @@ export default function UploadWorkPage() {
         error
       );
 
+      setSuccessMessage("");
+
       setErrorMessage(
-        "تعذر إرسال العمل حاليًا. حاول مرة أخرى."
+        error instanceof Error
+          ? error.message
+          : "تعذر إرسال العمل حاليًا. حاول مرة أخرى."
       );
     } finally {
-      setUploading(false);
+      setUploading(
+        false
+      );
     }
   }
+
+  const submissionWindow =
+    getStudentSubmissionWindow();
 
   return (
     <main
       dir="rtl"
       style={{
-        minHeight: "100vh",
+        minHeight:
+          "100vh",
+
         background:
           "linear-gradient(180deg,#eefbf5 0%,#f8fbff 55%,#fffaf1 100%)",
-        padding: "24px 16px 50px",
-        color: "#17352a",
+
+        padding:
+          "24px 16px 50px",
+
+        color:
+          "#17352a",
       }}
     >
       <div
         style={{
-          maxWidth: "900px",
-          margin: "0 auto",
+          maxWidth:
+            "900px",
+
+          margin:
+            "0 auto",
         }}
       >
         <div
           style={{
-            marginBottom: "14px",
-            display: "flex",
+            marginBottom:
+              "14px",
+
+            display:
+              "flex",
+
             justifyContent:
               "flex-start",
           }}
@@ -321,14 +513,27 @@ export default function UploadWorkPage() {
           <Link
             href="/journey"
             style={{
-              textDecoration: "none",
-              color: "#047857",
-              background: "#ffffff",
+              textDecoration:
+                "none",
+
+              color:
+                "#047857",
+
+              background:
+                "#ffffff",
+
               border:
                 "1px solid #a7f3d0",
-              borderRadius: "14px",
-              padding: "10px 16px",
-              fontWeight: 900,
+
+              borderRadius:
+                "14px",
+
+              padding:
+                "10px 16px",
+
+              fontWeight:
+                900,
+
               boxShadow:
                 "0 5px 14px rgba(4,120,87,.08)",
             }}
@@ -339,20 +544,32 @@ export default function UploadWorkPage() {
 
         <section
           style={{
-            borderRadius: "30px",
-            padding: "28px 22px",
+            borderRadius:
+              "30px",
+
+            padding:
+              "28px 22px",
+
             background:
               "linear-gradient(135deg,#0f8a61,#18a874)",
-            color: "#ffffff",
+
+            color:
+              "#ffffff",
+
             boxShadow:
               "0 12px 30px rgba(15,138,97,.16)",
-            marginBottom: "20px",
+
+            marginBottom:
+              "20px",
           }}
         >
           <div
             style={{
-              fontSize: "42px",
-              marginBottom: "10px",
+              fontSize:
+                "42px",
+
+              marginBottom:
+                "10px",
             }}
           >
             📤
@@ -360,7 +577,9 @@ export default function UploadWorkPage() {
 
           <h1
             style={{
-              margin: 0,
+              margin:
+                0,
+
               fontSize:
                 "clamp(27px,5vw,40px)",
             }}
@@ -372,25 +591,102 @@ export default function UploadWorkPage() {
             style={{
               margin:
                 "9px 0 0",
-              lineHeight: 1.8,
+
+              lineHeight:
+                1.8,
+
               color:
                 "#e8fff4",
-              fontWeight: 700,
+
+              fontWeight:
+                700,
             }}
           >
             أرسل صورة أو تسجيلًا صوتيًا
-            أو فيديو إلى معلمك مباشرة من
-            داخل الأكاديمية.
+            أو فيديو إلى معلمك مباشرة
+            من داخل الأكاديمية.
           </p>
+        </section>
+
+        {/* حالة استقبال الأعمال */}
+
+        <section
+          style={{
+            marginBottom:
+              "20px",
+
+            padding:
+              "17px 18px",
+
+            borderRadius:
+              "20px",
+
+            border:
+              submissionWindow.isOpen
+                ? "1px solid #a7f3d0"
+                : "1px solid #fed7aa",
+
+            background:
+              submissionWindow.isOpen
+                ? "#ecfdf5"
+                : "#fff7ed",
+
+            color:
+              submissionWindow.isOpen
+                ? "#047857"
+                : "#9a3412",
+
+            lineHeight:
+              1.8,
+
+            fontWeight:
+              800,
+          }}
+        >
+          <div
+            style={{
+              fontSize:
+                "17px",
+
+              fontWeight:
+                900,
+
+              marginBottom:
+                "4px",
+            }}
+          >
+            {submissionWindow.isOpen
+              ? "🟢 استقبال الأعمال متاح الآن"
+              : "🌙 استقبال الأعمال مغلق الآن"}
+          </div>
+
+          <div>
+            وقت استقبال أعمال الطلاب يوميًا من{" "}
+            <strong>
+              {STUDENT_SUBMISSION_OPEN_TEXT}
+            </strong>{" "}
+            حتى{" "}
+            <strong>
+              {STUDENT_SUBMISSION_CLOSE_TEXT}
+            </strong>{" "}
+            بتوقيت الرياض.
+          </div>
         </section>
 
         <section
           style={{
-            background: "#ffffff",
+            background:
+              "#ffffff",
+
             border:
               "1px solid #dcece4",
-            borderRadius: "26px",
-            padding: "22px",
+
+            borderRadius:
+              "26px",
+
+            padding:
+              "22px",
+
             boxShadow:
               "0 8px 24px rgba(30,90,60,.07)",
           }}
@@ -399,7 +695,9 @@ export default function UploadWorkPage() {
             style={{
               margin:
                 "0 0 15px",
-              color: "#126b49",
+
+              color:
+                "#126b49",
             }}
           >
             اختر نوع العمل
@@ -407,19 +705,30 @@ export default function UploadWorkPage() {
 
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
+
               gridTemplateColumns:
                 "repeat(auto-fit,minmax(150px,1fr))",
-              gap: "12px",
-              marginBottom: "22px",
+
+              gap:
+                "12px",
+
+              marginBottom:
+                "22px",
             }}
           >
             <TypeButton
               active={
-                workType === "image"
+                workType ===
+                "image"
               }
               icon="📷"
               label="صورة"
+              disabled={
+                !submissionWindow.isOpen ||
+                uploading
+              }
               onClick={() =>
                 handleTypeChange(
                   "image"
@@ -429,10 +738,15 @@ export default function UploadWorkPage() {
 
             <TypeButton
               active={
-                workType === "audio"
+                workType ===
+                "audio"
               }
               icon="🎙️"
               label="تسجيل صوتي"
+              disabled={
+                !submissionWindow.isOpen ||
+                uploading
+              }
               onClick={() =>
                 handleTypeChange(
                   "audio"
@@ -442,10 +756,15 @@ export default function UploadWorkPage() {
 
             <TypeButton
               active={
-                workType === "video"
+                workType ===
+                "video"
               }
               icon="🎥"
               label="فيديو"
+              disabled={
+                !submissionWindow.isOpen ||
+                uploading
+              }
               onClick={() =>
                 handleTypeChange(
                   "video"
@@ -456,17 +775,30 @@ export default function UploadWorkPage() {
 
           <label
             style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: 900,
-              color: "#174c36",
+              display:
+                "block",
+
+              marginBottom:
+                "8px",
+
+              fontWeight:
+                900,
+
+              color:
+                "#174c36",
             }}
           >
             عنوان العمل
           </label>
 
           <input
-            value={title}
+            value={
+              title
+            }
+            disabled={
+              !submissionWindow.isOpen ||
+              uploading
+            }
             onChange={(event) =>
               setTitle(
                 event.target.value
@@ -474,60 +806,120 @@ export default function UploadWorkPage() {
             }
             placeholder="مثال: قراءتي لدرس صلة الرحم"
             style={{
-              width: "100%",
+              width:
+                "100%",
+
               boxSizing:
                 "border-box",
-              padding: "13px 14px",
-              borderRadius: "14px",
+
+              padding:
+                "13px 14px",
+
+              borderRadius:
+                "14px",
+
               border:
                 "1px solid #cfe4d8",
-              fontSize: "15px",
-              marginBottom: "18px",
-              outline: "none",
+
+              fontSize:
+                "15px",
+
+              marginBottom:
+                "18px",
+
+              outline:
+                "none",
+
+              background:
+                !submissionWindow.isOpen
+                  ? "#f1f5f9"
+                  : "#ffffff",
             }}
           />
 
           <label
             style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: 900,
-              color: "#174c36",
+              display:
+                "block",
+
+              marginBottom:
+                "8px",
+
+              fontWeight:
+                900,
+
+              color:
+                "#174c36",
             }}
           >
             ملاحظة للمعلم
           </label>
 
           <textarea
-            value={note}
+            value={
+              note
+            }
+            disabled={
+              !submissionWindow.isOpen ||
+              uploading
+            }
             onChange={(event) =>
               setNote(
                 event.target.value
               )
             }
             placeholder="اكتب ملاحظة قصيرة إن أردت..."
-            rows={4}
+            rows={
+              4
+            }
             style={{
-              width: "100%",
+              width:
+                "100%",
+
               boxSizing:
                 "border-box",
-              padding: "13px 14px",
-              borderRadius: "14px",
+
+              padding:
+                "13px 14px",
+
+              borderRadius:
+                "14px",
+
               border:
                 "1px solid #cfe4d8",
-              fontSize: "15px",
-              resize: "vertical",
-              marginBottom: "18px",
-              outline: "none",
+
+              fontSize:
+                "15px",
+
+              resize:
+                "vertical",
+
+              marginBottom:
+                "18px",
+
+              outline:
+                "none",
+
+              background:
+                !submissionWindow.isOpen
+                  ? "#f1f5f9"
+                  : "#ffffff",
             }}
           />
 
           <label
             style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: 900,
-              color: "#174c36",
+              display:
+                "block",
+
+              marginBottom:
+                "8px",
+
+              fontWeight:
+                900,
+
+              color:
+                "#174c36",
             }}
           >
             اختر الملف
@@ -535,10 +927,16 @@ export default function UploadWorkPage() {
 
           <input
             type="file"
+            disabled={
+              !submissionWindow.isOpen ||
+              uploading
+            }
             accept={
-              workType === "image"
+              workType ===
+              "image"
                 ? "image/*"
-                : workType === "audio"
+                : workType ===
+                    "audio"
                   ? "audio/*"
                   : "video/*"
             }
@@ -546,16 +944,33 @@ export default function UploadWorkPage() {
               handleFileChange
             }
             style={{
-              width: "100%",
+              width:
+                "100%",
+
               boxSizing:
                 "border-box",
-              padding: "14px",
+
+              padding:
+                "14px",
+
               border:
                 "2px dashed #a7dbc1",
-              borderRadius: "16px",
+
+              borderRadius:
+                "16px",
+
               background:
-                "#f6fffa",
-              marginBottom: "18px",
+                submissionWindow.isOpen
+                  ? "#f6fffa"
+                  : "#f1f5f9",
+
+              marginBottom:
+                "18px",
+
+              cursor:
+                submissionWindow.isOpen
+                  ? "pointer"
+                  : "not-allowed",
             }}
           />
 
@@ -566,26 +981,35 @@ export default function UploadWorkPage() {
                 style={{
                   marginBottom:
                     "18px",
+
                   overflow:
                     "hidden",
+
                   borderRadius:
                     "18px",
+
                   border:
                     "1px solid #dcece4",
+
                   background:
                     "#f8fafc",
                 }}
               >
                 <img
-                  src={previewUrl}
+                  src={
+                    previewUrl
+                  }
                   alt="معاينة العمل"
                   style={{
                     display:
                       "block",
+
                     width:
                       "100%",
+
                     maxHeight:
                       "420px",
+
                     objectFit:
                       "contain",
                   }}
@@ -597,10 +1021,14 @@ export default function UploadWorkPage() {
             workType ===
               "audio" && (
               <audio
-                src={previewUrl}
+                src={
+                  previewUrl
+                }
                 controls
                 style={{
-                  width: "100%",
+                  width:
+                    "100%",
+
                   marginBottom:
                     "18px",
                 }}
@@ -611,16 +1039,23 @@ export default function UploadWorkPage() {
             workType ===
               "video" && (
               <video
-                src={previewUrl}
+                src={
+                  previewUrl
+                }
                 controls
                 style={{
-                  width: "100%",
+                  width:
+                    "100%",
+
                   maxHeight:
                     "420px",
+
                   borderRadius:
                     "18px",
+
                   background:
                     "#000",
+
                   marginBottom:
                     "18px",
                 }}
@@ -630,17 +1065,29 @@ export default function UploadWorkPage() {
           {errorMessage && (
             <div
               style={{
-                padding: "13px",
+                padding:
+                  "13px",
+
                 marginBottom:
                   "14px",
+
                 borderRadius:
                   "14px",
+
                 background:
                   "#fff1f2",
+
                 border:
                   "1px solid #fecdd3",
-                color: "#be123c",
-                fontWeight: 800,
+
+                color:
+                  "#be123c",
+
+                fontWeight:
+                  800,
+
+                lineHeight:
+                  1.8,
               }}
             >
               {errorMessage}
@@ -650,17 +1097,29 @@ export default function UploadWorkPage() {
           {successMessage && (
             <div
               style={{
-                padding: "14px",
+                padding:
+                  "14px",
+
                 marginBottom:
                   "14px",
+
                 borderRadius:
                   "14px",
+
                 background:
                   "#ecfdf5",
+
                 border:
                   "1px solid #a7f3d0",
-                color: "#047857",
-                fontWeight: 900,
+
+                color:
+                  "#047857",
+
+                fontWeight:
+                  900,
+
+                lineHeight:
+                  1.8,
               }}
             >
               {successMessage}
@@ -672,28 +1131,51 @@ export default function UploadWorkPage() {
             onClick={
               submitWork
             }
-            disabled={uploading}
+            disabled={
+              uploading ||
+              !submissionWindow.isOpen
+            }
             style={{
-              width: "100%",
-              border: 0,
-              padding: "15px 18px",
-              borderRadius: "16px",
+              width:
+                "100%",
+
+              border:
+                0,
+
+              padding:
+                "15px 18px",
+
+              borderRadius:
+                "16px",
+
               background:
-                uploading
-                  ? "#94a3b8"
-                  : "#0f8a61",
-              color: "#ffffff",
-              fontWeight: 900,
-              fontSize: "17px",
+                !submissionWindow.isOpen
+                  ? "#cbd5e1"
+                  : uploading
+                    ? "#94a3b8"
+                    : "#0f8a61",
+
+              color:
+                "#ffffff",
+
+              fontWeight:
+                900,
+
+              fontSize:
+                "17px",
+
               cursor:
-                uploading
+                uploading ||
+                !submissionWindow.isOpen
                   ? "not-allowed"
                   : "pointer",
             }}
           >
-            {uploading
-              ? "⏳ جارٍ إرسال العمل..."
-              : "📤 إرسال العمل للمعلم"}
+            {!submissionWindow.isOpen
+              ? "🌙 استقبال الأعمال مغلق الآن"
+              : uploading
+                ? "⏳ جارٍ إرسال العمل..."
+                : "📤 إرسال العمل للمعلم"}
           </button>
         </section>
       </div>
@@ -706,37 +1188,80 @@ function TypeButton({
   icon,
   label,
   onClick,
+  disabled = false,
 }: {
-  active: boolean;
-  icon: string;
-  label: string;
-  onClick: () => void;
+  active:
+    boolean;
+
+  icon:
+    string;
+
+  label:
+    string;
+
+  onClick:
+    () => void;
+
+  disabled?:
+    boolean;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      disabled={
+        disabled
+      }
+      onClick={
+        onClick
+      }
       style={{
         border:
           active
             ? "2px solid #10b981"
             : "1px solid #d9e8e1",
+
         background:
-          active
-            ? "#ecfdf5"
-            : "#ffffff",
-        color: "#174c36",
-        borderRadius: "18px",
-        padding: "18px 12px",
-        cursor: "pointer",
-        fontWeight: 900,
-        fontSize: "16px",
+          disabled
+            ? "#f1f5f9"
+            : active
+              ? "#ecfdf5"
+              : "#ffffff",
+
+        color:
+          disabled
+            ? "#94a3b8"
+            : "#174c36",
+
+        borderRadius:
+          "18px",
+
+        padding:
+          "18px 12px",
+
+        cursor:
+          disabled
+            ? "not-allowed"
+            : "pointer",
+
+        fontWeight:
+          900,
+
+        fontSize:
+          "16px",
+
+        opacity:
+          disabled
+            ? 0.7
+            : 1,
       }}
     >
       <div
         style={{
-          fontSize: "32px",
-          marginBottom: "7px",
+          fontSize:
+            "32px",
+
+          marginBottom:
+            "7px",
         }}
       >
         {icon}

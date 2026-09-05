@@ -53,6 +53,12 @@ const sections = [
     href: "/teacher/reading-journeys",
   },
   {
+  title: "🏔️ قمة الطلاقة",
+  description:
+    "مراجعة اختبارات ترقية الطلاب واعتماد انتقالهم بين مستويات قمة الطلاقة.",
+  href: "/teacher/fluency-promotions",
+},
+  {
     title: "👨‍🎓 إدارة الطلاب",
     description:
       "إضافة الطلاب وتنظيمهم حسب الفصل.",

@@ -189,6 +189,7 @@ type JourneyData = {
   stars?: number;
   streak?: number;
   readingDays?: number;
+  fluencyLevel?: number;
   personalPhotoUrl?: string;
   selectedAvatarIcon?: string;
   completedTaskIds?: number[];
@@ -211,12 +212,24 @@ type CrownAchievement = {
   selectedAvatarIcon: string;
 };
 
+type CrownAssessmentPreview = {
+  mode: string;
+  lessonName: string;
+  pageNumber: number;
+  bestErrors: number;
+  lastErrors: number;
+  attemptCount: number;
+  title: string;
+  updatedAt: string;
+};
+
 type CrownData = {
   success: boolean;
   readingKingCount?: number;
   spellingKingCount?: number;
   masteryCount?: number;
   latestAchievement?: CrownAchievement | null;
+  latestAssessment?: CrownAssessmentPreview | null;
   achievements?: CrownAchievement[];
   message?: string;
 };
@@ -266,6 +279,18 @@ type WeeklySummary = {
 
   message?: string;
 };
+
+
+const fluencyLevels = [
+  { number: 1, icon: "🌱", title: "القارئ المنطلق", requirement: 0 },
+  { number: 2, icon: "⭐", title: "القارئ المتقدم", requirement: 3 },
+  { number: 3, icon: "🥉", title: "القارئ الواثق", requirement: 7 },
+  { number: 4, icon: "🥈", title: "القارئ المتمكن", requirement: 12 },
+  { number: 5, icon: "🥇", title: "القارئ المتميز", requirement: 17 },
+  { number: 6, icon: "🏆", title: "بطل القراءة", requirement: 23 },
+  { number: 7, icon: "👑", title: "فارس الطلاقة", requirement: 30 },
+  { number: 8, icon: "💎", title: "سفير القراءة", requirement: 37 },
+] as const;
 
 export default function JourneyPage() {
   const [studentName, setStudentName] =
@@ -333,6 +358,11 @@ const [
   const [readingDays, setReadingDays] =
     useState(0);
 
+
+  const [
+    fluencyLevel,
+    setFluencyLevel,
+  ] = useState(1);
   const [
     completedTasks,
     setCompletedTasks,
@@ -394,6 +424,14 @@ const [
   setLatestCrownAchievement,
 ] =
   useState<CrownAchievement | null>(
+    null
+  );
+
+const [
+  latestCrownAssessment,
+  setLatestCrownAssessment,
+] =
+  useState<CrownAssessmentPreview | null>(
     null
   );
   
@@ -734,6 +772,21 @@ try {
             : 0
         );
 
+
+        setFluencyLevel(
+          typeof data.fluencyLevel ===
+            "number"
+            ? Math.max(
+                1,
+                Math.min(
+                  8,
+                  Math.round(
+                    data.fluencyLevel
+                  )
+                )
+              )
+            : 1
+        );
         setPersonalPhotoUrl(
           typeof data.personalPhotoUrl ===
             "string"
@@ -945,6 +998,10 @@ try {
         setLatestCrownAchievement(
           data.latestAchievement ?? null
         );
+
+        setLatestCrownAssessment(
+          data.latestAssessment ?? null
+        );
       } catch (error) {
         console.error(
           "تعذر تحميل تاج لغتي:",
@@ -955,6 +1012,7 @@ try {
         setSpellingKingCount(0);
         setMasteryCount(0);
         setLatestCrownAchievement(null);
+        setLatestCrownAssessment(null);
       } finally {
         setCrownLoading(false);
       }
@@ -995,6 +1053,44 @@ try {
       ? 0
       : 5 -
         displayedReadingProgress;
+  /*
+    * قمة الطلاقة:
+    * fluencyLevel هو المستوى الرسمي المعتمد من المعلم.
+    * عدد القراءات لا يرفع المستوى تلقائيًا؛
+    * بل يفتح فقط بوابة اختبار المستوى التالي.
+   */
+  const fluencyCurrentLevel =
+    fluencyLevels[
+      Math.max(
+        0,
+        Math.min(
+          7,
+          fluencyLevel - 1
+        )
+      )
+    ];
+
+  const fluencyNextLevel =
+    fluencyLevel < 8
+      ? fluencyLevels[
+          fluencyLevel
+        ]
+      : null;
+
+  const fluencyReadingsNeeded =
+    fluencyNextLevel
+      ? Math.max(
+          0,
+          fluencyNextLevel.requirement -
+            readingDays
+        )
+      : 0;
+
+  const fluencyReadyForTest =
+    Boolean(
+      fluencyNextLevel &&
+        fluencyReadingsNeeded === 0
+    );
 
   const rank =
     points > 0 || stars > 0
@@ -2702,6 +2798,77 @@ try {
     </div>
   ) : (
     <>
+      {latestCrownAssessment && (
+        <div
+          style={{
+            marginBottom: "14px",
+            padding: "16px",
+            borderRadius: "18px",
+            background: "#ffffff",
+            border: "2px solid #d9e9df",
+            boxShadow:
+              "0 7px 18px rgba(24,108,70,.06)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginBottom: "9px",
+            }}
+          >
+            <strong
+              style={{
+                color: "#176c46",
+                fontSize: "17px",
+              }}
+            >
+              📘 آخر تقييم من معلمي
+            </strong>
+
+            <span
+              style={{
+                padding: "6px 10px",
+                borderRadius: "999px",
+                background: "#fff6cf",
+                color: "#8a6500",
+                fontWeight: 900,
+              }}
+            >
+              {latestCrownAssessment.title}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(145px,1fr))",
+              gap: "9px",
+              color: "#5f6f67",
+              fontWeight: 700,
+              lineHeight: 1.7,
+            }}
+          >
+            <span>
+              📚 الدرس: {latestCrownAssessment.lessonName || "—"}
+            </span>
+            <span>
+              📄 الصفحة: {latestCrownAssessment.pageNumber || "—"}
+            </span>
+            <span>
+              ✅ أفضل نتيجة: {latestCrownAssessment.bestErrors} أخطاء
+            </span>
+            <span>
+              🔁 المحاولات: {latestCrownAssessment.attemptCount}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           display: "grid",
@@ -3258,6 +3425,103 @@ try {
             </p>
           </div>
         </section>
+
+        {/* مستواي في قمة الطلاقة */}
+
+        <Link
+          href="/reading-journey/fluency-levels"
+          style={{
+            display: "block",
+            textDecoration: "none",
+            color: "inherit",
+            marginBottom: "18px",
+          }}
+        >
+          <section
+            style={{
+              ...cardStyle,
+              background:
+                "linear-gradient(135deg, #fff7ed, #fffbeb)",
+              border: "1px solid #fed7aa",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "14px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 900,
+                    color: "#b45309",
+                    marginBottom: "6px",
+                  }}
+                >
+                  🏔️ مستواي في الطلاقة
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "24px",
+                    fontWeight: 900,
+                    color: "#92400e",
+                  }}
+                >
+                  {fluencyCurrentLevel.icon} المستوى{" "}
+                  {fluencyCurrentLevel.number} —{" "}
+                  {fluencyCurrentLevel.title}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "8px",
+                    color: "#78716c",
+                    lineHeight: 1.8,
+                    fontWeight: 700,
+                  }}
+                >
+                  📖 قراءاتي المعتمدة:{" "}
+                  <strong>{readingDays}</strong>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "5px",
+                    color: fluencyReadyForTest
+                      ? "#047857"
+                      : "#9a3412",
+                    lineHeight: 1.8,
+                    fontWeight: 900,
+                  }}
+                >
+                  {fluencyReadyForTest
+                    ? "🎉 أصبحت جاهزًا لاختبار المستوى 2"
+                    : `بقيت ${fluencyReadingsNeeded} قراءة معتمدة لفتح اختبار المستوى 2`}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "white",
+                  border: "1px solid #fdba74",
+                  borderRadius: "999px",
+                  padding: "10px 16px",
+                  color: "#9a3412",
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                قمة الطلاقة ←
+              </div>
+            </div>
+          </section>
+        </Link>
 
         {/* رحلة القراءة */}
 

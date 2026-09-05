@@ -4,16 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   collection,
-  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
-  setDoc,
   where,
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import {
+  getStudentSubmissionWindow,
+  STUDENT_SUBMISSION_OPEN_TEXT,
+  STUDENT_SUBMISSION_CLOSE_TEXT,
+} from "../lib/studentSubmissionWindow";
 
 type Homework = {
   id: string;
@@ -35,6 +37,12 @@ type StudentData = {
   name: string;
   classroom: string;
   loggedIn: boolean;
+};
+
+type HomeworkSubmitResult = {
+  success?: boolean;
+  code?: string;
+  message?: string;
 };
 
 function formatDate(value: unknown): string {
@@ -489,6 +497,84 @@ useEffect(() => {
           getDateTime(first.dueDate) - getDateTime(second.dueDate)
       );
   }, [homeworks]);
+
+  const submissionWindow =
+    getStudentSubmissionWindow();
+
+  function ensureSubmissionWindowOpen(
+    targetHomeworkId?: string
+  ) {
+    const currentWindow =
+      getStudentSubmissionWindow();
+
+    if (currentWindow.isOpen) {
+      return true;
+    }
+
+    if (targetHomeworkId) {
+      setMessageByHomework((current) => ({
+        ...current,
+        [targetHomeworkId]: currentWindow.message,
+      }));
+    } else {
+      setImageUploadError(currentWindow.message);
+      setAudioUploadError(currentWindow.message);
+    }
+
+    return false;
+  }
+
+  async function submitHomeworkToServer(payload: {
+    mode: "completion" | "reading-only";
+    homework: Homework;
+    completionMethod?: string;
+    solutionUrl?: string;
+    readingAudioUrl?: string;
+    readingDurationSeconds?: number;
+  }) {
+    const response = await fetch(
+      "/api/homework-completions/submit",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: payload.mode,
+          homeworkId: payload.homework.id,
+          homeworkTitle:
+            payload.homework.title || "واجب لغتي",
+          homeworkType:
+            payload.homework.homeworkType || "standard",
+          studentId: student.id,
+          studentName: student.name,
+          classroom:
+            student.classroom || "غير محدد",
+          completionMethod:
+            payload.completionMethod || "",
+          solutionUrl:
+            payload.solutionUrl || "",
+          readingAudioUrl:
+            payload.readingAudioUrl || "",
+          readingDurationSeconds:
+            payload.readingDurationSeconds || 0,
+        }),
+      }
+    );
+
+    const result =
+      (await response.json()) as HomeworkSubmitResult;
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message ||
+          "تعذر إرسال الواجب حاليًا."
+      );
+    }
+
+    return result;
+  }
+
 async function uploadImageToCloudinary(file: File) {
   const formData = new FormData();
 
@@ -606,41 +692,21 @@ if (
     try {
       setSavingId(homework.id);
 
-      const completionId = `${student.id}_${homework.id}`;
+      if (!ensureSubmissionWindowOpen(homework.id)) {
+        return;
+      }
 
-      await setDoc(
-        doc(db, "homeworkCompletions", completionId),
-        {
-          homeworkId: homework.id,
-          homeworkTitle: homework.title || "واجب لغتي",
-          studentId: student.id,
-          completionMethod: completionMethod,
-          solutionUrl: finalSolutionUrl.trim(),
-          solutionStatus:
-  finalSolutionUrl.trim() !== ""
-    ? ("pending" as const)
-    : undefined,
-solutionReviewedAt: null,
-solutionRejectedAt: null,
-          teacherReviewed: false,
-needsRevision: false,
-teacherNote: "",
-returnedAt: null,
-          readingAudioUrl: finalReadingAudioUrl.trim(),
-readingDurationSeconds:
-  finalReadingAudioUrl.trim() !== "" ? recordingSeconds : 0,
-readingReviewed: false,
-...(finalReadingAudioUrl.trim() !== ""
-  ? { readingStatus: "pending" as const }
-  : {}),
-          studentName: student.name,
-          classroom: student.classroom || "غير محدد",
-          status: "completed",
-          completedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await submitHomeworkToServer({
+        mode: "completion",
+        homework,
+        completionMethod,
+        solutionUrl: finalSolutionUrl.trim(),
+        readingAudioUrl: finalReadingAudioUrl.trim(),
+        readingDurationSeconds:
+          finalReadingAudioUrl.trim() !== ""
+            ? recordingSeconds
+            : 0,
+      });
 
       setCompletedIds((current) => {
         const next = new Set(current);
@@ -668,6 +734,12 @@ readingReviewed: false,
   const file = event.target.files?.[0];
 
   setImageUploadError("");
+
+  if (!ensureSubmissionWindowOpen(selectedHomework?.id)) {
+    event.target.value = "";
+    setSelectedImage(null);
+    return;
+  }
 
   if (!file) {
     setSelectedImage(null);
@@ -703,6 +775,12 @@ function handleCreativeFileSelection(
 
   setImageUploadError("");
 
+  if (!ensureSubmissionWindowOpen(selectedHomework?.id)) {
+    event.target.value = "";
+    setSelectedImage(null);
+    return;
+  }
+
   if (!file) {
     return;
   }
@@ -737,6 +815,10 @@ function handleCreativeFileSelection(
 }
 async function startAudioRecording() {
   try {
+    if (!ensureSubmissionWindowOpen(selectedHomework?.id)) {
+      return;
+    }
+
     setAudioUploadError("");
     setAudioBlob(null);
     setRecordingSeconds(0);
@@ -971,6 +1053,32 @@ function stopAudioRecording() {
           </section>
         )}
 
+        <section
+          style={{
+            background: submissionWindow.isOpen ? "#ecfdf5" : "#fff7ed",
+            border: submissionWindow.isOpen
+              ? "1px solid #a7f3d0"
+              : "1px solid #fed7aa",
+            borderRadius: "20px",
+            padding: "16px 20px",
+            marginBottom: "20px",
+            color: submissionWindow.isOpen ? "#047857" : "#9a3412",
+            fontWeight: 800,
+            lineHeight: 1.8,
+          }}
+        >
+          <strong>
+            {submissionWindow.isOpen
+              ? "🟢 استقبال أعمال الطلاب متاح الآن"
+              : "🌙 استقبال أعمال الطلاب مغلق الآن"}
+          </strong>
+          <div>
+            تستقبل الأكاديمية أعمال الطلاب يوميًا من {" "}
+            {STUDENT_SUBMISSION_OPEN_TEXT} حتى {" "}
+            {STUDENT_SUBMISSION_CLOSE_TEXT} بتوقيت الرياض.
+          </div>
+        </section>
+
         {loading && (
           <section
             style={{
@@ -1193,6 +1301,7 @@ function stopAudioRecording() {
                     <button
                       type="button"
                       onClick={() => {
+  if (!ensureSubmissionWindowOpen(homework.id)) return;
   setSelectedHomework(homework);
   setReadingOnlyMode(false);
 
@@ -1208,7 +1317,8 @@ function stopAudioRecording() {
                       disabled={
                         isSaving ||
                         loadingCompletions ||
-                        isCompleted
+                        isCompleted ||
+                        !submissionWindow.isOpen
                       }
                       style={{
                         width: "100%",
@@ -1419,6 +1529,7 @@ function stopAudioRecording() {
     <button
       type="button"
       onClick={() => {
+        if (!ensureSubmissionWindowOpen(homework.id)) return;
         setSelectedHomework(homework);
         setSelectedCompletionMethod("");
         setSolutionUrl("");
@@ -1576,7 +1687,7 @@ setSolutionUrl("");
       ]
     : selectedHomework?.homeworkType === "creative"
     ? [
-        "📸 صورة إبداعي",
+        "📸 صورة إبداعية",
         "🎙️ تسجيل صوتي",
         "🔗 رابط إبداعي",
         "📄 ملف إبداعي",
@@ -1596,7 +1707,11 @@ setSolutionUrl("");
             <button
               key={method}
               type="button"
-              onClick={() => setSelectedCompletionMethod(method)}
+              disabled={!submissionWindow.isOpen}
+              onClick={() => {
+                if (!ensureSubmissionWindowOpen(selectedHomework?.id)) return;
+                setSelectedCompletionMethod(method);
+              }}
               style={{
                 padding: "14px 10px",
                 borderRadius: "16px",
@@ -1700,6 +1815,7 @@ setSolutionUrl("");
 {!isRecordingAudio && !audioPreviewUrl && (
       <button
         type="button"
+        disabled={!submissionWindow.isOpen}
         onClick={startAudioRecording}
         style={{
           width: "100%",
@@ -1792,7 +1908,7 @@ setSolutionUrl("");
   selectedHomework?.homeworkType === "madrasati"
     ? "block"
     : selectedHomework?.homeworkType === "creative" &&
-      selectedCompletionMethod !== "📸 صورة إبداعي"
+      selectedCompletionMethod !== "📸 صورة إبداعية"
     ? "none"
     : "block",
       marginBottom: "10px",
@@ -1809,6 +1925,7 @@ setSolutionUrl("");
   <input
     id="solutionImage"
     type="file"
+    disabled={!submissionWindow.isOpen}
     accept="image/*"
     onChange={handleImageSelection}
     style={{
@@ -1816,7 +1933,7 @@ setSolutionUrl("");
   selectedHomework?.homeworkType === "madrasati"
     ? "block"
     : selectedHomework?.homeworkType === "creative" &&
-      selectedCompletionMethod !== "📸 صورة إبداعي"
+      selectedCompletionMethod !== "📸 صورة إبداعية"
     ? "none"
     : "block",
       width: "100%",
@@ -1826,6 +1943,7 @@ setSolutionUrl("");
   <input
   id="creativeFile"
   type="file"
+  disabled={!submissionWindow.isOpen}
   accept=".pdf,.doc,.docx"
   onChange={handleCreativeFileSelection}
   style={{
@@ -1845,7 +1963,7 @@ setSolutionUrl("");
       style={{
         display:
   selectedHomework?.homeworkType === "creative" &&
-  selectedCompletionMethod !== "📸 صورة لإبداعي"
+  selectedCompletionMethod !== "📸 صورة إبداعية"
     ? "none"
     : "block",
         margin: "10px 0 0",
@@ -1863,7 +1981,7 @@ setSolutionUrl("");
       style={{
         display:
   selectedHomework?.homeworkType === "creative" &&
-  selectedCompletionMethod !== "📸 صورة لإبداعي"
+  selectedCompletionMethod !== "📸 صورة إبداعية"
     ? "none"
     : "block",
         marginTop: "14px",
@@ -1909,6 +2027,7 @@ setSolutionUrl("");
   <input
     id="solutionUrl"
     type="url"
+    disabled={!submissionWindow.isOpen}
     value={solutionUrl}
     onChange={(event) => setSolutionUrl(event.target.value)}
     placeholder="الصق رابط الحل هنا — اختياري"
@@ -1916,7 +2035,7 @@ setSolutionUrl("");
     style={{
       display:
   selectedHomework?.homeworkType === "creative" &&
-  selectedCompletionMethod !== "🔗 رابط لإبداعي"
+  selectedCompletionMethod !== "🔗 رابط إبداعي"
     ? "none"
     : "block",
       width: "100%",
@@ -1934,7 +2053,7 @@ setSolutionUrl("");
     style={{
       display:
   selectedHomework?.homeworkType === "creative" &&
-  selectedCompletionMethod !== "🔗 رابط لإبداعي"
+  selectedCompletionMethod !== "🔗 رابط إبداعي"
     ? "none"
     : "block",
       margin: "8px 0 0",
@@ -1952,7 +2071,8 @@ setSolutionUrl("");
   (!selectedCompletionMethod && !audioBlob) ||
   isUploadingImage ||
   isUploadingAudio ||
-  isRecordingAudio
+  isRecordingAudio ||
+  !submissionWindow.isOpen
 }
         onClick={async () => {
           if ((!selectedCompletionMethod && !audioBlob) || !selectedHomework) {
@@ -1965,12 +2085,16 @@ setSolutionUrl("");
 try {
   setImageUploadError("");
 
+  if (!ensureSubmissionWindowOpen(selectedHomework.id)) {
+    return;
+  }
+
   if (
   (
   selectedCompletionMethod.includes("الكتاب") ||
 selectedCompletionMethod.includes("الدفتر") ||
 selectedCompletionMethod === "📸 أرفقت صورة" ||
-selectedCompletionMethod === "📸 صورة لإبداعي" ||
+selectedCompletionMethod === "📸 صورة إبداعية" ||
 selectedCompletionMethod === "📄 ملف إبداعي"
   ) &&
   !selectedImage
@@ -2002,19 +2126,16 @@ selectedCompletionMethod === "📄 ملف إبداعي"
   finalReadingAudioUrl.trim() !== "";
 
 if (isReadingOnly) {
-  const completionId = `${student.id}_${selectedHomework.id}`;
+  if (!ensureSubmissionWindowOpen(selectedHomework.id)) {
+    return;
+  }
 
-  await setDoc(
-    doc(db, "homeworkCompletions", completionId),
-    {
-      readingAudioUrl: finalReadingAudioUrl.trim(),
-      readingDurationSeconds: recordingSeconds,
-      readingReviewed: false,
-      readingStatus: "pending",
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await submitHomeworkToServer({
+    mode: "reading-only",
+    homework: selectedHomework,
+    readingAudioUrl: finalReadingAudioUrl.trim(),
+    readingDurationSeconds: recordingSeconds,
+  });
 } else {
   await markHomeworkCompleted(
     selectedHomework,
@@ -2070,11 +2191,13 @@ zIndex: 20,
 boxShadow: "0 -4px 14px rgba(0,0,0,0.08)",
         }}
       >
-        {isUploadingImage || isUploadingAudio
-  ? "جاري رفع المرفقات... ⏳"
-  : isRecordingAudio
-    ? "أوقف التسجيل أولًا"
-    : "✅ تأكيد الإنجاز"}
+        {!submissionWindow.isOpen
+  ? "🌙 استقبال الأعمال مغلق الآن"
+  : isUploadingImage || isUploadingAudio
+    ? "جاري رفع المرفقات... ⏳"
+    : isRecordingAudio
+      ? "أوقف التسجيل أولًا"
+      : "✅ تأكيد الإنجاز"}
       </button>
 
       <button

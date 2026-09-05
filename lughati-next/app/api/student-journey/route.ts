@@ -132,53 +132,132 @@ async function getHomeworkStatusForDate(
   const { adminDb } =
     getFirebaseAdmin();
 
-  const snapshot =
+  /*
+   * المسار الجديد السريع:
+   * نقرأ سجلات هذا الطالب
+   * لهذا اليوم فقط.
+   */
+  const todaySnapshot =
     await adminDb
-      .collection("homeworkCompletions")
+      .collection(
+        "homeworkCompletions"
+      )
       .where(
         "studentId",
         "==",
         studentDocId
       )
+      .where(
+        "date",
+        "==",
+        dateKey
+      )
       .get();
 
-  const todayRows =
-    snapshot.docs
+  let todayRows =
+    todaySnapshot.docs
       .map((document) => ({
         id: document.id,
-        data: document.data() ?? {},
+        data:
+          document.data() ?? {},
       }))
       .filter(({ data }) => {
-        const completedDateKey =
-          getFirestoreDateKey(
-            data.completedAt
-          ) ||
-          getFirestoreDateKey(
-            data.createdAt
-          );
-
         return (
-          completedDateKey === dateKey &&
           typeof data.solutionUrl ===
             "string" &&
           data.solutionUrl.trim() !== ""
         );
-      })
-      .sort((first, second) => {
-        const firstMillis =
-          first.data.updatedAt
-            ?.toMillis?.() ?? 0;
-        const secondMillis =
-          second.data.updatedAt
-            ?.toMillis?.() ?? 0;
-
-        return secondMillis -
-          firstMillis;
       });
 
+  /*
+   * دعم مؤقت للسجلات القديمة:
+   *
+   * السجلات التي أُنشئت قبل إضافة
+   * حقل date لن تظهر في الاستعلام
+   * السابق.
+   *
+   * لذلك إذا لم نجد سجلًا لليوم،
+   * نستخدم الطريقة القديمة مؤقتًا.
+   */
   if (todayRows.length === 0) {
+    const legacySnapshot =
+      await adminDb
+        .collection(
+          "homeworkCompletions"
+        )
+        .where(
+          "studentId",
+          "==",
+          studentDocId
+        )
+        .get();
+
+    todayRows =
+      legacySnapshot.docs
+        .map((document) => ({
+          id: document.id,
+
+          data:
+            document.data() ?? {},
+        }))
+        .filter(({ data }) => {
+          /*
+           * إذا كان السجل يحتوي أصلًا
+           * على date فلا نعيد معالجته
+           * بالطريقة القديمة.
+           */
+          if (
+            typeof data.date ===
+              "string" &&
+            data.date
+          ) {
+            return false;
+          }
+
+          const completedDateKey =
+            getFirestoreDateKey(
+              data.completedAt
+            ) ||
+            getFirestoreDateKey(
+              data.createdAt
+            );
+
+          return (
+            completedDateKey ===
+              dateKey &&
+            typeof data.solutionUrl ===
+              "string" &&
+            data.solutionUrl.trim() !==
+              ""
+          );
+        });
+  }
+
+  if (
+    todayRows.length === 0
+  ) {
     return "none";
   }
+
+  /*
+   * اختيار أحدث سجل لليوم.
+   */
+  todayRows.sort(
+    (first, second) => {
+      const firstMillis =
+        first.data.updatedAt
+          ?.toMillis?.() ?? 0;
+
+      const secondMillis =
+        second.data.updatedAt
+          ?.toMillis?.() ?? 0;
+
+      return (
+        secondMillis -
+        firstMillis
+      );
+    }
+  );
 
   const latest =
     todayRows[0].data;
@@ -332,15 +411,32 @@ export async function GET(
               .streak
           : 0,
 
-      readingDays:
-        typeof readingProgressData
-          .totalApprovedDays ===
-        "number"
-          ? readingProgressData
-              .totalApprovedDays
-          : 0,
+     readingDays:
+  typeof readingProgressData
+    .totalApprovedDays ===
+  "number"
+    ? readingProgressData
+        .totalApprovedDays
+    : 0,
 
-      personalPhotoUrl:
+// المستوى الرسمي في قمة الطلاقة.
+// لا يعتمد على عدد القراءات.
+// لا يتغير إلا بعد اعتماد المعلم لاختبار الترقية.
+fluencyLevel:
+  typeof readingProgressData.fluencyLevel ===
+    "number"
+    ? Math.max(
+        1,
+        Math.min(
+          8,
+          Math.round(
+            readingProgressData.fluencyLevel
+          )
+        )
+      )
+    : 1,
+
+personalPhotoUrl:
         studentData
           .personalPhotoStatus ===
           "approved" &&

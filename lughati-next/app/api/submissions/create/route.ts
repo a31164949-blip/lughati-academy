@@ -14,10 +14,30 @@ type CreateSubmissionRequest = {
   consent?: string;
   classroom?: string;
   note?: string;
+
+  /*
+    إذا كان العمل قادمًا من اعتماد المعلم
+    فلا يخضع لساعات استقبال الطلاب.
+  */
+  source?: string;
+
+  /*
+    رقم إنجاز الواجب الأصلي.
+    نستخدمه لمنع تكرار نشر نفس العمل.
+  */
+  sourceCompletionId?: string;
+
+  /*
+    نشر مباشر بعد اعتماد المعلم.
+  */
+  autoApprove?: boolean;
 };
 
 const PENDING_STATUS =
   "بانتظار المراجعة";
+
+const APPROVED_STATUS =
+  "approved";
 
 const SUBMISSIONS_OPEN_HOUR = 13;
 const SUBMISSIONS_CLOSE_HOUR = 22;
@@ -67,8 +87,7 @@ function isSubmissionWindowOpen() {
 
   return (
     hour >= SUBMISSIONS_OPEN_HOUR &&
-    hour <
-      SUBMISSIONS_CLOSE_HOUR
+    hour < SUBMISSIONS_CLOSE_HOUR
   );
 }
 
@@ -76,33 +95,6 @@ export async function POST(
   request: Request
 ) {
   try {
-    /*
-      سياسة الأكاديمية:
-      استقبال الأعمال من
-      13:00 صباحًا إلى 22:00 مساءً
-      بتوقيت الرياض.
-    */
-    if (!isSubmissionWindowOpen()) {
-      return NextResponse.json(
-        {
-          success: false,
-          code:
-            "SUBMISSIONS_CLOSED",
-       message:
-  "🌙 استقبال الأعمال متاح يوميًا من الساعة 1:00 ظهرًا حتى 10:00 مساءً بتوقيت الرياض. ننتظرك في الوقت المحدد يا بطل ⭐",
-          opensAt:
-            "13:00",
-          closesAt:
-            "22:00",
-          timeZone:
-            "Asia/Riyadh",
-        },
-        {
-          status: 403,
-        }
-      );
-    }
-
     const body =
       (await request.json()) as CreateSubmissionRequest;
 
@@ -157,6 +149,60 @@ export async function POST(
         ? body.note.trim()
         : "";
 
+    const source =
+      typeof body.source ===
+      "string"
+        ? body.source.trim()
+        : "";
+
+    const sourceCompletionId =
+      typeof body.sourceCompletionId ===
+      "string"
+        ? body.sourceCompletionId.trim()
+        : "";
+
+    const autoApprove =
+      body.autoApprove === true;
+
+    /*
+      هل الطلب صادر عن اعتماد المعلم؟
+    */
+    const isTeacherApprovedSubmission =
+      source ===
+        "teacher-approved-creative-homework" &&
+      autoApprove;
+
+    /*
+      ساعات الاستقبال تطبق فقط
+      على إرسال الطالب.
+
+      أما اعتماد المعلم فيعمل
+      في أي وقت.
+    */
+    if (
+      !isTeacherApprovedSubmission &&
+      !isSubmissionWindowOpen()
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          code:
+            "SUBMISSIONS_CLOSED",
+          message:
+            "🌙 استقبال الأعمال متاح يوميًا من الساعة 1:00 ظهرًا حتى 10:00 مساءً بتوقيت الرياض. ننتظرك في الوقت المحدد يا بطل ⭐",
+          opensAt:
+            "13:00",
+          closesAt:
+            "22:00",
+          timeZone:
+            "Asia/Riyadh",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
     if (
       !studentId ||
       !fileUrl
@@ -176,38 +222,128 @@ export async function POST(
     const { adminDb } =
       getFirebaseAdmin();
 
+    /*
+      منع تكرار نشر نفس الواجب
+      في المعرض.
+
+      إذا كان sourceCompletionId
+      موجودًا نبحث عنه أولًا.
+    */
+    if (sourceCompletionId) {
+      const existingSnapshot =
+        await adminDb
+          .collection(
+            "studentWorks"
+          )
+          .where(
+            "sourceCompletionId",
+            "==",
+            sourceCompletionId
+          )
+          .limit(1)
+          .get();
+
+      if (
+        !existingSnapshot.empty
+      ) {
+        const existingDocument =
+          existingSnapshot.docs[0];
+
+        return NextResponse.json(
+          {
+            success: true,
+            alreadyExists: true,
+            id:
+              existingDocument.id,
+            message:
+              "العمل منشور مسبقًا في المعرض",
+          },
+          {
+            status: 200,
+          }
+        );
+      }
+    }
+
+    const submissionData: Record<
+      string,
+      unknown
+    > = {
+      studentName,
+      studentId,
+      title,
+      type,
+      fileUrl,
+      consent,
+      classroom,
+
+      status:
+        isTeacherApprovedSubmission
+          ? APPROVED_STATUS
+          : PENDING_STATUS,
+
+      note,
+
+      source:
+        source ||
+        "student-submission",
+
+      autoApproved:
+        isTeacherApprovedSubmission,
+
+      createdAt:
+        FieldValue.serverTimestamp(),
+
+      updatedAt:
+        FieldValue.serverTimestamp(),
+    };
+
+    if (sourceCompletionId) {
+      submissionData.sourceCompletionId =
+        sourceCompletionId;
+    }
+
+    /*
+      العمل المعتمد من المعلم
+      يعتبر معتمدًا من لحظة إنشائه.
+    */
+    if (
+      isTeacherApprovedSubmission
+    ) {
+      submissionData.approvedAt =
+        FieldValue.serverTimestamp();
+
+      submissionData.teacherApproved =
+        true;
+
+         submissionData.publishedToGallery =
+    true
+
+      submissionData.published =
+        true;
+
+      submissionData.publishedAt =
+        FieldValue.serverTimestamp();
+    }
+
     const submissionRef =
       await adminDb
         .collection(
           "studentWorks"
         )
-        .add({
-          studentName,
-          studentId,
-          title,
-          type,
-          fileUrl,
-          consent,
-          classroom,
-
-          status:
-            PENDING_STATUS,
-
-          note,
-
-          createdAt:
-            FieldValue.serverTimestamp(),
-
-          updatedAt:
-            FieldValue.serverTimestamp(),
-        });
+        .add(
+          submissionData
+        );
 
     return NextResponse.json(
       {
         success: true,
-        id: submissionRef.id,
+        id:
+          submissionRef.id,
         message:
-          "تم إرسال العمل للمعلم للمراجعة",
+          isTeacherApprovedSubmission
+            ? "تم نشر الواجب الإبداعي في المعرض ✅"
+            : "تم إرسال العمل للمعلم للمراجعة",
       },
       {
         status: 200,

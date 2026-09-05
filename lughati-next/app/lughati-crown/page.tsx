@@ -25,6 +25,18 @@ type CrownAchievement = {
   selectedAvatarIcon: string;
 };
 
+type CrownAssessmentSummary = {
+  studentId: string;
+  studentName: string;
+  mode: "reading" | "spelling";
+  lessonName: string;
+  pageNumber: number;
+  bestErrors: number;
+  attemptCount: number;
+  title: string;
+  updatedAt?: string | null;
+};
+
 type CrownData = {
   success: boolean;
   readingKingCount?: number;
@@ -32,6 +44,7 @@ type CrownData = {
   masteryCount?: number;
   latestAchievement?: CrownAchievement | null;
   achievements?: CrownAchievement[];
+  latestAssessment?: CrownAssessmentSummary | null;
   message?: string;
 };
 
@@ -75,6 +88,11 @@ export default function LughatiCrownStudentPage() {
     message,
     setMessage,
   ] = useState("");
+
+  const [
+    latestAssessment,
+    setLatestAssessment,
+  ] = useState<CrownAssessmentSummary | null>(null);
 
   useEffect(() => {
     const unsubscribe =
@@ -159,6 +177,13 @@ export default function LughatiCrownStudentPage() {
             ? data.achievements
             : []
         );
+
+        setLatestAssessment(
+          data.latestAssessment &&
+          typeof data.latestAssessment === "object"
+            ? data.latestAssessment
+            : null
+        );
       } catch (error) {
         console.error(
           "تعذر تحميل تاج لغتي:",
@@ -170,6 +195,7 @@ export default function LughatiCrownStudentPage() {
         );
 
         setAchievements([]);
+        setLatestAssessment(null);
       } finally {
         setLoading(false);
       }
@@ -439,6 +465,135 @@ export default function LughatiCrownStudentPage() {
           />
         </section>
 
+        {/* آخر تقييم معتمد من المعلم */}
+
+        {!loading &&
+          !message &&
+          latestAssessment && (
+            <section
+              style={{
+                marginBottom: 22,
+                borderRadius: 28,
+                padding: 22,
+                background:
+                  latestAssessment.mode === "reading"
+                    ? "linear-gradient(135deg,#eefaf5,#ffffff)"
+                    : "linear-gradient(135deg,#fff8df,#ffffff)",
+                border:
+                  latestAssessment.mode === "reading"
+                    ? "2px solid #b8e5cf"
+                    : "2px solid #ecd98c",
+                boxShadow:
+                  "0 10px 26px rgba(40,80,65,.07)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 14,
+                  flexWrap: "wrap",
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      color: "#718078",
+                      fontWeight: 800,
+                      fontSize: 14,
+                      marginBottom: 6,
+                    }}
+                  >
+                    آخر تقييم معتمد من معلمي
+                  </div>
+
+                  <h2
+                    style={{
+                      margin: 0,
+                      color:
+                        latestAssessment.mode === "reading"
+                          ? "#176c46"
+                          : "#8a6500",
+                      fontSize: 25,
+                    }}
+                  >
+                    {latestAssessment.mode === "reading"
+                      ? "📖"
+                      : "✍️"}{" "}
+                    {latestAssessment.title ||
+                      (latestAssessment.mode === "reading"
+                        ? "تقييم القراءة"
+                        : "تقييم الإملاء")}
+                  </h2>
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 42,
+                  }}
+                >
+                  {latestAssessment.mode === "reading"
+                    ? "👑"
+                    : "⭐"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(150px,1fr))",
+                  gap: 11,
+                }}
+              >
+                <AssessmentInfo
+                  label="الدرس"
+                  value={
+                    latestAssessment.lessonName ||
+                    "—"
+                  }
+                />
+
+                <AssessmentInfo
+                  label="الصفحة"
+                  value={`الصفحة ${latestAssessment.pageNumber}`}
+                />
+
+                <AssessmentInfo
+                  label="عدد الأخطاء"
+                  value={String(
+                    latestAssessment.bestErrors
+                  )}
+                />
+
+                <AssessmentInfo
+                  label="عدد المحاولات"
+                  value={String(
+                    latestAssessment.attemptCount
+                  )}
+                />
+              </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  textAlign: "center",
+                  background: "#ffffff",
+                  color: "#755600",
+                  border: "1px solid #ead589",
+                  fontWeight: 900,
+                  lineHeight: 1.7,
+                }}
+              >
+                🌟 أحسنت! واصل التقدم حتى تصل إلى تاج الملك.
+              </div>
+            </section>
+          )}
+
         {/* حالة التحميل */}
 
         {loading && (
@@ -509,7 +664,8 @@ export default function LughatiCrownStudentPage() {
         {!loading &&
           !message &&
           achievements.length ===
-            0 && (
+            0 &&
+          !latestAssessment && (
             <section
               style={{
                 background:
@@ -737,6 +893,46 @@ export default function LughatiCrownStudentPage() {
           )}
       </div>
     </main>
+  );
+}
+
+function AssessmentInfo({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "#ffffff",
+        borderRadius: 17,
+        padding: "14px 12px",
+        textAlign: "center",
+        border: "1px solid #e5ece8",
+      }}
+    >
+      <small
+        style={{
+          display: "block",
+          color: "#7b8881",
+          fontWeight: 800,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </small>
+
+      <strong
+        style={{
+          color: "#244a3d",
+          fontSize: 17,
+        }}
+      >
+        {value}
+      </strong>
+    </div>
   );
 }
 
