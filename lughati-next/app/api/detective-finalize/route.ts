@@ -300,8 +300,84 @@ export async function POST() {
       );
     }
 
-    let totalPointsAwarded =
-      0;
+    /*
+      قبل بدء عملية الاعتماد نتحقق من أن كل طالب
+      مرتبط بوثيقة موجودة فعلاً في مجموعة students.
+      هذا يمنع فشل transaction بالكامل بسبب studentId
+      غير صحيح أو وثيقة طالب غير موجودة.
+    */
+    const studentRows =
+      rows.filter(
+        (row) =>
+          row.participantType ===
+            "student" &&
+          Boolean(row.studentId)
+      );
+
+    for (
+      const row of studentRows
+    ) {
+      const studentSnapshot =
+        await adminDb
+          .collection("students")
+          .doc(row.studentId)
+          .get();
+
+      if (!studentSnapshot.exists) {
+        console.error(
+          "Student document not found:",
+          {
+            resultId: row.id,
+            studentId:
+              row.studentId,
+            name: row.name,
+          }
+        );
+
+        return NextResponse.json(
+          {
+            error:
+              `تعذر الاعتماد: لم يتم العثور على سجل الطالب ${row.name}.`,
+            missingStudentId:
+              row.studentId,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    /*
+      نحسب إجمالي النقاط قبل transaction.
+      Firestore قد يعيد تشغيل transaction تلقائيًا عند التعارض،
+      لذلك لا نغيّر متغيرًا خارجيًا من داخلها حتى لا يتضاعف
+      الملخص في الذاكرة.
+    */
+    const totalPointsAwarded =
+      GRADES.reduce(
+        (total, grade) => {
+          const ranked =
+            rankedByGrade.get(
+              grade
+            ) ?? [];
+
+          return (
+            total +
+            ranked.reduce(
+              (
+                gradeTotal,
+                _row,
+                index
+              ) =>
+                gradeTotal +
+                pointsForRank(
+                  index
+                ),
+              0
+            )
+          );
+        },
+        0
+      );
 
     await adminDb.runTransaction(
       async (transaction) => {
@@ -336,9 +412,6 @@ export async function POST() {
                 pointsForRank(
                   index
                 );
-
-              totalPointsAwarded +=
-                points;
 
               const resultRef =
                 adminDb
@@ -462,7 +535,7 @@ export async function POST() {
                   ranked[index];
 
                 if (!row) {
-                  return undefined;
+                  return null;
                 }
 
                 return {
@@ -477,16 +550,26 @@ export async function POST() {
                 };
               };
 
+              const first =
+                winner(0);
+              const second =
+                winner(1);
+              const third =
+                winner(2);
+
               return {
                 grade,
                 count:
                   ranked.length,
-                first:
-                  winner(0),
-                second:
-                  winner(1),
-                third:
-                  winner(2),
+                ...(first
+                  ? { first }
+                  : {}),
+                ...(second
+                  ? { second }
+                  : {}),
+                ...(third
+                  ? { third }
+                  : {}),
               };
             }
           );
@@ -538,18 +621,24 @@ export async function POST() {
           byGrade: [],
         },
     });
-  } catch (error) {
-    console.error(
-      "detective-finalize POST error:",
-      error
-    );
+} catch (error) {
+  console.error(
+    "detective-finalize POST error:",
+    error
+  );
 
-    return NextResponse.json(
-      {
-        error:
-          "تعذر اعتماد النتائج الآن. لم نُعد توزيع النقاط.",
-      },
-      { status: 500 }
-    );
-  }
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : String(error);
+
+  return NextResponse.json(
+    {
+      error:
+        "تعذر اعتماد النتائج الآن. لم نُعد توزيع النقاط.",
+      details: errorMessage,
+    },
+    { status: 500 }
+  );
+}
 }

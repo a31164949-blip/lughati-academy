@@ -240,6 +240,12 @@ export default function WeeklyPlanPage() {
   const [isSaving, setIsSaving] =
     useState(false);
 
+  const [isCreatingPdf, setIsCreatingPdf] =
+    useState(false);
+
+  const [pdfMessage, setPdfMessage] =
+    useState("");
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -782,6 +788,113 @@ export default function WeeklyPlanPage() {
 
     if (notificationCount > 0) {
       await batch.commit();
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!weekTitle.trim()) {
+      setPdfMessage(
+        "اكتب عنوان الأسبوع أولًا قبل إنشاء ملف PDF."
+      );
+      return;
+    }
+
+    try {
+      setIsCreatingPdf(true);
+      setPdfMessage("");
+
+      const response = await fetch(
+        "/api/weekly-plan-pdf",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            weekTitle:
+              weekTitle.trim(),
+            weeklyChallenge:
+              weeklyChallenge.trim(),
+            farisMessage:
+              farisMessage.trim(),
+            classroom: "",
+            days,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        let message =
+          "تعذر إنشاء ملف PDF للخطة الأسبوعية.";
+
+        try {
+          const data =
+            (await response.json()) as {
+              error?: string;
+            };
+
+          if (data.error) {
+            message = data.error;
+          }
+        } catch {
+          // نستخدم الرسالة الافتراضية.
+        }
+
+        throw new Error(message);
+      }
+
+      const blob =
+        await response.blob();
+
+      const url =
+        window.URL.createObjectURL(
+          blob
+        );
+
+      const link =
+        document.createElement("a");
+
+      const safeTitle =
+        weekTitle
+          .trim()
+          .replace(
+            /[\\/:*?"<>|]/g,
+            ""
+          )
+          .replace(/\s+/g, "-") ||
+        "الخطة-الأسبوعية";
+
+      link.href = url;
+      link.download =
+        `الخطة-الأسبوعية-${safeTitle}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(
+          url
+        );
+      }, 1000);
+
+      setPdfMessage(
+        "✅ تم إنشاء ملف الخطة الأسبوعية بنجاح."
+      );
+    } catch (error) {
+      console.error(
+        "تعذر إنشاء PDF للخطة الأسبوعية:",
+        error
+      );
+
+      setPdfMessage(
+        error instanceof Error
+          ? error.message
+          : "تعذر إنشاء ملف PDF للخطة الأسبوعية."
+      );
+    } finally {
+      setIsCreatingPdf(false);
     }
   }
 
@@ -1388,6 +1501,47 @@ export default function WeeklyPlanPage() {
             ? "⏳ جارٍ حفظ الخطة..."
             : "💾 حفظ الخطة"}
         </button>
+
+        <section className="mt-4 rounded-3xl border border-sky-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold text-sky-600">
+                نسخة قابلة للمشاركة
+              </p>
+
+              <h2 className="mt-1 text-xl font-black text-slate-800">
+                📄 الخطة الأسبوعية PDF
+              </h2>
+
+              <p className="mt-2 text-sm font-bold text-slate-500">
+                أنشئ نسخة PDF من البيانات الموجودة حاليًا في الخطة دون قراءة إضافية من Firestore.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isCreatingPdf}
+              className="rounded-2xl bg-sky-600 px-6 py-4 text-lg font-black text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCreatingPdf
+                ? "⏳ جارٍ إنشاء PDF..."
+                : "📄 تحميل الخطة PDF"}
+            </button>
+          </div>
+
+          {pdfMessage && (
+            <p
+              className={`mt-4 rounded-2xl p-4 text-center font-bold ${
+                pdfMessage.startsWith("✅")
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-rose-50 text-rose-700"
+              }`}
+            >
+              {pdfMessage}
+            </p>
+          )}
+        </section>
 
         {statusMessage && (
           <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-center font-bold text-amber-800">

@@ -37,6 +37,8 @@ export default function ReadingJourneyPage() {
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [sendMessage, setSendMessage] = useState("");
   const [isSavingReading, setIsSavingReading] = useState(false);
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState("");
+  const [uploadedAudioPublicId, setUploadedAudioPublicId] = useState("");
   const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [totalApprovedDays, setTotalApprovedDays] = useState(0);
   const [approvedDates, setApprovedDates] = useState<string[]>([]);
@@ -217,6 +219,8 @@ export default function ReadingJourneyPage() {
 
       setAudioBlob(null);
       setAudioPreviewUrl("");
+      setUploadedAudioUrl("");
+      setUploadedAudioPublicId("");
       setRecordingSeconds(0);
       setSendMessage("");
       setIsRecording(true);
@@ -342,9 +346,21 @@ export default function ReadingJourneyPage() {
       );
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      secure_url?: string;
+      public_id?: string;
+    };
 
-    return data.secure_url as string;
+    const secureUrl =
+      typeof data.secure_url === "string" ? data.secure_url : "";
+    const publicId =
+      typeof data.public_id === "string" ? data.public_id : "";
+
+    if (!secureUrl) {
+      throw new Error("لم يرجع Cloudinary رابط التسجيل");
+    }
+
+    return { secureUrl, publicId };
   }
 
   async function sendReading() {
@@ -430,10 +446,20 @@ export default function ReadingJourneyPage() {
         );
       }
 
-      const audioUrl =
-        await uploadAudioToCloudinary(
-          audioBlob
-        );
+      // إذا سبق رفع التسجيل ثم فشل حفظه، نستخدم نفس الرابط.
+      let audioUrl = uploadedAudioUrl;
+      let audioPublicId = uploadedAudioPublicId;
+
+      if (!audioUrl) {
+        const uploaded =
+          await uploadAudioToCloudinary(audioBlob);
+
+        audioUrl = uploaded.secureUrl;
+        audioPublicId = uploaded.publicId;
+
+        setUploadedAudioUrl(audioUrl);
+        setUploadedAudioPublicId(audioPublicId);
+      }
 
       const response = await fetch(
         "/api/reading-submission",
@@ -448,6 +474,7 @@ export default function ReadingJourneyPage() {
             studentName,
             studentClassroom,
             audioUrl,
+            audioPublicId,
             durationSeconds:
               recordingSeconds,
             readingDate:
@@ -498,6 +525,8 @@ export default function ReadingJourneyPage() {
       );
 
       setAudioBlob(null);
+      setUploadedAudioUrl("");
+      setUploadedAudioPublicId("");
       setRecordingSeconds(0);
 
       if (audioPreviewUrl) {
@@ -510,7 +539,7 @@ export default function ReadingJourneyPage() {
       console.error(error);
 
       setSendMessage(
-        "❌ تعذر رفع التسجيل أو إرساله. حاول مرة أخرى."
+        "⚠️ إذا كان رفع المقطع قد اكتمل، اضغط «أرسل قراءتي للمعلم» مرة أخرى؛ سيُستخدم نفس المقطع دون رفع نسخة جديدة."
       );
     } finally {
       setIsUploadingAudio(false);
@@ -1074,6 +1103,8 @@ export default function ReadingJourneyPage() {
                           setAudioBlob(
                             null
                           );
+                          setUploadedAudioUrl("");
+                          setUploadedAudioPublicId("");
                           setRecordingSeconds(
                             0
                           );

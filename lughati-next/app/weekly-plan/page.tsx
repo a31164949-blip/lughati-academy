@@ -33,6 +33,8 @@ export default function StudentWeeklyPlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isCreatingPdf, setIsCreatingPdf] = useState(false);
+  const [pdfMessage, setPdfMessage] = useState("");
   const dayNames = [
   "الأحد",
   "الاثنين",
@@ -219,6 +221,61 @@ farisMessage:
 
     loadPlan();
   }, []);
+  async function handleDownloadPdf() {
+    if (!plan) return;
+
+    try {
+      setIsCreatingPdf(true);
+      setPdfMessage("");
+
+      const response = await fetch("/api/weekly-plan-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekTitle: plan.weekTitle,
+          weeklyChallenge: plan.weeklyChallenge,
+          farisMessage: plan.farisMessage,
+          classroom: "",
+          days: plan.days,
+        }),
+      });
+
+      if (!response.ok) {
+        let message = "تعذر إنشاء ملف PDF للخطة الأسبوعية.";
+        try {
+          const data = (await response.json()) as { error?: string };
+          if (data.error) message = data.error;
+        } catch {}
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const safeTitle =
+        plan.weekTitle.trim().replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, "-") ||
+        "الخطة-الأسبوعية";
+
+      link.href = url;
+      link.download = `${safeTitle}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+
+      setPdfMessage("✅ تم إنشاء ملف الخطة الأسبوعية بنجاح.");
+    } catch (error) {
+      console.error("تعذر إنشاء PDF للخطة الأسبوعية:", error);
+      setPdfMessage(
+        error instanceof Error
+          ? error.message
+          : "تعذر إنشاء ملف PDF للخطة الأسبوعية."
+      );
+    } finally {
+      setIsCreatingPdf(false);
+    }
+  }
+
   async function handleToggleDayCompletion(day: string) {
   if (!studentId) {
     setCompletionMessage("يرجى تسجيل الدخول أولًا لحفظ الإنجاز.");
@@ -347,6 +404,41 @@ farisMessage:
             اطّلع على دروس هذا الأسبوع وأهدافها وواجباتها اليومية.
           </p>
         </header>
+
+        <section className="mb-5 rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-black text-slate-800">
+                📄 نسخة الخطة الأسبوعية
+              </h2>
+              <p className="mt-1 text-sm font-bold text-slate-500">
+                حمّل الخطة الحالية بصيغة PDF للاحتفاظ بها أو مشاركتها.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isCreatingPdf}
+              className="rounded-2xl bg-emerald-700 px-6 py-3 font-black text-white shadow-md transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCreatingPdf ? "جارٍ إنشاء الملف... ⏳" : "📄 تحميل الخطة PDF"}
+            </button>
+          </div>
+
+          {pdfMessage && (
+            <p
+              className={`mt-4 rounded-2xl px-4 py-3 text-center font-bold ${
+                pdfMessage.startsWith("✅")
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-rose-50 text-rose-700"
+              }`}
+            >
+              {pdfMessage}
+            </p>
+          )}
+        </section>
+
         {plan.farisMessage && (
   <section className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
     <h2 className="mb-2 text-xl font-black text-emerald-800">

@@ -199,14 +199,22 @@ export default function DetectiveResultsPage() {
           alreadyFinalized?: boolean;
           message?: string;
           error?: string;
+          details?: string;
           summary?: FinalizeSummary;
         };
 
       if (!response.ok) {
-        throw new Error(
+        const fullError = [
           data.error ||
-            "تعذر اعتماد النتائج."
-        );
+            "تعذر اعتماد النتائج.",
+          data.details
+            ? `التفاصيل: ${data.details}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        throw new Error(fullError);
       }
 
       setSummary(

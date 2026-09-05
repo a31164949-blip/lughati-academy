@@ -16,6 +16,7 @@ type ReadingSubmissionRequest = {
   studentName?: string;
   studentClassroom?: string;
   audioUrl?: string;
+  audioPublicId?: string;
   durationSeconds?: number;
   readingDate?: string;
 };
@@ -355,6 +356,12 @@ export async function POST(
         ? body.audioUrl.trim()
         : "";
 
+    const audioPublicId =
+      typeof body.audioPublicId ===
+      "string"
+        ? body.audioPublicId.trim()
+        : "";
+
     const durationSeconds =
       typeof body.durationSeconds ===
         "number" &&
@@ -534,6 +541,8 @@ export async function POST(
             studentClassroom,
 
             audioUrl,
+
+            audioPublicId,
 
             durationSeconds,
 
