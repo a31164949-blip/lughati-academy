@@ -1250,15 +1250,235 @@ useEffect(() => {
         </section>
       )}
 
-      {/* الهوية */}
+      {/* الهوية الرسمية لأكاديمية لغتي الرقمية */}
 
-      <header className="academy-header">
-        <div className="brand">
-          <div className="brand-icon">
-            📚
+      <style>{`
+        .academy-identity-header {
+          max-width: 1180px;
+          margin: 8px auto 18px;
+          padding: 26px 30px;
+          display: grid;
+          grid-template-columns: minmax(0, 1.45fr) auto auto;
+          align-items: center;
+          gap: 28px;
+          position: relative;
+          overflow: hidden;
+          border-radius: 34px;
+          border: 1px solid rgba(234, 179, 8, 0.18);
+          background:
+            radial-gradient(circle at 92% 18%, rgba(34,197,94,.10), transparent 27%),
+            radial-gradient(circle at 12% 84%, rgba(250,204,21,.08), transparent 25%),
+            linear-gradient(135deg, rgba(255,255,255,.98), rgba(250,255,251,.96));
+          box-shadow: 0 18px 46px rgba(15, 118, 72, 0.10);
+        }
+
+        .academy-identity-header::after {
+          content: "";
+          position: absolute;
+          inset: auto -80px -95px auto;
+          width: 310px;
+          height: 190px;
+          border-radius: 50%;
+          background: rgba(34,197,94,.055);
+          transform: rotate(-12deg);
+          pointer-events: none;
+        }
+
+        .academy-brand-pro {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          min-width: 0;
+          position: relative;
+          z-index: 1;
+        }
+
+        .academy-logo-pro {
+          width: clamp(126px, 10vw, 158px);
+          height: clamp(126px, 10vw, 158px);
+          flex: 0 0 auto;
+          padding: 5px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: linear-gradient(145deg, #16a34a 0%, #22c55e 48%, #facc15 100%);
+          box-shadow:
+            0 17px 36px rgba(15,118,72,.20),
+            0 0 0 6px rgba(255,255,255,.78);
+        }
+
+        .academy-logo-pro img {
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: cover;
+          border-radius: 50%;
+          border: 3px solid rgba(255,255,255,.95);
+          background: #fff;
+        }
+
+        .academy-brand-copy {
+          min-width: 0;
+        }
+
+        .academy-brand-copy .brand-label {
+          margin-bottom: 7px;
+          color: rgba(21, 94, 69, .58);
+          font-weight: 800;
+          letter-spacing: .1px;
+        }
+
+        .academy-brand-copy h1 {
+          margin: 0;
+          color: #104c39;
+          font-size: clamp(30px, 4vw, 50px);
+          line-height: 1.18;
+          font-weight: 900;
+          text-shadow: 0 2px 0 rgba(250,204,21,.18);
+        }
+
+        .academy-brand-copy .slogan {
+          margin-top: 13px;
+          color: #15945f;
+          font-size: clamp(17px, 2vw, 22px);
+          font-weight: 900;
+        }
+
+        .academy-symbolic-date {
+          min-width: 165px;
+          padding: 12px 16px 10px;
+          position: relative;
+          z-index: 1;
+          border-radius: 24px;
+          text-align: center;
+          background:
+            linear-gradient(135deg, rgba(236,253,245,.33), rgba(255,251,235,.20));
+          border: 1px solid rgba(34,197,94,.10);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.60),
+            0 8px 22px rgba(22,101,52,.035);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+        }
+
+        .academy-symbolic-date::before,
+        .academy-symbolic-date::after {
+          content: "🌿";
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 18px;
+          opacity: .20;
+          filter: saturate(.65);
+        }
+
+        .academy-symbolic-date::before {
+          right: -12px;
+        }
+
+        .academy-symbolic-date::after {
+          left: -12px;
+          transform: translateY(-50%) scaleX(-1);
+        }
+
+        .academy-date-icon {
+          display: block;
+          margin-bottom: 3px;
+          font-size: 20px;
+          opacity: .30;
+        }
+
+        .academy-date-value {
+          display: inline-block;
+          direction: ltr;
+          unicode-bidi: isolate;
+          color: rgba(21, 128, 84, .42);
+          font-size: 18px;
+          font-weight: 900;
+          letter-spacing: 1.4px;
+        }
+
+        .academy-date-line {
+          width: 74px;
+          height: 2px;
+          margin: 8px auto 0;
+          border-radius: 999px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(234,179,8,.34),
+            transparent
+          );
+        }
+
+        .academy-identity-points {
+          position: relative;
+          z-index: 1;
+        }
+
+        @media (max-width: 900px) {
+          .academy-identity-header {
+            grid-template-columns: 1fr auto;
+            padding: 22px;
+          }
+
+          .academy-symbolic-date {
+            grid-column: 1 / -1;
+            justify-self: center;
+            order: 3;
+            min-width: 150px;
+            padding: 9px 14px 8px;
+          }
+        }
+
+        @media (max-width: 650px) {
+          .academy-identity-header {
+            grid-template-columns: 1fr;
+            gap: 18px;
+            margin-left: 12px;
+            margin-right: 12px;
+            padding: 22px 16px;
+            text-align: center;
+          }
+
+          .academy-brand-pro {
+            flex-direction: column;
+            gap: 15px;
+          }
+
+          .academy-brand-copy {
+            text-align: center;
+          }
+
+          .academy-identity-points {
+            justify-self: center;
+          }
+
+          .academy-symbolic-date {
+            grid-column: auto;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .academy-logo-pro {
+            transition: none;
+          }
+        }
+      `}</style>
+
+      <header className="academy-header academy-identity-header">
+        <div className="brand academy-brand-pro">
+          <div className="academy-logo-pro">
+            <img
+              src="/الشعار.jpeg"
+              alt="شعار أكاديمية لغتي الرقمية"
+              width={158}
+              height={158}
+              loading="eager"
+            />
           </div>
 
-          <div>
+          <div className="academy-brand-copy">
             <p className="brand-label">
               مرحبًا بك في
             </p>
@@ -1273,7 +1493,28 @@ useEffect(() => {
           </div>
         </div>
 
-        <div className="student-points">
+        <div
+          className="academy-symbolic-date"
+          aria-label="تاريخ تأسيس أكاديمية لغتي الرقمية 1 نوفمبر 2020"
+        >
+          <span
+            className="academy-date-icon"
+            aria-hidden="true"
+          >
+            ◫
+          </span>
+
+          <span className="academy-date-value">
+            1 / 11 / 2020
+          </span>
+
+          <div
+            className="academy-date-line"
+            aria-hidden="true"
+          />
+        </div>
+
+        <div className="student-points academy-identity-points">
           <span>⭐</span>
 
           <div>

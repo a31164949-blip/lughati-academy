@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AcademyLogo from "../components/AcademyLogo";
 import { useEffect, useState } from "react";
 import {
   collection,
@@ -286,25 +287,53 @@ useEffect(() => {
       dir="rtl"
       style={styles.page}
     >
-      {/* رأس الصفحة */}
+      {/* رأس الصفحة بالهوية الرسمية */}
       <section style={styles.hero}>
-        <div style={styles.icon}>
-          👨‍🏫
-        </div>
+        <div style={styles.heroGlowOne} />
+        <div style={styles.heroGlowTwo} />
 
-        <div>
-          <p style={styles.label}>
-            أكاديمية لغتي الرقمية
-          </p>
+        <div style={styles.brandWrap}>
+          <div style={styles.logoShell}>
+            <AcademyLogo
+              size={116}
+              showName={false}
+              showDate={false}
+            />
+          </div>
 
-          <h1 style={styles.title}>
-            لوحة المعلم
-          </h1>
+          <div style={styles.heroText}>
+            <div style={styles.eyebrowRow}>
+              <span style={styles.eyebrowDot} />
+              <p style={styles.label}>
+                أكاديمية لغتي الرقمية
+              </p>
+            </div>
 
-          <p style={styles.subtitle}>
-            أهلاً أستاذ إبراهيم، اختر القسم
-            الذي ترغب في إدارته.
-          </p>
+            <h1 style={styles.title}>
+              لوحة المعلم
+            </h1>
+
+            <p style={styles.subtitle}>
+              أهلاً أستاذ إبراهيم، اختر القسم
+              الذي ترغب في إدارته.
+            </p>
+
+            <div style={styles.heroMetaRow}>
+              <div style={styles.symbolicDate}>
+                <span style={styles.dateStar}>
+                  ✦
+                </span>
+
+                <span>
+                  1 / 11 / 2020
+                </span>
+              </div>
+
+              <span style={styles.secureBadge}>
+                🔐 لوحة المعلم محمية
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* 🔔 جرس الإشعارات */}
@@ -343,43 +372,31 @@ useEffect(() => {
       {/* الإحصاءات */}
       <section style={styles.stats}>
         <article style={styles.statCard}>
-          <strong
-            style={
-              styles.statNumber
-            }
-          >
+          <span style={styles.statIcon}>👨‍🎓</span>
+          <strong style={styles.statNumber}>
             60
           </strong>
-
-          <span>
+          <span style={styles.statLabel}>
             طالبًا
           </span>
         </article>
 
         <article style={styles.statCard}>
-          <strong
-            style={
-              styles.statNumber
-            }
-          >
+          <span style={styles.statIcon}>🏫</span>
+          <strong style={styles.statNumber}>
             2
           </strong>
-
-          <span>
+          <span style={styles.statLabel}>
             فصلان
           </span>
         </article>
 
         <article style={styles.statCard}>
-          <strong
-            style={
-              styles.statNumber
-            }
-          >
+          <span style={styles.statIcon}>🧭</span>
+          <strong style={styles.statNumber}>
             {sections.length}
           </strong>
-
-          <span>
+          <span style={styles.statLabel}>
             أداة إدارية
           </span>
         </article>
@@ -574,40 +591,200 @@ const styles: Record<
     maxWidth:
       "1100px",
     margin:
-      "0 auto 28px",
+      "0 auto 30px",
     padding:
-      "28px",
+      "30px 30px",
+    display:
+      "flex",
+    alignItems:
+      "center",
+    justifyContent:
+      "space-between",
+    gap:
+      "24px",
+    borderRadius:
+      "32px",
+    background:
+      "linear-gradient(135deg, #ffffff 0%, #f8fffb 58%, #fffaf0 100%)",
+    border:
+      "1px solid rgba(220, 170, 35, 0.24)",
+    boxShadow:
+      "0 18px 46px rgba(23, 77, 59, 0.10), inset 0 1px 0 rgba(255,255,255,.85)",
+    position:
+      "relative",
+    overflow:
+      "hidden",
+    isolation:
+      "isolate",
+  },
+
+  heroGlowOne: {
+    position:
+      "absolute",
+    width:
+      "260px",
+    height:
+      "260px",
+    borderRadius:
+      "50%",
+    top:
+      "-150px",
+    right:
+      "-90px",
+    background:
+      "radial-gradient(circle, rgba(34,197,94,.13), rgba(34,197,94,0) 70%)",
+    pointerEvents:
+      "none",
+    zIndex:
+      0,
+  },
+
+  heroGlowTwo: {
+    position:
+      "absolute",
+    width:
+      "220px",
+    height:
+      "220px",
+    borderRadius:
+      "50%",
+    bottom:
+      "-150px",
+    left:
+      "120px",
+    background:
+      "radial-gradient(circle, rgba(250,204,21,.11), rgba(250,204,21,0) 72%)",
+    pointerEvents:
+      "none",
+    zIndex:
+      0,
+  },
+
+  brandWrap: {
     display:
       "flex",
     alignItems:
       "center",
     gap:
-      "20px",
-    borderRadius:
-      "28px",
-    background:
-      "#ffffff",
-    border:
-      "1px solid #d6ebe2",
-    boxShadow:
-      "0 12px 35px rgba(23, 77, 59, 0.08)",
+      "22px",
+    minWidth:
+      0,
+    position:
+      "relative",
+    zIndex:
+      1,
   },
 
-  icon: {
-    width:
-      "90px",
-    height:
-      "90px",
-    display:
-      "grid",
-    placeItems:
-      "center",
+  logoShell: {
+    flexShrink:
+      0,
+    padding:
+      "6px",
     borderRadius:
-      "24px",
+      "50%",
     background:
-      "#168c65",
+      "rgba(255,255,255,.76)",
+    boxShadow:
+      "0 16px 34px rgba(15,118,72,.14)",
+  },
+
+  heroText: {
+    minWidth:
+      0,
+  },
+
+  eyebrowRow: {
+    display:
+      "flex",
+    alignItems:
+      "center",
+    gap:
+      "8px",
+    marginBottom:
+      "7px",
+  },
+
+  eyebrowDot: {
+    width:
+      "9px",
+    height:
+      "9px",
+    borderRadius:
+      "50%",
+    background:
+      "#f3c623",
+    boxShadow:
+      "0 0 0 5px rgba(243,198,35,.13)",
+  },
+
+  heroMetaRow: {
+    display:
+      "flex",
+    alignItems:
+      "center",
+    gap:
+      "9px",
+    flexWrap:
+      "wrap",
+    marginTop:
+      "11px",
+  },
+
+  symbolicDate: {
+    width:
+      "fit-content",
+    padding:
+      "4px 11px",
+    display:
+      "inline-flex",
+    alignItems:
+      "center",
+    gap:
+      "7px",
+    direction:
+      "ltr",
+    borderRadius:
+      "999px",
+    background:
+      "rgba(22, 163, 74, 0.045)",
+    border:
+      "1px solid rgba(234, 179, 8, 0.17)",
+    color:
+      "rgba(21, 128, 84, 0.43)",
     fontSize:
-      "45px",
+      "12px",
+    fontWeight:
+      900,
+    letterSpacing:
+      "0.8px",
+  },
+
+  dateStar: {
+    color:
+      "rgba(234, 179, 8, 0.48)",
+    fontSize:
+      "11px",
+  },
+
+  secureBadge: {
+    display:
+      "inline-flex",
+    alignItems:
+      "center",
+    padding:
+      "4px 10px",
+    borderRadius:
+      "999px",
+    background:
+      "rgba(15,118,72,.055)",
+    border:
+      "1px solid rgba(15,118,72,.10)",
+    color:
+      "#4d7567",
+    fontSize:
+      "11px",
+    fontWeight:
+      800,
   },
 
   label: {
@@ -662,9 +839,9 @@ const styles: Record<
     borderRadius:
       "20px",
     background:
-      "#f2fbf7",
+      "linear-gradient(180deg, #ffffff 0%, #f2fbf7 100%)",
     border:
-      "1px solid #cde9dc",
+      "1px solid #c9e7d9",
     color:
       "#174d3b",
     textDecoration:
@@ -737,7 +914,7 @@ const styles: Record<
 
   statCard: {
     padding:
-      "22px",
+      "20px 22px",
     display:
       "flex",
     flexDirection:
@@ -745,13 +922,34 @@ const styles: Record<
     alignItems:
       "center",
     gap:
-      "8px",
+      "6px",
     borderRadius:
-      "22px",
+      "24px",
     background:
-      "#ffffff",
+      "linear-gradient(180deg, #ffffff 0%, #fbfffd 100%)",
     border:
       "1px solid #d6ebe2",
+    boxShadow:
+      "0 10px 26px rgba(23,77,59,.055)",
+  },
+
+  statIcon: {
+    width:
+      "38px",
+    height:
+      "38px",
+    display:
+      "grid",
+    placeItems:
+      "center",
+    borderRadius:
+      "13px",
+    background:
+      "#eefaf4",
+    fontSize:
+      "20px",
+    marginBottom:
+      "2px",
   },
 
   statNumber: {
@@ -759,6 +957,17 @@ const styles: Record<
       "#168c65",
     fontSize:
       "38px",
+    lineHeight:
+      1,
+  },
+
+  statLabel: {
+    color:
+      "#5d786e",
+    fontSize:
+      "14px",
+    fontWeight:
+      800,
   },
 
   heading: {
@@ -804,7 +1013,7 @@ const styles: Record<
     border:
       "1px solid #d6ebe2",
     boxShadow:
-      "0 10px 28px rgba(23, 77, 59, 0.06)",
+      "0 12px 30px rgba(23, 77, 59, 0.065), inset 0 1px 0 rgba(255,255,255,.9)",
     color:
       "#174d3b",
     textDecoration:

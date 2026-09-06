@@ -10,6 +10,7 @@ import {
 
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   orderBy,
@@ -40,6 +41,11 @@ type Submission = {
   status: WorkStatus;
   approved: boolean;
   publishedToGallery: boolean;
+  tiktokConsentStatus:
+    | "none"
+    | "pending"
+    | "approved"
+    | "rejected";
   createdAt?: {
     toDate?: () => Date;
   } | null;
@@ -200,6 +206,13 @@ export default function SubmissionsPage() {
             publishedToGallery:
               data.publishedToGallery ===
               true,
+
+            tiktokConsentStatus:
+              data.tiktokConsentStatus === "pending" ||
+              data.tiktokConsentStatus === "approved" ||
+              data.tiktokConsentStatus === "rejected"
+                ? data.tiktokConsentStatus
+                : "none",
 
             createdAt:
               data.createdAt ??
@@ -571,6 +584,157 @@ useEffect(() => {
       alert(
         "تعذر نشر العمل في المعرض. حاول مرة أخرى."
       );
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  /*
+   * حذف العمل من الأكاديمية.
+   * الحذف بيد المعلم فقط من هذه الصفحة،
+   * مع تأكيد صريح قبل التنفيذ.
+   *
+   * هذا يحذف سجل العمل من Firestore،
+   * فيختفي من قائمة المراجعة
+   * ومن المعرض إذا كان منشورًا.
+   */
+  async function deleteSubmission(
+    submissionId: string
+  ) {
+    if (updatingId !== null) {
+      return;
+    }
+
+    const targetSubmission =
+      submissions.find(
+        (submission) =>
+          submission.id ===
+          submissionId
+      );
+
+    if (!targetSubmission) {
+      alert(
+        "تعذر العثور على العمل المطلوب حذفه."
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `هل أنت متأكد من حذف عمل الطالب "${targetSubmission.studentName}"؟
+
+سيتم حذف العمل نهائيًا من قائمة المراجعة، وسيختفي من المعرض إذا كان منشورًا.
+
+لا يمكن التراجع عن هذه العملية.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setUpdatingId(
+        submissionId
+      );
+
+      await deleteDoc(
+        doc(
+          db,
+          "studentWorks",
+          submissionId
+        )
+      );
+
+      setSubmissions(
+        (current) =>
+          current.filter(
+            (submission) =>
+              submission.id !==
+              submissionId
+          )
+      );
+
+      alert(
+        "🗑️ تم حذف العمل من الأكاديمية بنجاح."
+      );
+    } catch (error) {
+      console.error(
+        "تعذر حذف عمل الطالب:",
+        error
+      );
+
+      alert(
+        "تعذر حذف العمل حاليًا. حاول مرة أخرى."
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function requestTikTokConsent(
+    submissionId: string
+  ) {
+    if (updatingId !== null) {
+      return;
+    }
+
+    const targetSubmission = submissions.find(
+      (submission) => submission.id === submissionId
+    );
+
+    if (
+      !targetSubmission ||
+      targetSubmission.workType !== "video"
+    ) {
+      alert("طلب إذن TikTok متاح لمقاطع الفيديو فقط.");
+      return;
+    }
+
+    if (
+      targetSubmission.status !== APPROVED_STATUS
+    ) {
+      alert("اعتمد الفيديو أولًا قبل إرسال طلب الاستئذان.");
+      return;
+    }
+
+    if (!targetSubmission.studentId) {
+      alert("تعذر تحديد الطالب المرتبط بهذا الفيديو.");
+      return;
+    }
+
+    try {
+      setUpdatingId(submissionId);
+
+      await updateDoc(
+        doc(db, "studentWorks", submissionId),
+        {
+          tiktokConsentStatus: "pending",
+          tiktokConsentRequestedAt: serverTimestamp(),
+          tiktokConsentRespondedAt: null,
+          updatedAt: serverTimestamp(),
+        }
+      );
+
+      setSubmissions((current) =>
+        current.map((submission) =>
+          submission.id === submissionId
+            ? {
+                ...submission,
+                tiktokConsentStatus: "pending",
+              }
+            : submission
+        )
+      );
+
+      alert(
+        "📱 تم إرسال طلب موافقة النشر على TikTok إلى صفحة الطالب."
+      );
+    } catch (error) {
+      console.error(
+        "تعذر إرسال طلب موافقة TikTok:",
+        error
+      );
+      alert("تعذر إرسال طلب الاستئذان. حاول مرة أخرى.");
     } finally {
       setUpdatingId(null);
     }
@@ -1159,6 +1323,33 @@ useEffect(() => {
                               🌟 منشور في المعرض
                             </span>
                           )}
+
+                          {submission.workType === "video" &&
+                            submission.tiktokConsentStatus !== "none" && (
+                              <span
+                                style={{
+                                  ...styles.statusBadge,
+                                  background:
+                                    submission.tiktokConsentStatus === "approved"
+                                      ? "#dcfce7"
+                                      : submission.tiktokConsentStatus === "rejected"
+                                        ? "#fee2e2"
+                                        : "#fff7d6",
+                                  color:
+                                    submission.tiktokConsentStatus === "approved"
+                                      ? "#08734b"
+                                      : submission.tiktokConsentStatus === "rejected"
+                                        ? "#b42318"
+                                        : "#8a6200",
+                                }}
+                              >
+                                {submission.tiktokConsentStatus === "approved"
+                                  ? "📱 وافق ولي الأمر"
+                                  : submission.tiktokConsentStatus === "rejected"
+                                    ? "📱 لم تتم الموافقة"
+                                    : "📱 بانتظار موافقة ولي الأمر"}
+                              </span>
+                            )}
                         </div>
                       </div>
 
@@ -1336,7 +1527,34 @@ useEffect(() => {
                             </button>
                           )}
 
-                        <button
+                        
+                        {submission.workType === "video" &&
+                          submission.status === APPROVED_STATUS &&
+                          submission.tiktokConsentStatus !== "approved" && (
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() =>
+                                void requestTikTokConsent(
+                                  submission.id
+                                )
+                              }
+                              style={{
+                                ...styles.publishButton,
+                                background:
+                                  "linear-gradient(135deg,#111827,#374151)",
+                                opacity: isUpdating ? 0.6 : 1,
+                              }}
+                            >
+                              {submission.tiktokConsentStatus === "pending"
+                                ? "📱 إعادة إرسال طلب إذن TikTok"
+                                : submission.tiktokConsentStatus === "rejected"
+                                  ? "📱 طلب الإذن مرة أخرى"
+                                  : "📱 طلب إذن TikTok"}
+                            </button>
+                          )}
+
+<button
                           type="button"
                           disabled={
                             isUpdating
@@ -1382,6 +1600,30 @@ useEffect(() => {
                           }}
                         >
                           ↩️ إعادة للمراجعة
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            isUpdating
+                          }
+                          onClick={() =>
+                            void deleteSubmission(
+                              submission.id
+                            )
+                          }
+                          style={{
+                            ...styles.deleteButton,
+
+                            opacity:
+                              isUpdating
+                                ? 0.6
+                                : 1,
+                          }}
+                        >
+                          {isUpdating
+                            ? "جارٍ التنفيذ..."
+                            : "🗑️ حذف العمل"}
                         </button>
                       </div>
 
@@ -2229,6 +2471,35 @@ const styles: Record<
 
     cursor:
       "pointer",
+  },
+
+  deleteButton: {
+    padding:
+      "14px 20px",
+
+    border:
+      "none",
+
+    borderRadius:
+      "14px",
+
+    background:
+      "#b42318",
+
+    color:
+      "#ffffff",
+
+    fontSize:
+      "15px",
+
+    fontWeight:
+      800,
+
+    cursor:
+      "pointer",
+
+    boxShadow:
+      "0 6px 14px rgba(180,35,24,0.16)",
   },
 
   notes: {

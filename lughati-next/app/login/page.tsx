@@ -644,7 +644,22 @@ export default function LoginPage() {
             styles.logoCircle
           }
         >
-          ف
+          <img
+            src="/الشعار.jpeg"
+            alt="شعار أكاديمية لغتي الرقمية"
+            width={118}
+            height={118}
+            loading="eager"
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              objectFit: "cover",
+              borderRadius: "50%",
+              background: "#ffffff",
+              border: "3px solid rgba(255, 255, 255, 0.96)",
+            }}
+          />
         </div>
 
         <p
@@ -1035,21 +1050,24 @@ const styles: Record<
       "0 22px 65px rgba(22, 101, 52, 0.15)",
 
     border:
-      "1px solid rgba(34, 197, 94, 0.17)",
+      "1px solid rgba(234, 179, 8, 0.20)",
   },
 
   logoCircle: {
     width:
-      "76px",
+      "118px",
 
     height:
-      "76px",
+      "118px",
 
     borderRadius:
-      "24px",
+      "50%",
 
     margin:
-      "0 auto 14px",
+      "0 auto 18px",
+
+    padding:
+      "5px",
 
     display:
       "flex",
@@ -1060,20 +1078,14 @@ const styles: Record<
     justifyContent:
       "center",
 
+    boxSizing:
+      "border-box",
+
     background:
-      "linear-gradient(135deg, #16a34a, #15803d)",
-
-    color:
-      "#ffffff",
-
-    fontWeight:
-      900,
-
-    fontSize:
-      "38px",
+      "linear-gradient(145deg, #16a34a 0%, #22c55e 48%, #facc15 100%)",
 
     boxShadow:
-      "0 12px 28px rgba(22, 163, 74, 0.28)",
+      "0 16px 34px rgba(22, 101, 52, 0.22), 0 0 0 6px rgba(255, 255, 255, 0.78)",
   },
 
   smallTitle: {

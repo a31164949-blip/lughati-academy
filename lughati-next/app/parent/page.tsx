@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 
 import { auth, db } from "../../firebase";
+import AcademyLogo from "../components/AcademyLogo";
 
 import DailyPulseCard from "./components/DailyPulseCard";
 import FamilyRecommendationCard from "./components/FamilyRecommendationCard";
@@ -1094,7 +1095,8 @@ setReadingDays(
       dir="rtl"
       style={{
         minHeight: "100vh",
-        background: "#f4f8fc",
+        background:
+          "linear-gradient(180deg, #f5faf7 0%, #f7fafc 42%, #f4f8fc 100%)",
         padding: "20px 14px 100px",
         fontFamily:
           "Arial, sans-serif",
@@ -1112,45 +1114,184 @@ setReadingDays(
 
         <header
           style={{
+            position: "relative",
+            overflow: "hidden",
             background:
-              "linear-gradient(135deg, #ffffff 0%, #eef9f2 100%)",
-            borderRadius: "26px",
-            padding: "22px",
+              "linear-gradient(135deg, #ffffff 0%, #f3fbf6 58%, #fffaf0 100%)",
+            border: "1px solid rgba(218, 171, 43, 0.22)",
+            borderRadius: "30px",
+            padding: "24px",
             marginBottom: "18px",
             boxShadow:
-              "0 8px 24px rgba(0,0,0,0.07)",
+              "0 16px 38px rgba(23,77,59,0.09)",
           }}
         >
-          <p
+          <div
+            aria-hidden="true"
             style={{
-              margin: "0 0 6px",
-              color: "#64748b",
-              fontSize: "14px",
+              position: "absolute",
+              width: "210px",
+              height: "210px",
+              borderRadius: "50%",
+              top: "-125px",
+              left: "-70px",
+              background:
+                "radial-gradient(circle, rgba(250,204,21,.13), rgba(250,204,21,0) 70%)",
+              pointerEvents: "none",
             }}
-          >
-            أكاديمية لغتي الرقمية
-          </p>
+          />
 
-          <h1
+          <div
             style={{
-              margin: 0,
-              fontSize: "28px",
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: "18px",
+              flexWrap: "wrap",
             }}
           >
-            ❤️ رحلة ابني
-          </h1>
+            <div
+              style={{
+                flexShrink: 0,
+                padding: "5px",
+                borderRadius: "50%",
+                background: "rgba(255,255,255,.82)",
+                boxShadow:
+                  "0 14px 30px rgba(15,118,72,.13)",
+              }}
+            >
+              <AcademyLogo
+                size={104}
+                showName={false}
+                showDate={false}
+              />
+            </div>
 
-          <p
-            style={{
-              margin: "10px 0 0",
-              color: "#475569",
-              lineHeight: 1.8,
-            }}
-          >
-            متابعة مختصرة وواضحة
-            لتقدم ابنكم دون أعباء
-            إضافية.
-          </p>
+            <div
+              style={{
+                flex: 1,
+                minWidth: "210px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginBottom: "5px",
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#eab308",
+                    boxShadow:
+                      "0 0 0 4px rgba(234,179,8,.12)",
+                  }}
+                />
+
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#4e7668",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                  }}
+                >
+                  أكاديمية لغتي الرقمية
+                </p>
+              </div>
+
+              <h1
+                style={{
+                  margin: 0,
+                  color: "#155f45",
+                  fontSize:
+                    "clamp(27px, 5vw, 34px)",
+                  lineHeight: 1.35,
+                }}
+              >
+                ❤️ رحلة ابني
+              </h1>
+
+              <p
+                style={{
+                  margin: "7px 0 0",
+                  color: "#526b62",
+                  lineHeight: 1.75,
+                  fontSize: "15px",
+                }}
+              >
+                متابعة واضحة وهادئة لتقدم
+                ابنكم، وإنجازاته اليومية في
+                الأكاديمية.
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  marginTop: "10px",
+                }}
+              >
+                <span
+                  aria-label="تاريخ تأسيس أكاديمية لغتي الرقمية 1 نوفمبر 2020"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    direction: "ltr",
+                    padding: "4px 10px",
+                    borderRadius: "999px",
+                    border:
+                      "1px solid rgba(234,179,8,.15)",
+                    background:
+                      "rgba(255,255,255,.48)",
+                    color:
+                      "rgba(21,128,84,.40)",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    letterSpacing: ".7px",
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      color:
+                        "rgba(234,179,8,.46)",
+                    }}
+                  >
+                    ✦
+                  </span>
+                  1 / 11 / 2020
+                </span>
+
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "4px 10px",
+                    borderRadius: "999px",
+                    background:
+                      "rgba(21,128,84,.055)",
+                    border:
+                      "1px solid rgba(21,128,84,.10)",
+                    color: "#52766a",
+                    fontSize: "11px",
+                    fontWeight: 800,
+                  }}
+                >
+                  🛡️ متابعة الأسرة
+                </span>
+              </div>
+            </div>
+          </div>
         </header>
 
         {/* نتائج الاختبارات */}
@@ -2620,9 +2761,12 @@ setReadingDays(
           right: 0,
           left: 0,
           bottom: 0,
-          background: "white",
+          background:
+            "rgba(255,255,255,0.96)",
           borderTop:
-            "1px solid #e2e8f0",
+            "1px solid #d9e9e1",
+          boxShadow:
+            "0 -8px 26px rgba(23,77,59,.06)",
           padding: "10px 8px",
           display: "flex",
           justifyContent:
@@ -2713,12 +2857,14 @@ setReadingDays(
 }
 
 const cardStyle = {
-  background: "white",
+  background:
+    "linear-gradient(180deg, #ffffff 0%, #fcfffd 100%)",
+  border: "1px solid #dcebe4",
   borderRadius: "24px",
   padding: "20px",
   marginBottom: "16px",
   boxShadow:
-    "0 8px 24px rgba(0,0,0,0.06)",
+    "0 10px 28px rgba(23,77,59,0.06)",
 };
 
 const sectionTitleStyle = {
@@ -2728,9 +2874,10 @@ const sectionTitleStyle = {
 };
 
 const primaryButtonStyle = {
-  border: "none",
+  border: "1px solid rgba(255,255,255,.18)",
   borderRadius: "16px",
-  background: "#1f7a4d",
+  background:
+    "linear-gradient(135deg, #168c65 0%, #147a5b 100%)",
   color: "white",
   padding: "13px 18px",
   fontSize: "15px",

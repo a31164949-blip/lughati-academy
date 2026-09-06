@@ -11,23 +11,7 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  query,
-      updateDoc,
-  where,
-  orderBy,
-  limit,
-  type Timestamp,
-} from "firebase/firestore";
-
-import {
-  auth,
-  db,
-} from "../../firebase";
+import { auth } from "../../firebase";
 
 const journeyCards = [
   {
@@ -248,8 +232,14 @@ type StudentNotification = {
   badgeTitle?: string;
   pointsReached?: number;
 
-  createdAt?: Timestamp | null;
+  createdAt?: string | null;
 };
+type TikTokConsentRequest = {
+  id: string;
+  title: string;
+  fileUrl: string;
+};
+
 type SurpriseChallenge = {
   id: string;
   title: string;
@@ -339,6 +329,21 @@ const [
   savingWeeklySummaryView,
   setSavingWeeklySummaryView,
 ] = useState(false);
+const [
+  tiktokConsentRequest,
+  setTikTokConsentRequest,
+] = useState<TikTokConsentRequest | null>(null);
+
+const [
+  tiktokConsentSubmitting,
+  setTikTokConsentSubmitting,
+] = useState(false);
+
+const [
+  tiktokConsentMessage,
+  setTikTokConsentMessage,
+] = useState("");
+
 const [
   surpriseChallenge,
   setSurpriseChallenge,
@@ -609,127 +614,111 @@ const [
       return;
     }
 
-    const studentId =
-      window.localStorage.getItem("student-id") || "";
+    const currentUser = user;
+    let active = true;
 
-    if (!studentId || studentId === "student-demo") {
-      setNotifications([]);
-      return;
-    }
+    async function loadStudentNotifications() {
+      try {
+        const token =
+          await currentUser.getIdToken();
 
-    const notificationsQuery = query(
-  collection(db, "studentNotifications"),
-  where("studentId", "==", studentId),
-  orderBy("createdAt", "desc"),
-  limit(20)
-);
+        const response =
+          await fetch(
+            "/api/student-notifications",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
 
-    const unsubscribeNotifications = onSnapshot(
-      notificationsQuery,
-      (snapshot) => {
-        const items = snapshot.docs
-          .map((notificationDocument) => {
-            const data = notificationDocument.data();
+        const data =
+          await response.json();
 
-           return {
-  id: notificationDocument.id,
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.message ||
+              "تعذر تحميل الإشعارات."
+          );
+        }
 
-  studentId:
-    typeof data.studentId === "string"
-      ? data.studentId
-      : "",
+        if (!active) return;
 
-  title:
-    typeof data.title === "string"
-      ? data.title
-      : "إشعار جديد",
-
-  message:
-    typeof data.message === "string"
-      ? data.message
-      : "",
-
-  type:
-    typeof data.type === "string"
-      ? data.type
-      : "",
-
-  homeworkId:
-    typeof data.homeworkId === "string"
-      ? data.homeworkId
-      : "",
-
-  href:
-    typeof data.href === "string" &&
-    data.href
-      ? data.href
-      : "/homeworks",
-
-  read:
-    data.read === true,
-
-  milestoneId:
-    typeof data.milestoneId === "string"
-      ? data.milestoneId
-      : "",
-
-  badgeTitle:
-    typeof data.badgeTitle === "string"
-      ? data.badgeTitle
-      : "",
-
-  pointsReached:
-    typeof data.pointsReached === "number"
-      ? data.pointsReached
-      : undefined,
-
-  createdAt:
-    data.createdAt ?? null,
-} as StudentNotification;
-          })
-          .sort((a, b) => {
-            const aTime = a.createdAt?.toMillis?.() ?? 0;
-            const bTime = b.createdAt?.toMillis?.() ?? 0;
-            return bTime - aTime;
-          });
+        const items =
+          Array.isArray(data.notifications)
+            ? data.notifications
+            : [];
 
         setNotifications(items);
+
         const latestUnreadMilestone =
-  items.find(
-    (notification) =>
-      notification.type ===
-        "academy-milestone" &&
-      !notification.read
-  );
+          items.find(
+            (notification: StudentNotification) =>
+              notification.type ===
+                "academy-milestone" &&
+              !notification.read
+          );
 
-if (latestUnreadMilestone) {
-  setCelebrationNotification(
-    latestUnreadMilestone
-  );
-}
-      },
-      (error) => {
-        console.error("تعذر تحميل إشعارات الطالب:", error);
+        if (latestUnreadMilestone) {
+          setCelebrationNotification(
+            latestUnreadMilestone
+          );
+        }
+      } catch (error) {
+        console.error(
+          "تعذر تحميل إشعارات الطالب:",
+          error
+        );
+        if (active) {
+          setNotifications([]);
+        }
       }
-    );
+    }
 
-    return unsubscribeNotifications;
+    void loadStudentNotifications();
+
+    return () => {
+      active = false;
+    };
   }, [user]);
-
  
 
-  async function openNotification(notification: StudentNotification) {
+  async function openNotification(
+    notification: StudentNotification
+  ) {
     try {
-      if (!notification.read) {
-        await updateDoc(
-          doc(db, "studentNotifications", notification.id),
-          { read: true }
+      if (!notification.read && user) {
+        const token =
+          await user.getIdToken();
+
+        await fetch(
+          "/api/student-notifications",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              notificationId:
+                notification.id,
+            }),
+          }
         );
       }
     } catch (error) {
-      console.error("تعذر تحديث حالة الإشعار:", error);
+      console.error(
+        "تعذر تحديث حالة الإشعار:",
+        error
+      );
     } finally {
-      window.location.href = notification.href || "/homeworks";
+      window.location.href =
+        notification.href || "/homeworks";
     }
   }
 
@@ -982,6 +971,173 @@ try {
     void loadWeeklySummary();
   }, [user]);
 
+ useEffect(() => {
+  if (!user) {
+    setTikTokConsentRequest(null);
+    setTikTokConsentMessage("");
+    return;
+  }
+
+  const currentUser = user;
+
+  let active = true;
+
+  async function loadTikTokConsentRequest() {
+    try {
+      const token =
+        await currentUser.getIdToken();
+
+        const response =
+          await fetch(
+            "/api/tiktok-consent",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "تعذر تحميل طلب الموافقة."
+          );
+        }
+
+        if (!active) {
+          return;
+        }
+
+        const request =
+          data.request &&
+          typeof data.request === "object"
+            ? data.request
+            : null;
+
+        if (!request) {
+          setTikTokConsentRequest(null);
+          return;
+        }
+
+        setTikTokConsentRequest({
+          id:
+            typeof request.id === "string"
+              ? request.id
+              : "",
+          title:
+            typeof request.title === "string" &&
+            request.title.trim()
+              ? request.title
+              : "مشاركة الطالب",
+          fileUrl:
+            typeof request.fileUrl === "string"
+              ? request.fileUrl
+              : "",
+        });
+      } catch (error) {
+        console.error(
+          "تعذر تحميل طلب موافقة TikTok:",
+          error
+        );
+
+        if (active) {
+          setTikTokConsentRequest(null);
+        }
+      }
+    }
+
+    void loadTikTokConsentRequest();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  async function respondToTikTokConsent(
+    decision: "approved" | "rejected"
+  ) {
+    if (
+      !user ||
+      !tiktokConsentRequest ||
+      tiktokConsentSubmitting
+    ) {
+      return;
+    }
+
+    try {
+      setTikTokConsentSubmitting(true);
+      setTikTokConsentMessage("");
+
+      const token =
+        await user.getIdToken();
+
+      const response =
+        await fetch(
+          "/api/tiktok-consent",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              workId:
+                tiktokConsentRequest.id,
+              decision,
+            }),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر تسجيل الرد."
+        );
+      }
+
+      setTikTokConsentMessage(
+        typeof data.message === "string" &&
+        data.message
+          ? data.message
+          : decision === "approved"
+            ? "تم تسجيل موافقة ولي الأمر على هذا المقطع فقط ✅"
+            : "تم تسجيل عدم الموافقة، ولن يُنشر المقطع على TikTok."
+      );
+
+      window.setTimeout(() => {
+        setTikTokConsentRequest(null);
+        setTikTokConsentMessage("");
+      }, 1400);
+    } catch (error) {
+      console.error(
+        "تعذر تسجيل رد موافقة TikTok:",
+        error
+      );
+      setTikTokConsentMessage(
+        "تعذر تسجيل الرد حاليًا، حاول مرة أخرى."
+      );
+    } finally {
+      setTikTokConsentSubmitting(false);
+    }
+  }
+
   useEffect(() => {
     if (!user) {
       setSurpriseChallenge(null);
@@ -991,6 +1147,7 @@ try {
       return;
     }
 
+    const currentUser = user;
     let active = true;
 
     async function loadSurpriseChallenge() {
@@ -1002,9 +1159,6 @@ try {
         const studentId =
           window.localStorage.getItem("student-id") || "";
 
-        const studentClassroom =
-          window.localStorage.getItem("student-classroom") || "";
-
         if (!studentId || studentId === "student-demo") {
           if (active) {
             setSurpriseChallenge(null);
@@ -1012,92 +1166,65 @@ try {
           return;
         }
 
-        // قراءة واحدة فقط لوثيقة التحدي النشط.
-        const challengeSnapshot = await getDoc(
-          doc(
-            db,
-            "surpriseChallenges",
-            ACTIVE_SURPRISE_CHALLENGE_ID
-          )
-        );
+        const token =
+          await currentUser.getIdToken();
 
-        if (!active || !challengeSnapshot.exists()) {
-          if (active) {
-            setSurpriseChallenge(null);
-          }
+        /*
+         * قراءة واحدة عبر API آمن.
+         * لا توجد قراءة Firestore مباشرة من المتصفح.
+         */
+        const response =
+          await fetch(
+            "/api/surprise-challenge",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "تعذر تحميل التحدي المفاجئ."
+          );
+        }
+
+        if (!active) {
           return;
         }
 
-        const data = challengeSnapshot.data();
+        const challenge =
+          data.challenge &&
+          typeof data.challenge === "object"
+            ? (data.challenge as SurpriseChallenge)
+            : null;
 
-        const challenge: SurpriseChallenge = {
-          id: challengeSnapshot.id,
-          title:
-            typeof data.title === "string" && data.title.trim()
-              ? data.title
-              : "لغز البرق",
-          question:
-            typeof data.question === "string"
-              ? data.question
-              : "",
-          points:
-            typeof data.points === "number"
-              ? data.points
-              : 0,
-          targetClassroom:
-            typeof data.targetClassroom === "string"
-              ? data.targetClassroom
-              : "الجميع",
-          active: data.active === true,
-          expiresAt:
-            typeof data.expiresAt === "string"
-              ? data.expiresAt
-              : "",
-          challengeVersion:
-            typeof data.challengeVersion === "string" &&
-            data.challengeVersion
-              ? data.challengeVersion
-              : challengeSnapshot.id,
-        };
-
-        if (!challenge.active || !challenge.question.trim()) {
+        if (!challenge) {
           setSurpriseChallenge(null);
           return;
         }
 
-        if (challenge.expiresAt) {
-          const expiresTime = new Date(
-            challenge.expiresAt
-          ).getTime();
+        const safeStudentId =
+          studentId.replace(
+            /[^a-zA-Z0-9_-]/g,
+            "_"
+          );
 
-          if (
-            Number.isFinite(expiresTime) &&
-            Date.now() >= expiresTime
-          ) {
-            setSurpriseChallenge(null);
-            return;
-          }
-        }
-
-        const classroomMatches =
-          challenge.targetClassroom === "الجميع" ||
-          !challenge.targetClassroom ||
-          challenge.targetClassroom === studentClassroom;
-
-        if (!classroomMatches) {
-          setSurpriseChallenge(null);
-          return;
-        }
-
-        const safeStudentId = studentId.replace(
-          /[^a-zA-Z0-9_-]/g,
-          "_"
-        );
-
-        const safeVersion = challenge.challengeVersion.replace(
-          /[^a-zA-Z0-9_-]/g,
-          "_"
-        );
+        const safeVersion =
+          challenge.challengeVersion.replace(
+            /[^a-zA-Z0-9_-]/g,
+            "_"
+          );
 
         const answerDocumentId =
           `${safeVersion}__${safeStudentId}`;
@@ -1105,23 +1232,16 @@ try {
         const localAnswerKey =
           `surprise-challenge-answered-${answerDocumentId}`;
 
-        // إذا أجاب من هذا الجهاز سابقًا فلا نستهلك قراءة إضافية.
+        /*
+         * إذا أجاب من هذا الجهاز سابقًا،
+         * لا نرسل أي طلب إضافي.
+         */
         if (
-          window.localStorage.getItem(localAnswerKey) === "1"
+          window.localStorage.getItem(
+            localAnswerKey
+          ) === "1"
         ) {
           setSurpriseChallenge(null);
-          return;
-        }
-
-        /*
-         * لا نقرأ surpriseChallengeAnswers من المتصفح.
-         * قواعد Firestore تمنع الطالب من قراءة إجابات الطلاب،
-         * وهذا مقصود للحماية.
-         *
-         * منع التكرار من نفس الجهاز يتم عبر localStorage،
-         * ومن أي جهاز آخر يحسمه API الآمن على الخادم.
-         */
-        if (!active) {
           return;
         }
 
@@ -1131,6 +1251,7 @@ try {
           "تعذر تحميل التحدي المفاجئ:",
           error
         );
+
         if (active) {
           setSurpriseChallenge(null);
         }
@@ -1624,8 +1745,200 @@ try {
         paddingBottom: "50px",
       }}
     >
+      {tiktokConsentRequest &&
+        !weeklySummary?.shouldShow &&
+        !celebrationNotification && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 13500,
+              background: "rgba(15, 23, 42, 0.74)",
+              backdropFilter: "blur(7px)",
+              display: "grid",
+              placeItems: "center",
+              padding: "18px",
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="طلب موافقة ولي الأمر على نشر فيديو في TikTok"
+              style={{
+                width: "min(560px, 100%)",
+                maxHeight: "92vh",
+                overflowY: "auto",
+                borderRadius: "30px",
+                background:
+                  "linear-gradient(145deg,#ffffff 0%,#f5fbff 52%,#fff7fb 100%)",
+                border: "3px solid #cbd5e1",
+                boxShadow: "0 30px 90px rgba(0,0,0,.32)",
+                padding: "26px 22px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "90px",
+                  height: "90px",
+                  margin: "0 auto 14px",
+                  borderRadius: "26px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "48px",
+                  background:
+                    "linear-gradient(135deg,#eef2ff,#fff1f2)",
+                  border: "2px solid #d8dee9",
+                }}
+              >
+                📱
+              </div>
+
+              <div
+                style={{
+                  color: "#7c3aed",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                  marginBottom: "5px",
+                }}
+              >
+                ولي الأمر الكريم
+              </div>
+
+              <h2
+                style={{
+                  margin: "0 0 10px",
+                  color: "#17352a",
+                  fontSize: "clamp(24px,5vw,33px)",
+                  lineHeight: 1.4,
+                }}
+              >
+                مشاركة مميزة مرشحة للنشر
+              </h2>
+
+              <p
+                style={{
+                  margin: "0 0 14px",
+                  color: "#596b62",
+                  fontWeight: 700,
+                  lineHeight: 1.9,
+                }}
+              >
+                تم اختيار مقطع ابنكم/ابنتكم
+                <strong> «{tiktokConsentRequest.title}» </strong>
+                للنشر في حساب أكاديمية لغتي الرقمية على TikTok.
+                هذه الموافقة تخص هذا المقطع فقط، وعدم الموافقة
+                لا يؤثر على نقاط الطالب أو مشاركته في الأكاديمية.
+              </p>
+
+              {tiktokConsentRequest.fileUrl && (
+                <video
+                  src={tiktokConsentRequest.fileUrl}
+                  controls
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    maxHeight: "260px",
+                    borderRadius: "18px",
+                    background: "#0f172a",
+                    marginBottom: "15px",
+                  }}
+                />
+              )}
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "16px",
+                  background: "#fffbea",
+                  border: "1px solid #f0dfa3",
+                  color: "#7b5c00",
+                  fontWeight: 800,
+                  lineHeight: 1.7,
+                  marginBottom: "15px",
+                }}
+              >
+                يرجى أن يختار أحد الوالدين القرار بنفسه.
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(190px,1fr))",
+                  gap: "10px",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={tiktokConsentSubmitting}
+                  onClick={() =>
+                    void respondToTikTokConsent("approved")
+                  }
+                  style={{
+                    border: "none",
+                    borderRadius: "17px",
+                    padding: "14px 16px",
+                    background:
+                      "linear-gradient(135deg,#168a63,#0f7654)",
+                    color: "#ffffff",
+                    fontSize: "16px",
+                    fontWeight: 900,
+                    cursor: tiktokConsentSubmitting
+                      ? "default"
+                      : "pointer",
+                    opacity: tiktokConsentSubmitting ? 0.65 : 1,
+                  }}
+                >
+                  ✅ أوافق بصفتي ولي الأمر
+                </button>
+
+                <button
+                  type="button"
+                  disabled={tiktokConsentSubmitting}
+                  onClick={() =>
+                    void respondToTikTokConsent("rejected")
+                  }
+                  style={{
+                    border: "2px solid #e5e7eb",
+                    borderRadius: "17px",
+                    padding: "14px 16px",
+                    background: "#ffffff",
+                    color: "#991b1b",
+                    fontSize: "16px",
+                    fontWeight: 900,
+                    cursor: tiktokConsentSubmitting
+                      ? "default"
+                      : "pointer",
+                    opacity: tiktokConsentSubmitting ? 0.65 : 1,
+                  }}
+                >
+                  ❌ لا أوافق
+                </button>
+              </div>
+
+              {tiktokConsentMessage && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "11px 13px",
+                    borderRadius: "14px",
+                    background: "#f8fafc",
+                    color: "#475569",
+                    fontWeight: 800,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {tiktokConsentMessage}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       {surpriseChallenge &&
         !weeklySummary?.shouldShow &&
+        !tiktokConsentRequest &&
         !celebrationNotification && (
           <div
             style={{
@@ -2317,16 +2630,27 @@ try {
         type="button"
         onClick={async () => {
           try {
-            await updateDoc(
-              doc(
-                db,
-                "studentNotifications",
-                celebrationNotification.id
-              ),
-              {
-                read: true,
-              }
-            );
+            if (user) {
+              const token =
+                await user.getIdToken();
+
+              await fetch(
+                "/api/student-notifications",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                    Authorization:
+                      `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    notificationId:
+                      celebrationNotification.id,
+                  }),
+                }
+              );
+            }
           } catch (error) {
             console.error(
               "تعذر تسجيل عرض احتفالية الإنجاز:",
@@ -2378,36 +2702,112 @@ try {
             flexWrap: "wrap",
           }}
         >
-          <div>
-            <p
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              minWidth: 0,
+            }}
+          >
+            <div
               style={{
-                margin: "0 0 5px",
-                fontSize: "14px",
-                opacity: 0.9,
+                width: "clamp(82px, 9vw, 108px)",
+                height: "clamp(82px, 9vw, 108px)",
+                flexShrink: 0,
+                padding: "4px",
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                background:
+                  "linear-gradient(145deg, #22c55e 0%, #16a34a 48%, #facc15 100%)",
+                boxShadow:
+                  "0 12px 28px rgba(5, 70, 45, 0.25), 0 0 0 4px rgba(255,255,255,0.18)",
               }}
             >
-              أكاديمية لغتي الرقمية
-            </p>
+              <img
+                src="/الشعار.jpeg"
+                alt="شعار أكاديمية لغتي الرقمية"
+                width={108}
+                height={108}
+                loading="eager"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "block",
+                  objectFit: "cover",
+                  borderRadius: "50%",
+                  background: "#ffffff",
+                  border: "2px solid rgba(255,255,255,0.96)",
+                }}
+              />
+            </div>
 
-            <h1
-              style={{
-                margin: 0,
-                fontSize:
-                  "clamp(27px, 5vw, 42px)",
-              }}
-            >
-              رحلتي 🚀
-            </h1>
+            <div>
+              <p
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: "14px",
+                  opacity: 0.88,
+                  fontWeight: 800,
+                }}
+              >
+                أكاديمية لغتي الرقمية
+              </p>
 
-            <p
-              style={{
-                margin: "8px 0 0",
-                fontSize: "16px",
-                lineHeight: 1.7,
-              }}
-            >
-              نتعلّم… نقرأ… نبدع
-            </p>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize:
+                    "clamp(27px, 5vw, 42px)",
+                  lineHeight: 1.2,
+                }}
+              >
+                رحلتي 🚀
+              </h1>
+
+              <p
+                style={{
+                  margin: "7px 0 0",
+                  fontSize: "16px",
+                  lineHeight: 1.7,
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.92)",
+                }}
+              >
+                نتعلّم… نقرأ… نبدع
+              </p>
+
+              <div
+                aria-label="تاريخ تأسيس أكاديمية لغتي الرقمية 1 نوفمبر 2020"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  marginTop: "7px",
+                  padding: "3px 9px",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(250,204,21,0.20)",
+                  background: "rgba(255,255,255,0.055)",
+                  color: "rgba(255,255,255,0.43)",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  letterSpacing: "0.7px",
+                  direction: "ltr",
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    color: "rgba(250,204,21,0.42)",
+                    fontSize: "10px",
+                  }}
+                >
+                  ✦
+                </span>
+                1 / 11 / 2020
+              </div>
+            </div>
           </div>
 
           <div

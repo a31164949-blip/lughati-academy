@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getFirebaseAdmin } from "../../../../firebase-admin";
+import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export const runtime = "nodejs";
 
@@ -40,18 +40,18 @@ export async function GET(
   request: Request
 ) {
   try {
-    await getStudentFromRequest(request);
+    await getStudentFromRequest(
+      request
+    );
 
     const { adminDb } =
       getFirebaseAdmin();
 
-    /*
-     * قراءة مستند واحد فقط.
-     * لا نقرأ مجموعة كاملة ولا نستخدم listener.
-     */
     const snapshot =
       await adminDb
-        .collection("surpriseChallenges")
+        .collection(
+          "surpriseChallenges"
+        )
         .doc(
           ACTIVE_SURPRISE_CHALLENGE_ID
         )
@@ -89,10 +89,14 @@ export async function GET(
 
     if (expiresAt) {
       const expiresTime =
-        new Date(expiresAt).getTime();
+        new Date(
+          expiresAt
+        ).getTime();
 
       if (
-        Number.isFinite(expiresTime) &&
+        Number.isFinite(
+          expiresTime
+        ) &&
         Date.now() >= expiresTime
       ) {
         return NextResponse.json({
@@ -109,7 +113,8 @@ export async function GET(
         id: snapshot.id,
 
         title:
-          typeof data.title === "string" &&
+          typeof data.title ===
+            "string" &&
           data.title.trim()
             ? data.title
             : "لغز البرق",
@@ -117,12 +122,14 @@ export async function GET(
         question,
 
         points:
-          typeof data.points === "number"
+          typeof data.points ===
+          "number"
             ? data.points
             : 0,
 
         targetClassroom:
-          typeof data.targetClassroom ===
+          typeof data
+            .targetClassroom ===
           "string"
             ? data.targetClassroom
             : "الجميع",
@@ -132,7 +139,8 @@ export async function GET(
         expiresAt,
 
         challengeVersion:
-          typeof data.challengeVersion ===
+          typeof data
+            .challengeVersion ===
             "string" &&
           data.challengeVersion
             ? data.challengeVersion
@@ -150,7 +158,9 @@ export async function GET(
         ? error.message
         : "";
 
-    if (message === "UNAUTHORIZED") {
+    if (
+      message === "UNAUTHORIZED"
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -161,7 +171,9 @@ export async function GET(
       );
     }
 
-    if (message === "FORBIDDEN") {
+    if (
+      message === "FORBIDDEN"
+    ) {
       return NextResponse.json(
         {
           success: false,
