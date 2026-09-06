@@ -41,6 +41,12 @@ const sections = [
     href: "/teacher/homework-tracking",
   },
   {
+  title: "⚡ لغز البرق",
+  description:
+    "إطلاق تحدٍ مفاجئ للطلاب، تحديد الوقت، ومتابعة الإجابات والنتائج.",
+  href: "/teacher/surprise-challenge",
+},
+  {
     title: "🎙️ مراجعة قراءات الطلاب",
     description:
       "الاستماع إلى تسجيلات القراءة واعتمادها أو طلب إعادة التسجيل.",

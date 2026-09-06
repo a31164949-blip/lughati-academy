@@ -14,9 +14,10 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
-  updateDoc,
+      updateDoc,
   where,
   orderBy,
   limit,
@@ -249,6 +250,21 @@ type StudentNotification = {
 
   createdAt?: Timestamp | null;
 };
+type SurpriseChallenge = {
+  id: string;
+  title: string;
+  question: string;
+  points: number;
+  targetClassroom: string;
+  active: boolean;
+  expiresAt: string;
+  challengeVersion: string;
+};
+
+const ACTIVE_SURPRISE_CHALLENGE_ID =
+  "active-surprise-challenge";
+
+
 type WeeklySummary = {
   success: boolean;
 
@@ -323,6 +339,38 @@ const [
   savingWeeklySummaryView,
   setSavingWeeklySummaryView,
 ] = useState(false);
+const [
+  surpriseChallenge,
+  setSurpriseChallenge,
+] = useState<SurpriseChallenge | null>(null);
+
+const [
+  surpriseAnswer,
+  setSurpriseAnswer,
+] = useState("");
+
+const [
+  surpriseChallengeLoading,
+  setSurpriseChallengeLoading,
+] = useState(false);
+
+const [
+  submittingSurpriseAnswer,
+  setSubmittingSurpriseAnswer,
+] = useState(false);
+
+const [
+  surpriseChallengeMessage,
+  setSurpriseChallengeMessage,
+] = useState("");
+
+const [
+  surpriseChallengeResult,
+  setSurpriseChallengeResult,
+] = useState<
+  "correct" | "incorrect" | null
+>(null);
+
   const [notifications, setNotifications] =
     useState<StudentNotification[]>([]);
 
@@ -936,6 +984,284 @@ try {
 
   useEffect(() => {
     if (!user) {
+      setSurpriseChallenge(null);
+      setSurpriseAnswer("");
+      setSurpriseChallengeMessage("");
+      setSurpriseChallengeResult(null);
+      return;
+    }
+
+    let active = true;
+
+    async function loadSurpriseChallenge() {
+      try {
+        setSurpriseChallengeLoading(true);
+        setSurpriseChallengeMessage("");
+        setSurpriseChallengeResult(null);
+
+        const studentId =
+          window.localStorage.getItem("student-id") || "";
+
+        const studentClassroom =
+          window.localStorage.getItem("student-classroom") || "";
+
+        if (!studentId || studentId === "student-demo") {
+          if (active) {
+            setSurpriseChallenge(null);
+          }
+          return;
+        }
+
+        // قراءة واحدة فقط لوثيقة التحدي النشط.
+        const challengeSnapshot = await getDoc(
+          doc(
+            db,
+            "surpriseChallenges",
+            ACTIVE_SURPRISE_CHALLENGE_ID
+          )
+        );
+
+        if (!active || !challengeSnapshot.exists()) {
+          if (active) {
+            setSurpriseChallenge(null);
+          }
+          return;
+        }
+
+        const data = challengeSnapshot.data();
+
+        const challenge: SurpriseChallenge = {
+          id: challengeSnapshot.id,
+          title:
+            typeof data.title === "string" && data.title.trim()
+              ? data.title
+              : "لغز البرق",
+          question:
+            typeof data.question === "string"
+              ? data.question
+              : "",
+          points:
+            typeof data.points === "number"
+              ? data.points
+              : 0,
+          targetClassroom:
+            typeof data.targetClassroom === "string"
+              ? data.targetClassroom
+              : "الجميع",
+          active: data.active === true,
+          expiresAt:
+            typeof data.expiresAt === "string"
+              ? data.expiresAt
+              : "",
+          challengeVersion:
+            typeof data.challengeVersion === "string" &&
+            data.challengeVersion
+              ? data.challengeVersion
+              : challengeSnapshot.id,
+        };
+
+        if (!challenge.active || !challenge.question.trim()) {
+          setSurpriseChallenge(null);
+          return;
+        }
+
+        if (challenge.expiresAt) {
+          const expiresTime = new Date(
+            challenge.expiresAt
+          ).getTime();
+
+          if (
+            Number.isFinite(expiresTime) &&
+            Date.now() >= expiresTime
+          ) {
+            setSurpriseChallenge(null);
+            return;
+          }
+        }
+
+        const classroomMatches =
+          challenge.targetClassroom === "الجميع" ||
+          !challenge.targetClassroom ||
+          challenge.targetClassroom === studentClassroom;
+
+        if (!classroomMatches) {
+          setSurpriseChallenge(null);
+          return;
+        }
+
+        const safeStudentId = studentId.replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        );
+
+        const safeVersion = challenge.challengeVersion.replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        );
+
+        const answerDocumentId =
+          `${safeVersion}__${safeStudentId}`;
+
+        const localAnswerKey =
+          `surprise-challenge-answered-${answerDocumentId}`;
+
+        // إذا أجاب من هذا الجهاز سابقًا فلا نستهلك قراءة إضافية.
+        if (
+          window.localStorage.getItem(localAnswerKey) === "1"
+        ) {
+          setSurpriseChallenge(null);
+          return;
+        }
+
+        /*
+         * لا نقرأ surpriseChallengeAnswers من المتصفح.
+         * قواعد Firestore تمنع الطالب من قراءة إجابات الطلاب،
+         * وهذا مقصود للحماية.
+         *
+         * منع التكرار من نفس الجهاز يتم عبر localStorage،
+         * ومن أي جهاز آخر يحسمه API الآمن على الخادم.
+         */
+        if (!active) {
+          return;
+        }
+
+        setSurpriseChallenge(challenge);
+      } catch (error) {
+        console.error(
+          "تعذر تحميل التحدي المفاجئ:",
+          error
+        );
+        if (active) {
+          setSurpriseChallenge(null);
+        }
+      } finally {
+        if (active) {
+          setSurpriseChallengeLoading(false);
+        }
+      }
+    }
+
+    void loadSurpriseChallenge();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  async function submitSurpriseChallengeAnswer() {
+    if (!user || !surpriseChallenge) {
+      return;
+    }
+
+    const cleanedAnswer = surpriseAnswer.trim();
+
+    if (!cleanedAnswer) {
+      setSurpriseChallengeMessage(
+        "اكتب إجابتك أولًا يا بطل 🌟"
+      );
+      return;
+    }
+
+    if (submittingSurpriseAnswer) {
+      return;
+    }
+
+    try {
+      setSubmittingSurpriseAnswer(true);
+      setSurpriseChallengeMessage("");
+
+      const token = await user.getIdToken();
+
+      const response = await fetch(
+        "/api/surprise-challenge/answer",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            answer: cleanedAnswer,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message ||
+            "تعذر إرسال الإجابة الآن."
+        );
+      }
+
+      const isCorrect = data.isCorrect === true;
+      const pointsAwarded =
+        typeof data.pointsAwarded === "number"
+          ? data.pointsAwarded
+          : 0;
+
+      const studentId =
+        window.localStorage.getItem("student-id") || "";
+
+      const safeStudentId = studentId.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_"
+      );
+
+      const safeVersion =
+        surpriseChallenge.challengeVersion.replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        );
+
+      const answerDocumentId =
+        `${safeVersion}__${safeStudentId}`;
+
+      window.localStorage.setItem(
+        `surprise-challenge-answered-${answerDocumentId}`,
+        "1"
+      );
+
+      setSurpriseChallengeResult(
+        isCorrect ? "correct" : "incorrect"
+      );
+
+      setSurpriseChallengeMessage(
+        typeof data.message === "string" && data.message
+          ? data.message
+          : isCorrect
+            ? "أحسنت! إجابة صحيحة ⚡🌟"
+            : "وصلت إجابتك للمعلم بنجاح 🌟"
+      );
+
+      if (
+        !data.alreadyAnswered &&
+        isCorrect &&
+        pointsAwarded > 0
+      ) {
+        setPoints((currentPoints) =>
+          currentPoints + pointsAwarded
+        );
+      }
+    } catch (error) {
+      console.error(
+        "تعذر إرسال إجابة التحدي المفاجئ:",
+        error
+      );
+
+      setSurpriseChallengeMessage(
+        error instanceof Error && error.message
+          ? error.message
+          : "تعذر إرسال الإجابة الآن، حاول مرة أخرى."
+      );
+    } finally {
+      setSubmittingSurpriseAnswer(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!user) {
       return;
     }
 
@@ -1298,6 +1624,282 @@ try {
         paddingBottom: "50px",
       }}
     >
+      {surpriseChallenge &&
+        !weeklySummary?.shouldShow &&
+        !celebrationNotification && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 13000,
+              background: "rgba(15, 23, 42, 0.72)",
+              backdropFilter: "blur(7px)",
+              display: "grid",
+              placeItems: "center",
+              padding: "18px",
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="لغز البرق"
+              style={{
+                width: "min(560px, 100%)",
+                maxHeight: "92vh",
+                overflowY: "auto",
+                borderRadius: "30px",
+                background:
+                  "linear-gradient(145deg,#fffdf3 0%,#ffffff 48%,#effbf4 100%)",
+                border: "3px solid #ffcf4a",
+                boxShadow:
+                  "0 30px 90px rgba(0,0,0,.32)",
+                padding: "26px 22px",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  top: "14px",
+                  right: "18px",
+                  fontSize: "28px",
+                }}
+              >
+                ✨
+              </div>
+
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  bottom: "16px",
+                  left: "18px",
+                  fontSize: "24px",
+                }}
+              >
+                ⚡
+              </div>
+
+              <div
+                style={{
+                  width: "94px",
+                  height: "94px",
+                  margin: "0 auto 14px",
+                  borderRadius: "28px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "56px",
+                  background:
+                    "linear-gradient(135deg,#fff0a8,#ffd56a)",
+                  border: "2px solid #e5b936",
+                  boxShadow:
+                    "0 12px 28px rgba(180,130,20,.20)",
+                }}
+              >
+                ⚡
+              </div>
+
+              <div
+                style={{
+                  color: "#9a6500",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                  marginBottom: "5px",
+                }}
+              >
+                مفاجأة في أكاديمية لغتي!
+              </div>
+
+              <h2
+                style={{
+                  margin: "0 0 8px",
+                  color: "#176c46",
+                  fontSize: "clamp(27px,6vw,38px)",
+                  lineHeight: 1.35,
+                }}
+              >
+                {surpriseChallenge.title || "لغز البرق"}
+              </h2>
+
+              <p
+                style={{
+                  margin: "0 0 18px",
+                  color: "#647268",
+                  fontWeight: 700,
+                  lineHeight: 1.8,
+                }}
+              >
+                ظهر التحدي الآن… فهل تستطيع حله؟ 🚀
+              </p>
+
+              <div
+                style={{
+                  padding: "19px 17px",
+                  borderRadius: "20px",
+                  background: "#f3fff8",
+                  border: "2px solid #b9e4cc",
+                  color: "#17352a",
+                  fontWeight: 900,
+                  fontSize: "clamp(18px,4vw,23px)",
+                  lineHeight: 1.9,
+                  marginBottom: "17px",
+                }}
+              >
+                {surpriseChallenge.question}
+              </div>
+
+              {surpriseChallengeResult === null ? (
+                <>
+                  <input
+                    value={surpriseAnswer}
+                    onChange={(event) => {
+                      setSurpriseAnswer(event.target.value);
+                      setSurpriseChallengeMessage("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void submitSurpriseChallengeAnswer();
+                      }
+                    }}
+                    disabled={submittingSurpriseAnswer}
+                    placeholder="اكتب إجابتك هنا…"
+                    autoFocus
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      border: "2px solid #d8e5dd",
+                      borderRadius: "17px",
+                      padding: "15px 16px",
+                      fontSize: "17px",
+                      fontWeight: 800,
+                      outline: "none",
+                      textAlign: "right",
+                      background: "#ffffff",
+                    }}
+                  />
+
+                  {surpriseChallenge.points > 0 && (
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        color: "#8a6500",
+                        fontSize: "13px",
+                        fontWeight: 900,
+                      }}
+                    >
+                      ⭐ قيمة التحدي: {surpriseChallenge.points} نقاط
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void submitSurpriseChallengeAnswer()
+                    }
+                    disabled={submittingSurpriseAnswer}
+                    style={{
+                      width: "100%",
+                      marginTop: "16px",
+                      border: "none",
+                      borderRadius: "18px",
+                      padding: "15px 18px",
+                      background:
+                        "linear-gradient(135deg,#ffb703,#fb8500)",
+                      color: "#ffffff",
+                      fontSize: "18px",
+                      fontWeight: 900,
+                      cursor: submittingSurpriseAnswer
+                        ? "default"
+                        : "pointer",
+                      opacity: submittingSurpriseAnswer
+                        ? 0.7
+                        : 1,
+                      boxShadow:
+                        "0 9px 22px rgba(251,133,0,.22)",
+                    }}
+                  >
+                    {submittingSurpriseAnswer
+                      ? "جارٍ إرسال الإجابة…"
+                      : "⚡ أرسل إجابتي"}
+                  </button>
+                </>
+              ) : (
+                <div
+                  style={{
+                    padding: "18px",
+                    borderRadius: "20px",
+                    background:
+                      surpriseChallengeResult === "correct"
+                        ? "#ecfdf5"
+                        : "#fff8e8",
+                    border:
+                      surpriseChallengeResult === "correct"
+                        ? "2px solid #9eddbd"
+                        : "2px solid #f0d28d",
+                    fontWeight: 900,
+                    lineHeight: 1.8,
+                    color:
+                      surpriseChallengeResult === "correct"
+                        ? "#08734b"
+                        : "#8a6200",
+                  }}
+                >
+                  {surpriseChallengeResult === "correct"
+                    ? "🎉 إجابة رائعة يا بطل!"
+                    : "🌟 وصلت إجابتك للمعلم بنجاح."}
+                </div>
+              )}
+
+              {surpriseChallengeMessage && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "11px 13px",
+                    borderRadius: "14px",
+                    background: "#fffbea",
+                    color: "#7b5c00",
+                    fontWeight: 800,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {surpriseChallengeMessage}
+                </div>
+              )}
+
+              {surpriseChallengeResult !== null && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSurpriseChallenge(null);
+                    setSurpriseAnswer("");
+                    setSurpriseChallengeMessage("");
+                    setSurpriseChallengeResult(null);
+                  }}
+                  style={{
+                    width: "100%",
+                    marginTop: "14px",
+                    border: "none",
+                    borderRadius: "17px",
+                    padding: "14px 18px",
+                    background:
+                      "linear-gradient(135deg,#168a63,#0f7654)",
+                    color: "#ffffff",
+                    fontSize: "17px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  أكمل رحلتي 🚀
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
       {weeklySummary?.shouldShow && (
         <div
           style={{
