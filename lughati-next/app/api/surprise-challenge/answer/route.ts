@@ -1,147 +1,626 @@
-import { NextResponse } from "next/server";
-import { getFirebaseAdmin } from "../../../../firebase-admin";
+import {
+  NextResponse,
+} from "next/server";
 
-export const runtime = "nodejs";
+import {
+  FieldValue,
+} from "firebase-admin/firestore";
+
+import {
+  getFirebaseAdmin,
+} from "../../../../firebase-admin";
+
+export const runtime =
+  "nodejs";
 
 const ACTIVE_SURPRISE_CHALLENGE_ID =
   "active-surprise-challenge";
+
+type AnswerPayload = {
+  answer?: string;
+};
 
 async function getStudentFromRequest(
   request: Request
 ) {
   const authorization =
-    request.headers.get("authorization");
+    request.headers.get(
+      "authorization"
+    );
 
   if (
-    !authorization?.startsWith("Bearer ")
+    !authorization?.startsWith(
+      "Bearer "
+    )
   ) {
-    throw new Error("UNAUTHORIZED");
+    throw new Error(
+      "UNAUTHORIZED"
+    );
   }
 
   const token =
     authorization.slice(7);
 
-  const { adminAuth } =
+  const {
+    adminAuth,
+  } =
     getFirebaseAdmin();
 
   const decodedToken =
-    await adminAuth.verifyIdToken(token);
+    await adminAuth.verifyIdToken(
+      token
+    );
 
   if (
-    decodedToken.role !== "student"
+    decodedToken.role !==
+    "student"
   ) {
-    throw new Error("FORBIDDEN");
+    throw new Error(
+      "FORBIDDEN"
+    );
   }
 
-  return decodedToken;
+  const studentDocId =
+    typeof decodedToken.studentDocId ===
+    "string"
+      ? decodedToken.studentDocId.trim()
+      : "";
+
+  if (!studentDocId) {
+    throw new Error(
+      "STUDENT_NOT_FOUND"
+    );
+  }
+
+  return {
+    studentDocId,
+    studentId:
+      typeof decodedToken.studentId ===
+      "string"
+        ? decodedToken.studentId.trim()
+        : "",
+  };
 }
 
-export async function GET(
+function normalizeAnswer(
+  value: string
+) {
+  return value
+    .trim()
+    .toLowerCase()
+
+    // إزالة التطويل
+    .replace(/ـ/g, "")
+
+    // إزالة التشكيل
+    .replace(
+      /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,
+      ""
+    )
+
+    /*
+     * توحيد الهمزات:
+     * أ / إ / آ / ٱ -> ا
+     * ؤ -> و
+     * ئ -> ي
+     */
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+
+    /*
+     * تجاهل علامات الترقيم الشائعة:
+     * الفاصلة العربية والإنجليزية،
+     * النقطة، الفاصلة المنقوطة،
+     * النقطتان، علامات الاستفهام والتعجب،
+     * الأقواس والاقتباسات.
+     */
+    .replace(/[،,.;؛:؟?!¡!…"'«»()[\]{}]/g, " ")
+
+    // توحيد المسافات
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function safeDocumentPart(
+  value: string
+) {
+  return value.replace(
+    /[^a-zA-Z0-9_-]/g,
+    "_"
+  );
+}
+
+export async function POST(
   request: Request
 ) {
   try {
-    await getStudentFromRequest(request);
+    const {
+      studentDocId,
+      studentId:
+        tokenStudentId,
+    } =
+      await getStudentFromRequest(
+        request
+      );
 
-    const { adminDb } =
-      getFirebaseAdmin();
+    const payload =
+      (await request.json()) as
+        AnswerPayload;
 
-    /*
-     * قراءة مستند واحد فقط.
-     * لا نقرأ مجموعة كاملة ولا نستخدم listener.
-     */
-    const snapshot =
-      await adminDb
-        .collection("surpriseChallenges")
-        .doc(
-          ACTIVE_SURPRISE_CHALLENGE_ID
-        )
-        .get();
-
-    if (!snapshot.exists) {
-      return NextResponse.json({
-        success: true,
-        challenge: null,
-      });
-    }
-
-    const data =
-      snapshot.data() ?? {};
-
-    const active =
-      data.active === true;
-
-    const question =
-      typeof data.question === "string"
-        ? data.question.trim()
+    const answer =
+      typeof payload.answer ===
+      "string"
+        ? payload.answer.trim()
         : "";
 
-    if (!active || !question) {
-      return NextResponse.json({
-        success: true,
-        challenge: null,
-      });
+    if (!answer) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "اكتب إجابتك أولًا يا بطل 🌟",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      answer.length > 250
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "الإجابة طويلة جدًا.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const {
+      adminDb,
+    } =
+      getFirebaseAdmin();
+
+    const challengeRef =
+      adminDb
+        .collection(
+          "surpriseChallenges"
+        )
+        .doc(
+          ACTIVE_SURPRISE_CHALLENGE_ID
+        );
+
+    const studentRef =
+      adminDb
+        .collection(
+          "students"
+        )
+        .doc(
+          studentDocId
+        );
+
+    const challengeSnapshot =
+      await challengeRef.get();
+
+    if (
+      !challengeSnapshot.exists
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "لا يوجد تحدٍّ نشط حاليًا.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    const challengeData =
+      challengeSnapshot.data() ??
+      {};
+
+    if (
+      challengeData.active !==
+      true
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "انتهى التحدي.",
+        },
+        {
+          status: 410,
+        }
+      );
     }
 
     const expiresAt =
-      typeof data.expiresAt === "string"
-        ? data.expiresAt
+      typeof challengeData.expiresAt ===
+      "string"
+        ? challengeData.expiresAt
         : "";
 
     if (expiresAt) {
       const expiresTime =
-        new Date(expiresAt).getTime();
+        new Date(
+          expiresAt
+        ).getTime();
 
       if (
-        Number.isFinite(expiresTime) &&
-        Date.now() >= expiresTime
+        Number.isFinite(
+          expiresTime
+        ) &&
+        Date.now() >=
+          expiresTime
       ) {
-        return NextResponse.json({
-          success: true,
-          challenge: null,
-        });
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "انتهى وقت التحدي.",
+          },
+          {
+            status: 410,
+          }
+        );
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    const question =
+      typeof challengeData.question ===
+      "string"
+        ? challengeData.question.trim()
+        : "";
 
-      challenge: {
-        id: snapshot.id,
+    const correctAnswer =
+      typeof challengeData.correctAnswer ===
+      "string"
+        ? challengeData.correctAnswer.trim()
+        : "";
 
-        title:
-          typeof data.title === "string" &&
-          data.title.trim()
-            ? data.title
-            : "لغز البرق",
+    if (
+      !question ||
+      !correctAnswer
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "بيانات التحدي غير مكتملة.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
-        question,
+    const challengeVersion =
+      typeof challengeData.challengeVersion ===
+        "string" &&
+      challengeData.challengeVersion.trim()
+        ? challengeData.challengeVersion.trim()
+        : ACTIVE_SURPRISE_CHALLENGE_ID;
 
-        points:
-          typeof data.points === "number"
-            ? data.points
-            : 0,
+    const points =
+      typeof challengeData.points ===
+      "number" &&
+      Number.isFinite(
+        challengeData.points
+      )
+        ? Math.max(
+            0,
+            Math.trunc(
+              challengeData.points
+            )
+          )
+        : 0;
 
-        targetClassroom:
-          typeof data.targetClassroom ===
-          "string"
-            ? data.targetClassroom
-            : "الجميع",
+    const targetClassroom =
+      typeof challengeData.targetClassroom ===
+      "string"
+        ? challengeData.targetClassroom.trim()
+        : "الجميع";
 
-        active: true,
+    const answerDocumentId =
+      `${safeDocumentPart(
+        challengeVersion
+      )}__${safeDocumentPart(
+        studentDocId
+      )}`;
 
-        expiresAt,
+    const answerRef =
+      adminDb
+        .collection(
+          "surpriseChallengeAnswers"
+        )
+        .doc(
+          answerDocumentId
+        );
 
-        challengeVersion:
-          typeof data.challengeVersion ===
-            "string" &&
-          data.challengeVersion
-            ? data.challengeVersion
-            : snapshot.id,
+    const result =
+      await adminDb.runTransaction(
+        async (
+          transaction
+        ) => {
+          const [
+            freshChallengeSnapshot,
+            studentSnapshot,
+            previousAnswerSnapshot,
+          ] =
+            await Promise.all([
+              transaction.get(
+                challengeRef
+              ),
+
+              transaction.get(
+                studentRef
+              ),
+
+              transaction.get(
+                answerRef
+              ),
+            ]);
+
+          if (
+            !freshChallengeSnapshot.exists
+          ) {
+            throw new Error(
+              "CHALLENGE_NOT_FOUND"
+            );
+          }
+
+          const freshChallengeData =
+            freshChallengeSnapshot.data() ??
+            {};
+
+          if (
+            freshChallengeData.active !==
+            true
+          ) {
+            throw new Error(
+              "CHALLENGE_CLOSED"
+            );
+          }
+
+          const freshVersion =
+            typeof freshChallengeData.challengeVersion ===
+              "string" &&
+            freshChallengeData.challengeVersion.trim()
+              ? freshChallengeData.challengeVersion.trim()
+              : ACTIVE_SURPRISE_CHALLENGE_ID;
+
+          if (
+            freshVersion !==
+            challengeVersion
+          ) {
+            throw new Error(
+              "CHALLENGE_CHANGED"
+            );
+          }
+
+          if (
+            previousAnswerSnapshot.exists
+          ) {
+            const previousData =
+              previousAnswerSnapshot.data() ??
+              {};
+
+            return {
+              alreadyAnswered:
+                true,
+              isCorrect:
+                previousData.isCorrect ===
+                true,
+              pointsAwarded:
+                typeof previousData.pointsAwarded ===
+                "number"
+                  ? previousData.pointsAwarded
+                  : 0,
+              message:
+                "لقد أرسلت إجابتك على هذا التحدي مسبقًا 🌟",
+            };
+          }
+
+          if (
+            !studentSnapshot.exists
+          ) {
+            throw new Error(
+              "STUDENT_NOT_FOUND"
+            );
+          }
+
+          const studentData =
+            studentSnapshot.data() ??
+            {};
+
+          const studentName =
+            typeof studentData.studentName ===
+              "string" &&
+            studentData.studentName.trim()
+              ? studentData.studentName.trim()
+              : "طالب";
+
+          const classroom =
+            typeof studentData.classroom ===
+              "string"
+                ? studentData.classroom.trim()
+                : "";
+
+          if (
+            targetClassroom &&
+            targetClassroom !==
+              "الجميع" &&
+            classroom !==
+              targetClassroom
+          ) {
+            throw new Error(
+              "CLASSROOM_MISMATCH"
+            );
+          }
+
+          const academyStudentId =
+            typeof studentData.studentId ===
+              "string" &&
+            studentData.studentId.trim()
+              ? studentData.studentId.trim()
+              : tokenStudentId ||
+                studentDocId;
+
+          const normalizedStudentAnswer =
+            normalizeAnswer(
+              answer
+            );
+
+          const normalizedCorrectAnswer =
+            normalizeAnswer(
+              correctAnswer
+            );
+
+          const isCorrect =
+            normalizedStudentAnswer ===
+            normalizedCorrectAnswer;
+
+          const pointsAwarded =
+            isCorrect
+              ? points
+              : 0;
+
+          transaction.set(
+            answerRef,
+            {
+              challengeId:
+                ACTIVE_SURPRISE_CHALLENGE_ID,
+              challengeVersion,
+              question,
+              studentId:
+                studentDocId,
+              academyStudentId,
+              studentName,
+              classroom,
+              answer,
+              normalizedAnswer:
+                normalizedStudentAnswer,
+              isCorrect,
+              pointsAwarded,
+              submittedAt:
+                FieldValue.serverTimestamp(),
+            }
+          );
+
+          if (
+            isCorrect &&
+            pointsAwarded > 0
+          ) {
+            const pointsHistoryEntry = {
+              reason:
+                `⚡ لغز البرق: ${question}`,
+              points:
+                pointsAwarded,
+              stars:
+                0,
+              category:
+                "لغز البرق",
+              type:
+                "surpriseChallenge",
+              challengeVersion,
+              createdAt:
+                new Date(),
+            };
+
+            transaction.update(
+              studentRef,
+              {
+                points:
+                  FieldValue.increment(
+                    pointsAwarded
+                  ),
+                "journey.xp":
+                  FieldValue.increment(
+                    pointsAwarded
+                  ),
+                pointsHistory:
+                  FieldValue.arrayUnion(
+                    pointsHistoryEntry
+                  ),
+                updatedAt:
+                  FieldValue.serverTimestamp(),
+              }
+            );
+
+            const pointTransactionRef =
+              adminDb
+                .collection(
+                  "pointTransactions"
+                )
+                .doc();
+
+            transaction.set(
+              pointTransactionRef,
+              {
+                studentId:
+                  studentDocId,
+                academyStudentId,
+                studentName,
+                classroom,
+                points:
+                  pointsAwarded,
+                amount:
+                  pointsAwarded,
+                type:
+                  "surpriseChallenge",
+                source:
+                  "surpriseChallenge",
+                reason:
+                  `إجابة صحيحة في لغز البرق: ${question}`,
+                challengeId:
+                  ACTIVE_SURPRISE_CHALLENGE_ID,
+                challengeVersion,
+                createdAt:
+                  FieldValue.serverTimestamp(),
+              }
+            );
+          }
+
+          return {
+            alreadyAnswered:
+              false,
+            isCorrect,
+            pointsAwarded,
+            message:
+              isCorrect
+                ? pointsAwarded > 0
+                  ? `أحسنت! إجابة صحيحة ⚡ حصلت على ${pointsAwarded} نقطة ⭐`
+                  : "أحسنت! إجابة صحيحة ⚡🌟"
+                : "وصلت إجابتك للمعلم بنجاح 🌟",
+          };
+        }
+      );
+
+    return NextResponse.json(
+      {
+        success: true,
+        ...result,
       },
-    });
+      {
+        status: 200,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
   } catch (error) {
     console.error(
-      "Surprise challenge GET error:",
+      "Surprise challenge answer POST error:",
       error
     );
 
@@ -150,25 +629,87 @@ export async function GET(
         ? error.message
         : "";
 
-    if (message === "UNAUTHORIZED") {
+    if (
+      message ===
+      "UNAUTHORIZED"
+    ) {
       return NextResponse.json(
         {
           success: false,
           message:
-            "غير مصرح بالدخول.",
+            "يجب تسجيل الدخول أولًا.",
         },
-        { status: 401 }
+        {
+          status: 401,
+        }
       );
     }
 
-    if (message === "FORBIDDEN") {
+    if (
+      message ===
+      "FORBIDDEN"
+    ) {
       return NextResponse.json(
         {
           success: false,
           message:
             "هذا المسار مخصص للطلاب.",
         },
-        { status: 403 }
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
+      message ===
+      "STUDENT_NOT_FOUND"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "تعذر العثور على بيانات الطالب.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    if (
+      message ===
+        "CHALLENGE_NOT_FOUND" ||
+      message ===
+        "CHALLENGE_CLOSED" ||
+      message ===
+        "CHALLENGE_CHANGED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "انتهى التحدي أو تم إطلاق تحدٍ جديد.",
+        },
+        {
+          status: 410,
+        }
+      );
+    }
+
+    if (
+      message ===
+      "CLASSROOM_MISMATCH"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "هذا التحدي غير مخصص لفصلك.",
+        },
+        {
+          status: 403,
+        }
       );
     }
 
@@ -176,9 +717,11 @@ export async function GET(
       {
         success: false,
         message:
-          "تعذر تحميل التحدي المفاجئ.",
+          "تعذر إرسال الإجابة الآن، حاول مرة أخرى.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

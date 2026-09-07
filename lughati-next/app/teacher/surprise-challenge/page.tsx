@@ -7,20 +7,7 @@ import {
 
 import Link from "next/link";
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
-
-import { db } from "../../../firebase";
+import { auth } from "../../../firebase";
 
 type SurpriseChallenge = {
   id: string;
@@ -43,9 +30,19 @@ type ChallengeAnswer = {
   classroom: string;
   answer: string;
   isCorrect: boolean;
-  submittedAt?: {
-    toDate?: () => Date;
-  } | null;
+  submittedAt?: string | null;
+};
+
+type TeacherChallengeResponse = {
+  success?: boolean;
+  challenge?: SurpriseChallenge | null;
+  answers?: ChallengeAnswer[];
+  message?: string;
+};
+
+type TeacherChallengeActionResponse = {
+  success?: boolean;
+  message?: string;
 };
 
 const ACTIVE_CHALLENGE_ID =
@@ -85,165 +82,80 @@ export default function SurpriseChallengeTeacherPage() {
   const [message, setMessage] =
     useState("");
 
+  async function getTeacherToken() {
+    const currentUser =
+      auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error(
+        "يجب تسجيل الدخول بحساب المعلم أولًا."
+      );
+    }
+
+    return currentUser.getIdToken();
+  }
+
   async function loadChallenge() {
     setLoading(true);
 
     try {
-      const challengeRef = doc(
-        db,
-        "surpriseChallenges",
-        ACTIVE_CHALLENGE_ID
+      setMessage("");
+
+      const token =
+        await getTeacherToken();
+
+      const response =
+        await fetch(
+          "/api/teacher-surprise-challenge",
+          {
+            method: "GET",
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+      const data =
+        (await response.json()) as
+          TeacherChallengeResponse;
+
+      if (
+        !response.ok ||
+        data.success !== true
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر تحميل التحدي."
+        );
+      }
+
+      setActiveChallenge(
+        data.challenge ?? null
       );
 
-      const snapshot =
-        await getDoc(challengeRef);
-
-      if (!snapshot.exists()) {
-        setActiveChallenge(null);
-        setAnswers([]);
-        return;
-      }
-
-      const data = snapshot.data();
-
-      const challenge: SurpriseChallenge = {
-        id: snapshot.id,
-
-        title:
-          typeof data.title === "string"
-            ? data.title
-            : "لغز البرق",
-
-        question:
-          typeof data.question === "string"
-            ? data.question
-            : "",
-
-        correctAnswer:
-          typeof data.correctAnswer === "string"
-            ? data.correctAnswer
-            : "",
-
-        points:
-          typeof data.points === "number"
-            ? data.points
-            : 3,
-
-        targetClassroom:
-          typeof data.targetClassroom === "string"
-            ? data.targetClassroom
-            : "الجميع",
-
-        durationMinutes:
-          typeof data.durationMinutes === "number"
-            ? data.durationMinutes
-            : 15,
-
-        active:
-          data.active === true,
-
-        createdAt:
-          data.createdAt,
-
-        expiresAt:
-          typeof data.expiresAt === "string"
-            ? data.expiresAt
-            : "",
-      };
-
-      setActiveChallenge(challenge);
-
-      if (challenge.active) {
-        await loadAnswers();
-      } else {
-        setAnswers([]);
-      }
+      setAnswers(
+        Array.isArray(data.answers)
+          ? data.answers
+          : []
+      );
     } catch (error) {
       console.error(
         "تعذر تحميل التحدي:",
         error
       );
 
+      setActiveChallenge(null);
+      setAnswers([]);
+
       setMessage(
-        "تعذر تحميل التحدي."
+        error instanceof Error
+          ? error.message
+          : "تعذر تحميل التحدي."
       );
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function loadAnswers() {
-    try {
-      const answersQuery = query(
-        collection(
-          db,
-          "surpriseChallengeAnswers"
-        ),
-        orderBy("submittedAt", "asc"),
-        limit(100)
-      );
-
-      const snapshot =
-        await getDocs(answersQuery);
-
-      const items =
-        snapshot.docs
-          .map((answerDocument) => {
-            const data =
-              answerDocument.data();
-
-            return {
-              id: answerDocument.id,
-
-              challengeId:
-                typeof data.challengeId ===
-                "string"
-                  ? data.challengeId
-                  : "",
-
-              studentId:
-                typeof data.studentId ===
-                "string"
-                  ? data.studentId
-                  : "",
-
-              studentName:
-                typeof data.studentName ===
-                "string"
-                  ? data.studentName
-                  : "طالب",
-
-              classroom:
-                typeof data.classroom ===
-                "string"
-                  ? data.classroom
-                  : "",
-
-              answer:
-                typeof data.answer ===
-                "string"
-                  ? data.answer
-                  : "",
-
-              isCorrect:
-                data.isCorrect === true,
-
-              submittedAt:
-                data.submittedAt ?? null,
-            } satisfies ChallengeAnswer;
-          })
-          .filter(
-            (answer) =>
-              answer.challengeId ===
-              ACTIVE_CHALLENGE_ID
-          );
-
-      setAnswers(items);
-    } catch (error) {
-      console.error(
-        "تعذر تحميل الإجابات:",
-        error
-      );
     }
   }
 
@@ -268,56 +180,77 @@ export default function SurpriseChallengeTeacherPage() {
       return;
     }
 
+    if (
+      !Number.isInteger(points) ||
+      points < 0 ||
+      points > 20
+    ) {
+      setMessage(
+        "النقاط يجب أن تكون من 0 إلى 20."
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isInteger(durationMinutes) ||
+      durationMinutes < 1 ||
+      durationMinutes > 120
+    ) {
+      setMessage(
+        "مدة التحدي يجب أن تكون من دقيقة إلى 120 دقيقة."
+      );
+
+      return;
+    }
+
     setSaving(true);
     setMessage("");
 
     try {
-      const now = new Date();
+      const token =
+        await getTeacherToken();
 
-      const expiresAt =
-        new Date(
-          now.getTime() +
-            durationMinutes *
-              60 *
-              1000
-        ).toISOString();
+      const response =
+        await fetch(
+          "/api/teacher-surprise-challenge",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              action: "launch",
+              title:
+                title.trim() ||
+                "لغز البرق",
+              question:
+                question.trim(),
+              correctAnswer:
+                correctAnswer.trim(),
+              points,
+              targetClassroom,
+              durationMinutes,
+            }),
+          }
+        );
 
-      await setDoc(
-        doc(
-          db,
-          "surpriseChallenges",
-          ACTIVE_CHALLENGE_ID
-        ),
-        {
-          title:
-            title.trim() ||
-            "لغز البرق",
+      const data =
+        (await response.json()) as
+          TeacherChallengeActionResponse;
 
-          question:
-            question.trim(),
-
-          correctAnswer:
-            correctAnswer
-              .trim()
-              .toLowerCase(),
-
-          points,
-
-          targetClassroom,
-
-          durationMinutes,
-
-          active: true,
-
-          challengeVersion:
-            Date.now().toString(),
-
-          createdAt:
-            serverTimestamp(),
-
-          expiresAt,
-        }
-      );
+      if (
+        !response.ok ||
+        data.success !== true
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر إطلاق التحدي."
+        );
+      }
 
       setMessage(
         "⚡ تم إطلاق التحدي المفاجئ بنجاح!"
@@ -331,7 +264,9 @@ export default function SurpriseChallengeTeacherPage() {
       );
 
       setMessage(
-        "حدث خطأ أثناء إطلاق التحدي."
+        error instanceof Error
+          ? error.message
+          : "حدث خطأ أثناء إطلاق التحدي."
       );
     } finally {
       setSaving(false);
@@ -344,18 +279,41 @@ export default function SurpriseChallengeTeacherPage() {
     }
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "surpriseChallenges",
-          ACTIVE_CHALLENGE_ID
-        ),
-        {
-          active: false,
-          closedAt:
-            serverTimestamp(),
-        }
-      );
+      setMessage("");
+
+      const token =
+        await getTeacherToken();
+
+      const response =
+        await fetch(
+          "/api/teacher-surprise-challenge",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              action: "close",
+            }),
+          }
+        );
+
+      const data =
+        (await response.json()) as
+          TeacherChallengeActionResponse;
+
+      if (
+        !response.ok ||
+        data.success !== true
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر إنهاء التحدي."
+        );
+      }
 
       setMessage(
         "تم إنهاء التحدي."
@@ -369,7 +327,9 @@ export default function SurpriseChallengeTeacherPage() {
       );
 
       setMessage(
-        "تعذر إنهاء التحدي."
+        error instanceof Error
+          ? error.message
+          : "تعذر إنهاء التحدي."
       );
     }
   }
@@ -858,9 +818,11 @@ export default function SurpriseChallengeTeacherPage() {
                       index
                     ) => {
                       const date =
-                        answer
-                          .submittedAt
-                          ?.toDate?.();
+                        answer.submittedAt
+                          ? new Date(
+                              answer.submittedAt
+                            )
+                          : null;
 
                       return (
                         <div
@@ -948,7 +910,10 @@ export default function SurpriseChallengeTeacherPage() {
                             }
                           </div>
 
-                          {date && (
+                          {date &&
+                            !Number.isNaN(
+                              date.getTime()
+                            ) && (
                             <div
                               style={{
                                 fontSize:

@@ -258,6 +258,72 @@ type SurpriseChallenge = {
 const ACTIVE_SURPRISE_CHALLENGE_ID =
   "active-surprise-challenge";
 
+/*
+ * معرّف ثابت للطالب من التوكن أولًا،
+ * ولا نعتمد على localStorage وحده.
+ */
+async function getSurpriseStudentKey(
+  currentUser: User
+) {
+  const tokenResult =
+    await currentUser.getIdTokenResult();
+
+  const studentDocId =
+    typeof tokenResult.claims.studentDocId ===
+    "string"
+      ? tokenResult.claims.studentDocId
+      : "";
+
+  const studentId =
+    typeof tokenResult.claims.studentId ===
+    "string"
+      ? tokenResult.claims.studentId
+      : "";
+
+  const localStudentId =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(
+          "student-id"
+        ) || ""
+      : "";
+
+  return (
+    studentDocId ||
+    studentId ||
+    localStudentId ||
+    currentUser.uid
+  );
+}
+
+/*
+ * بصمة محلية للسؤال نفسه.
+ * تمنع سؤالًا قديمًا من حجب لغز جديد
+ * حتى لو أُعيد استخدام challengeVersion.
+ */
+function getSurpriseLocalVersion(
+  challenge: SurpriseChallenge
+) {
+  const source =
+    `${challenge.challengeVersion}|${challenge.question}`;
+
+  let hash = 0;
+
+  for (
+    let index = 0;
+    index < source.length;
+    index += 1
+  ) {
+    hash =
+      (hash * 31 +
+        source.charCodeAt(index)) >>>
+      0;
+  }
+
+  return `${challenge.challengeVersion}-${hash.toString(
+    36
+  )}`;
+}
+
 
 type WeeklySummary = {
   success: boolean;
@@ -1200,30 +1266,43 @@ try {
 
     const currentUser = user;
     let active = true;
+    let requestInFlight = false;
 
-    async function loadSurpriseChallenge() {
+    async function loadSurpriseChallenge(
+      silent = false
+    ) {
+      if (requestInFlight) {
+        return;
+      }
+
       try {
-        setSurpriseChallengeLoading(true);
-        setSurpriseChallengeMessage("");
-        setSurpriseChallengeResult(null);
+        requestInFlight = true;
 
-        const studentId =
-          window.localStorage.getItem("student-id") || "";
-
-        if (!studentId || studentId === "student-demo") {
-          if (active) {
-            setSurpriseChallenge(null);
-          }
-          return;
+        if (!silent) {
+          setSurpriseChallengeLoading(
+            true
+          );
+          setSurpriseChallengeMessage(
+            ""
+          );
+          setSurpriseChallengeResult(
+            null
+          );
         }
+
+        /*
+         * لا نوقف تحميل اللغز بسبب
+         * عدم وجود student-id محليًا.
+         * التحقق الحقيقي يتم بالتوكن.
+         */
+        const studentKey =
+          await getSurpriseStudentKey(
+            currentUser
+          );
 
         const token =
           await currentUser.getIdToken();
 
-        /*
-         * قراءة واحدة عبر API آمن.
-         * لا توجد قراءة Firestore مباشرة من المتصفح.
-         */
         const response =
           await fetch(
             "/api/surprise-challenge",
@@ -1256,8 +1335,10 @@ try {
 
         const challenge =
           data.challenge &&
-          typeof data.challenge === "object"
-            ? (data.challenge as SurpriseChallenge)
+          typeof data.challenge ===
+            "object"
+            ? (data.challenge as
+                SurpriseChallenge)
             : null;
 
         if (!challenge) {
@@ -1266,13 +1347,18 @@ try {
         }
 
         const safeStudentId =
-          studentId.replace(
+          studentKey.replace(
             /[^a-zA-Z0-9_-]/g,
             "_"
           );
 
+        const localVersion =
+          getSurpriseLocalVersion(
+            challenge
+          );
+
         const safeVersion =
-          challenge.challengeVersion.replace(
+          localVersion.replace(
             /[^a-zA-Z0-9_-]/g,
             "_"
           );
@@ -1284,8 +1370,8 @@ try {
           `surprise-challenge-answered-${answerDocumentId}`;
 
         /*
-         * إذا أجاب من هذا الجهاز سابقًا،
-         * لا نرسل أي طلب إضافي.
+         * إذا أجاب على هذا السؤال نفسه
+         * من هذا الجهاز فلا نعرضه مرة أخرى.
          */
         if (
           window.localStorage.getItem(
@@ -1296,27 +1382,107 @@ try {
           return;
         }
 
-        setSurpriseChallenge(challenge);
+        setSurpriseChallenge(
+          (currentChallenge) =>
+            currentChallenge
+              ?.challengeVersion ===
+                challenge.challengeVersion &&
+            currentChallenge
+              ?.question ===
+                challenge.question
+              ? currentChallenge
+              : challenge
+        );
       } catch (error) {
         console.error(
           "تعذر تحميل التحدي المفاجئ:",
           error
         );
 
-        if (active) {
+        if (
+          active &&
+          !silent
+        ) {
           setSurpriseChallenge(null);
         }
       } finally {
-        if (active) {
-          setSurpriseChallengeLoading(false);
+        requestInFlight = false;
+
+        if (
+          active &&
+          !silent
+        ) {
+          setSurpriseChallengeLoading(
+            false
+          );
         }
       }
     }
 
     void loadSurpriseChallenge();
 
+    /*
+     * إعادة فحص خفيفة كل دقيقة.
+     * بهذا يظهر اللغز للطالب حتى لو
+     * كان فاتح صفحة رحلتي قبل إطلاقه.
+     */
+    const intervalId =
+      window.setInterval(() => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          void loadSurpriseChallenge(
+            true
+          );
+        }
+      }, 60000);
+
+    const handleVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          void loadSurpriseChallenge(
+            true
+          );
+        }
+      };
+
+    const handleWindowFocus =
+      () => {
+        void loadSurpriseChallenge(
+          true
+        );
+      };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    window.addEventListener(
+      "focus",
+      handleWindowFocus
+    );
+
     return () => {
       active = false;
+
+      window.clearInterval(
+        intervalId
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+      window.removeEventListener(
+        "focus",
+        handleWindowFocus
+      );
     };
   }, [user]);
 
@@ -1373,16 +1539,24 @@ try {
           ? data.pointsAwarded
           : 0;
 
-      const studentId =
-        window.localStorage.getItem("student-id") || "";
+      const studentKey =
+        await getSurpriseStudentKey(
+          user
+        );
 
-      const safeStudentId = studentId.replace(
-        /[^a-zA-Z0-9_-]/g,
-        "_"
-      );
+      const safeStudentId =
+        studentKey.replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        );
+
+      const localVersion =
+        getSurpriseLocalVersion(
+          surpriseChallenge
+        );
 
       const safeVersion =
-        surpriseChallenge.challengeVersion.replace(
+        localVersion.replace(
           /[^a-zA-Z0-9_-]/g,
           "_"
         );
