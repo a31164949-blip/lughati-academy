@@ -1,101 +1,198 @@
-import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
-import { getFirebaseAdmin } from "../../../firebase-admin";
+import {
+  NextResponse,
+} from "next/server";
+
+import {
+  FieldValue,
+} from "firebase-admin/firestore";
+
+import {
+  getFirebaseAdmin,
+} from "../../../firebase-admin";
 
 export const runtime = "nodejs";
 
-async function getStudentFromRequest(request: Request) {
+async function getStudentFromRequest(
+  request: Request
+) {
   const authorization =
-    request.headers.get("authorization");
+    request.headers.get(
+      "authorization"
+    );
 
-  if (!authorization?.startsWith("Bearer ")) {
-    throw new Error("UNAUTHORIZED");
+  if (
+    !authorization?.startsWith(
+      "Bearer "
+    )
+  ) {
+    throw new Error(
+      "UNAUTHORIZED"
+    );
   }
 
-  const token = authorization.slice(7);
-  const { adminAuth } = getFirebaseAdmin();
-  const decodedToken =
-    await adminAuth.verifyIdToken(token);
+  const token =
+    authorization.slice(7);
 
-  if (decodedToken.role !== "student") {
-    throw new Error("FORBIDDEN");
+  const {
+    adminAuth,
+  } =
+    getFirebaseAdmin();
+
+  const decodedToken =
+    await adminAuth.verifyIdToken(
+      token
+    );
+
+  if (
+    decodedToken.role !==
+    "student"
+  ) {
+    throw new Error(
+      "FORBIDDEN"
+    );
   }
 
   const studentDocId =
-    typeof decodedToken.studentDocId === "string"
+    typeof decodedToken.studentDocId ===
+    "string"
       ? decodedToken.studentDocId
       : "";
 
   if (!studentDocId) {
-    throw new Error("STUDENT_NOT_FOUND");
+    throw new Error(
+      "STUDENT_NOT_FOUND"
+    );
   }
 
   return studentDocId;
 }
 
-export async function GET(request: Request) {
+export async function GET(
+  request: Request
+) {
   try {
     const studentDocId =
-      await getStudentFromRequest(request);
+      await getStudentFromRequest(
+        request
+      );
 
-    const { adminDb } = getFirebaseAdmin();
+    const {
+      adminDb,
+    } =
+      getFirebaseAdmin();
 
     const snapshot =
       await adminDb
-        .collection("studentNotifications")
-        .where("studentId", "==", studentDocId)
-        .orderBy("createdAt", "desc")
+        .collection(
+          "studentNotifications"
+        )
+        .where(
+          "studentId",
+          "==",
+          studentDocId
+        )
+        .orderBy(
+          "createdAt",
+          "desc"
+        )
         .limit(12)
         .get();
 
     const notifications =
-      snapshot.docs.map((document) => {
-        const data = document.data() ?? {};
-        return {
-          id: document.id,
-          studentId:
-            typeof data.studentId === "string"
-              ? data.studentId
-              : "",
-          title:
-            typeof data.title === "string"
-              ? data.title
-              : "إشعار جديد",
-          message:
-            typeof data.message === "string"
-              ? data.message
-              : "",
-          type:
-            typeof data.type === "string"
-              ? data.type
-              : "",
-          homeworkId:
-            typeof data.homeworkId === "string"
-              ? data.homeworkId
-              : "",
-          href:
-            typeof data.href === "string" && data.href
-              ? data.href
-              : "/homeworks",
-          read: data.read === true,
-          milestoneId:
-            typeof data.milestoneId === "string"
-              ? data.milestoneId
-              : "",
-          badgeTitle:
-            typeof data.badgeTitle === "string"
-              ? data.badgeTitle
-              : "",
-          pointsReached:
-            typeof data.pointsReached === "number"
-              ? data.pointsReached
-              : undefined,
-          createdAt:
-            data.createdAt?.toDate
-              ? data.createdAt.toDate().toISOString()
-              : null,
-        };
-      });
+      snapshot.docs.map(
+        (document) => {
+          const data =
+            document.data() ??
+            {};
+
+          return {
+            id:
+              document.id,
+
+            studentId:
+              typeof data.studentId ===
+              "string"
+                ? data.studentId
+                : "",
+
+            title:
+              typeof data.title ===
+              "string"
+                ? data.title
+                : "إشعار جديد",
+
+            message:
+              typeof data.message ===
+              "string"
+                ? data.message
+                : "",
+
+            type:
+              typeof data.type ===
+              "string"
+                ? data.type
+                : "",
+
+            homeworkId:
+              typeof data.homeworkId ===
+              "string"
+                ? data.homeworkId
+                : "",
+
+            href:
+              typeof data.href ===
+                "string" &&
+              data.href
+                ? data.href
+                : "/homeworks",
+
+            read:
+              data.read ===
+              true,
+
+            opened:
+              data.opened ===
+              true,
+
+            points:
+              typeof data.points ===
+              "number"
+                ? data.points
+                : undefined,
+
+            reason:
+              typeof data.reason ===
+              "string"
+                ? data.reason
+                : "",
+
+            milestoneId:
+              typeof data.milestoneId ===
+              "string"
+                ? data.milestoneId
+                : "",
+
+            badgeTitle:
+              typeof data.badgeTitle ===
+              "string"
+                ? data.badgeTitle
+                : "",
+
+            pointsReached:
+              typeof data.pointsReached ===
+              "number"
+                ? data.pointsReached
+                : undefined,
+
+            createdAt:
+              data.createdAt?.toDate
+                ? data.createdAt
+                    .toDate()
+                    .toISOString()
+                : null,
+          };
+        }
+      );
 
     return NextResponse.json({
       success: true,
@@ -106,64 +203,140 @@ export async function GET(request: Request) {
       "Student notifications GET error:",
       error
     );
+
     return NextResponse.json(
       {
         success: false,
-        message: "تعذر تحميل الإشعارات.",
+        message:
+          "تعذر تحميل الإشعارات.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request
+) {
   try {
     const studentDocId =
-      await getStudentFromRequest(request);
+      await getStudentFromRequest(
+        request
+      );
 
-    const body = await request.json();
+    const body =
+      await request.json();
+
     const notificationId =
-      typeof body?.notificationId === "string"
+      typeof body?.notificationId ===
+      "string"
         ? body.notificationId
         : "";
+
+    const shouldMarkOpened =
+      body?.opened === true;
 
     if (!notificationId) {
       return NextResponse.json(
         {
           success: false,
-          message: "معرف الإشعار غير صحيح.",
+          message:
+            "معرف الإشعار غير صحيح.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    const { adminDb } = getFirebaseAdmin();
+    const {
+      adminDb,
+    } =
+      getFirebaseAdmin();
+
     const notificationRef =
       adminDb
-        .collection("studentNotifications")
-        .doc(notificationId);
+        .collection(
+          "studentNotifications"
+        )
+        .doc(
+          notificationId
+        );
 
     await adminDb.runTransaction(
-      async (transaction) => {
+      async (
+        transaction
+      ) => {
         const snapshot =
-          await transaction.get(notificationRef);
+          await transaction.get(
+            notificationRef
+          );
 
-        if (!snapshot.exists) {
-          throw new Error("NOT_FOUND");
+        if (
+          !snapshot.exists
+        ) {
+          throw new Error(
+            "NOT_FOUND"
+          );
         }
 
-        const data = snapshot.data() ?? {};
+        const data =
+          snapshot.data() ??
+          {};
 
-        if (data.studentId !== studentDocId) {
-          throw new Error("FORBIDDEN");
+        if (
+          data.studentId !==
+          studentDocId
+        ) {
+          throw new Error(
+            "FORBIDDEN"
+          );
         }
 
-        if (data.read === true) return;
+        const updateData:
+          Record<
+            string,
+            unknown
+          > = {};
 
-        transaction.update(notificationRef, {
-          read: true,
-          readAt: FieldValue.serverTimestamp(),
-        });
+        if (
+          data.read !== true
+        ) {
+          updateData.read =
+            true;
+
+          updateData.readAt =
+            FieldValue.serverTimestamp();
+        }
+
+        if (
+          shouldMarkOpened &&
+          data.opened !== true
+        ) {
+          updateData.opened =
+            true;
+
+          updateData.openedAt =
+            FieldValue.serverTimestamp();
+        }
+
+        if (
+          Object.keys(
+            updateData
+          ).length === 0
+        ) {
+          return;
+        }
+
+        updateData.updatedAt =
+          FieldValue.serverTimestamp();
+
+        transaction.update(
+          notificationRef,
+          updateData
+        );
       }
     );
 
@@ -175,12 +348,16 @@ export async function POST(request: Request) {
       "Student notifications POST error:",
       error
     );
+
     return NextResponse.json(
       {
         success: false,
-        message: "تعذر تحديث الإشعار.",
+        message:
+          "تعذر تحديث الإشعار.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

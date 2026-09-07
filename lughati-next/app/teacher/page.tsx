@@ -12,6 +12,12 @@ import { db } from "../../firebase";
 
 const sections = [
   {
+    title: "🎁 إهداء النقاط",
+    description:
+      "إرسال هدية نقاط مباشرة للطالب مع تسجيل السبب وربطها برصيده ومدينة الإنجاز.",
+    href: "/teacher/point-gifts",
+  },
+  {
     title: "📢 إدارة الإعلانات",
     description:
       "إنشاء الإعلانات وتعديلها ونشرها للطلاب.",
@@ -421,6 +427,10 @@ useEffect(() => {
         <div style={styles.grid}>
           {sections.map(
             (section) => {
+              const isPointGift =
+                section.href ===
+                "/teacher/point-gifts";
+
               const isHeroes =
                 section.href ===
                 "/teacher/heroes";
@@ -442,7 +452,12 @@ useEffect(() => {
                 "/teacher/detective-results";
 
               const cardStyle =
-                isHeroes
+                isPointGift
+                  ? {
+                      ...styles.card,
+                      ...styles.pointGiftCard,
+                    }
+                  : isHeroes
                   ? {
                       ...styles.card,
                       ...styles.heroesCard,
@@ -470,7 +485,13 @@ useEffect(() => {
                   : styles.card;
 
               const openStyle =
-                isHeroes
+                isPointGift
+                  ? {
+                      ...styles.open,
+                      color:
+                        "#b45309",
+                    }
+                  : isHeroes
                   ? {
                       ...styles.open,
                       color:
@@ -1018,6 +1039,16 @@ const styles: Record<
       "#174d3b",
     textDecoration:
       "none",
+  },
+
+  /* 🎁 إهداء النقاط */
+  pointGiftCard: {
+    background:
+      "linear-gradient(135deg, #fffaf0 0%, #fff3d6 100%)",
+    border:
+      "2px solid #f4c76b",
+    boxShadow:
+      "0 12px 30px rgba(180, 110, 20, 0.11)",
   },
 
   /* 🌟 أبطال الأكاديمية */

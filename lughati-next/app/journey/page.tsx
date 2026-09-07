@@ -232,6 +232,10 @@ type StudentNotification = {
   badgeTitle?: string;
   pointsReached?: number;
 
+  points?: number;
+  reason?: string;
+  opened?: boolean;
+
   createdAt?: string | null;
 };
 type TikTokConsentRequest = {
@@ -385,6 +389,17 @@ const [
   celebrationNotification,
   setCelebrationNotification,
 ] = useState<StudentNotification | null>(null);
+
+const [
+  giftRevealed,
+  setGiftRevealed,
+] = useState(false);
+
+const [
+  openingGift,
+  setOpeningGift,
+] = useState(false);
+
   const unreadNotificationsCount =
     notifications.filter((notification) => !notification.read).length;
 
@@ -654,6 +669,19 @@ const [
 
         setNotifications(items);
 
+        /*
+         * أولوية العرض:
+         * 1) هدية نقاط لم تُفتح بعد.
+         * 2) إنجاز أكاديمي غير مقروء.
+         */
+        const latestUnopenedGift =
+          items.find(
+            (notification: StudentNotification) =>
+              notification.type ===
+                "teacherGift" &&
+              notification.opened !== true
+          );
+
         const latestUnreadMilestone =
           items.find(
             (notification: StudentNotification) =>
@@ -662,7 +690,13 @@ const [
               !notification.read
           );
 
-        if (latestUnreadMilestone) {
+        if (latestUnopenedGift) {
+          setGiftRevealed(false);
+          setCelebrationNotification(
+            latestUnopenedGift
+          );
+        } else if (latestUnreadMilestone) {
+          setGiftRevealed(false);
           setCelebrationNotification(
             latestUnreadMilestone
           );
@@ -689,6 +723,23 @@ const [
   async function openNotification(
     notification: StudentNotification
   ) {
+    /*
+     * هدية النقاط تفتح داخل الرحلة كبطاقة
+     * ولا تنقل الطالب إلى الواجبات.
+     */
+    if (
+      notification.type ===
+      "teacherGift"
+    ) {
+      setNotificationsOpen(false);
+      setGiftRevealed(true);
+      setCelebrationNotification(
+        notification
+      );
+
+      return;
+    }
+
     try {
       if (!notification.read && user) {
         const token =
@@ -2489,197 +2540,635 @@ try {
       )}
 
     {celebrationNotification && (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      zIndex: 9999,
-      background: "rgba(15, 23, 42, 0.62)",
-      backdropFilter: "blur(5px)",
-      display: "grid",
-      placeItems: "center",
-      padding: "20px",
-    }}
-  >
-    <div
-      style={{
-        width: "min(500px, 100%)",
-        borderRadius: "30px",
-        background:
-          "linear-gradient(145deg,#fffdf3 0%,#ffffff 55%,#f7f1ff 100%)",
-        border: "2px solid #efd77b",
-        boxShadow: "0 26px 70px rgba(0,0,0,.25)",
-        padding: "28px 24px",
-        textAlign: "center",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: "12px",
-          right: "18px",
-          fontSize: "28px",
-        }}
-      >
-        ✨
-      </div>
-
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          bottom: "14px",
-          left: "18px",
-          fontSize: "25px",
-        }}
-      >
-        🎊
-      </div>
-
-      <div
-        style={{
-          width: "92px",
-          height: "92px",
-          margin: "0 auto 16px",
-          borderRadius: "50%",
-          display: "grid",
-          placeItems: "center",
-          fontSize: "54px",
-          background:
-            "linear-gradient(135deg,#fff0a8,#fff8d8)",
-          border: "3px solid #e9c94f",
-          boxShadow:
-            "0 12px 28px rgba(180,140,20,.18)",
-        }}
-      >
-        🏆
-      </div>
-
-      <div
-        style={{
-          color: "#8a6500",
-          fontWeight: 900,
-          fontSize: "14px",
-          marginBottom: "7px",
-        }}
-      >
-        إنجاز تاريخي في أكاديمية لغتي
-      </div>
-
-      <h2
-        style={{
-          margin: "0 0 12px",
-          color: "#174c36",
-          fontSize: "clamp(26px,5vw,36px)",
-          lineHeight: 1.4,
-        }}
-      >
-        أحسنت يا بطل! 🎉
-      </h2>
-
-      <p
-        style={{
-          margin: "0 auto 18px",
-          maxWidth: "420px",
-          color: "#58685f",
-          lineHeight: 1.9,
-          fontSize: "16px",
-          fontWeight: 700,
-        }}
-      >
-        {celebrationNotification.message}
-      </p>
-
-      {celebrationNotification.badgeTitle && (
+      celebrationNotification.type ===
+      "teacherGift" ? (
         <div
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 16px",
-            borderRadius: "999px",
-            background: "#fff4c7",
-            color: "#805b00",
-            fontWeight: 900,
-            marginBottom: "12px",
-            border: "1px solid #ead487",
+            position: "fixed",
+            inset: 0,
+            zIndex: 16000,
+            background:
+              "rgba(15, 23, 42, 0.68)",
+            backdropFilter:
+              "blur(7px)",
+            display: "grid",
+            placeItems: "center",
+            padding: "20px",
           }}
         >
-          🥇 {celebrationNotification.badgeTitle}
-        </div>
-      )}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="هدية من المعلم"
+            style={{
+              width:
+                "min(520px, 100%)",
+              borderRadius: "32px",
+              background:
+                "linear-gradient(145deg,#fffaf0 0%,#ffffff 52%,#f1fff7 100%)",
+              border:
+                "3px solid #f0c94f",
+              boxShadow:
+                "0 30px 90px rgba(0,0,0,.30)",
+              padding:
+                "30px 24px",
+              textAlign: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: "14px",
+                right: "18px",
+                fontSize: "28px",
+              }}
+            >
+              ✨
+            </div>
 
-      {typeof celebrationNotification.pointsReached ===
-        "number" && (
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                bottom: "16px",
+                left: "18px",
+                fontSize: "28px",
+              }}
+            >
+              ⭐
+            </div>
+
+            {!giftRevealed ? (
+              <>
+                <div
+                  style={{
+                    width: "112px",
+                    height: "112px",
+                    margin:
+                      "0 auto 18px",
+                    borderRadius: "30px",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "66px",
+                    background:
+                      "linear-gradient(135deg,#fff1a8,#ffd65d)",
+                    border:
+                      "3px solid #e7b92f",
+                    boxShadow:
+                      "0 16px 34px rgba(180,130,20,.22)",
+                  }}
+                >
+                  🎁
+                </div>
+
+                <div
+                  style={{
+                    color: "#9a6500",
+                    fontWeight: 900,
+                    fontSize: "14px",
+                    marginBottom:
+                      "7px",
+                  }}
+                >
+                  مفاجأة خاصة في أكاديمية لغتي
+                </div>
+
+                <h2
+                  style={{
+                    margin:
+                      "0 0 12px",
+                    color: "#174c36",
+                    fontSize:
+                      "clamp(28px,6vw,38px)",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  لديك هدية من معلمك! 🎉
+                </h2>
+
+                <p
+                  style={{
+                    margin:
+                      "0 auto 20px",
+                    maxWidth: "420px",
+                    color: "#607268",
+                    lineHeight: 1.9,
+                    fontSize: "16px",
+                    fontWeight: 700,
+                  }}
+                >
+                  أحسنت يا بطل، هناك مكافأة
+                  تنتظرك تقديرًا لتميزك.
+                </p>
+
+                <button
+                  type="button"
+                  disabled={openingGift}
+                  onClick={async () => {
+                    if (
+                      openingGift
+                    ) {
+                      return;
+                    }
+
+                    try {
+                      setOpeningGift(
+                        true
+                      );
+
+                      if (user) {
+                        const token =
+                          await user.getIdToken();
+
+                        const response =
+                          await fetch(
+                            "/api/student-notifications",
+                            {
+                              method:
+                                "POST",
+                              headers: {
+                                "Content-Type":
+                                  "application/json",
+                                Authorization:
+                                  `Bearer ${token}`,
+                              },
+                              body: JSON.stringify(
+                                {
+                                  notificationId:
+                                    celebrationNotification.id,
+                                  opened:
+                                    true,
+                                }
+                              ),
+                            }
+                          );
+
+                        const data =
+                          await response.json();
+
+                        if (
+                          !response.ok ||
+                          !data.success
+                        ) {
+                          throw new Error(
+                            data.message ||
+                              "تعذر فتح الهدية."
+                          );
+                        }
+                      }
+
+                      setNotifications(
+                        (
+                          currentItems
+                        ) =>
+                          currentItems.map(
+                            (
+                              item
+                            ) =>
+                              item.id ===
+                              celebrationNotification.id
+                                ? {
+                                    ...item,
+                                    read: true,
+                                    opened:
+                                      true,
+                                  }
+                                : item
+                          )
+                      );
+
+                      setGiftRevealed(
+                        true
+                      );
+                    } catch (error) {
+                      console.error(
+                        "تعذر تسجيل فتح الهدية:",
+                        error
+                      );
+
+                      /*
+                       * نظهر الهدية للطالب حتى لو
+                       * تعذر تسجيل الحالة مؤقتًا.
+                       */
+                      setGiftRevealed(
+                        true
+                      );
+                    } finally {
+                      setOpeningGift(
+                        false
+                      );
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    border: "none",
+                    borderRadius:
+                      "18px",
+                    padding:
+                      "16px 18px",
+                    background:
+                      "linear-gradient(135deg,#f5c934,#e9ad14)",
+                    color: "#513800",
+                    fontSize: "19px",
+                    fontWeight: 900,
+                    cursor:
+                      openingGift
+                        ? "default"
+                        : "pointer",
+                    opacity:
+                      openingGift
+                        ? 0.7
+                        : 1,
+                    boxShadow:
+                      "0 11px 25px rgba(206,152,15,.25)",
+                  }}
+                >
+                  {openingGift
+                    ? "جارٍ فتح الهدية... 🎁"
+                    : "🎁 افتح هديتي"}
+                </button>
+              </>
+            ) : (
+              <>
+                <div
+                  style={{
+                    width: "110px",
+                    height: "110px",
+                    margin:
+                      "0 auto 16px",
+                    borderRadius: "50%",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "58px",
+                    background:
+                      "linear-gradient(135deg,#ecfdf5,#fff4bd)",
+                    border:
+                      "3px solid #b9dfc8",
+                    boxShadow:
+                      "0 14px 32px rgba(22,138,99,.16)",
+                  }}
+                >
+                  🎉
+                </div>
+
+                <div
+                  style={{
+                    color: "#168a63",
+                    fontWeight: 900,
+                    fontSize: "14px",
+                    marginBottom:
+                      "7px",
+                  }}
+                >
+                  تم فتح الهدية بنجاح
+                </div>
+
+                <h2
+                  style={{
+                    margin:
+                      "0 0 12px",
+                    color: "#174c36",
+                    fontSize:
+                      "clamp(29px,6vw,40px)",
+                    lineHeight: 1.35,
+                  }}
+                >
+                  رائع يا بطل! ⭐
+                </h2>
+
+                <div
+                  style={{
+                    width: "fit-content",
+                    margin:
+                      "0 auto 16px",
+                    padding:
+                      "13px 24px",
+                    borderRadius:
+                      "999px",
+                    background:
+                      "#fff4bf",
+                    border:
+                      "2px solid #efd16b",
+                    color: "#805b00",
+                    fontWeight: 900,
+                    fontSize:
+                      "clamp(23px,5vw,31px)",
+                  }}
+                >
+                  +{typeof celebrationNotification.points ===
+                  "number"
+                    ? celebrationNotification.points
+                    : 0}{" "}
+                  نقطة ⭐
+                </div>
+
+                <div
+                  style={{
+                    padding:
+                      "16px 17px",
+                    borderRadius:
+                      "19px",
+                    background:
+                      "#f2fbf7",
+                    border:
+                      "1px solid #cce8da",
+                    color: "#355e4d",
+                    fontWeight: 800,
+                    lineHeight: 1.9,
+                    marginBottom:
+                      "18px",
+                  }}
+                >
+                  <div
+                    style={{
+                      color:
+                        "#168a63",
+                      fontWeight: 900,
+                      marginBottom:
+                        "4px",
+                    }}
+                  >
+                    سبب الهدية
+                  </div>
+
+                  {celebrationNotification.reason ||
+                    celebrationNotification.message ||
+                    "تميزك في أكاديمية لغتي"}
+                </div>
+
+                <p
+                  style={{
+                    margin:
+                      "0 0 18px",
+                    color: "#607268",
+                    fontWeight: 700,
+                    lineHeight: 1.8,
+                  }}
+                >
+                  أضيفت النقاط إلى رصيدك
+                  ومدينة الإنجاز 🏙️
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCelebrationNotification(
+                      null
+                    );
+                    setGiftRevealed(
+                      false
+                    );
+                  }}
+                  style={{
+                    width: "100%",
+                    border: "none",
+                    borderRadius:
+                      "17px",
+                    padding:
+                      "15px 18px",
+                    background:
+                      "linear-gradient(135deg,#168a63,#0f7654)",
+                    color: "#ffffff",
+                    fontSize: "18px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    boxShadow:
+                      "0 8px 18px rgba(22,138,99,.20)",
+                  }}
+                >
+                  رائع! أكمل رحلتي 🚀
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
         <div
           style={{
-            marginBottom: "18px",
-            color: "#6d4bc3",
-            fontWeight: 900,
-            fontSize: "14px",
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background:
+              "rgba(15, 23, 42, 0.62)",
+            backdropFilter:
+              "blur(5px)",
+            display: "grid",
+            placeItems: "center",
+            padding: "20px",
           }}
         >
-          ⭐ وصلت إلى {celebrationNotification.pointsReached} نقطة
-        </div>
-      )}
+          <div
+            style={{
+              width:
+                "min(500px, 100%)",
+              borderRadius: "30px",
+              background:
+                "linear-gradient(145deg,#fffdf3 0%,#ffffff 55%,#f7f1ff 100%)",
+              border:
+                "2px solid #efd77b",
+              boxShadow:
+                "0 26px 70px rgba(0,0,0,.25)",
+              padding: "28px 24px",
+              textAlign: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "18px",
+                fontSize: "28px",
+              }}
+            >
+              ✨
+            </div>
 
-      <button
-        type="button"
-        onClick={async () => {
-          try {
-            if (user) {
-              const token =
-                await user.getIdToken();
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                bottom: "14px",
+                left: "18px",
+                fontSize: "25px",
+              }}
+            >
+              🎊
+            </div>
 
-              await fetch(
-                "/api/student-notifications",
+            <div
+              style={{
+                width: "92px",
+                height: "92px",
+                margin:
+                  "0 auto 16px",
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                fontSize: "54px",
+                background:
+                  "linear-gradient(135deg,#fff0a8,#fff8d8)",
+                border:
+                  "3px solid #e9c94f",
+                boxShadow:
+                  "0 12px 28px rgba(180,140,20,.18)",
+              }}
+            >
+              🏆
+            </div>
+
+            <div
+              style={{
+                color: "#8a6500",
+                fontWeight: 900,
+                fontSize: "14px",
+                marginBottom: "7px",
+              }}
+            >
+              إنجاز تاريخي في أكاديمية لغتي
+            </div>
+
+            <h2
+              style={{
+                margin: "0 0 12px",
+                color: "#174c36",
+                fontSize:
+                  "clamp(26px,5vw,36px)",
+                lineHeight: 1.4,
+              }}
+            >
+              أحسنت يا بطل! 🎉
+            </h2>
+
+            <p
+              style={{
+                margin:
+                  "0 auto 18px",
+                maxWidth: "420px",
+                color: "#58685f",
+                lineHeight: 1.9,
+                fontSize: "16px",
+                fontWeight: 700,
+              }}
+            >
+              {celebrationNotification.message}
+            </p>
+
+            {celebrationNotification.badgeTitle && (
+              <div
+                style={{
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
+                  gap: "8px",
+                  padding:
+                    "10px 16px",
+                  borderRadius:
+                    "999px",
+                  background:
+                    "#fff4c7",
+                  color: "#805b00",
+                  fontWeight: 900,
+                  marginBottom:
+                    "12px",
+                  border:
+                    "1px solid #ead487",
+                }}
+              >
+                🥇{" "}
                 {
-                  method: "POST",
-                  headers: {
-                    "Content-Type":
-                      "application/json",
-                    Authorization:
-                      `Bearer ${token}`,
-                  },
-                  body: JSON.stringify({
-                    notificationId:
-                      celebrationNotification.id,
-                  }),
+                  celebrationNotification.badgeTitle
                 }
-              );
-            }
-          } catch (error) {
-            console.error(
-              "تعذر تسجيل عرض احتفالية الإنجاز:",
-              error
-            );
-          } finally {
-            setCelebrationNotification(null);
-          }
-        }}
-        style={{
-          width: "100%",
-          border: "none",
-          borderRadius: "17px",
-          padding: "15px 18px",
-          background:
-            "linear-gradient(135deg,#168a63,#0f7654)",
-          color: "#ffffff",
-          fontSize: "17px",
-          fontWeight: 900,
-          cursor: "pointer",
-          boxShadow:
-            "0 8px 18px rgba(22,138,99,.20)",
-        }}
-      >
-        رائع! أكمل رحلتي 🚀
-      </button>
-    </div>
-  </div>
-)}
+              </div>
+            )}
+
+            {typeof celebrationNotification.pointsReached ===
+              "number" && (
+              <div
+                style={{
+                  marginBottom:
+                    "18px",
+                  color: "#6d4bc3",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                }}
+              >
+                ⭐ وصلت إلى{" "}
+                {
+                  celebrationNotification.pointsReached
+                }{" "}
+                نقطة
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  if (user) {
+                    const token =
+                      await user.getIdToken();
+
+                    await fetch(
+                      "/api/student-notifications",
+                      {
+                        method:
+                          "POST",
+                        headers: {
+                          "Content-Type":
+                            "application/json",
+                          Authorization:
+                            `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(
+                          {
+                            notificationId:
+                              celebrationNotification.id,
+                          }
+                        ),
+                      }
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    "تعذر تسجيل عرض احتفالية الإنجاز:",
+                    error
+                  );
+                } finally {
+                  setCelebrationNotification(
+                    null
+                  );
+                }
+              }}
+              style={{
+                width: "100%",
+                border: "none",
+                borderRadius:
+                  "17px",
+                padding:
+                  "15px 18px",
+                background:
+                  "linear-gradient(135deg,#168a63,#0f7654)",
+                color: "#ffffff",
+                fontSize: "17px",
+                fontWeight: 900,
+                cursor: "pointer",
+                boxShadow:
+                  "0 8px 18px rgba(22,138,99,.20)",
+              }}
+            >
+              رائع! أكمل رحلتي 🚀
+            </button>
+          </div>
+        </div>
+      )
+    )}
       <header
         style={{
           background:

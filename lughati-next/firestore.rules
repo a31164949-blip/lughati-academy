@@ -1,0 +1,569 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+  function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isTeacher() {
+      return isSignedIn()
+        && request.auth.uid == "ftT1AsqL7sZhdKiULp9oMMrCRnY2";
+    }
+
+    function isStudent() {
+      return isSignedIn()
+        && request.auth.token.role == "student";
+    }
+
+    function isOwnStudentDocument(studentDocId) {
+      return isStudent()
+        && request.auth.token.studentDocId == studentDocId;
+    }
+
+    function isOwnStudentId(studentId) {
+      return isStudent()
+        && request.auth.token.studentId == studentId;
+    }
+
+    match /students/{studentDocId} {
+      allow read: if isTeacher() || isOwnStudentDocument(studentDocId);
+      allow write: if isTeacher();
+    }
+    
+    match /weeklyPicks/{documentId} {
+  allow read: if true;
+  allow write: if isTeacher();
+}
+
+    match /reading-progress/{studentId} {
+  allow read: if isTeacher()
+    || isOwnStudentDocument(studentId)
+    || isOwnStudentId(studentId);
+
+  allow write: if isTeacher();
+}
+    match /announcements/{announcementId} {
+  allow read: if isTeacher()
+    || resource.data.published == true;
+
+  allow write: if isTeacher();
+}
+
+    match /weeklyPlans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher();
+    }
+
+    match /notebookGallery/{entryId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+
+    match /homeworks/{homeworkId} {
+      allow read: if isStudent() || isTeacher();
+      allow write: if isTeacher();
+    }
+
+    match /homeworkCompletions/{completionId} {
+      allow read: if isTeacher()
+        || (
+          isStudent()
+          && resource.data.studentId == request.auth.token.studentDocId
+        );
+allow create: if isTeacher()
+  || (
+    isStudent()
+    && request.resource.data.studentId == request.auth.token.studentDocId
+
+    && request.resource.data.keys().hasOnly([
+      "homeworkId",
+      "homeworkTitle",
+      "studentId",
+      "completionMethod",
+      "solutionUrl",
+      "solutionStatus",
+      "solutionReviewedAt",
+      "solutionRejectedAt",
+      "teacherReviewed",
+      "needsRevision",
+      "teacherNote",
+      "returnedAt",
+      "readingAudioUrl",
+      "readingDurationSeconds",
+      "readingReviewed",
+      "readingStatus",
+      "studentName",
+      "classroom",
+      "status",
+      "completedAt",
+      "updatedAt"
+    ])
+
+    && request.resource.data.teacherReviewed == false
+    && request.resource.data.needsRevision == false
+    && request.resource.data.teacherNote == ""
+    && request.resource.data.solutionReviewedAt == null
+    && request.resource.data.solutionRejectedAt == null
+    && request.resource.data.returnedAt == null
+    && request.resource.data.readingReviewed == false
+    && request.resource.data.status == "completed"
+    && request.resource.data.get("solutionStatus", "pending") == "pending"
+    && request.resource.data.get("readingStatus", "pending") == "pending"
+  );
+allow update: if isTeacher()
+  || (
+    isStudent()
+    && resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      "homeworkId",
+      "homeworkTitle",
+      "completionMethod",
+      "solutionUrl",
+      "solutionStatus",
+      "solutionReviewedAt",
+      "solutionRejectedAt",
+      "teacherReviewed",
+      "needsRevision",
+      "teacherNote",
+      "returnedAt",
+      "readingAudioUrl",
+      "readingDurationSeconds",
+      "readingReviewed",
+      "readingStatus",
+      "studentName",
+      "classroom",
+      "status",
+      "completedAt",
+      "updatedAt"
+    ])
+    && request.resource.data.teacherReviewed == false
+    && request.resource.data.needsRevision == false
+    && request.resource.data.teacherNote == ""
+    && request.resource.data.solutionReviewedAt == null
+    && request.resource.data.solutionRejectedAt == null
+    && request.resource.data.returnedAt == null
+    && request.resource.data.readingReviewed == false
+    && request.resource.data.get("solutionStatus", "pending") == "pending"
+    && request.resource.data.get("readingStatus", "pending") == "pending"
+  );
+
+
+
+      allow delete: if isTeacher();
+    }
+
+    match /dailyReadingRecords/{recordId} {
+      allow read: if isTeacher()
+        || (
+          isStudent()
+          && resource.data.studentId == request.auth.token.studentDocId
+          && resource.data.approved == true
+        );
+
+      allow write: if isTeacher();
+    }
+
+    match /quizResults/{resultId} {
+      allow read: if isTeacher()
+        || (
+          isStudent()
+          && resource.data.studentId == request.auth.token.studentDocId
+        );
+
+      allow update: if isTeacher()
+  || (
+    isStudent()
+    && resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      "parentViewed",
+      "parentViewedAt",
+      "viewedFrom"
+    ])
+    && request.resource.data.parentViewed == true
+    && request.resource.data.viewedFrom in [
+      "student-account",
+      "parent-account"
+    ]
+  );
+
+
+      allow delete: if isTeacher();
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isTeacher()
+        || (
+          isStudent()
+          && resource.data.published == true
+        );
+
+      allow write: if isTeacher();
+    }
+match /reading-submissions/{submissionId} {
+  allow read: if isTeacher();
+
+  allow create: if isStudent()
+    && request.resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.status == "pending";
+
+  allow update, delete: if isTeacher();
+}
+match /diagnosticResponses/{responseId} {
+
+  allow read: if isTeacher()
+    || (
+      isStudent()
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+    );
+
+  allow create: if isStudent()
+    && request.resource.data.studentId
+      == request.auth.token.studentDocId;
+
+  allow update, delete: if isTeacher();
+}
+match /studentCaseStudies/{studentDocId} {
+  allow read: if isTeacher()
+    || isOwnStudentDocument(studentDocId);
+
+  allow create: if isTeacher()
+    || (
+      isOwnStudentDocument(studentDocId)
+      && request.resource.data.studentId == studentDocId
+    );
+
+  allow update: if isTeacher()
+    || (
+      isOwnStudentDocument(studentDocId)
+      && resource.data.studentId == studentDocId
+      && request.resource.data.studentId == studentDocId
+    );
+
+  allow delete: if isTeacher();
+}
+match /dailyCompletions/{completionId} {
+
+  allow get: if isTeacher()
+    || (
+      isStudent()
+      && completionId.matches(
+        request.auth.token.studentDocId + "_.*"
+      )
+    );
+
+  allow list: if isTeacher();
+
+  allow create: if isTeacher()
+    || (
+      isStudent()
+      && request.resource.data.studentId
+        == request.auth.token.studentDocId
+
+      && completionId.matches(
+        request.auth.token.studentDocId + "_.*"
+      )
+
+      && request.resource.data.keys().hasOnly([
+        "studentId",
+        "day",
+        "date",
+        "weekTitle",
+        "completed",
+        "completedAt",
+        "updatedAt"
+      ])
+    );
+
+  allow update: if isTeacher()
+    || (
+      isStudent()
+
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+
+      && request.resource.data.studentId
+        == request.auth.token.studentDocId
+
+      && completionId.matches(
+        request.auth.token.studentDocId + "_.*"
+      )
+
+      && request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly([
+          "day",
+          "date",
+          "weekTitle",
+          "completed",
+          "completedAt",
+          "updatedAt"
+        ])
+    );
+
+  allow delete: if isTeacher();
+}
+match /schoolSchedules/{scheduleId} {
+  allow read: if isSignedIn();
+  allow write: if isTeacher();
+}
+match /smartRecords/{recordId} {
+  allow read, write: if isTeacher();
+}
+match /academyHeroes/{heroId} {
+  allow read: if true;
+  allow write: if isTeacher();
+}
+match /gameSettings/{documentId} {
+  allow read: if true;
+  allow write: if isTeacher();
+}
+match /classDiary/{diaryId} {
+  allow read: if resource.data.isPublished == true;
+  allow create, update, delete: if isTeacher();
+}
+match /studentTeacherMessages/{messageId} {
+
+  allow read: if isTeacher()
+    || (
+      isStudent()
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+    );
+allow create: if isStudent()
+  && request.resource.data.studentId
+    == request.auth.token.studentDocId
+
+  && request.resource.data.message is string
+  && request.resource.data.message.size() > 0
+  && request.resource.data.message.size() <= 800
+
+  && request.resource.data.category in [
+    "lesson",
+    "homework",
+    "help",
+    "other"
+  ]
+
+  && request.resource.data.teacherReply == ""
+  && request.resource.data.status == "new"
+  && request.resource.data.studentViewedReply == false;
+
+  allow update: if isTeacher()
+    || (
+      isStudent()
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+      && request.resource.data.studentId
+        == request.auth.token.studentDocId
+      && request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly([
+          "studentViewedReply",
+          "updatedAt"
+        ])
+    );
+
+  allow delete: if isTeacher();
+}
+match /galleryHighlights/{highlightId} {
+  allow read: if true;
+  allow create, update, delete: if isTeacher();
+}
+match /studentWorks/{workId} {
+
+  allow read: if isTeacher()
+    || (
+      isStudent()
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+    );
+
+  allow create: if isStudent()
+    && request.resource.data.studentId
+      == request.auth.token.studentDocId
+
+    && request.resource.data.status
+      == "pending"
+
+    && request.resource.data.approved
+      == false
+
+    && request.resource.data.publishedToGallery
+      == false
+
+    && request.resource.data.workType in [
+      "image",
+      "audio",
+      "video"
+    ]
+
+    && request.resource.data.title is string
+    && request.resource.data.title.size() > 0
+    && request.resource.data.title.size() <= 120
+
+    && request.resource.data.note is string
+    && request.resource.data.note.size() <= 800
+
+    && request.resource.data.fileUrl is string
+    && request.resource.data.fileUrl.size() > 0
+
+    && request.resource.data.keys().hasOnly([
+      "studentId",
+      "studentName",
+      "classroom",
+      "title",
+      "note",
+      "workType",
+      "fileUrl",
+      "cloudinaryPublicId",
+      "duration",
+      "status",
+      "approved",
+      "publishedToGallery",
+      "createdAt"
+    ]);
+
+  allow update, delete: if isTeacher();
+}
+match /galleryHighlights/{highlightId} {
+  // يمكن قراءة الأعمال المميزة لعرضها في المعرض
+  allow read: if true;
+
+  // الإضافة والتعديل والحذف للمعلم فقط
+  allow create, update, delete: if isTeacher();
+}
+match /gameRecords/{gameId} {
+  // الجميع يستطيع رؤية الرقم القياسي
+  allow read: if true;
+
+  // إنشاء أول رقم قياسي
+  allow create: if
+    request.resource.data.keys().hasOnly([
+      "gameId",
+      "bestTime",
+      "updatedAt"
+    ])
+    && request.resource.data.gameId == gameId
+    && request.resource.data.bestTime is number
+    && request.resource.data.bestTime > 0;
+
+  // لا يسمح بالتحديث إلا إذا كان الزمن الجديد أسرع
+  allow update: if
+    request.resource.data.keys().hasOnly([
+      "gameId",
+      "bestTime",
+      "updatedAt"
+    ])
+    && request.resource.data.gameId == gameId
+    && request.resource.data.bestTime is number
+    && request.resource.data.bestTime > 0
+    && request.resource.data.bestTime < resource.data.bestTime;
+
+  // لا يستطيع الزائر حذف الرقم القياسي
+  allow delete: if isTeacher();
+}
+match /studentNotifications/{notificationId} {
+
+  allow read: if isTeacher()
+    || (
+      isStudent()
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+    );
+
+  allow create: if isTeacher();
+
+  allow update: if isTeacher()
+    || (
+      isStudent()
+
+      && resource.data.studentId
+        == request.auth.token.studentDocId
+
+      && request.resource.data.studentId
+        == request.auth.token.studentDocId
+
+      && request.resource.data
+        .diff(resource.data)
+        .affectedKeys()
+        .hasOnly([
+          "read",
+          "readAt",
+          "updatedAt"
+        ])
+
+      && request.resource.data.read == true
+    );
+
+  allow delete: if isTeacher();
+}
+
+match /academyMilestones/{milestoneId} {
+
+  allow read: if true;
+
+  allow create, update: if isTeacher();
+
+  allow delete: if isTeacher();
+}
+match /weeklyPlanViews/{viewId} {
+  allow read: if isTeacher()
+  || (
+    isStudent()
+    && viewId.matches(
+      '^' + request.auth.token.studentDocId + '_.*$'
+    )
+  );
+
+  allow create: if isStudent()
+    && request.resource.data.studentId == request.auth.token.studentDocId;
+
+  allow update: if isStudent()
+    && resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.studentId == request.auth.token.studentDocId
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      "weekTitle",
+      "lastViewedAt",
+      "viewCount",
+      "updatedAt"
+    ]);
+
+  allow delete: if isTeacher();
+}
+// ⚡ لغز البرق - التحدي المفاجئ
+
+match /surpriseChallenges/{challengeId} {
+
+  // أي طالب مسجل يستطيع قراءة التحدي
+  allow read: if request.auth != null;
+
+  // المعلم فقط يستطيع إنشاء أو تعديل أو إنهاء التحدي
+  allow create, update, delete: if request.auth != null
+    && request.auth.token.email == "a31164949@gmail.com";
+}
+
+
+match /surpriseChallengeAnswers/{answerId} {
+
+  // الطالب المسجل يستطيع إرسال إجابته
+  allow create: if request.auth != null;
+
+  // المعلم يستطيع مشاهدة جميع الإجابات
+  allow read: if request.auth != null
+    && request.auth.token.email == "a31164949@gmail.com";
+
+  // لا نسمح للطالب بتعديل الإجابة بعد إرسالها
+  allow update, delete: if false;
+}
+    match /{document=**} {
+      allow read, write: if isTeacher();
+    }
+  }
+}
