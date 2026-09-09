@@ -184,12 +184,68 @@ export async function POST(request: Request) {
     }
 
     const responseData = await openAIResponse.json();
-    const outputText =
+
+    const directOutputText =
       typeof responseData.output_text === "string"
         ? responseData.output_text
         : "";
 
+    const nestedOutputText = Array.isArray(
+      responseData.output
+    )
+      ? responseData.output
+          .flatMap((item: unknown) => {
+            if (
+              !item ||
+              typeof item !== "object" ||
+              !("content" in item) ||
+              !Array.isArray(
+                (item as { content?: unknown }).content
+              )
+            ) {
+              return [];
+            }
+
+            return (
+              item as {
+                content: Array<{
+                  type?: string;
+                  text?: string;
+                }>;
+              }
+            ).content
+              .filter(
+                (part) =>
+                  part.type === "output_text" &&
+                  typeof part.text === "string"
+              )
+              .map((part) => part.text ?? "");
+          })
+          .join("")
+      : "";
+
+    const outputText =
+      directOutputText || nestedOutputText;
+
     if (!outputText) {
+      console.error(
+        "OpenAI response contained no output text:",
+        JSON.stringify({
+          status: responseData.status,
+          error: responseData.error,
+          incomplete_details:
+            responseData.incomplete_details,
+          outputTypes: Array.isArray(
+            responseData.output
+          )
+            ? responseData.output.map(
+                (item: { type?: string }) =>
+                  item?.type
+              )
+            : [],
+        })
+      );
+
       return NextResponse.json(
         {
           success: false,
