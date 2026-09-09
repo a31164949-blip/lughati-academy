@@ -14,7 +14,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 const NOTEBOOK_CATEGORIES = [
   {
@@ -54,6 +54,32 @@ type StudentOption = {
   id: string;
   name: string;
   classroom: string;
+};
+
+type NotebookAnalysis = {
+  extractedText: string;
+  scores: {
+    handwriting: number;
+    organization: number;
+    spacing: number;
+    cleanliness: number;
+  };
+  corrections: Array<{
+    original: string;
+    suggested: string;
+    reason: string;
+    confidence: number;
+  }>;
+  summary: string;
+  praise: string;
+  suggestedCategory:
+    | "handwriting"
+    | "design"
+    | "care"
+    | "progress";
+  suggestedBadge: string;
+  warnings: string[];
+  needsTeacherReview: boolean;
 };
 
 async function fetchStudents() {
@@ -166,6 +192,18 @@ export default function NotebookGalleryTeacherPage() {
 
   const [publishing, setPublishing] =
     useState(false);
+
+  const [analyzing, setAnalyzing] =
+    useState(false);
+
+  const [analysis, setAnalysis] =
+    useState<NotebookAnalysis | null>(null);
+
+  const [analysisMessage, setAnalysisMessage] =
+    useState("");
+
+  const [uploadedImageUrl, setUploadedImageUrl] =
+    useState("");
 
   const [
     publishMessage,
@@ -413,6 +451,94 @@ export default function NotebookGalleryTeacherPage() {
     return data.secure_url as string;
   }
 
+  async function handleAnalyze() {
+    if (!selectedFile) {
+      setAnalysisMessage(
+        "اختر صورة الدفتر أولًا."
+      );
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      setAnalysisMessage(
+        "يلزم تسجيل الدخول بحساب المعلم."
+      );
+      return;
+    }
+
+    try {
+      setAnalyzing(true);
+      setAnalysisMessage("");
+      setAnalysis(null);
+
+      const imageUrl =
+        uploadedImageUrl ||
+        (await uploadImageToCloudinary(
+          selectedFile
+        ));
+
+      setUploadedImageUrl(imageUrl);
+
+      const token =
+        await currentUser.getIdToken();
+
+      const response = await fetch(
+        "/api/notebook-analysis",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            imageUrl,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          typeof data.message === "string"
+            ? data.message
+            : "تعذر تحليل الدفتر."
+        );
+      }
+
+      const result =
+        data.analysis as NotebookAnalysis;
+
+      setAnalysis(result);
+      setCategory(
+        result.suggestedCategory
+      );
+      setNote(
+        [result.praise, result.summary]
+          .filter(Boolean)
+          .join(" ")
+      );
+      setAnalysisMessage(
+        result.needsTeacherReview
+          ? "اكتمل التحليل، وتوجد نقاط تحتاج مراجعتك قبل النشر."
+          : "اكتمل التحليل. راجع النتيجة ثم انشرها عند اعتمادك."
+      );
+    } catch (error) {
+      console.error(error);
+      setAnalysisMessage(
+        error instanceof Error
+          ? error.message
+          : "تعذر تحليل الدفتر، حاول مرة أخرى."
+      );
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   async function handlePublish() {
     if (
       !studentId ||
@@ -432,9 +558,10 @@ export default function NotebookGalleryTeacherPage() {
       setPublishMessage("");
 
       const imageUrl =
-        await uploadImageToCloudinary(
+        uploadedImageUrl ||
+        (await uploadImageToCloudinary(
           selectedFile
-        );
+        ));
 
       const entryId =
         `notebook-${Date.now()}`;
@@ -466,6 +593,17 @@ export default function NotebookGalleryTeacherPage() {
 
           publishedAt:
             serverTimestamp(),
+
+          automaticAnalysis:
+            analysis
+              ? {
+                  ...analysis,
+                  reviewedByTeacher:
+                    true,
+                  analyzedAt:
+                    new Date().toISOString(),
+                }
+              : null,
         }
       );
 
@@ -480,6 +618,9 @@ export default function NotebookGalleryTeacherPage() {
       setCategory("");
       setNote("");
       setSelectedFile(null);
+      setAnalysis(null);
+      setAnalysisMessage("");
+      setUploadedImageUrl("");
 
       if (previewUrl) {
         URL.revokeObjectURL(
@@ -889,6 +1030,9 @@ export default function NotebookGalleryTeacherPage() {
                   setSelectedFile(
                     file
                   );
+                  setAnalysis(null);
+                  setAnalysisMessage("");
+                  setUploadedImageUrl("");
 
                   if (
                     previewUrl
@@ -954,6 +1098,173 @@ export default function NotebookGalleryTeacherPage() {
               </div>
             )}
           </div>
+
+          {selectedFile && (
+            <section
+              style={{
+                marginTop: 18,
+                padding: 18,
+                borderRadius: 18,
+                border:
+                  "1px solid #cfe4da",
+                background:
+                  "#f3fbf7",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  border: "none",
+                  borderRadius: 14,
+                  background: analyzing
+                    ? "#aabbb4"
+                    : "linear-gradient(135deg, #6f42c1, #4c2a91)",
+                  color: "white",
+                  fontSize: 17,
+                  fontWeight: 900,
+                  cursor: analyzing
+                    ? "wait"
+"
+                    : "pointer",
+                }}
+              >
+                {analyzing
+                  ? "جارٍ قراءة الدفتر وتحليله... ⏳"
+                  : "✨ تحليل وتصحيح الدفتر آليًا"}
+              </button>
+
+              {analysisMessage && (
+                <p
+                  style={{
+                    marginBottom: 0,
+                    color: analysis
+                      ? "#176b4d"
+                      : "#a33a3a",
+                    fontWeight: 800,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {analysisMessage}
+                </p>
+              )}
+
+              {analysis && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "grid",
+                    gap: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: 14,
+                      borderRadius: 14,
+                      background: "white",
+                    }}
+                  >
+                    <strong>
+                      📊 تقييم الدفتر من 10
+                    </strong>
+                    <div
+                      style={{
+                        marginTop: 10,
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(130px, 1fr))",
+                        gap: 8,
+                      }}
+                    >
+                      <span>الخط: {analysis.scores.handwriting}/10</span>
+                      <span>التنظيم: {analysis.scores.organization}/10</span>
+                      <span>المسافات: {analysis.scores.spacing}/10</span>
+                      <span>النظافة: {analysis.scores.cleanliness}/10</span>
+                    </div>
+                  </div>
+
+                  {analysis.extractedText && (
+                    <div
+                      style={{
+                        padding: 14,
+                        borderRadius: 14,
+                        background: "white",
+                        lineHeight: 1.8,
+                      }}
+                    >
+                      <strong>
+                        📝 النص المقروء
+                      </strong>
+                      <div style={{ marginTop: 8 }}>
+                        {analysis.extractedText}
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      padding: 14,
+                      borderRadius: 14,
+                      background: "white",
+                    }}
+                  >
+                    <strong>
+                      🔎 التصحيحات المقترحة
+                    </strong>
+                    {analysis.corrections.length === 0 ? (
+                      <p style={{ marginBottom: 0 }}>
+                        لم تظهر أخطاء مؤكدة.
+                      </p>
+                    ) : (
+                      <ul
+                        style={{
+                          marginBottom: 0,
+                          lineHeight: 1.8,
+                        }}
+                      >
+                        {analysis.corrections.map(
+                          (correction, index) => (
+                            <li key={index}>
+                              <del>
+                                {correction.original}
+                              </del>
+                              {" ← "}
+                              <strong>
+                                {correction.suggested}
+                              </strong>
+                              {" — "}
+                              {correction.reason}
+                              {correction.confidence < 0.8
+                                ? " (تحتاج مراجعة)"
+                                : ""}
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      background: "#fff8df",
+                      color: "#795b09",
+                      fontWeight: 800,
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    ⚠️ التحليل اقتراح مساعد فقط.
+                    راجع النص والتقييم قبل الضغط على
+                    النشر.
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           <button
             type="button"
