@@ -1128,7 +1128,6 @@ export default function NotebookGalleryTeacherPage() {
                   fontWeight: 900,
                   cursor: analyzing
                     ? "wait"
-"
                     : "pointer",
                 }}
               >
