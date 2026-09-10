@@ -25,8 +25,6 @@ const WEIGHTS = {
   weeklyLogin: 1,
 } as const;
 
-const CACHE_TTL_MS = 60 * 60 * 1000;
-
 type RankingItem = {
   rank: number;
   studentId: string;
@@ -53,7 +51,11 @@ type WeeklyEngagementPayload = {
 };
 
 let cachedPayload: WeeklyEngagementPayload | null = null;
-let cachedAt = 0;
+let cachedWeekStart = "";
+
+type SummaryDocument = WeeklyEngagementPayload & {
+  status: "ready";
+};
 
 function getRiyadhDateKey(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -163,6 +165,77 @@ function isInsideWeek(dateKey: string, startDate: string, endDate: string) {
   return Boolean(dateKey && dateKey >= startDate && dateKey <= endDate);
 }
 
+function getInactivePayload(startDate: string, endDate: string) {
+  return {
+    success: true as const,
+    title: "الأكثر تفاعلًا هذا الأسبوع",
+    weekStart: startDate,
+    weekEnd: endDate,
+    weights: WEIGHTS,
+    rankings: [],
+    pointsChampion: null,
+    updatedAt: new Date().toISOString(),
+    displayActive: false,
+  } satisfies WeeklyEngagementPayload;
+}
+
+async function claimSummary(
+  summaryRef: FirebaseFirestore.DocumentReference,
+  now: number
+) {
+  const { adminDb } = getFirebaseAdmin();
+
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(summaryRef);
+    const data = snapshot.data() as
+      | { status?: string; claimExpiresAt?: number }
+      | undefined;
+
+    if (
+      data?.status === "ready" ||
+      (data?.status === "calculating" &&
+        typeof data.claimExpiresAt === "number" &&
+        data.claimExpiresAt > now)
+    ) {
+      return false;
+    }
+
+    transaction.set(
+      summaryRef,
+      {
+        status: "calculating",
+        claimExpiresAt: now + 2 * 60 * 1000,
+        updatedAt: new Date(now).toISOString(),
+      },
+      { merge: true }
+    );
+    return true;
+  });
+}
+
+async function readReadySummary(summaryRef: FirebaseFirestore.DocumentReference) {
+  const snapshot = await summaryRef.get();
+  if (!snapshot.exists) return null;
+
+  const data = snapshot.data() as Partial<SummaryDocument>;
+  if (data.status !== "ready" || data.displayActive !== true) return null;
+
+  return data as WeeklyEngagementPayload;
+}
+
+async function waitForReadySummary(
+  summaryRef: FirebaseFirestore.DocumentReference,
+  attempts = 120
+) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const summary = await readReadySummary(summaryRef);
+    if (summary) return summary;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  return null;
+}
+
 function firstDateKey(data: Record<string, unknown>, fields: string[]) {
   for (const field of fields) {
     const key = toDateKey(data[field]);
@@ -196,23 +269,6 @@ function getPublicStudentName(fullName: string) {
 export async function GET() {
   try {
     const now = Date.now();
-
-    if (
-      cachedPayload &&
-      now - cachedAt < CACHE_TTL_MS
-    ) {
-      return NextResponse.json(
-        cachedPayload,
-        {
-          headers: {
-            "Cache-Control":
-              "public, s-maxage=3600, stale-while-revalidate=300",
-            "X-Engagement-Cache": "HIT",
-          },
-        }
-      );
-    }
-
     const { startDate, endDate } = getWeekRange();
 
     /*
@@ -222,17 +278,7 @@ export async function GET() {
     */
     if (!isTopFiveDisplayWindow()) {
       return NextResponse.json(
-        {
-          success: true,
-          title: "الأكثر تفاعلًا هذا الأسبوع",
-          weekStart: startDate,
-          weekEnd: endDate,
-          weights: WEIGHTS,
-          rankings: [],
-          pointsChampion: null,
-          updatedAt: new Date().toISOString(),
-          displayActive: false,
-        },
+        getInactivePayload(startDate, endDate),
         {
           headers: {
             "Cache-Control":
@@ -243,7 +289,57 @@ export async function GET() {
       );
     }
 
+    if (cachedPayload && cachedWeekStart === startDate) {
+      return NextResponse.json(cachedPayload, {
+        headers: {
+          "Cache-Control":
+            "public, s-maxage=3600, stale-while-revalidate=300",
+          "X-Engagement-Cache": "HIT",
+        },
+      });
+    }
+
     const { adminDb } = getFirebaseAdmin();
+    const summaryRef = adminDb
+      .collection("weeklyEngagementSummaries")
+      .doc(startDate);
+
+    const storedSummary = await readReadySummary(summaryRef);
+    if (storedSummary && storedSummary.weekStart === startDate) {
+      cachedPayload = storedSummary;
+      cachedWeekStart = startDate;
+      return NextResponse.json(storedSummary, {
+        headers: {
+          "Cache-Control":
+            "public, s-maxage=3600, stale-while-revalidate=300",
+          "X-Engagement-Cache": "SUMMARY-HIT",
+        },
+      });
+    }
+
+    const claimed = await claimSummary(summaryRef, now);
+    if (!claimed) {
+      const concurrentSummary = await waitForReadySummary(summaryRef);
+      if (!concurrentSummary || concurrentSummary.weekStart !== startDate) {
+        return NextResponse.json(
+          {
+            ...getInactivePayload(startDate, endDate),
+            message: "جارٍ إعداد الملخص الأسبوعي.",
+          },
+          { status: 503, headers: { "Retry-After": "5" } }
+        );
+      }
+
+      cachedPayload = concurrentSummary;
+      cachedWeekStart = startDate;
+      return NextResponse.json(concurrentSummary, {
+        headers: {
+          "Cache-Control":
+            "public, s-maxage=3600, stale-while-revalidate=300",
+          "X-Engagement-Cache": "SUMMARY-HIT",
+        },
+      });
+    }
 
     const [
       studentsSnapshot,
@@ -470,8 +566,14 @@ export async function GET() {
       displayActive: true,
     };
 
+    await summaryRef.set({
+      ...payload,
+      status: "ready",
+      claimExpiresAt: null,
+    });
+
     cachedPayload = payload;
-    cachedAt = now;
+    cachedWeekStart = startDate;
 
     return NextResponse.json(
       payload,
@@ -485,19 +587,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("تعذر حساب ترتيب التفاعل الأسبوعي:", error);
-
-    if (cachedPayload) {
-      return NextResponse.json(
-        cachedPayload,
-        {
-          headers: {
-            "Cache-Control":
-              "public, s-maxage=3600, stale-while-revalidate=300",
-            "X-Engagement-Cache": "STALE",
-          },
-        }
-      );
-    }
 
     return NextResponse.json(
       {

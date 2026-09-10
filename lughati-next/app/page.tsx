@@ -110,6 +110,8 @@ type PointsChampion = {
 };
 
 type WeeklyEngagementCache = {
+  displayActive: boolean;
+  weekStart: string;
   rankings: Array<{
     rank?: number;
     studentId?: string;
@@ -343,6 +345,42 @@ function writePublicApiCache<T>(key: string, data: T) {
   } catch {
     // التخزين المؤقت اختياري.
   }
+}
+
+function isWeeklyEngagementDisplayActive() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Riyadh",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value])
+  );
+  const minutes =
+    Number(values.hour || 0) * 60 + Number(values.minute || 0);
+
+  if (values.weekday === "Thu") return minutes >= 12 * 60;
+  if (values.weekday === "Fri") return true;
+  if (values.weekday === "Sat") return minutes < 16 * 60;
+  return false;
+}
+
+function getCurrentRiyadhWeekStart() {
+  const dateKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Riyadh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const noonUtc = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const start = new Date(
+    Date.UTC(year, month - 1, day - noonUtc.getUTCDay(), 12, 0, 0)
+  );
+
+  return start.toISOString().slice(0, 10);
 }
 
 const ANNOUNCEMENTS_CACHE_KEY =
@@ -872,7 +910,13 @@ useEffect(() => {
             WEEKLY_ENGAGEMENT_CACHE_KEY
           );
 
-        if (cached) {
+        if (
+  cached &&
+  !Array.isArray(cached) &&
+  cached.displayActive === true &&
+          cached.weekStart === getCurrentRiyadhWeekStart() &&
+          isWeeklyEngagementDisplayActive()
+        ) {
           // دعم الكاش القديم حتى لا يتعطل أي مستخدم لديه نسخة سابقة.
           if (Array.isArray(cached)) {
             applyWeeklyEngagement(
@@ -891,6 +935,8 @@ useEffect(() => {
           }
 
           return;
+        } else if (cached) {
+          sessionStorage.removeItem(WEEKLY_ENGAGEMENT_CACHE_KEY);
         }
       }
 
@@ -914,6 +960,8 @@ useEffect(() => {
           score?: number;
         }>;
         pointsChampion?: PointsChampion | null;
+        displayActive?: boolean;
+        weekStart?: string;
       } = {};
 
       if (responseText.trim()) {
@@ -929,8 +977,13 @@ useEffect(() => {
       if (
         !response.ok ||
         data.success !== true ||
-        !Array.isArray(data.rankings)
+        !Array.isArray(data.rankings) ||
+        data.displayActive !== true
       ) {
+        if (data.displayActive === false) {
+          sessionStorage.removeItem(WEEKLY_ENGAGEMENT_CACHE_KEY);
+          applyWeeklyEngagement([], null);
+        }
         return;
       }
 
@@ -942,6 +995,8 @@ useEffect(() => {
       writePublicApiCache(
         WEEKLY_ENGAGEMENT_CACHE_KEY,
         {
+          displayActive: true,
+          weekStart: data.weekStart || getCurrentRiyadhWeekStart(),
           rankings: data.rankings,
           pointsChampion: champion,
         } satisfies WeeklyEngagementCache
