@@ -9,6 +9,7 @@ import HomeworkReminder from "./components/HomeworkReminder";
 import AcademicJourney from "./components/AcademicJourney";
 import ClassDiary from "./components/ClassDiary";
 import InstallAppButton from "./components/InstallAppButton";
+import ReadingSupportRegistration from "./components/ReadingSupportRegistration";
 type AcademySection = {
   icon: string;
   title: string;
@@ -1938,6 +1939,7 @@ useEffect(() => {
         </a>
       </section>
 
+      <ReadingSupportRegistration />
 
 {/* أبطال الأكاديمية — بطل النقاط وبطل التفاعل وأفضل خمسة */}
 {(pointsChampion || weeklyEngagement.length > 0) && (

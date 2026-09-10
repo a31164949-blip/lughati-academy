@@ -66,6 +66,12 @@ const sections = [
     href: "/teacher/reading-journeys",
   },
   {
+    title: "📚 إدارة حصص التمكين القرائي",
+    description:
+      "مراجعة طلبات الدعم القرائي واختيار طلاب الحصة وتنظيم موعدها.",
+    href: "/teacher/reading-support",
+  },
+  {
   title: "🏔️ قمة الطلاقة",
   description:
     "مراجعة اختبارات ترقية الطلاب واعتماد انتقالهم بين مستويات قمة الطلاقة.",

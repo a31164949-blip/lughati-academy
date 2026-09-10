@@ -6,19 +6,7 @@ import {
   type CSSProperties,
 } from "react";
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
-  type Timestamp,
-} from "firebase/firestore";
-
-import { db } from "../../firebase";
+import { auth } from "../../firebase";
 
 type Homework = {
   id: string;
@@ -27,15 +15,16 @@ type Homework = {
   targetClass: string;
   dueDate: string;
   published: boolean;
-  createdAt?: Timestamp | null;
   resourceUrl?: string;
   attachmentName?: string;
 };
 
 type HomeworkReminderResult = {
+  success: boolean;
   studentName: string;
   homework: Homework | null;
   visible: boolean;
+  message?: string;
 };
 
 export default function HomeworkReminder() {
@@ -51,226 +40,96 @@ export default function HomeworkReminder() {
   const [loading, setLoading] =
     useState(true);
 
-  async function fetchHomeworkReminderData():
-    Promise<HomeworkReminderResult> {
-    const studentId =
-      localStorage.getItem("student-id") ||
-      "";
-
-    const savedStudentName =
-      localStorage.getItem(
-        "student-name"
-      ) || "";
-
-    const classroom =
-      localStorage.getItem(
-        "student-classroom"
-      ) || "";
-
-    if (
-      !studentId ||
-      !savedStudentName ||
-      !classroom
-    ) {
-      return {
-        studentName:
-          savedStudentName,
-
-        homework: null,
-
-        visible: false,
-      };
-    }
-
-    /*
-     * جلب أحدث واجب منشور ومناسب
-     * لفصل الطالب فقط.
-     *
-     * بدل قراءة جميع الواجبات
-     * ثم تصفيتها داخل المتصفح.
-     */
-
-    const targetClasses =
-      classroom === "الفصلان"
-        ? ["الفصلان"]
-        : [
-            "الفصلان",
-            classroom,
-          ];
-
-    const homeworksQuery =
-      query(
-        collection(
-          db,
-          "homeworks"
-        ),
-
-        where(
-          "published",
-          "==",
-          true
-        ),
-
-        where(
-          "targetClass",
-          "in",
-          targetClasses
-        ),
-
-        orderBy(
-          "createdAt",
-          "desc"
-        ),
-
-        limit(1)
-      );
-
-    const homeworksSnapshot =
-      await getDocs(
-        homeworksQuery
-      );
-
-    /*
-     * لا يوجد واجب مناسب.
-     */
-
-    if (
-      homeworksSnapshot.empty
-    ) {
-      return {
-        studentName:
-          savedStudentName,
-
-        homework: null,
-
-        visible: false,
-      };
-    }
-
-    /*
-     * بسبب limit(1)
-     * لدينا أحدث واجب فقط.
-     */
-
-    const homeworkDocument =
-      homeworksSnapshot.docs[0];
-
-    const data =
-      homeworkDocument.data();
-
-    const latestHomework: Homework =
-      {
-        id:
-          homeworkDocument.id,
-
-        title:
-          typeof data.title ===
-          "string"
-            ? data.title
-            : "واجب جديد",
-
-        instructions:
-          typeof data.instructions ===
-          "string"
-            ? data.instructions
-            : "",
-
-        targetClass:
-          typeof data.targetClass ===
-          "string"
-            ? data.targetClass
-            : "الفصلان",
-
-        dueDate:
-          typeof data.dueDate ===
-          "string"
-            ? data.dueDate
-            : "",
-
-        published:
-          data.published === true,
-
-        createdAt:
-          data.createdAt ?? null,
-
-        resourceUrl:
-          typeof data.resourceUrl ===
-          "string"
-            ? data.resourceUrl
-            : "",
-
-        attachmentName:
-          typeof data.attachmentName ===
-          "string"
-            ? data.attachmentName
-            : "",
-      };
-
-    /*
-     * فحص هل الطالب
-     * أنجز هذا الواجب بالفعل.
-     *
-     * هنا نقرأ وثيقة واحدة فقط.
-     */
-
-    const completionId =
-      `${studentId}-${latestHomework.id}`;
-
-    const completionSnapshot =
-      await getDoc(
-        doc(
-          db,
-          "homeworkCompletions",
-          completionId
-        )
-      );
-
-    const alreadyCompleted =
-      completionSnapshot.exists() &&
-      completionSnapshot.data()
-        .completed === true;
-
-    /*
-     * إذا أنجز الطالب الواجب
-     * لا نظهر التذكير.
-     */
-
-    return {
-      studentName:
-        savedStudentName,
-
-      homework:
-        alreadyCompleted
-          ? null
-          : latestHomework,
-
-      visible:
-        !alreadyCompleted,
-    };
-  }
-
   useEffect(() => {
     let active = true;
 
     async function loadReminder() {
       try {
-        const result =
-          await fetchHomeworkReminderData();
+        /*
+         * لا نقرأ Firestore من المتصفح هنا.
+         * نستخدم Firebase Auth فقط للحصول
+         * على ID token ثم يقرأ الخادم
+         * البيانات بواسطة Firebase Admin.
+         */
+        const currentUser =
+          auth.currentUser;
+
+        if (!currentUser) {
+          if (active) {
+            setHomework(null);
+            setVisible(false);
+          }
+          return;
+        }
+
+        const token =
+          await currentUser.getIdToken();
+
+        const response =
+          await fetch(
+            "/api/homework-reminder",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+              cache: "no-store",
+            }
+          );
+
+        const text =
+          await response.text();
+
+        const data =
+          text
+            ? (JSON.parse(
+                text
+              ) as HomeworkReminderResult)
+            : null;
+
+        const studentOnlyMessage =
+          data?.message ===
+          "هذا المسار مخصص للطلاب";
+
+        if (
+          response.status === 401 ||
+          response.status === 403 ||
+          studentOnlyMessage
+        ) {
+          if (active) {
+            setStudentName("");
+            setHomework(null);
+            setVisible(false);
+          }
+          return;
+        }
+
+        if (
+          !response.ok ||
+          !data ||
+          data.success !== true
+        ) {
+          throw new Error(
+            data?.message ||
+              "تعذر تحميل تنبيه الواجب."
+          );
+        }
 
         if (!active) {
           return;
         }
 
         setStudentName(
-          result.studentName
+          data.studentName || ""
         );
 
         setHomework(
-          result.homework
+          data.homework
         );
 
         setVisible(
-          result.visible
+          data.visible === true
         );
       } catch (error) {
         console.error(
