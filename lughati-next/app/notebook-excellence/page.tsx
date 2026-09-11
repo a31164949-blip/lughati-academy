@@ -33,6 +33,26 @@ type ImageQualityResult = {
   notes: string[];
 };
 
+type NotebookAnalysisResult = {
+  suggestedCategory: string;
+  strengths: string[];
+  improvementNote: string;
+  confidence: number;
+};
+
+function getCategoryLabel(value: string) {
+  const labels: Record<string, string> = {
+    handwriting: "خط جميل",
+    formatting: "تنسيق مميز",
+    design: "تنسيق مميز",
+    care: "عناية بالدفتر",
+    improvement: "تطور ملحوظ",
+    progress: "تطور ملحوظ",
+  };
+
+  return labels[value.trim().toLowerCase()] || value;
+}
+
 export default function NotebookExcellencePage() {
   const [student, setStudent] =
     useState<StudentInfo | null>(
@@ -62,6 +82,18 @@ export default function NotebookExcellencePage() {
 
   const [rejectionMessage, setRejectionMessage] =
     useState("");
+
+  const [analysisResult, setAnalysisResult] =
+    useState<NotebookAnalysisResult | null>(null);
+
+  const [analysisToken, setAnalysisToken] =
+    useState("");
+
+  const [analyzedImageUrl, setAnalyzedImageUrl] =
+    useState("");
+
+  const [nominationSent, setNominationSent] =
+    useState(false);
 
   const [imageWidth, setImageWidth] =
     useState(0);
@@ -186,21 +218,6 @@ export default function NotebookExcellencePage() {
       active = false;
     };
   }, []);
-
-  function resetImage() {
-    if (previewUrl) {
-      URL.revokeObjectURL(
-        previewUrl
-      );
-    }
-
-    setSelectedFile(null);
-    setPreviewUrl("");
-    setImageWidth(0);
-    setImageHeight(0);
-    setImageQuality(null);
-    setAnalysisFailed(false);
-  }
 
   function analyzeImageQuality(
     image: HTMLImageElement
@@ -849,6 +866,8 @@ export default function NotebookExcellencePage() {
               JSON.stringify({
                 imageUrl,
 
+                createNomination: false,
+
                 note:
                   note.trim(),
 
@@ -906,6 +925,8 @@ export default function NotebookExcellencePage() {
         retryable?: boolean;
         message?: string;
         nominationId?: string;
+        analysisToken?: string;
+        analysis?: NotebookAnalysisResult;
       } = {};
 
       if (
@@ -938,9 +959,10 @@ export default function NotebookExcellencePage() {
         data.message ||
           "✅ تم إرسال دفترِك بنجاح وهو الآن بانتظار المراجعة. عند اعتماده تحصل على 5 نقاط وتُسجّل لك مرة تميز جديدة ✨"
       );
-
-      resetImage();
-      setNote("");
+      setAnalysisResult(data.analysis || null);
+      setAnalysisToken(data.analysisToken || "");
+      setAnalyzedImageUrl(imageUrl);
+      setNominationSent(false);
       setAnalysisFailed(false);
     } catch (error) {
       setMessage(
@@ -950,6 +972,57 @@ export default function NotebookExcellencePage() {
       );
 
       setAnalysisFailed(retryableFailure);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function sendToNotebookGallery() {
+    if (!student || !analysisToken || !analyzedImageUrl) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error("انتهت جلسة الطالب. سجّل الدخول مرة أخرى.");
+      }
+
+      const idToken = await currentUser.getIdToken(true);
+      const response = await fetch("/api/notebook-analysis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          imageUrl: analyzedImageUrl,
+          note: note.trim(),
+          analysisToken,
+          createNomination: true,
+        }),
+      });
+      const data = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+      };
+
+      if (!response.ok || data.success !== true) {
+        throw new Error(data.message || "تعذر إرسال الصورة للمعلم.");
+      }
+
+      setNominationSent(true);
+      setMessage(
+        data.message || "تم إرسال الصورة للمعلم للمراجعة."
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "تعذر إرسال الصورة للمعلم."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -1545,6 +1618,34 @@ export default function NotebookExcellencePage() {
           }}
           />
 
+          {analysisResult && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 16,
+                borderRadius: 16,
+                background: "#f1f8ff",
+                border: "1px solid #cfe3f5",
+                color: "#24516f",
+                lineHeight: 1.8,
+              }}
+            >
+              <strong>نتيجة تحليل كتابتي</strong>
+              <div>
+                التصنيف المقترح: {getCategoryLabel(analysisResult.suggestedCategory)}
+              </div>
+              {analysisResult.strengths.length > 0 && (
+                <div>نقاط القوة: {analysisResult.strengths.join("، ")}</div>
+              )}
+              {analysisResult.improvementNote && (
+                <div>ملاحظة التطوير: {analysisResult.improvementNote}</div>
+              )}
+              <div>
+                درجة الثقة: {Math.round(analysisResult.confidence * 100)}%
+              </div>
+            </div>
+          )}
+
           {message && (
             <div
               style={{
@@ -1606,6 +1707,28 @@ export default function NotebookExcellencePage() {
             </button>
           )}
 
+          {analysisResult && analysisToken && !nominationSent && (
+            <button
+              type="button"
+              onClick={sendToNotebookGallery}
+              disabled={submitting}
+              style={{
+                width: "100%",
+                marginTop: 12,
+                padding: "14px 16px",
+                border: "1px solid #168a63",
+                borderRadius: 15,
+                background: "#eaf8f2",
+                color: "#126b4d",
+                fontWeight: 900,
+                fontSize: 16,
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              📒 إرسال إلى جماليات الدفاتر للمعلم
+            </button>
+          )}
+
           <button
             type="button"
             onClick={
@@ -1651,8 +1774,8 @@ export default function NotebookExcellencePage() {
             }}
           >
             {submitting
-              ? "جارٍ إرسال الدفتر..."
-              : "📤 إرسال الدفتر للتميز"}
+              ? "جارٍ تحليل الصفحة..."
+              : "✍️ حلّل كتابتي"}
           </button>
         </section>
       </div>

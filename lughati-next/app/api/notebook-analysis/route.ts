@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
 
@@ -23,6 +24,14 @@ type NotebookAnalysisPayload = {
   imageUrl?: string;
   note?: string;
   autoCheck?: Record<string, unknown>;
+  createNomination?: boolean;
+  analysisToken?: string;
+};
+
+type SignedAnalysis = {
+  imageUrl: string;
+  note: string;
+  analysis: NotebookAnalysis;
 };
 
 type ResponsesApiData = {
@@ -284,6 +293,45 @@ async function analyzeNotebookImage(imageUrl: string): Promise<NotebookAnalysis>
   }
 }
 
+function signAnalysis(value: SignedAnalysis) {
+  const encoded = Buffer.from(JSON.stringify(value)).toString("base64url");
+  const signature = createHmac("sha256", process.env.OPENAI_API_KEY || "")
+    .update(encoded)
+    .digest("base64url");
+
+  return `${encoded}.${signature}`;
+}
+
+function verifyAnalysis(token: string): SignedAnalysis | null {
+  const [encoded, signature] = token.split(".");
+  const signingKey = process.env.OPENAI_API_KEY || "";
+
+  if (!encoded || !signature || !signingKey) {
+    return null;
+  }
+
+  const expectedSignature = createHmac("sha256", signingKey)
+    .update(encoded)
+    .digest("base64url");
+
+  if (
+    signature.length !== expectedSignature.length ||
+    !timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
+  ) {
+    return null;
+  }
+
+  try {
+    const value = JSON.parse(
+      Buffer.from(encoded, "base64url").toString("utf8")
+    ) as SignedAnalysis;
+
+    return value.analysis?.isNotebookPage ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { studentDocId } = await getStudentFromRequest(request);
@@ -329,6 +377,9 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as NotebookAnalysisPayload;
     const imageUrl = typeof payload.imageUrl === "string" ? payload.imageUrl.trim() : "";
     const note = typeof payload.note === "string" ? payload.note.trim() : "";
+    const signedAnalysis = payload.analysisToken
+      ? verifyAnalysis(payload.analysisToken)
+      : null;
 
     if (!imageUrl.startsWith("https://")) {
       return NextResponse.json(
@@ -362,7 +413,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const analysis = await analyzeNotebookImage(imageUrl);
+    if (payload.analysisToken && !signedAnalysis) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "انتهت نتيجة التحليل. أعد تحليل الصورة نفسها.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const analysis = signedAnalysis
+      ? signedAnalysis.analysis
+      : await analyzeNotebookImage(imageUrl);
+
+    if (
+      signedAnalysis &&
+      (signedAnalysis.imageUrl !== imageUrl || signedAnalysis.note !== note)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "انتهت نتيجة التحليل. أعد تحليل الصورة نفسها.",
+        },
+        { status: 409 },
+      );
+    }
 
     if (!analysis.isNotebookPage) {
       return NextResponse.json(
@@ -376,6 +452,15 @@ export async function POST(request: Request) {
         },
         { status: 422 },
       );
+    }
+
+    if (payload.createNomination !== true) {
+      return NextResponse.json({
+        success: true,
+        analysis,
+        analysisToken: signAnalysis({ imageUrl, note, analysis }),
+        message: "تم تحليل الصورة. يمكنك اختيار إرسالها للمعلم للمراجعة.",
+      });
     }
 
     const nominationRef = await adminDb.collection("notebookNominations").add({

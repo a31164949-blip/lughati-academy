@@ -111,6 +111,13 @@ const journeyCards = [
     background: "#fff3e8",
   },
   {
+    icon: "✍️",
+    title: "حلّل كتابتي",
+    description: "احصل على ملاحظات تربوية عن صفحة دفترك",
+    href: "/notebook-excellence",
+    background: "#eef8ff",
+  },
+  {
     icon: "📤",
     title: "ارفع عملي",
     description:
@@ -2162,9 +2169,8 @@ try {
         )}
 
       {surpriseChallenge &&
-        !weeklySummary?.shouldShow &&
-        !tiktokConsentRequest &&
-        !celebrationNotification && (
+  !tiktokConsentRequest &&
+  !celebrationNotification && (
           <div
             style={{
               position: "fixed",
@@ -2438,7 +2444,8 @@ try {
           </div>
         )}
 
-      {weeklySummary?.shouldShow && (
+      {weeklySummary?.shouldShow &&
+  !surpriseChallenge && (
         <div
           style={{
             position: "fixed",
