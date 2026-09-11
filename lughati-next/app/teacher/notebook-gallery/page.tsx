@@ -12,9 +12,13 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import {
+  auth,
+  db,
+} from "../../../firebase";
 
 const NOTEBOOK_CATEGORIES = [
   {
@@ -23,7 +27,7 @@ const NOTEBOOK_CATEGORIES = [
     icon: "✍️",
   },
   {
-    id: "design",
+    id: "formatting",
     label: "تنسيق مميز",
     icon: "🎨",
   },
@@ -33,11 +37,43 @@ const NOTEBOOK_CATEGORIES = [
     icon: "📒",
   },
   {
-    id: "progress",
+    id: "improvement",
     label: "تطور ملحوظ",
     icon: "🌱",
   },
 ];
+
+function mapNotebookCategory(value: unknown) {
+  const normalized =
+    typeof value === "string"
+      ? value.trim().toLowerCase()
+      : "";
+
+  const categoryMap: Record<string, string> = {
+    handwriting: "handwriting",
+    "خط جميل": "handwriting",
+    design: "formatting",
+    formatting: "formatting",
+    "تنسيق مميز": "formatting",
+    care: "care",
+    "عناية بالدفتر": "care",
+    progress: "improvement",
+    improvement: "improvement",
+    "تطور ملحوظ": "improvement",
+  };
+
+  return categoryMap[normalized] || "";
+}
+
+function getNotebookCategoryLabel(value: unknown) {
+  const categoryId = mapNotebookCategory(value);
+
+  return (
+    NOTEBOOK_CATEGORIES.find(
+      (category) => category.id === categoryId
+    )?.label || "غير محدد"
+  );
+}
 
 type NotebookItem = {
   id: string;
@@ -55,6 +91,33 @@ type StudentOption = {
   name: string;
   classroom: string;
 };
+
+type NotebookNomination = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  classroom: string;
+  imageUrl: string;
+  note: string;
+  status: string;
+  rewardPoints: number;
+  analysis: {
+    suggestedCategory: string;
+    strengths: string[];
+    improvementNote: string;
+    confidence: number;
+  } | null;
+};
+
+function getSelectedNominationCategory(
+  nomination: NotebookNomination,
+  manualSelections: Record<string, string>
+) {
+  return mapNotebookCategory(
+    manualSelections[nomination.id] ||
+      nomination.analysis?.suggestedCategory
+  );
+}
 
 async function fetchStudents() {
   const snapshot = await getDocs(
@@ -116,9 +179,7 @@ async function fetchNotebookItems() {
             : "طالب",
 
         category:
-          typeof data.category === "string"
-            ? data.category
-            : "",
+          mapNotebookCategory(data.category),
 
         note:
           typeof data.note === "string"
@@ -139,6 +200,107 @@ async function fetchNotebookItems() {
           data.isPublished !== false,
       };
     });
+
+  return loadedItems;
+}
+
+async function fetchPendingNotebookNominations() {
+  const nominationsQuery = query(
+    collection(
+      db,
+      "notebookNominations"
+    ),
+    where(
+      "status",
+      "==",
+      "pending"
+    )
+  );
+
+  const snapshot =
+    await getDocs(
+      nominationsQuery
+    );
+
+  const loadedItems:
+    NotebookNomination[] =
+      snapshot.docs.map(
+        (documentSnapshot) => {
+          const data =
+            documentSnapshot.data();
+
+          return {
+            id:
+              documentSnapshot.id,
+
+            studentId:
+              typeof data.studentId ===
+              "string"
+                ? data.studentId
+                : "",
+
+            studentName:
+              typeof data.studentName ===
+              "string"
+                ? data.studentName
+                : "طالب",
+
+            classroom:
+              typeof data.classroom ===
+              "string"
+                ? data.classroom
+                : "",
+
+            imageUrl:
+              typeof data.imageUrl ===
+              "string"
+                ? data.imageUrl
+                : "",
+
+            note:
+              typeof data.note ===
+              "string"
+                ? data.note
+                : "",
+
+            status:
+              typeof data.status ===
+              "string"
+                ? data.status
+                : "pending",
+
+            rewardPoints:
+              typeof data.rewardPoints ===
+              "number"
+                ? data.rewardPoints
+                : 5,
+
+            analysis:
+              data.analysis &&
+              typeof data.analysis === "object"
+                ? {
+                    suggestedCategory:
+                      typeof data.analysis.suggestedCategory === "string"
+                        ? data.analysis.suggestedCategory
+                        : "",
+                    strengths: Array.isArray(data.analysis.strengths)
+                      ? data.analysis.strengths.filter(
+                          (item: unknown): item is string => typeof item === "string"
+                        )
+                      : [],
+                    improvementNote:
+                      typeof data.analysis.improvementNote === "string"
+                        ? data.analysis.improvementNote
+                        : "",
+                    confidence:
+                      typeof data.analysis.confidence === "number"
+                        ? data.analysis.confidence
+                        : 0,
+                  }
+                : null,
+          };
+        }
+      );
 
   return loadedItems;
 }
@@ -190,6 +352,98 @@ export default function NotebookGalleryTeacherPage() {
 
   const [updatingId, setUpdatingId] =
     useState<string | null>(null);
+
+  const [
+    nominations,
+    setNominations,
+  ] =
+    useState<
+      NotebookNomination[]
+    >([]);
+
+  const [
+    nominationsLoading,
+    setNominationsLoading,
+  ] =
+    useState(true);
+
+  const [
+    approvingId,
+    setApprovingId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    rejectionOpen,
+    setRejectionOpen,
+  ] = useState<Record<string, boolean>>({});
+
+  const [
+    rejectionReasons,
+    setRejectionReasons,
+  ] = useState<Record<string, string>>({});
+
+  const [
+    nominationCategories,
+    setNominationCategories,
+  ] =
+    useState<
+      Record<string, string>
+    >({});
+
+  const [
+    nominationNotes,
+    setNominationNotes,
+  ] =
+    useState<
+      Record<string, string>
+    >({});
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadNominations() {
+      try {
+        setNominationsLoading(
+          true
+        );
+
+        const loaded =
+          await fetchPendingNotebookNominations();
+
+        if (active) {
+          setNominations(
+            loaded
+          );
+        }
+      } catch (error) {
+        console.error(
+          "تعذر تحميل ترشيحات الدفاتر:",
+          error
+        );
+
+        if (active) {
+          setNominations(
+            []
+          );
+        }
+      } finally {
+        if (active) {
+          setNominationsLoading(
+            false
+          );
+        }
+      }
+    }
+
+    void loadNominations();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -282,6 +536,250 @@ export default function NotebookGalleryTeacherPage() {
       active = false;
     };
   }, []);
+
+  async function approveNotebookNomination(
+    nomination: NotebookNomination
+  ) {
+    const selectedCategory = getSelectedNominationCategory(
+      nomination,
+      nominationCategories
+    );
+
+    if (!selectedCategory) {
+      window.alert(
+        "اختر تصنيف التميز أولًا."
+      );
+      return;
+    }
+
+    try {
+      setApprovingId(
+        nomination.id
+      );
+
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "يرجى تسجيل دخول المعلم مرة أخرى."
+        );
+      }
+
+      const idToken =
+        await currentUser.getIdToken(
+          true
+        );
+
+      const response =
+        await fetch(
+          "/api/notebook-excellence/approve",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+
+            body:
+              JSON.stringify({
+                nominationId:
+                  nomination.id,
+
+                category:
+                  selectedCategory,
+
+                teacherNote:
+                  nominationNotes[
+                    nomination.id
+                  ] || "",
+              }),
+          }
+        );
+
+      const responseText =
+        await response.text();
+
+      let data: {
+        success?: boolean;
+        message?: string;
+      } = {};
+
+      if (responseText) {
+        try {
+          data =
+            JSON.parse(
+              responseText
+            );
+        } catch {
+          throw new Error(
+            "وصل رد غير متوقع من الخادم."
+          );
+        }
+      }
+
+      if (
+        !response.ok ||
+        data.success !== true
+      ) {
+        throw new Error(
+          data.message ||
+            "تعذر اعتماد الدفتر."
+        );
+      }
+
+      setNominations(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.id !==
+              nomination.id
+          )
+      );
+
+      setNominationCategories(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          delete next[
+            nomination.id
+          ];
+
+          return next;
+        }
+      );
+
+      setNominationNotes(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          delete next[
+            nomination.id
+          ];
+
+          return next;
+        }
+      );
+
+      await loadNotebookItems();
+
+      window.alert(
+        data.message ||
+          "✅ تم اعتماد الدفتر ومنح 5 نقاط."
+      );
+    } catch (error) {
+      console.error(
+        "تعذر اعتماد ترشيح الدفتر:",
+        error
+      );
+
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "تعذر اعتماد الدفتر."
+      );
+    } finally {
+      setApprovingId(
+        null
+      );
+    }
+  }
+
+  async function rejectNotebookNomination(
+    nomination: NotebookNomination
+  ) {
+    const confirmed = window.confirm(
+      "هل تريد رفض هذا الترشيح؟ يمكن للطالب إرسال محاولة جديدة لاحقًا."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setApprovingId(nomination.id);
+
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "يرجى تسجيل دخول المعلم مرة أخرى."
+        );
+      }
+
+      const idToken = await currentUser.getIdToken(true);
+      const response = await fetch(
+        "/api/notebook-excellence/approve",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            action: "reject",
+            nominationId: nomination.id,
+            rejectionReason:
+              rejectionReasons[nomination.id] || "",
+          }),
+        }
+      );
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+      };
+
+      if (!response.ok || data.success !== true) {
+        throw new Error(
+          data.message || "تعذر رفض الترشيح."
+        );
+      }
+
+      setNominations((current) =>
+        current.filter(
+          (item) => item.id !== nomination.id
+        )
+      );
+
+      setRejectionOpen((current) => {
+        const next = { ...current };
+        delete next[nomination.id];
+        return next;
+      });
+
+      setRejectionReasons((current) => {
+        const next = { ...current };
+        delete next[nomination.id];
+        return next;
+      });
+
+      window.alert(
+        data.message || "تم رفض الترشيح."
+      );
+    } catch (error) {
+      console.error(
+        "تعذر رفض ترشيح الدفتر:",
+        error
+      );
+
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "تعذر رفض الترشيح."
+      );
+    } finally {
+      setApprovingId(null);
+    }
+  }
 
   async function togglePublished(
     item: NotebookItem
@@ -451,10 +949,8 @@ export default function NotebookGalleryTeacherPage() {
           studentName:
             studentName.trim(),
 
-          category,
-
-          note:
-            note.trim(),
+          category:
+            mapNotebookCategory(category),
 
           imageUrl,
 
@@ -574,6 +1070,603 @@ export default function NotebookGalleryTeacherPage() {
             وحسن التنظيم، والعناية بالدفتر،
             والتطور الملحوظ.
           </p>
+        </section>
+
+        <section
+          style={{
+            background:
+              "white",
+            borderRadius: 28,
+            padding: 24,
+            boxShadow:
+              "0 10px 30px rgba(0,0,0,0.06)",
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              display:
+                "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "center",
+              gap: 12,
+              flexWrap:
+                "wrap",
+              marginBottom: 18,
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+              }}
+            >
+              📥 ترشيحات الطلاب بانتظار الاعتماد
+            </h2>
+
+            <span
+              style={{
+                padding:
+                  "7px 12px",
+                borderRadius:
+                  999,
+                background:
+                  "#fff8df",
+                color:
+                  "#896300",
+                fontWeight:
+                  900,
+              }}
+            >
+              {nominations.length} ترشيح
+            </span>
+          </div>
+
+          {nominationsLoading ? (
+            <div
+              style={{
+                textAlign:
+                  "center",
+                padding: 26,
+                color:
+                  "#6f8179",
+              }}
+            >
+              ⏳ جارٍ تحميل الترشيحات...
+            </div>
+          ) : nominations.length ===
+            0 ? (
+            <div
+              style={{
+                textAlign:
+                  "center",
+                padding: 26,
+                color:
+                  "#6f8179",
+                border:
+                  "1px dashed #d9e5df",
+                borderRadius:
+                  18,
+                background:
+                  "#fbfdfc",
+              }}
+            >
+              🎉 لا توجد ترشيحات معلقة حاليًا.
+            </div>
+          ) : (
+            <div
+              style={{
+                display:
+                  "grid",
+                gap: 18,
+              }}
+            >
+              {nominations.map(
+                (nomination) => (
+                  <article
+                    key={
+                      nomination.id
+                    }
+                    style={{
+                      border:
+                        "1px solid #ead7a3",
+                      borderRadius:
+                        22,
+                      overflow:
+                        "hidden",
+                      background:
+                        "#fffdf8",
+                    }}
+                  >
+                    {nomination.imageUrl && (
+                      <img
+                        src={
+                          nomination.imageUrl
+                        }
+                        alt={
+                          nomination.studentName
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          maxHeight:
+                            420,
+                          objectFit:
+                            "contain",
+                          display:
+                            "block",
+                          background:
+                            "#f8faf9",
+                        }}
+                      />
+                    )}
+
+                    <div
+                      style={{
+                        padding:
+                          18,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display:
+                            "flex",
+                          justifyContent:
+                            "space-between",
+                          alignItems:
+                            "flex-start",
+                          gap: 12,
+                          flexWrap:
+                            "wrap",
+                        }}
+                      >
+                        <div>
+                          <strong
+                            style={{
+                              display:
+                                "block",
+                              fontSize:
+                                20,
+                              color:
+                                "#174c3b",
+                            }}
+                          >
+                            {
+                              nomination.studentName
+                            }
+                          </strong>
+
+                          <div
+                            style={{
+                              marginTop:
+                                5,
+                              color:
+                                "#74867e",
+                              fontWeight:
+                                700,
+                            }}
+                          >
+                            {nomination.classroom ||
+                              "الفصل غير محدد"}
+                          </div>
+                        </div>
+
+                        <span
+                          style={{
+                            padding:
+                              "7px 11px",
+                            borderRadius:
+                              999,
+                            background:
+                              "#eef9f4",
+                            color:
+                              "#168a63",
+                            fontWeight:
+                              900,
+                            fontSize:
+                              13,
+                          }}
+                        >
+                          ⭐ عند الاعتماد: +{nomination.rewardPoints} نقاط
+                        </span>
+                      </div>
+
+                      {nomination.note && (
+                        <div
+                          style={{
+                            marginTop:
+                              14,
+                            padding:
+                              "12px 14px",
+                            borderRadius:
+                              14,
+                            background:
+                              "#f8faf9",
+                            color:
+                              "#5f746b",
+                            lineHeight:
+                              1.8,
+                          }}
+                        >
+                          ✍️ ملاحظة الطالب:{" "}
+                          {nomination.note}
+                        </div>
+                      )}
+
+                      {nomination.analysis && (
+                        <div
+                          style={{
+                            marginTop: 14,
+                            padding: "14px 16px",
+                            borderRadius: 14,
+                            background: "#f1f8ff",
+                            border: "1px solid #cfe3f5",
+                            color: "#24516f",
+                            lineHeight: 1.8,
+                          }}
+                        >
+                          <strong>اقتراح التقييم الإلكتروني</strong>
+                          <div>
+                            التصنيف المقترح: {getNotebookCategoryLabel(nomination.analysis.suggestedCategory)}
+                          </div>
+                          {nomination.analysis.strengths.length > 0 && (
+                            <div>
+                              نقاط القوة: {nomination.analysis.strengths.join("، ")}
+                            </div>
+                          )}
+                          {nomination.analysis.improvementNote && (
+                            <div>
+                              ملاحظة التطوير: {nomination.analysis.improvementNote}
+                            </div>
+                          )}
+                          <div>
+                            درجة الثقة: {Math.round(nomination.analysis.confidence * 100)}%
+                          </div>
+                          <small>
+                            هذا اقتراح مساعد فقط، وقرار التصنيف والاعتماد للمعلم.
+                          </small>
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          marginTop:
+                            18,
+                          fontWeight:
+                            900,
+                        }}
+                      >
+                        اختر تصنيف التميز
+                      </div>
+
+                      <div
+                        style={{
+                          display:
+                            "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(130px, 1fr))",
+                          gap: 10,
+                          marginTop:
+                            10,
+                        }}
+                      >
+                        {NOTEBOOK_CATEGORIES.map(
+                          (
+                            categoryItem
+                          ) => {
+                            const selected =
+                              getSelectedNominationCategory(
+                                nomination,
+                                nominationCategories
+                              ) === categoryItem.id;
+
+                            return (
+                              <button
+                                key={
+                                  categoryItem.id
+                                }
+                                type="button"
+                                onClick={() =>
+                                  setNominationCategories(
+                                    (
+                                      current
+                                    ) => ({
+                                      ...current,
+                                      [nomination.id]:
+                                        categoryItem.id,
+                                    })
+                                  )
+                                }
+                                style={{
+                                  padding:
+                                    "13px 9px",
+                                  borderRadius:
+                                    14,
+                                  border:
+                                    selected
+                                      ? "2px solid #168a63"
+                                      : "1px solid #e7d7a5",
+                                  background:
+                                    selected
+                                      ? "#eaf8f2"
+                                      : "#fffdf7",
+                                  fontWeight:
+                                    800,
+                                  cursor:
+                                    "pointer",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize:
+                                      24,
+                                    marginBottom:
+                                      5,
+                                  }}
+                                >
+                                  {
+                                    categoryItem.icon
+                                  }
+                                </div>
+
+                                {
+                                  categoryItem.label
+                                }
+
+                                {selected && (
+                                  <div
+                                    style={{
+                                      marginTop: 6,
+                                      color: "#168a63",
+                                      fontSize: 12,
+                                      fontWeight: 900,
+                                    }}
+                                  >
+                                    ✓ محدد
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+
+                      <textarea
+                        value={
+                          nominationNotes[
+                            nomination.id
+                          ] || ""
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setNominationNotes(
+                            (
+                              current
+                            ) => ({
+                              ...current,
+                              [nomination.id]:
+                                event.target.value,
+                            })
+                          )
+                        }
+                        placeholder="كلمة من المعلم - اختيارية"
+                        rows={3}
+                        style={{
+                          width:
+                            "100%",
+                          boxSizing:
+                            "border-box",
+                          marginTop:
+                            14,
+                          padding:
+                            13,
+                          borderRadius:
+                            14,
+                          border:
+                            "1px solid #d8e6df",
+                          resize:
+                            "vertical",
+                          fontFamily:
+                            "inherit",
+                          fontSize:
+                            15,
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          approveNotebookNomination(
+                            nomination
+                          )
+                        }
+                        disabled={
+                          approvingId ===
+                            nomination.id ||
+                          !getSelectedNominationCategory(
+                            nomination,
+                            nominationCategories
+                          )
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          marginTop:
+                            14,
+                          padding:
+                            "14px 16px",
+                          border:
+                            "none",
+                          borderRadius:
+                            15,
+                          background:
+                            approvingId ===
+                              nomination.id ||
+                            !getSelectedNominationCategory(
+                              nomination,
+                              nominationCategories
+                            )
+                              ? "#b9c9c2"
+                              : "linear-gradient(135deg, #168a63, #0f7654)",
+                          color:
+                            "white",
+                          fontWeight:
+                            900,
+                          fontSize:
+                            17,
+                          cursor:
+                            approvingId ===
+                              nomination.id ||
+                            !getSelectedNominationCategory(
+                              nomination,
+                              nominationCategories
+                            )
+                              ? "not-allowed"
+                              : "pointer",
+                        }}
+                      >
+                        {approvingId ===
+                        nomination.id
+                          ? "جارٍ الاعتماد... ⏳"
+                          : "✅ اعتماد التميز + 5 نقاط"}
+                      </button>
+
+                      {!rejectionOpen[nomination.id] && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRejectionOpen((current) => ({
+                              ...current,
+                              [nomination.id]: true,
+                            }))
+                          }
+                          disabled={approvingId === nomination.id}
+                          style={{
+                            width: "100%",
+                            marginTop: 10,
+                            padding: "12px 16px",
+                            border: "1px solid #e2a5a5",
+                            borderRadius: 15,
+                            background: "#fff4f4",
+                            color: "#b42318",
+                            fontWeight: 900,
+                            fontSize: 16,
+                            cursor:
+                              approvingId === nomination.id
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          رفض الترشيح
+                        </button>
+                      )}
+
+                      {rejectionOpen[nomination.id] && (
+                        <div
+                          style={{
+                            marginTop: 12,
+                            padding: 14,
+                            borderRadius: 15,
+                            background: "#fff7f7",
+                            border: "1px solid #f0caca",
+                          }}
+                        >
+                          <label
+                            htmlFor={`rejection-${nomination.id}`}
+                            style={{
+                              display: "block",
+                              color: "#8f211b",
+                              fontWeight: 900,
+                            }}
+                          >
+                            سبب مختصر للرفض (اختياري)
+                          </label>
+                          <input
+                            id={`rejection-${nomination.id}`}
+                            value={
+                              rejectionReasons[nomination.id] || ""
+                            }
+                            onChange={(event) =>
+                              setRejectionReasons((current) => ({
+                                ...current,
+                                [nomination.id]: event.target.value,
+                              }))
+                            }
+                            maxLength={240}
+                            placeholder="مثال: نحتاج صورة لصفحة الدفتر نفسها."
+                            style={{
+                              width: "100%",
+                              boxSizing: "border-box",
+                              marginTop: 8,
+                              padding: "11px 12px",
+                              borderRadius: 12,
+                              border: "1px solid #e2bcbc",
+                              fontFamily: "inherit",
+                              fontSize: 15,
+                            }}
+                          />
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              marginTop: 10,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                rejectNotebookNomination(nomination)
+                              }
+                              disabled={approvingId === nomination.id}
+                              style={{
+                                flex: 1,
+                                padding: "11px 12px",
+                                border: "none",
+                                borderRadius: 12,
+                                background: "#c0392b",
+                                color: "#fff",
+                                fontWeight: 900,
+                                cursor:
+                                  approvingId === nomination.id
+                                    ? "not-allowed"
+                                    : "pointer",
+                              }}
+                            >
+                              {approvingId === nomination.id
+                                ? "جارٍ الرفض..."
+                                : "تأكيد الرفض"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRejectionOpen((current) => ({
+                                  ...current,
+                                  [nomination.id]: false,
+                                }))
+                              }
+                              disabled={approvingId === nomination.id}
+                              style={{
+                                padding: "11px 14px",
+                                border: "1px solid #d8d8d8",
+                                borderRadius: 12,
+                                background: "#fff",
+                                color: "#5f6663",
+                                fontWeight: 800,
+                              }}
+                            >
+                              إلغاء
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                )
+              )}
+            </div>
+          )}
         </section>
 
         <section
