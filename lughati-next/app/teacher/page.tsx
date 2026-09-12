@@ -173,6 +173,12 @@ const sections = [
       "إضافة المقاطع الطلابية المختارة واعتمادها ونشرها في الواجهة الرئيسية.",
     href: "/teacher/tiktok-showcase",
   },
+  {
+    title: "🎯 نتائج تحديد المستوى القرائي",
+    description:
+      "عرض أحدث نتيجة محفوظة لكل طالب ومتابعة المهارات التي تحتاج إلى تمكين.",
+    href: "/teacher/reading-level-results",
+  },
 ];
 
 export default function TeacherDashboardPage() {

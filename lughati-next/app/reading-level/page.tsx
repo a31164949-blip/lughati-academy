@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { auth } from "../../firebase";
 
 type Question = {
   id: string;
@@ -115,7 +116,13 @@ export default function ReadingLevelPage() {
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [checked, setChecked] = useState(false);
   const [answerResults, setAnswerResults] = useState<Record<string, boolean>>({});
+  const [answerValues, setAnswerValues] = useState<Record<string, string>>({});
+  const [finalResults, setFinalResults] = useState<Record<string, boolean>>({});
+  const [finalAnswerValues, setFinalAnswerValues] = useState<Record<string, string>>({});
+  const [finalSubmissionId, setFinalSubmissionId] = useState("");
   const [finished, setFinished] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
 
   const currentQuestion = questions[questionIndex];
   const progress = Math.round(((questionIndex + (checked ? 1 : 0)) / questions.length) * 100);
@@ -131,17 +138,28 @@ export default function ReadingLevelPage() {
       ...current,
       [currentQuestion.id]: selectedAnswer === currentQuestion.answer,
     }));
+    setAnswerValues((current) => ({
+      ...current,
+      [currentQuestion.id]: selectedAnswer,
+    }));
     setChecked(true);
   }
 
   function nextQuestion() {
     if (!checked) return;
+    const completeResults = {
+      ...answerResults,
+      [currentQuestion.id]: selectedAnswer === currentQuestion.answer,
+    };
+    const completeAnswerValues = {
+      ...answerValues,
+      [currentQuestion.id]: selectedAnswer,
+    };
     if (questionIndex === questions.length - 1) {
+      setFinalResults(completeResults);
+      setFinalAnswerValues(completeAnswerValues);
+      setFinalSubmissionId(`reading-level-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       setFinished(true);
-      window.localStorage.setItem(
-        "lughati-reading-level-last-result",
-        JSON.stringify({ results: answerResults, total: questions.length })
-      );
       return;
     }
     setQuestionIndex((current) => current + 1);
@@ -154,15 +172,45 @@ export default function ReadingLevelPage() {
     setSelectedAnswer("");
     setChecked(false);
     setAnswerResults({});
+    setAnswerValues({});
+    setFinalResults({});
+    setFinalAnswerValues({});
+    setFinalSubmissionId("");
     setFinished(false);
-    window.localStorage.removeItem("lughati-reading-level-last-result");
+    setSubmitMessage("");
+  }
+
+  async function submitResult() {
+    if (submitting || Object.keys(finalAnswerValues).length !== questions.length) return;
+
+    try {
+      setSubmitting(true);
+      setSubmitMessage("");
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("يجب تسجيل الدخول بحساب الطالب أولًا.");
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/reading-level/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          answers: questions.map((question) => finalAnswerValues[question.id] ?? ""),
+          submissionId: finalSubmissionId,
+        }),
+      });
+      const data = (await response.json()) as { success?: boolean; message?: string };
+      if (!response.ok || data.success !== true) throw new Error(data.message || "تعذر إرسال النتيجة.");
+      setSubmitMessage("تم إرسال النتيجة إلى المعلم بنجاح ✅");
+    } catch (error) {
+      setSubmitMessage(error instanceof Error ? error.message : "تعذر إرسال النتيجة.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (finished) {
-    const finalResults = {
-      ...answerResults,
-      [currentQuestion.id]: selectedAnswer === currentQuestion.answer,
-    };
     const finalScore = Object.values(finalResults).filter(Boolean).length;
     const skillSummaries = skillNames.map((skill) => {
       const skillQuestions = questions.filter((question) => question.skill === skill);
@@ -205,11 +253,15 @@ export default function ReadingLevelPage() {
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 }}>
               <button type="button" onClick={restart} style={primaryButtonStyle}>🔄 إعادة الاختبار</button>
+              <button type="button" onClick={() => void submitResult()} disabled={submitting || Boolean(submitMessage.includes("بنجاح"))} style={{ ...primaryButtonStyle, opacity: submitting || submitMessage.includes("بنجاح") ? 0.65 : 1 }}>
+                {submitting ? "جارٍ الإرسال..." : submitMessage.includes("بنجاح") ? "تم الإرسال ✅" : "إرسال النتيجة للمعلم"}
+              </button>
               <Link href={finalResult.title === "قارئ متميز" ? "/reading" : "/support"} style={secondaryButtonStyle}>
                 {finalResult.title === "قارئ متميز" ? "📚 الركن الإثرائي" : "🌱 حصص التمكين"}
               </Link>
               <Link href="/" style={secondaryButtonStyle}>العودة إلى الرئيسية</Link>
             </div>
+            {submitMessage && <p style={{ ...feedbackStyle, marginTop: 14, color: submitMessage.includes("بنجاح") ? "#087f5b" : "#a14b16", background: submitMessage.includes("بنجاح") ? "#ecfdf5" : "#fff5e9" }}>{submitMessage}</p>}
           </section>
         </div>
       </main>
