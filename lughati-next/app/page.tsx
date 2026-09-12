@@ -214,6 +214,14 @@ const sections: AcademySection[] = [
     className: "gold-card",
   },
   {
+    icon: "🏆",
+    title: "تحدّي الأكاديمية",
+    description:
+      "تحديات إثرائية في الفهم والمفردات وترتيب الأحداث للقراء المتميزين",
+    href: "/academy-challenge",
+    className: "gold-card",
+  },
+  {
     icon: "🎮",
     title: "الألعاب التعليمية",
     description:

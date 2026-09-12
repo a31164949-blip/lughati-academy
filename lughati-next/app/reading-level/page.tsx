@@ -60,6 +60,9 @@ const skillNames = [
   "الفهم القرائي",
 ];
 
+const READING_LEVEL_RESULT_KEY =
+  "lughati-reading-level-last-result";
+
 function getResultProfile(skillSummaries: SkillSummary[]): ResultProfile {
   const masteredSkills = skillSummaries.filter(
     (summary) => summary.status === "متقن"
@@ -159,6 +162,30 @@ export default function ReadingLevelPage() {
       setFinalResults(completeResults);
       setFinalAnswerValues(completeAnswerValues);
       setFinalSubmissionId(`reading-level-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+      const skillSummaries = skillNames.map((skill) => {
+        const skillQuestions = questions.filter((question) => question.skill === skill);
+        const correct = skillQuestions.filter((question) => completeResults[question.id] === true).length;
+
+        return {
+          skill,
+          icon: skillQuestions[0]?.icon ?? "📚",
+          correct,
+          status: correct === skillQuestions.length ? "متقن" : "يحتاج تدريبًا",
+        } as SkillSummary;
+      });
+      const masteredSkills = skillSummaries.filter((summary) => summary.status === "متقن").length;
+      const resultProfile = getResultProfile(skillSummaries);
+
+      window.localStorage.setItem(
+        READING_LEVEL_RESULT_KEY,
+        JSON.stringify({
+          level: resultProfile.title,
+          masteredSkills,
+          totalSkills: skillSummaries.length,
+          completedAt: new Date().toISOString(),
+        })
+      );
       setFinished(true);
       return;
     }
@@ -178,6 +205,7 @@ export default function ReadingLevelPage() {
     setFinalSubmissionId("");
     setFinished(false);
     setSubmitMessage("");
+    window.localStorage.removeItem(READING_LEVEL_RESULT_KEY);
   }
 
   async function submitResult() {
@@ -256,8 +284,8 @@ export default function ReadingLevelPage() {
               <button type="button" onClick={() => void submitResult()} disabled={submitting || Boolean(submitMessage.includes("بنجاح"))} style={{ ...primaryButtonStyle, opacity: submitting || submitMessage.includes("بنجاح") ? 0.65 : 1 }}>
                 {submitting ? "جارٍ الإرسال..." : submitMessage.includes("بنجاح") ? "تم الإرسال ✅" : "إرسال النتيجة للمعلم"}
               </button>
-              <Link href={finalResult.title === "قارئ متميز" ? "/reading" : "/support"} style={secondaryButtonStyle}>
-                {finalResult.title === "قارئ متميز" ? "📚 الركن الإثرائي" : "🌱 حصص التمكين"}
+              <Link href={finalResult.title === "قارئ متميز" ? "/academy-challenge" : "/support"} style={secondaryButtonStyle}>
+                {finalResult.title === "قارئ متميز" ? "🏆 تحدّي الأكاديمية" : "🌱 حصص التمكين"}
               </Link>
               <Link href="/" style={secondaryButtonStyle}>العودة إلى الرئيسية</Link>
             </div>
