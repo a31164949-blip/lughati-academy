@@ -327,6 +327,10 @@ match /classDiary/{diaryId} {
   allow read: if resource.data.isPublished == true;
   allow create, update, delete: if isTeacher();
 }
+match /tiktokShowcase/{itemId} {
+  allow read: if resource.data.published == true;
+  allow create, update, delete: if isTeacher();
+}
 match /studentTeacherMessages/{messageId} {
 
   allow read: if isTeacher()

@@ -10,6 +10,7 @@ import AcademicJourney from "./components/AcademicJourney";
 import ClassDiary from "./components/ClassDiary";
 import InstallAppButton from "./components/InstallAppButton";
 import ReadingSupportRegistration from "./components/ReadingSupportRegistration";
+import TikTokShowcase from "./components/TikTokShowcase";
 type AcademySection = {
   icon: string;
   title: string;
@@ -3700,6 +3701,8 @@ useEffect(() => {
       <WeeklyGames />
 
       <WeeklyPicks />
+
+      <TikTokShowcase />
 
       {/* بوابات الأكاديمية */}
 

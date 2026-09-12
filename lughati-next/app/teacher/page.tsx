@@ -167,6 +167,12 @@ const sections = [
       "إدارة ونشر صور الدفاتر المميزة وتصنيفها وعرضها في معرض الطلاب.",
     href: "/teacher/notebook-gallery",
   },
+  {
+    title: "🎬 ركن أكاديمية لغتي على تيك توك",
+    description:
+      "إضافة المقاطع الطلابية المختارة واعتمادها ونشرها في الواجهة الرئيسية.",
+    href: "/teacher/tiktok-showcase",
+  },
 ];
 
 export default function TeacherDashboardPage() {
