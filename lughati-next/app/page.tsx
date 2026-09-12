@@ -206,6 +206,14 @@ const sections: AcademySection[] = [
     className: "purple-card",
   },
   {
+    icon: "🎯",
+    title: "تحديد المستوى القرائي",
+    description:
+      "اختبار قصير يعرفك بمهاراتك القرائية ويقترح خطوتك التالية",
+    href: "/reading-level",
+    className: "gold-card",
+  },
+  {
     icon: "🎮",
     title: "الألعاب التعليمية",
     description:
