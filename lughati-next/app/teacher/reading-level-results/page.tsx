@@ -36,6 +36,7 @@ export default function TeacherReadingLevelResultsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
+  const [deletingStudentId, setDeletingStudentId] = useState("");
   const [classroomFilter, setClassroomFilter] = useState("الكل");
   const [levelFilter, setLevelFilter] = useState("الكل");
 
@@ -86,6 +87,43 @@ export default function TeacherReadingLevelResultsPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  async function deleteResult(result: ResultItem) {
+    const confirmed = window.confirm(
+      `سيتم حذف نتيجة تحديد المستوى للطالب «${result.studentName}» فقط.\n\nلن يتم حذف الطالب أو أي من بياناته الأخرى. هل تريد المتابعة؟`
+    );
+
+    if (!confirmed || deletingStudentId) return;
+
+    try {
+      setDeletingStudentId(result.studentDocId);
+      setMessage("");
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("يجب تسجيل الدخول بحساب المعلم.");
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/teacher/reading-level-results", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ studentDocId: result.studentDocId }),
+      });
+      const data = (await response.json()) as { success?: boolean; message?: string };
+      if (!response.ok || data.success !== true) {
+        throw new Error(data.message || "تعذر حذف النتيجة.");
+      }
+
+      setResults((current) =>
+        current.filter((item) => item.studentDocId !== result.studentDocId)
+      );
+      setMessage(`تم حذف نتيجة الطالب «${result.studentName}» فقط بنجاح.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "تعذر حذف النتيجة.");
+    } finally {
+      setDeletingStudentId("");
+    }
+  }
+
   return (
     <main dir="rtl" style={pageStyle}>
       <div style={contentStyle}>
@@ -119,7 +157,7 @@ export default function TeacherReadingLevelResultsPage() {
             <strong style={{ color: "#0f8a67" }}>{filteredResults.length} نتيجة مطابقة</strong>
           </section>
         )}
-        {loading ? <section style={cardStyle}>جارٍ تحميل النتائج...</section> : results.length === 0 ? <section style={cardStyle}>لا توجد نتائج مرسلة حتى الآن.</section> : filteredResults.length === 0 ? <section style={cardStyle}>لا توجد نتائج تطابق الفلاتر الحالية.</section> : <section style={{ display: "grid", gap: 14 }}>{filteredResults.map((result) => <article key={result.studentDocId} style={cardStyle}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><h2 style={{ margin: 0, color: "#174c3b", fontSize: 20 }}>{result.studentName}</h2><p style={{ margin: "5px 0 0", color: "#718078" }}>{result.classroom || "الصف غير محدد"} • {formatDate(result.completedAt)}</p></div><div style={{ textAlign: "left" }}><strong style={{ color: "#0f8a67" }}>{result.level}</strong><div style={{ color: "#718078", fontSize: 13 }}>{result.score} من {result.total}</div></div></div><div style={skillsGridStyle}>{result.skillSummaries.map((skill, index) => <div key={`${result.studentDocId}-${skill.skill || index}`} style={skillStyle}><span>{skill.skill || "مهارة"}</span><strong style={{ color: skill.status === "متقن" ? "#087f5b" : "#a14b16" }}>{skill.status || "غير محدد"}</strong></div>)}</div></article>)}</section>}
+        {loading ? <section style={cardStyle}>جارٍ تحميل النتائج...</section> : results.length === 0 ? <section style={cardStyle}>لا توجد نتائج مرسلة حتى الآن.</section> : filteredResults.length === 0 ? <section style={cardStyle}>لا توجد نتائج تطابق الفلاتر الحالية.</section> : <section style={{ display: "grid", gap: 14 }}>{filteredResults.map((result) => <article key={result.studentDocId} style={cardStyle}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><h2 style={{ margin: 0, color: "#174c3b", fontSize: 20 }}>{result.studentName}</h2><p style={{ margin: "5px 0 0", color: "#718078" }}>{result.classroom || "الصف غير محدد"} • {formatDate(result.completedAt)}</p></div><div style={{ textAlign: "left" }}><strong style={{ color: "#0f8a67" }}>{result.level}</strong><div style={{ color: "#718078", fontSize: 13 }}>{result.score} من {result.total}</div></div></div><div style={skillsGridStyle}>{result.skillSummaries.map((skill, index) => <div key={`${result.studentDocId}-${skill.skill || index}`} style={skillStyle}><span>{skill.skill || "مهارة"}</span><strong style={{ color: skill.status === "متقن" ? "#087f5b" : "#a14b16" }}>{skill.status || "غير محدد"}</strong></div>)}</div><div style={{ display: "flex", justifyContent: "flex-start", marginTop: 16 }}><button type="button" onClick={() => void deleteResult(result)} disabled={deletingStudentId === result.studentDocId || Boolean(deletingStudentId)} style={{ ...deleteButtonStyle, opacity: deletingStudentId ? 0.65 : 1 }}>{deletingStudentId === result.studentDocId ? "جارٍ حذف النتيجة..." : "حذف النتيجة"}</button></div></article>)}</section>}
       </div>
     </main>
   );
@@ -137,3 +175,4 @@ const errorStyle = { padding: 14, borderRadius: 13, background: "#fff1f1", color
 const filterCardStyle = { display: "flex", alignItems: "end", gap: 14, flexWrap: "wrap" as const, marginBottom: 14, padding: "16px 18px", borderRadius: 18, background: "#ffffff", border: "1px solid #dcefe8" };
 const filterLabelStyle = { display: "grid", gap: 6, minWidth: 180, color: "#245646", fontWeight: 800, fontSize: 13 } as const;
 const selectStyle = { width: "100%", padding: "9px 10px", borderRadius: 10, border: "1px solid #cfe3da", background: "#fbfffd", color: "#17352d", font: "inherit" } as const;
+const deleteButtonStyle = { padding: "9px 13px", border: "1px solid #f1b8b8", borderRadius: 11, background: "#fff7f7", color: "#b42318", font: "inherit", fontWeight: 900, cursor: "pointer" } as const;

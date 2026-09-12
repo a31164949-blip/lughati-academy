@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 
 export const runtime = "nodejs";
@@ -61,5 +62,59 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: "هذا المسار مخصص للمعلم." }, { status: 403 });
     }
     return NextResponse.json({ success: false, message: "تعذر تحميل نتائج تحديد المستوى." }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await requireTeacher(request);
+    const body = (await request.json()) as { studentDocId?: unknown };
+    const studentDocId =
+      typeof body.studentDocId === "string" ? body.studentDocId.trim() : "";
+
+    if (!studentDocId) {
+      return NextResponse.json(
+        { success: false, message: "لم يتم تحديد الطالب." },
+        { status: 400 }
+      );
+    }
+
+    const { adminDb } = getFirebaseAdmin();
+    const studentReference = adminDb.collection("students").doc(studentDocId);
+    const studentSnapshot = await studentReference.get();
+
+    if (!studentSnapshot.exists) {
+      return NextResponse.json(
+        { success: false, message: "لم يتم العثور على الطالب." },
+        { status: 404 }
+      );
+    }
+
+    await studentReference.update({
+      readingLevelAssessment: FieldValue.delete(),
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Teacher reading level result delete error:", error);
+    const message = error instanceof Error ? error.message : "";
+
+    if (message === "UNAUTHORIZED") {
+      return NextResponse.json(
+        { success: false, message: "يجب تسجيل الدخول بحساب المعلم." },
+        { status: 401 }
+      );
+    }
+    if (message === "FORBIDDEN") {
+      return NextResponse.json(
+        { success: false, message: "هذا المسار مخصص للمعلم." },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: false, message: "تعذر حذف نتيجة تحديد المستوى." },
+      { status: 500 }
+    );
   }
 }
