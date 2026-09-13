@@ -10,6 +10,36 @@ import {
 
 import { db } from "../../firebase";
 
+const TEACHER_NOTIFICATIONS_LAST_SEEN_KEY =
+  "teacher-notifications-last-seen-at";
+
+function getNotificationTime(value: unknown) {
+  if (
+    value &&
+    typeof value === "object" &&
+    "toMillis" in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof (value as { seconds?: unknown }).seconds === "number"
+  ) {
+    return (value as { seconds: number }).seconds * 1000;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+}
+
 const sections = [
   {
     title: "🎁 إهداء النقاط",
@@ -201,6 +231,14 @@ useEffect(() => {
 
   async function loadNotificationCount() {
     try {
+      const storedLastSeen = window.localStorage.getItem(
+        TEACHER_NOTIFICATIONS_LAST_SEEN_KEY
+      );
+
+      const lastSeenAt = storedLastSeen
+        ? Number(storedLastSeen)
+        : 0;
+
       const [
         homeworkSnapshot,
         messagesSnapshot,
@@ -243,7 +281,19 @@ useEffect(() => {
             data.readingStatus !==
               "rejected";
 
-          if (readingNeedsReview) {
+          const notificationTime =
+            getNotificationTime(data.updatedAt) ||
+            getNotificationTime(data.completedAt) ||
+            getNotificationTime(data.createdAt);
+
+          const isNewNotification =
+            lastSeenAt === 0 ||
+            notificationTime > lastSeenAt;
+
+          if (
+            readingNeedsReview &&
+            isNewNotification
+          ) {
             homeworkCount += 1;
           }
 
@@ -259,7 +309,10 @@ useEffect(() => {
             data.solutionStatus !==
               "rejected";
 
-          if (solutionNeedsReview) {
+          if (
+            solutionNeedsReview &&
+            isNewNotification
+          ) {
             homeworkCount += 1;
           }
         }
@@ -278,7 +331,16 @@ useEffect(() => {
               ? data.teacherReply.trim()
               : "";
 
-          if (!teacherReply) {
+          const messageTime =
+            getNotificationTime(data.updatedAt) ||
+            getNotificationTime(data.createdAt) ||
+            getNotificationTime(data.sentAt);
+
+          const isNewMessage =
+            lastSeenAt === 0 ||
+            messageTime > lastSeenAt;
+
+          if (!teacherReply && isNewMessage) {
             messagesCount += 1;
           }
         }
@@ -363,6 +425,15 @@ useEffect(() => {
         {/* 🔔 جرس الإشعارات */}
         <Link
           href="/teacher/notifications"
+          onClick={() => {
+            window.localStorage.setItem(
+              TEACHER_NOTIFICATIONS_LAST_SEEN_KEY,
+              String(Date.now())
+            );
+
+            setHomeworkNotificationCount(0);
+            setMessageNotificationCount(0);
+          }}
           style={styles.notificationBell}
           title="مركز الإشعارات"
           aria-label={`مركز الإشعارات - ${notificationCount} إشعار`}
