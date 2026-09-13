@@ -28,15 +28,17 @@ type ReadingRecord = {
   durationSeconds: number;
   status: "approved" | "pending" | "rejected";
   date: Date | null;
+  readingDate: string;
 };
 
-function convertToDate(value: any): Date | null {
+function convertToDate(value: unknown): Date | null {
   if (!value) {
     return null;
   }
 
-  if (typeof value?.toDate === "function") {
-    return value.toDate();
+  if (typeof value === "object" && value !== null && "toDate" in value &&
+      typeof (value as { toDate?: unknown }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate();
   }
 
   if (value instanceof Date) {
@@ -55,6 +57,34 @@ function convertToDate(value: any): Date | null {
   }
 
   return null;
+}
+
+function getSaudiDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(date);
+}
+
+function getDateKey(data: Record<string, unknown>) {
+  if (typeof data.readingDate === "string" && data.readingDate.trim()) return data.readingDate.trim();
+  if (typeof data.date === "string" && data.date.trim()) return data.date.trim();
+  const date = convertToDate(data.completedAt) || convertToDate(data.createdAt) ||
+    convertToDate(data.submittedAt) || convertToDate(data.updatedAt);
+  return date ? getSaudiDateKey(date) : "";
+}
+
+function getWeekKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return "";
+  const date = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  return date.toISOString().slice(0, 10);
+}
+
+function isSchoolDay(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return false;
+  return new Date(Date.UTC(+match[1], +match[2] - 1, +match[3])).getUTCDay() <= 4;
 }
 
 function formatDuration(seconds: number) {
@@ -127,6 +157,8 @@ export default function StudentReadingJourneyPage() {
   const [records, setRecords] =
     useState<ReadingRecord[]>([]);
 
+  const [approvedDates, setApprovedDates] = useState<string[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -197,6 +229,17 @@ export default function StudentReadingJourneyPage() {
             completionsQuery
           );
 
+        const journeySnapshot = await getDocs(
+          query(
+            collection(db, "reading-submissions"),
+            where("studentId", "==", studentId)
+          )
+        );
+
+        const progressSnapshot = await getDoc(
+          doc(db, "reading-progress", studentId)
+        );
+
         const readingRecords: ReadingRecord[] =
           completionsSnapshot.docs
             .map((completionDoc) => {
@@ -266,6 +309,7 @@ export default function StudentReadingJourneyPage() {
                     data.updatedAt
                   ) ||
                   null,
+                readingDate: getDateKey(data),
               };
             })
             .filter(
@@ -275,14 +319,66 @@ export default function StudentReadingJourneyPage() {
                 record !== null
             );
 
-        readingRecords.sort(
+        const journeyRecords: ReadingRecord[] = journeySnapshot.docs
+          .map((item) => {
+            const data = item.data();
+            const audioUrl =
+              typeof data.audioUrl === "string" ? data.audioUrl.trim() : "";
+            if (!audioUrl) return null;
+
+            return {
+              id: `journey-${item.id}`,
+              homeworkId: "",
+              homeworkTitle:
+                typeof data.homeworkTitle === "string"
+                  ? data.homeworkTitle
+                  : "رحلة القراءة",
+              audioUrl,
+              durationSeconds:
+                typeof data.durationSeconds === "number"
+                  ? data.durationSeconds
+                  : 0,
+              status:
+                data.status === "approved"
+                  ? "approved" as const
+                  : data.status === "rejected" || data.status === "redo"
+                    ? "rejected" as const
+                    : "pending" as const,
+              date:
+                convertToDate(data.createdAt) ||
+                convertToDate(data.submittedAt),
+              readingDate: getDateKey(data),
+            };
+          })
+          .filter((record): record is ReadingRecord => record !== null);
+
+        const progressData = progressSnapshot.exists()
+          ? progressSnapshot.data()
+          : {};
+        const storedDates = Array.isArray(progressData.approvedDates)
+          ? progressData.approvedDates.filter(
+              (date): date is string => typeof date === "string"
+            )
+          : [];
+        const approvedRecordDates = [...readingRecords, ...journeyRecords]
+          .filter((record) => record.status === "approved")
+          .map((record) => record.readingDate)
+          .filter(Boolean);
+
+        setApprovedDates(
+          Array.from(new Set([...storedDates, ...approvedRecordDates]))
+        );
+
+        const allRecords = [...readingRecords, ...journeyRecords];
+
+        allRecords.sort(
           (a, b) =>
             (b.date?.getTime() || 0) -
             (a.date?.getTime() || 0)
         );
 
         setRecords(
-          readingRecords
+          allRecords
         );
       } catch (error) {
         console.error(
@@ -333,6 +429,28 @@ export default function StudentReadingJourneyPage() {
         ),
       [records]
     );
+
+  const weeklyArchive = useMemo(() => {
+    const weeks = new Map<string, Set<string>>();
+
+    approvedDates
+      .filter(isSchoolDay)
+      .forEach((date) => {
+        const weekKey = getWeekKey(date);
+        if (!weekKey) return;
+        if (!weeks.has(weekKey)) weeks.set(weekKey, new Set());
+        weeks.get(weekKey)?.add(date);
+      });
+
+    return Array.from(weeks.entries())
+      .map(([weekKey, dates]) => ({
+        weekKey,
+        count: dates.size,
+        completed: dates.size >= 5,
+        isCurrent: weekKey === getWeekKey(getSaudiDateKey()),
+      }))
+      .sort((a, b) => b.weekKey.localeCompare(a.weekKey));
+  }, [approvedDates]);
 
   if (loading) {
     return (
@@ -489,7 +607,7 @@ export default function StudentReadingJourneyPage() {
             icon="📅"
             title="أيام القراءة"
             value={
-              approvedRecords.length
+              approvedDates.length
             }
           />
 
@@ -537,6 +655,59 @@ export default function StudentReadingJourneyPage() {
             قراءة تحتاج إلى إعادة.
           </div>
         )}
+
+        <section
+          style={{
+            background: "#ffffff",
+            border: "1px solid #e0ebe6",
+            borderRadius: 22,
+            padding: 20,
+            marginBottom: 24,
+            boxShadow: "0 8px 25px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h2 style={{ margin: "0 0 6px", fontSize: 23 }}>
+            🗓️ أرشيف الأسابيع
+          </h2>
+          <p style={{ margin: "0 0 16px", color: "#71817c", fontWeight: 700 }}>
+            كل أسبوع مستقل من الأحد إلى الخميس.
+          </p>
+
+          {weeklyArchive.length === 0 ? (
+            <div style={{ padding: 20, textAlign: "center", color: "#76857f", fontWeight: 800 }}>
+              لا توجد أسابيع مكتملة أو مسجلة حتى الآن.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {weeklyArchive.map((week) => (
+                <div
+                  key={week.weekKey}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12,
+                    flexWrap: "wrap",
+                    padding: "13px 15px",
+                    borderRadius: 15,
+                    background: week.completed ? "#eaf8f1" : "#f6f9f7",
+                    border: week.completed ? "1px solid #bfe7d3" : "1px solid #e3ebe7",
+                  }}
+                >
+                  <div style={{ fontWeight: 900 }}>
+                    أسبوع يبدأ {new Date(`${week.weekKey}T00:00:00Z`).toLocaleDateString("ar-SA", {
+                      year: "numeric", month: "long", day: "numeric", timeZone: "UTC",
+                    })}
+                    {week.isCurrent ? " • الأسبوع الحالي" : ""}
+                  </div>
+                  <div style={{ fontWeight: 950, color: week.completed ? "#176b4d" : "#8a6410" }}>
+                    {week.completed ? "🏆 مكتمل" : "📖 مستمر"} — {week.count} من 5
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* سجل القراءات */}
         <section
