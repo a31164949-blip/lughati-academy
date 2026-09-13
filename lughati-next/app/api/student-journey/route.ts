@@ -486,6 +486,29 @@ export async function GET(
       weeklyReadingDays:
         currentWeekApprovedDates.length,
 
+      latestSpelling:
+        studentData.latestSpelling &&
+        typeof studentData.latestSpelling === "object"
+          ? {
+              textName:
+                typeof studentData.latestSpelling.textName === "string"
+                  ? studentData.latestSpelling.textName
+                  : "",
+              errors:
+                typeof studentData.latestSpelling.errors === "number"
+                  ? studentData.latestSpelling.errors
+                  : 0,
+              level:
+                typeof studentData.latestSpelling.level === "string"
+                  ? studentData.latestSpelling.level
+                  : "",
+              notes:
+                typeof studentData.latestSpelling.notes === "string"
+                  ? studentData.latestSpelling.notes
+                  : "",
+            }
+          : null,
+
       readingWeekKey:
         getSchoolWeekKey(dateKey),
 

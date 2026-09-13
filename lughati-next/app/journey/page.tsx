@@ -175,6 +175,13 @@ type StudentSmartFollowUp = {
   readingNote: string;
 };
 
+type LatestSpelling = {
+  textName: string;
+  errors: number;
+  level: string;
+  notes: string;
+};
+
 type JourneyData = {
   success: boolean;
   points?: number;
@@ -182,6 +189,7 @@ type JourneyData = {
   streak?: number;
   readingDays?: number;
   weeklyReadingDays?: number;
+  latestSpelling?: LatestSpelling | null;
   fluencyLevel?: number;
   personalPhotoUrl?: string;
   selectedAvatarIcon?: string;
@@ -494,6 +502,9 @@ const [
 
   const [weeklyReadingDays, setWeeklyReadingDays] =
     useState(0);
+
+  const [latestSpelling, setLatestSpelling] =
+    useState<LatestSpelling | null>(null);
 
 
   const [
@@ -941,6 +952,13 @@ try {
                 )
               )
             : 0
+        );
+
+        setLatestSpelling(
+          data.latestSpelling &&
+          typeof data.latestSpelling.level === "string"
+            ? data.latestSpelling
+            : null
         );
 
 
@@ -3767,6 +3785,99 @@ try {
               </p>
             </div>
           </div> 
+        </section>
+
+        {/* مستوى الإملاء الظاهر مباشرة للطالب */}
+        <section
+          style={{
+            ...cardStyle,
+            marginTop: "16px",
+            marginBottom: "20px",
+            border: latestSpelling
+              ? "2px solid #f1c75b"
+              : "2px solid #dce8e2",
+            background: latestSpelling
+              ? "linear-gradient(135deg,#fff9df 0%,#ffffff 58%,#eefbf5 100%)"
+              : "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "14px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "13px" }}>
+              <div
+                style={{
+                  width: "58px",
+                  height: "58px",
+                  borderRadius: "18px",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "31px",
+                  background: latestSpelling ? "#fff2b9" : "#eef4f1",
+                }}
+              >
+                ✍️
+              </div>
+              <div>
+                <div style={{ color: "#6b7c73", fontSize: "14px", fontWeight: 800 }}>
+                  مستواي الحالي في الإملاء
+                </div>
+                <div
+                  style={{
+                    marginTop: "4px",
+                    color: latestSpelling ? "#176c46" : "#71817a",
+                    fontSize: "clamp(20px,4vw,27px)",
+                    fontWeight: 950,
+                  }}
+                >
+                  {latestSpelling?.level || "لم يُحدد المستوى بعد"}
+                </div>
+              </div>
+            </div>
+
+            {latestSpelling && (
+              <div
+                style={{
+                  padding: "9px 14px",
+                  borderRadius: "999px",
+                  background: "#ffffff",
+                  border: "1px solid #eadb9e",
+                  color: "#795b00",
+                  fontWeight: 900,
+                }}
+              >
+                {latestSpelling.errors === 0
+                  ? "🌟 دون أخطاء"
+                  : `${latestSpelling.errors} ${latestSpelling.errors === 1 ? "خطأ" : "أخطاء"}`}
+              </div>
+            )}
+          </div>
+
+          {latestSpelling && (
+            <div
+              style={{
+                marginTop: "14px",
+                paddingTop: "12px",
+                borderTop: "1px solid #eee5bf",
+                color: "#5f7067",
+                fontWeight: 700,
+                lineHeight: 1.8,
+              }}
+            >
+              {latestSpelling.textName && (
+                <span>آخر تقييم: {latestSpelling.textName}</span>
+              )}
+              {latestSpelling.notes && (
+                <div style={{ marginTop: "3px" }}>💬 {latestSpelling.notes}</div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* أساس لغتي - تنبيه مراجعة المهارات */}
