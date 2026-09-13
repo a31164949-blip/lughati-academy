@@ -41,6 +41,14 @@ type ReadingMetric =
   | "needs-practice"
   | "not-evaluated";
 
+type SpellingLevel =
+  | "mastered"
+  | "very-good"
+  | "good"
+  | "needs-practice"
+  | "intensive-support"
+  | "not-evaluated";
+
 type StudentRecord = {
   studentId: string;
   studentName: string;
@@ -55,6 +63,12 @@ type StudentRecord = {
   readingFluency: ReadingMetric;
   readingDiacritics: ReadingMetric;
   readingNote: string;
+
+  spellingTextName: string;
+  spellingErrors: number;
+  spellingLevel: SpellingLevel;
+  spellingNote: string;
+  spellingPrivateNote: string;
 
   participated: boolean;
 
@@ -167,6 +181,15 @@ const readingMetricOptions: {
   },
 ];
 
+const spellingLevelOptions: { value: SpellingLevel; label: string }[] = [
+  { value: "mastered", label: "🌟 متقن" },
+  { value: "very-good", label: "✅ جيد جدًا" },
+  { value: "good", label: "👍 جيد" },
+  { value: "needs-practice", label: "🌱 يحتاج تدريبًا" },
+  { value: "intensive-support", label: "🧩 يحتاج دعمًا مكثفًا" },
+  { value: "not-evaluated", label: "⏳ لم يُقيّم بعد" },
+];
+
 function getTodayKey() {
   const now = new Date();
 
@@ -270,6 +293,14 @@ function isReadingMetric(
   );
 }
 
+function isSpellingLevel(value: unknown): value is SpellingLevel {
+  return spellingLevelOptions.some((item) => item.value === value);
+}
+
+function getSpellingLevelLabel(value: SpellingLevel) {
+  return spellingLevelOptions.find((item) => item.value === value)?.label ?? "";
+}
+
 export default function SmartRecordPage() {
   const [selectedClassroom, setSelectedClassroom] =
     useState<ClassroomKey>("second-a");
@@ -368,6 +399,12 @@ export default function SmartRecordPage() {
 
               readingNote:
                 "",
+
+              spellingTextName: "",
+              spellingErrors: 0,
+              spellingLevel: "not-evaluated",
+              spellingNote: "",
+              spellingPrivateNote: "",
 
               participated:
                 false,
@@ -490,6 +527,31 @@ export default function SmartRecordPage() {
                       ? savedStudent.readingNote
                       : "",
 
+                  spellingTextName:
+                    typeof savedStudent.spellingTextName === "string"
+                      ? savedStudent.spellingTextName
+                      : "",
+
+                  spellingErrors:
+                    typeof savedStudent.spellingErrors === "number"
+                      ? Math.max(0, savedStudent.spellingErrors)
+                      : 0,
+
+                  spellingLevel:
+                    isSpellingLevel(savedStudent.spellingLevel)
+                      ? savedStudent.spellingLevel
+                      : "not-evaluated",
+
+                  spellingNote:
+                    typeof savedStudent.spellingNote === "string"
+                      ? savedStudent.spellingNote
+                      : "",
+
+                  spellingPrivateNote:
+                    typeof savedStudent.spellingPrivateNote === "string"
+                      ? savedStudent.spellingPrivateNote
+                      : "",
+
                   participated:
                     savedStudent.participated ===
                     true,
@@ -600,6 +662,11 @@ export default function SmartRecordPage() {
               "not-evaluated"
           ).length,
 
+        spelling:
+          records.filter(
+            (student) => student.spellingLevel !== "not-evaluated"
+          ).length,
+
         participation:
           records.filter(
             (student) =>
@@ -680,6 +747,12 @@ export default function SmartRecordPage() {
             readingNote:
               "",
 
+            spellingTextName: "",
+            spellingErrors: 0,
+            spellingLevel: "not-evaluated",
+            spellingNote: "",
+            spellingPrivateNote: "",
+
             participated:
               false,
 
@@ -748,6 +821,9 @@ export default function SmartRecordPage() {
 
           readingEvaluationCount:
             summary.reading,
+
+          spellingEvaluationCount:
+            summary.spelling,
 
           participationCount:
             summary.participation,
@@ -838,6 +914,27 @@ export default function SmartRecordPage() {
           student.readingLevel !==
           "not-evaluated";
 
+        const spellingEvaluated =
+          student.spellingLevel !== "not-evaluated";
+
+        const spellingAssessment = {
+          date: selectedDate,
+          textName: student.spellingTextName.trim(),
+          errors: Math.max(0, Math.round(student.spellingErrors)),
+          level: getSpellingLevelLabel(student.spellingLevel),
+          levelKey: student.spellingLevel,
+          notes: student.spellingNote.trim(),
+          privateNote: student.spellingPrivateNote.trim(),
+          source: "smart-record",
+        };
+
+        const currentSpellingHistory = Array.isArray(studentData.spellingHistory)
+          ? studentData.spellingHistory.filter(
+              (item: { date?: unknown }) =>
+                item && typeof item === "object" && item.date !== selectedDate
+            )
+          : [];
+
         await setDoc(
           studentReference,
           {
@@ -904,6 +1001,16 @@ export default function SmartRecordPage() {
               updatedAt:
                 serverTimestamp(),
             },
+
+            ...(spellingEvaluated
+              ? {
+                  latestSpelling: spellingAssessment,
+                  spellingHistory: [
+                    ...currentSpellingHistory,
+                    spellingAssessment,
+                  ],
+                }
+              : {}),
 
             updatedAt:
               serverTimestamp(),
@@ -1050,7 +1157,7 @@ export default function SmartRecordPage() {
           </article>
         </section>
 
-        <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           <SummaryCard
             icon="👥"
             label="الطلاب"
@@ -1085,6 +1192,12 @@ export default function SmartRecordPage() {
             icon="📖"
             label="تم تقييم القراءة"
             value={summary.reading}
+          />
+
+          <SummaryCard
+            icon="✍️"
+            label="تم تقييم الإملاء"
+            value={summary.spelling}
           />
 
           <SummaryCard
@@ -1298,7 +1411,7 @@ function StudentRecordCard({
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-3">
         {/* الواجب */}
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <h4 className="mb-3 text-lg font-black text-amber-900">
@@ -1436,6 +1549,76 @@ function StudentRecordCard({
             placeholder="💬 ملاحظة القراءة: يحتاج تدريبًا على المد، تحسن في الطلاقة..."
             rows={2}
             className="mt-3 w-full rounded-xl border border-sky-200 bg-white px-4 py-3 font-bold outline-none focus:border-sky-400"
+          />
+        </section>
+
+        {/* الإملاء */}
+        <section className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+          <h4 className="mb-3 text-lg font-black text-violet-900">
+            ✍️ تقييم الإملاء
+          </h4>
+
+          <input
+            value={student.spellingTextName}
+            onChange={(event) => onUpdate({ spellingTextName: event.target.value })}
+            placeholder="اسم النص أو الاختبار"
+            className="mb-3 w-full rounded-xl border border-violet-200 bg-white px-4 py-3 font-bold outline-none focus:border-violet-400"
+          />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-sm font-black text-slate-600">
+                المستوى
+              </span>
+              <select
+                value={student.spellingLevel}
+                onChange={(event) =>
+                  onUpdate({ spellingLevel: event.target.value as SpellingLevel })
+                }
+                className="w-full rounded-xl border border-violet-200 bg-white px-3 py-3 font-black text-slate-700"
+              >
+                {spellingLevelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-black text-slate-600">
+                عدد الأخطاء
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={student.spellingErrors}
+                onChange={(event) =>
+                  onUpdate({
+                    spellingErrors: Math.max(0, Number(event.target.value) || 0),
+                  })
+                }
+                className="w-full rounded-xl border border-violet-200 bg-white px-3 py-3 font-black text-slate-700"
+              />
+            </label>
+          </div>
+
+          <textarea
+            value={student.spellingNote}
+            onChange={(event) => onUpdate({ spellingNote: event.target.value })}
+            placeholder="💬 ملاحظة تظهر للطالب..."
+            rows={2}
+            className="mt-3 w-full rounded-xl border border-violet-200 bg-white px-4 py-3 font-bold outline-none focus:border-violet-400"
+          />
+
+          <textarea
+            value={student.spellingPrivateNote}
+            onChange={(event) =>
+              onUpdate({ spellingPrivateNote: event.target.value })
+            }
+            placeholder="🔒 ملاحظة داخلية للمعلم فقط..."
+            rows={2}
+            className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold outline-none focus:border-slate-500"
           />
         </section>
       </div>
