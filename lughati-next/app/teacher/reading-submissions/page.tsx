@@ -9,8 +9,6 @@ import {
   getDoc,
   getDocs,
   increment,
-  orderBy,
-  query,
   runTransaction,
   serverTimestamp,
   setDoc,
@@ -27,7 +25,31 @@ type ReadingSubmission = {
   durationSeconds?: number;
   readingDate?: string;
   status?: string;
+  createdAt?: unknown;
+  submittedAt?: unknown;
 };
+
+function getTimestampMillis(value: unknown) {
+  if (
+    value &&
+    typeof value === "object" &&
+    "toMillis" in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === "function"
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof (value as { seconds?: unknown }).seconds === "number"
+  ) {
+    return (value as { seconds: number }).seconds * 1000;
+  }
+
+  return 0;
+}
 
 type AudioStatus =
   | "idle"
@@ -60,17 +82,31 @@ export default function ReadingSubmissionsPage() {
   }
 
   async function fetchSubmissions() {
-    const q = query(
-      collection(db, "reading-submissions"),
-      orderBy("createdAt", "desc")
+    /*
+     * لا نستخدم orderBy داخل Firestore هنا؛ لأن orderBy يستبعد
+     * أي قراءة قديمة أو جديدة لا تحتوي على createdAt.
+     * نجلب جميع القراءات ثم نرتبها محليًا، مع دعم submittedAt أيضًا.
+     */
+    const snapshot = await getDocs(
+      collection(db, "reading-submissions")
     );
-
-    const snapshot = await getDocs(q);
 
     const rows = snapshot.docs.map((item) => ({
       id: item.id,
       ...item.data(),
     })) as ReadingSubmission[];
+
+    rows.sort((first, second) => {
+      const firstTime =
+        getTimestampMillis(first.createdAt) ||
+        getTimestampMillis(first.submittedAt);
+
+      const secondTime =
+        getTimestampMillis(second.createdAt) ||
+        getTimestampMillis(second.submittedAt);
+
+      return secondTime - firstTime;
+    });
 
     /*
      * القراءات الجديدة تحفظ studentClassroom مباشرة.
