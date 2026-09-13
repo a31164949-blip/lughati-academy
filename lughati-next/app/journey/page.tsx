@@ -262,9 +262,6 @@ type SurpriseChallenge = {
   challengeVersion: string;
 };
 
-const ACTIVE_SURPRISE_CHALLENGE_ID =
-  "active-surprise-challenge";
-
 /*
  * معرّف ثابت للطالب من التوكن أولًا،
  * ولا نعتمد على localStorage وحده.
@@ -376,18 +373,13 @@ const fluencyLevels = [
 ] as const;
 
 export default function JourneyPage() {
-  const [studentName, setStudentName] =
-  useState("");
-
-
-useEffect(() => {
-  const savedStudentName =
-    window.localStorage.getItem(
-      "student-name"
-    ) || "";
-
-  setStudentName(savedStudentName);
-}, []);
+  const [studentName] = useState(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(
+          "student-name"
+        ) || ""
+      : ""
+  );
   const [user, setUser] =
     useState<User | null>(null);
 const [
@@ -398,7 +390,7 @@ const [
 );
 
 const [
-  weeklySummaryLoading,
+  ,
   setWeeklySummaryLoading,
 ] = useState(false);
 
@@ -432,7 +424,7 @@ const [
 ] = useState("");
 
 const [
-  surpriseChallengeLoading,
+  ,
   setSurpriseChallengeLoading,
 ] = useState(false);
 
@@ -698,7 +690,6 @@ const [
 
   useEffect(() => {
     if (!user) {
-      setNotifications([]);
       return;
     }
 
@@ -1040,7 +1031,6 @@ try {
   }, [user]);
   useEffect(() => {
     if (!user) {
-      setWeeklySummary(null);
       return;
     }
 
@@ -1097,8 +1087,6 @@ try {
 
  useEffect(() => {
   if (!user) {
-    setTikTokConsentRequest(null);
-    setTikTokConsentMessage("");
     return;
   }
 
@@ -1264,10 +1252,6 @@ try {
 
   useEffect(() => {
     if (!user) {
-      setSurpriseChallenge(null);
-      setSurpriseAnswer("");
-      setSurpriseChallengeMessage("");
-      setSurpriseChallengeResult(null);
       return;
     }
 
@@ -1860,8 +1844,9 @@ try {
       );
 
     if (selectedTask?.href) {
-      window.location.href =
-        selectedTask.href;
+      window.location.assign(
+        selectedTask.href
+      );
       return;
     }
 
@@ -5394,6 +5379,43 @@ try {
                       {card.title}
                     </h3>
 
+                    {card.href ===
+                      "/reading-journey" && (
+                      <div
+                        style={{
+                          width: "fit-content",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "7px",
+                          marginBottom: "8px",
+                          padding: "7px 11px",
+                          borderRadius: "999px",
+                          background: "#ffffff",
+                          border: "1px solid #a7f3d0",
+                          color: "#08734b",
+                          fontWeight: 900,
+                        }}
+                      >
+                        <strong
+                          style={{
+                            fontSize: "20px",
+                          }}
+                        >
+                          {loading
+                            ? "…"
+                            : readingDays}
+                        </strong>
+
+                        <span
+                          style={{
+                            fontSize: "13px",
+                          }}
+                        >
+                          يوم قراءة معتمد
+                        </span>
+                      </div>
+                    )}
+
                     <p
                       style={{
                         margin: 0,
@@ -5403,9 +5425,14 @@ try {
                           1.7,
                       }}
                     >
-                      {
-                        card.description
-                      }
+                      {card.href ===
+                      "/reading-journey"
+                        ? loading
+                          ? "جارٍ تحميل تقدمك في القراءة..."
+                          : readingDays === 0
+                            ? "ابدأ أول قراءة وواصل سلسلة إنجازك"
+                            : "واصل القراءة اليومية لتنمية مهاراتك"
+                        : card.description}
                     </p>
                   </div>
                 </Link>
