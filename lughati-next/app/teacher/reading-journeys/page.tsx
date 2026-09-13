@@ -22,15 +22,23 @@ type ReadingRecord = {
   status: "approved" | "pending" | "rejected";
   durationSeconds: number;
   date: Date | null;
+  readingDate: string;
 };
 
-function convertToDate(value: any): Date | null {
+type ReadingProgress = { studentId: string; approvedDates: string[] };
+
+function convertToDate(value: unknown): Date | null {
   if (!value) {
     return null;
   }
 
-  if (typeof value?.toDate === "function") {
-    return value.toDate();
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toDate" in value &&
+    typeof (value as { toDate?: unknown }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
   }
 
   if (value instanceof Date) {
@@ -51,12 +59,40 @@ function convertToDate(value: any): Date | null {
   return null;
 }
 
+function getSaudiDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function getDateKey(data: Record<string, unknown>) {
+  if (typeof data.readingDate === "string" && data.readingDate.trim()) return data.readingDate.trim();
+  if (typeof data.date === "string" && data.date.trim()) return data.date.trim();
+  const date = convertToDate(data.completedAt) || convertToDate(data.createdAt) || convertToDate(data.submittedAt) || convertToDate(data.updatedAt);
+  return date ? getSaudiDateKey(date) : "";
+}
+
+function getWeekKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return "";
+  const date = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  return date.toISOString().slice(0, 10);
+}
+
+function isSchoolDay(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return false;
+  const day = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3])).getUTCDay();
+  return day <= 4;
+}
+
 export default function ReadingJourneysPage() {
   const [students, setStudents] =
     useState<Student[]>([]);
 
   const [records, setRecords] =
     useState<ReadingRecord[]>([]);
+
+  const [progress, setProgress] = useState<ReadingProgress[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -76,6 +112,8 @@ export default function ReadingJourneysPage() {
         const [
           studentsSnapshot,
           completionsSnapshot,
+          journeySnapshot,
+          progressSnapshot,
         ] = await Promise.all([
           getDocs(
             collection(
@@ -90,6 +128,8 @@ export default function ReadingJourneysPage() {
               "homeworkCompletions"
             )
           ),
+          getDocs(collection(db, "reading-submissions")),
+          getDocs(collection(db, "reading-progress")),
         ]);
 
         const studentsData: Student[] =
@@ -190,6 +230,7 @@ export default function ReadingJourneysPage() {
                       data.updatedAt
                     ) ||
                     null,
+                  readingDate: getDateKey(data),
                 };
               }
             )
@@ -199,6 +240,28 @@ export default function ReadingJourneysPage() {
               ): record is ReadingRecord =>
                 record !== null
             );
+
+        const journeyData: ReadingRecord[] = journeySnapshot.docs.map((item) => {
+          const data = item.data();
+          if (typeof data.audioUrl !== "string" || !data.audioUrl.trim()) return null;
+          return {
+            id: `journey-${item.id}`,
+            studentId: typeof data.studentId === "string" ? data.studentId : "",
+            studentName: typeof data.studentName === "string" ? data.studentName : "",
+            status: data.status === "approved" ? "approved" as const : data.status === "rejected" || data.status === "redo" ? "rejected" as const : "pending" as const,
+            durationSeconds: typeof data.durationSeconds === "number" ? data.durationSeconds : 0,
+            date: convertToDate(data.createdAt) || convertToDate(data.submittedAt),
+            readingDate: getDateKey(data),
+          };
+        }).filter((record): record is ReadingRecord => record !== null);
+
+        const progressData: ReadingProgress[] = progressSnapshot.docs.map((item) => {
+          const data = item.data();
+          return {
+            studentId: typeof data.studentId === "string" && data.studentId ? data.studentId : item.id,
+            approvedDates: Array.isArray(data.approvedDates) ? data.approvedDates.filter((date): date is string => typeof date === "string") : [],
+          };
+        });
 
         studentsData.sort(
           (a, b) =>
@@ -213,8 +276,9 @@ export default function ReadingJourneysPage() {
         );
 
         setRecords(
-          readingData
+          [...readingData, ...journeyData]
         );
+        setProgress(progressData);
       } catch (err) {
         console.error(
           "تعذر تحميل رحلات القراءة:",
@@ -242,28 +306,28 @@ export default function ReadingJourneysPage() {
                 record.studentId ===
                   student.id ||
                 (
+                  !record.studentId &&
                   record.studentName &&
                   record.studentName.trim() ===
                     student.name.trim()
                 )
             );
 
-          const approvedRecords =
-            studentRecords.filter(
-              (record) =>
-                record.status ===
-                "approved"
-            );
+          const currentWeekKey = getWeekKey(getSaudiDateKey());
+          const progressDates = progress.filter((item) => item.studentId === student.id).flatMap((item) => item.approvedDates);
+          const recordDates = studentRecords.filter((record) => record.status === "approved").map((record) => record.readingDate);
+          const approvedDates = Array.from(new Set([...progressDates, ...recordDates])).filter((date) => isSchoolDay(date) && getWeekKey(date) === currentWeekKey);
+          const weeklyRecords = studentRecords.filter((record) => isSchoolDay(record.readingDate) && getWeekKey(record.readingDate) === currentWeekKey);
 
           const pendingRecords =
-            studentRecords.filter(
+            weeklyRecords.filter(
               (record) =>
                 record.status ===
                 "pending"
             );
 
           const rejectedRecords =
-            studentRecords.filter(
+            weeklyRecords.filter(
               (record) =>
                 record.status ===
                 "rejected"
@@ -287,10 +351,10 @@ export default function ReadingJourneysPage() {
             ...student,
 
             totalReadings:
-              studentRecords.length,
+              approvedDates.length + pendingRecords.length,
 
             approvedReadings:
-              approvedRecords.length,
+              approvedDates.length,
 
             pendingReadings:
               pendingRecords.length,
@@ -300,7 +364,7 @@ export default function ReadingJourneysPage() {
 
             // كل قراءة معتمدة = يوم قراءة
             readingDays:
-              approvedRecords.length,
+              approvedDates.length,
 
             latestReading:
               latestRecord?.date ||
@@ -308,7 +372,7 @@ export default function ReadingJourneysPage() {
           };
         }
       );
-    }, [students, records]);
+    }, [students, records, progress]);
 
   const filteredStudents =
     useMemo(() => {
@@ -342,25 +406,13 @@ export default function ReadingJourneysPage() {
     ).length;
 
   const totalApproved =
-    records.filter(
-      (record) =>
-        record.status ===
-        "approved"
-    ).length;
+    studentRows.reduce((total, student) => total + student.approvedReadings, 0);
 
   const totalPending =
-    records.filter(
-      (record) =>
-        record.status ===
-        "pending"
-    ).length;
+    studentRows.reduce((total, student) => total + student.pendingReadings, 0);
 
   const totalRejected =
-    records.filter(
-      (record) =>
-        record.status ===
-        "rejected"
-    ).length;
+    studentRows.reduce((total, student) => total + student.rejectedReadings, 0);
 
   return (
     <main
@@ -431,9 +483,7 @@ export default function ReadingJourneysPage() {
                   700,
               }}
             >
-              تابع رحلة كل طالب
-              وتطوره القرائي منذ
-              بداية العام.
+              تابع رحلة كل طالب وعدد أيام القراءة المعتمدة في الأسبوع الحالي.
             </p>
           </div>
 
@@ -494,7 +544,7 @@ export default function ReadingJourneysPage() {
 
           <StatCard
             icon="📚"
-            title="طلاب بدأوا القراءة"
+            title="بدأوا هذا الأسبوع"
             value={
               activeReaders
             }
@@ -502,7 +552,7 @@ export default function ReadingJourneysPage() {
 
           <StatCard
             icon="✅"
-            title="قراءات معتمدة"
+            title="أيام معتمدة هذا الأسبوع"
             value={
               totalApproved
             }
@@ -783,7 +833,7 @@ export default function ReadingJourneysPage() {
                             {
                               student.readingDays
                             }{" "}
-                            أيام
+                            من 5 أيام
                           </MiniBadge>
 
                           <MiniBadge>
