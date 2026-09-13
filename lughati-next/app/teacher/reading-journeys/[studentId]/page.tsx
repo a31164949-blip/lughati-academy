@@ -700,8 +700,22 @@ export default function StudentReadingJourneyPage() {
                     })}
                     {week.isCurrent ? " • الأسبوع الحالي" : ""}
                   </div>
-                  <div style={{ fontWeight: 950, color: week.completed ? "#176b4d" : "#8a6410" }}>
-                    {week.completed ? "🏆 مكتمل" : "📖 مستمر"} — {week.count} من 5
+                  <div
+                    style={{
+                      fontWeight: 950,
+                      color: week.completed
+                        ? "#176b4d"
+                        : week.isCurrent
+                          ? "#8a6410"
+                          : "#8b4a3c",
+                    }}
+                  >
+                    {week.completed
+                      ? "🏆 مكتمل"
+                      : week.isCurrent
+                        ? "📖 مستمر"
+                        : "⏹️ انتهى — غير مكتمل"}{" "}
+                    — {week.count} من 5
                   </div>
                 </div>
               ))}
