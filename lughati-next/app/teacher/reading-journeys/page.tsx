@@ -85,6 +85,17 @@ function isSchoolDay(dateKey: string) {
   return day <= 4;
 }
 
+const schoolDayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
+
+function getSchoolWeekDates(weekKey: string) {
+  const start = new Date(`${weekKey}T00:00:00.000Z`);
+  return schoolDayNames.map((name, index) => {
+    const date = new Date(start);
+    date.setUTCDate(start.getUTCDate() + index);
+    return { name, dateKey: date.toISOString().slice(0, 10) };
+  });
+}
+
 export default function ReadingJourneysPage() {
   const [students, setStudents] =
     useState<Student[]>([]);
@@ -333,6 +344,16 @@ export default function ReadingJourneysPage() {
                 "rejected"
             );
 
+          const weekDays = getSchoolWeekDates(currentWeekKey).map((day) => {
+            const approved = approvedDates.includes(day.dateKey);
+            const pending = pendingRecords.some((record) => record.readingDate === day.dateKey);
+            const rejected = rejectedRecords.some((record) => record.readingDate === day.dateKey);
+            return {
+              ...day,
+              status: approved ? "approved" as const : pending ? "pending" as const : rejected ? "rejected" as const : "missing" as const,
+            };
+          });
+
           const latestRecord =
             [...studentRecords]
               .filter(
@@ -365,6 +386,8 @@ export default function ReadingJourneysPage() {
             // كل قراءة معتمدة = يوم قراءة
             readingDays:
               approvedDates.length,
+
+            weekDays,
 
             latestReading:
               latestRecord?.date ||
@@ -868,6 +891,20 @@ export default function ReadingJourneysPage() {
                         </div>
                       </div>
 
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(5, minmax(72px, 1fr))",
+                          gap: 7,
+                          marginTop: 14,
+                          overflowX: "auto",
+                        }}
+                      >
+                        {student.weekDays.map((day) => (
+                          <DayBadge key={day.dateKey} name={day.name} status={day.status} />
+                        ))}
+                      </div>
+
                       {/* أسفل البطاقة */}
                       <div
                         style={{
@@ -1093,6 +1130,39 @@ function MiniBadge({
     >
       {children}
     </span>
+  );
+}
+
+function DayBadge({
+  name,
+  status,
+}: {
+  name: string;
+  status: "approved" | "pending" | "rejected" | "missing";
+}) {
+  const details = {
+    approved: { icon: "✅", label: "معتمدة", color: "#176b4d", background: "#eaf8f1" },
+    pending: { icon: "⏳", label: "مراجعة", color: "#8a6410", background: "#fff8df" },
+    rejected: { icon: "🔁", label: "إعادة", color: "#a33a32", background: "#fff0ee" },
+    missing: { icon: "—", label: "لم تُرسل", color: "#71827c", background: "#f4f7f6" },
+  }[status];
+
+  return (
+    <div
+      style={{
+        minWidth: 72,
+        padding: "8px 5px",
+        borderRadius: 12,
+        background: details.background,
+        color: details.color,
+        textAlign: "center",
+        fontSize: 12,
+        fontWeight: 900,
+      }}
+    >
+      <div>{name}</div>
+      <div style={{ marginTop: 4 }}>{details.icon} {details.label}</div>
+    </div>
   );
 }
 
