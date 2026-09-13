@@ -18,9 +18,12 @@ import { db } from "../../../firebase";
 
 type ReadingSubmission = {
   id: string;
+  sourceCollection?: "reading-submissions" | "homeworkCompletions";
+  sourceDocumentId?: string;
   studentId?: string;
   studentName?: string;
   studentClassroom?: string;
+  homeworkTitle?: string;
   audioUrl?: string;
   durationSeconds?: number;
   readingDate?: string;
@@ -87,14 +90,66 @@ export default function ReadingSubmissionsPage() {
      * أي قراءة قديمة أو جديدة لا تحتوي على createdAt.
      * نجلب جميع القراءات ثم نرتبها محليًا، مع دعم submittedAt أيضًا.
      */
-    const snapshot = await getDocs(
-      collection(db, "reading-submissions")
-    );
+    const [journeySnapshot, homeworkSnapshot] = await Promise.all([
+      getDocs(collection(db, "reading-submissions")),
+      getDocs(collection(db, "homeworkCompletions")),
+    ]);
 
-    const rows = snapshot.docs.map((item) => ({
-      id: item.id,
+    const journeyRows = journeySnapshot.docs.map((item) => ({
+      id: `journey-${item.id}`,
+      sourceCollection: "reading-submissions" as const,
+      sourceDocumentId: item.id,
       ...item.data(),
     })) as ReadingSubmission[];
+
+    const homeworkRows = homeworkSnapshot.docs
+      .map((item) => {
+        const data = item.data();
+        const readingAudioUrl =
+          typeof data.readingAudioUrl === "string"
+            ? data.readingAudioUrl.trim()
+            : "";
+
+        if (!readingAudioUrl) {
+          return null;
+        }
+
+        return {
+          id: `homework-${item.id}`,
+          sourceCollection: "homeworkCompletions" as const,
+          sourceDocumentId: item.id,
+          studentId:
+            typeof data.studentId === "string" ? data.studentId : "",
+          studentName:
+            typeof data.studentName === "string" ? data.studentName : "طالب",
+          studentClassroom:
+            typeof data.classroom === "string" ? data.classroom : "",
+          homeworkTitle:
+            typeof data.homeworkTitle === "string"
+              ? data.homeworkTitle
+              : "قراءة واجب",
+          audioUrl: readingAudioUrl,
+          durationSeconds:
+            typeof data.readingDurationSeconds === "number"
+              ? data.readingDurationSeconds
+              : typeof data.durationSeconds === "number"
+                ? data.durationSeconds
+                : 0,
+          readingDate:
+            typeof data.readingDate === "string" ? data.readingDate : "",
+          status:
+            data.readingStatus === "approved"
+              ? "approved"
+              : data.readingStatus === "rejected"
+                ? "redo"
+                : "pending",
+          createdAt: data.updatedAt || data.completedAt,
+          submittedAt: data.completedAt,
+        } satisfies ReadingSubmission;
+      })
+      .filter(Boolean) as ReadingSubmission[];
+
+    const rows = [...journeyRows, ...homeworkRows];
 
     rows.sort((first, second) => {
       const firstTime =
@@ -600,13 +655,28 @@ export default function ReadingSubmissionsPage() {
         (item) => item.id === submissionId
       );
 
-      await updateDoc(
-        doc(db, "reading-submissions", submissionId),
-        {
-          status,
-          reviewedAt: serverTimestamp(),
-        }
-      );
+      if (!submission?.sourceDocumentId) {
+        throw new Error("تعذر تحديد سجل القراءة.");
+      }
+
+      if (submission.sourceCollection === "homeworkCompletions") {
+        await updateDoc(
+          doc(db, "homeworkCompletions", submission.sourceDocumentId),
+          {
+            readingStatus: status === "approved" ? "approved" : "rejected",
+            readingReviewedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }
+        );
+      } else {
+        await updateDoc(
+          doc(db, "reading-submissions", submission.sourceDocumentId),
+          {
+            status,
+            reviewedAt: serverTimestamp(),
+          }
+        );
+      }
 
       if (
         status === "approved" &&
@@ -955,6 +1025,16 @@ export default function ReadingSubmissionsPage() {
                     marginBottom: "14px",
                   }}
                 >
+                  <div>
+                    <strong>
+                      المصدر:
+                    </strong>{" "}
+                    {submission.sourceCollection ===
+                    "homeworkCompletions"
+                      ? `واجب: ${submission.homeworkTitle || "قراءة واجب"}`
+                      : "رحلة القراءة"}
+                  </div>
+
                   <div>
                     <strong>
                       الفصل:
