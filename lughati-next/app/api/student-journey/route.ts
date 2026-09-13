@@ -453,6 +453,50 @@ export async function GET(
           first - second
       );
 
+    const spellingHistory = Array.isArray(studentData.spellingHistory)
+      ? studentData.spellingHistory
+          .filter(
+            (item) =>
+              item &&
+              typeof item === "object" &&
+              typeof item.errors === "number"
+          )
+          .map((item) => ({
+            date:
+              typeof item.date === "string"
+                ? item.date
+                : getFirestoreDateKey(item.createdAt),
+            textName:
+              typeof item.textName === "string" ? item.textName : "",
+            errors: Math.max(0, Math.round(item.errors)),
+            level:
+              typeof item.level === "string" ? item.level : "",
+            notes:
+              typeof item.notes === "string" ? item.notes : "",
+          }))
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .slice(0, 5)
+      : [];
+
+    const latestErrors =
+      studentData.latestSpelling &&
+      typeof studentData.latestSpelling === "object" &&
+      typeof studentData.latestSpelling.errors === "number"
+        ? studentData.latestSpelling.errors
+        : null;
+
+    const previousErrors =
+      spellingHistory.length >= 2 ? spellingHistory[1].errors : null;
+
+    const spellingTrend =
+      latestErrors === null || previousErrors === null
+        ? null
+        : latestErrors < previousErrors
+          ? "improved"
+          : latestErrors > previousErrors
+            ? "declined"
+            : "stable";
+
     return NextResponse.json({
       success: true,
 
@@ -508,6 +552,10 @@ export async function GET(
                   : "",
             }
           : null,
+
+      spellingTrend,
+
+      spellingHistory,
 
       readingWeekKey:
         getSchoolWeekKey(dateKey),

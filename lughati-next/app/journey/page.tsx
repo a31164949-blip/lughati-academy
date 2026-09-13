@@ -182,6 +182,10 @@ type LatestSpelling = {
   notes: string;
 };
 
+type SpellingHistoryItem = LatestSpelling & {
+  date: string;
+};
+
 type JourneyData = {
   success: boolean;
   points?: number;
@@ -190,6 +194,8 @@ type JourneyData = {
   readingDays?: number;
   weeklyReadingDays?: number;
   latestSpelling?: LatestSpelling | null;
+  spellingTrend?: "improved" | "stable" | "declined" | null;
+  spellingHistory?: SpellingHistoryItem[];
   fluencyLevel?: number;
   personalPhotoUrl?: string;
   selectedAvatarIcon?: string;
@@ -505,6 +511,15 @@ const [
 
   const [latestSpelling, setLatestSpelling] =
     useState<LatestSpelling | null>(null);
+
+  const [spellingTrend, setSpellingTrend] =
+    useState<"improved" | "stable" | "declined" | null>(null);
+
+  const [spellingHistory, setSpellingHistory] =
+    useState<SpellingHistoryItem[]>([]);
+
+  const [showSpellingHistory, setShowSpellingHistory] =
+    useState(false);
 
 
   const [
@@ -959,6 +974,18 @@ try {
           typeof data.latestSpelling.level === "string"
             ? data.latestSpelling
             : null
+        );
+
+        setSpellingTrend(
+          data.spellingTrend === "improved" ||
+          data.spellingTrend === "stable" ||
+          data.spellingTrend === "declined"
+            ? data.spellingTrend
+            : null
+        );
+
+        setSpellingHistory(
+          Array.isArray(data.spellingHistory) ? data.spellingHistory : []
         );
 
 
@@ -3854,10 +3881,44 @@ try {
               >
                 {latestSpelling.errors === 0
                   ? "🌟 دون أخطاء"
-                  : `${latestSpelling.errors} ${latestSpelling.errors === 1 ? "خطأ" : "أخطاء"}`}
+                  : latestSpelling.errors === 1
+                    ? "خطأ واحد"
+                    : latestSpelling.errors === 2
+                      ? "خطآن"
+                      : `${latestSpelling.errors} أخطاء`}
               </div>
             )}
           </div>
+
+          {latestSpelling && spellingTrend && (
+            <div
+              style={{
+                display: "inline-flex",
+                marginTop: "12px",
+                padding: "7px 12px",
+                borderRadius: "999px",
+                background:
+                  spellingTrend === "improved"
+                    ? "#eaf8f1"
+                    : spellingTrend === "stable"
+                      ? "#eef4ff"
+                      : "#fff1ee",
+                color:
+                  spellingTrend === "improved"
+                    ? "#176b4d"
+                    : spellingTrend === "stable"
+                      ? "#315b8a"
+                      : "#9b463c",
+                fontWeight: 900,
+              }}
+            >
+              {spellingTrend === "improved"
+                ? "📈 مستواك في تحسن"
+                : spellingTrend === "stable"
+                  ? "➖ مستواك مستقر"
+                  : "🌱 تحتاج إلى مزيد من التدريب"}
+            </div>
+          )}
 
           {latestSpelling && (
             <div
@@ -3877,6 +3938,68 @@ try {
                 <div style={{ marginTop: "3px" }}>💬 {latestSpelling.notes}</div>
               )}
             </div>
+          )}
+
+          {spellingHistory.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowSpellingHistory((current) => !current)}
+                style={{
+                  marginTop: "13px",
+                  border: "1px solid #d8c675",
+                  borderRadius: "13px",
+                  padding: "9px 13px",
+                  background: "#ffffff",
+                  color: "#176c46",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                📈 {showSpellingHistory ? "إخفاء سجل تطوري" : "سجل تطوري في الإملاء"}
+              </button>
+
+              {showSpellingHistory && (
+                <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
+                  {spellingHistory.map((item, index) => (
+                    <div
+                      key={`${item.date}-${item.textName}-${index}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        flexWrap: "wrap",
+                        padding: "11px 13px",
+                        borderRadius: "13px",
+                        background: "#ffffff",
+                        border: "1px solid #eee5bf",
+                        color: "#5f7067",
+                        fontWeight: 800,
+                      }}
+                    >
+                      <span>
+                        {item.date || "دون تاريخ"} — {item.textName || "تقييم إملاء"}
+                      </span>
+                      <span>
+                        {item.level || "لم يُحدد"} —{" "}
+                        {item.errors === 0
+                          ? "دون أخطاء"
+                          : item.errors === 1
+                            ? "خطأ واحد"
+                            : item.errors === 2
+                              ? "خطآن"
+                              : `${item.errors} أخطاء`}
+                      </span>
+                      {item.notes && (
+                        <span style={{ width: "100%", color: "#71817a" }}>
+                          💬 {item.notes}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </section>
 
