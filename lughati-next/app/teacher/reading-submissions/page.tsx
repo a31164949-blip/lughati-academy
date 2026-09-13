@@ -33,6 +33,10 @@ type ReadingSubmission = {
 };
 
 function getTimestampMillis(value: unknown) {
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
   if (
     value &&
     typeof value === "object" &&
@@ -78,6 +82,49 @@ function getRiyadhDateFromValue(value: unknown) {
   return year && month && day
     ? `${year}-${month}-${day}`
     : "";
+}
+
+function parseDateKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+
+  return match
+    ? new Date(
+        Date.UTC(
+          Number(match[1]),
+          Number(match[2]) - 1,
+          Number(match[3])
+        )
+      )
+    : null;
+}
+
+function getSchoolWeekKey(dateKey: string) {
+  const date = parseDateKey(dateKey);
+
+  if (!date) return "";
+
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  return date.toISOString().slice(0, 10);
+}
+
+function isSchoolReadingDay(dateKey: string) {
+  const day = parseDateKey(dateKey)?.getUTCDay();
+  return day !== undefined && day >= 0 && day <= 4;
+}
+
+function getApprovedDatesForWeek(
+  approvedDates: string[],
+  weekKey: string
+) {
+  return Array.from(
+    new Set(
+      approvedDates.filter(
+        (date) =>
+          isSchoolReadingDay(date) &&
+          getSchoolWeekKey(date) === weekKey
+      )
+    )
+  ).sort();
 }
 
 type AudioStatus =
@@ -396,26 +443,29 @@ export default function ReadingSubmissionsPage() {
     };
   }, []);
 
-  async function grantCompletedReadingCycles(
+  async function grantCompletedReadingWeek(
     studentId: string,
-    approvedDates: string[]
+    approvedDates: string[],
+    readingDate: string
   ) {
-    const completedCycles =
-      Math.floor(
-        approvedDates.length / 5
+    const weekKey =
+      getSchoolWeekKey(readingDate);
+
+    const weekApprovedDates =
+      getApprovedDatesForWeek(
+        approvedDates,
+        weekKey
       );
 
-    if (completedCycles < 1) {
+    if (
+      !weekKey ||
+      weekApprovedDates.length < 5
+    ) {
       return;
     }
 
-    for (
-      let cycleNumber = 1;
-      cycleNumber <= completedCycles;
-      cycleNumber += 1
-    ) {
       const rewardId =
-        `${studentId}_reading-journey-cycle-${cycleNumber}`;
+        `${studentId}_reading-week-${weekKey}`;
 
       const rewardRef = doc(
         db,
@@ -474,14 +524,16 @@ export default function ReadingSubmissionsPage() {
             rewardRef,
             {
               studentId,
-              cycleNumber,
+              weekKey,
               requiredApprovedReadings:
                 5,
               points: 50,
               source:
                 "reading-journey",
               approvedReadingCount:
-                approvedDates.length,
+                weekApprovedDates.length,
+              approvedDates:
+                weekApprovedDates,
               createdAt:
                 serverTimestamp(),
             }
@@ -501,7 +553,7 @@ export default function ReadingSubmissionsPage() {
                   stars: 0,
                   category:
                     "القراءة",
-                  cycleNumber,
+                  weekKey,
                   date:
                     rewardDate,
                   createdAt:
@@ -522,7 +574,7 @@ export default function ReadingSubmissionsPage() {
           doc(
             db,
             "studentNotifications",
-            `reading-cycle-reward-${studentId}-${cycleNumber}`
+            `reading-week-reward-${studentId}-${weekKey}`
           ),
           {
             studentId,
@@ -534,7 +586,7 @@ export default function ReadingSubmissionsPage() {
               "رائع جدًا! أكملت 5 قراءات معتمدة وحصلت على 50 نقطة 🎙️📚✨",
 
             type:
-              "reading-cycle-reward",
+              "reading-week-reward",
 
             href:
               "/reading-journey",
@@ -543,7 +595,7 @@ export default function ReadingSubmissionsPage() {
 
             points: 50,
 
-            cycleNumber,
+            weekKey,
 
             createdAt:
               serverTimestamp(),
@@ -556,7 +608,6 @@ export default function ReadingSubmissionsPage() {
           }
         );
       }
-    }
   }
 
   async function deleteDuplicateReadings() {
@@ -722,7 +773,12 @@ export default function ReadingSubmissionsPage() {
         /*
          * تحديث تقدم القراءة
          */
-        if (submission.readingDate) {
+        if (
+          submission.readingDate &&
+          isSchoolReadingDay(
+            submission.readingDate
+          )
+        ) {
           const progressRef = doc(
             db,
             "reading-progress",
@@ -748,6 +804,22 @@ export default function ReadingSubmissionsPage() {
               submission.readingDate,
             ];
 
+            const currentDate =
+              getRiyadhDateFromValue(
+                new Date()
+              );
+
+            const currentWeekKey =
+              getSchoolWeekKey(
+                currentDate
+              );
+
+            const currentWeekApprovedDates =
+              getApprovedDatesForWeek(
+                newDates,
+                currentWeekKey
+              );
+
             await setDoc(
               progressRef,
               {
@@ -767,10 +839,11 @@ export default function ReadingSubmissionsPage() {
                   newDates.length,
 
                 weeklyProgress:
-                  Math.min(
-                    newDates.length,
-                    5
-                  ),
+                  currentWeekApprovedDates.length,
+
+                currentWeekKey,
+
+                currentWeekApprovedDates,
 
                 updatedAt:
                   serverTimestamp(),
@@ -780,9 +853,10 @@ export default function ReadingSubmissionsPage() {
               }
             );
 
-            await grantCompletedReadingCycles(
+            await grantCompletedReadingWeek(
               submission.studentId,
-              newDates
+              newDates,
+              submission.readingDate
             );
           }
         }

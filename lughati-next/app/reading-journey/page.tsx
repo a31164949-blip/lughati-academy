@@ -29,6 +29,51 @@ function getRiyadhDateKey() {
   return `${year}-${month}-${day}`;
 }
 
+function parseDateKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+
+  return match
+    ? new Date(
+        Date.UTC(
+          Number(match[1]),
+          Number(match[2]) - 1,
+          Number(match[3])
+        )
+      )
+    : null;
+}
+
+function getSchoolWeekKey(dateKey: string) {
+  const date = parseDateKey(dateKey);
+
+  if (!date) return "";
+
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  return date.toISOString().slice(0, 10);
+}
+
+function isSchoolReadingDay(dateKey: string) {
+  const day = parseDateKey(dateKey)?.getUTCDay();
+  return day !== undefined && day >= 0 && day <= 4;
+}
+
+function getWeeklyApprovedDates(approvedDates: unknown) {
+  if (!Array.isArray(approvedDates)) return [] as string[];
+
+  const currentWeekKey = getSchoolWeekKey(getRiyadhDateKey());
+
+  return Array.from(
+    new Set(
+      approvedDates.filter(
+        (date): date is string =>
+          typeof date === "string" &&
+          isSchoolReadingDay(date) &&
+          getSchoolWeekKey(date) === currentWeekKey
+      )
+    )
+  ).sort();
+}
+
 export default function ReadingJourneyPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -56,6 +101,12 @@ export default function ReadingJourneyPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isReadingWeekOpen =
+    isSchoolReadingDay(getRiyadhDateKey());
+
+  const canSubmitReading =
+    submissionWindow.isOpen && isReadingWeekOpen;
 
   useEffect(() => {
     function refreshSubmissionWindow() {
@@ -94,9 +145,16 @@ export default function ReadingJourneyPage() {
         if (progressSnap.exists()) {
           const data = progressSnap.data();
 
-          setWeeklyProgress(data.weeklyProgress || 0);
+          const savedApprovedDates =
+            Array.isArray(data.approvedDates)
+              ? data.approvedDates
+              : [];
+
+          setWeeklyProgress(
+            getWeeklyApprovedDates(savedApprovedDates).length
+          );
           setTotalApprovedDays(data.totalApprovedDays || 0);
-          setApprovedDates(data.approvedDates || []);
+          setApprovedDates(savedApprovedDates);
         }
       } catch (error) {
         console.error("فشل تحميل تقدم القراءة:", error);
@@ -183,6 +241,13 @@ export default function ReadingJourneyPage() {
   }, [audioPreviewUrl]);
 
   async function startRecording() {
+    if (!isReadingWeekOpen) {
+      setSendMessage(
+        "✅ انتهت رحلة القراءة لهذا الأسبوع. نبدأ رحلة جديدة يوم الأحد بإذن الله 🌟"
+      );
+      return;
+    }
+
     const currentWindow =
       getStudentSubmissionWindow();
 
@@ -364,6 +429,13 @@ export default function ReadingJourneyPage() {
   }
 
   async function sendReading() {
+    if (!isReadingWeekOpen) {
+      setSendMessage(
+        "✅ انتهت رحلة القراءة لهذا الأسبوع. نبدأ رحلة جديدة يوم الأحد بإذن الله 🌟"
+      );
+      return;
+    }
+
     const currentWindow =
       getStudentSubmissionWindow();
 
@@ -832,13 +904,13 @@ export default function ReadingJourneyPage() {
               marginTop: "18px",
               padding: "16px 18px",
               borderRadius: "18px",
-              border: submissionWindow.isOpen
+              border: canSubmitReading
                 ? "1px solid #a7f3d0"
                 : "1px solid #fed7aa",
-              background: submissionWindow.isOpen
+              background: canSubmitReading
                 ? "#ecfdf5"
                 : "#fff7ed",
-              color: submissionWindow.isOpen
+              color: canSubmitReading
                 ? "#047857"
                 : "#9a3412",
               textAlign: "center",
@@ -853,13 +925,15 @@ export default function ReadingJourneyPage() {
                 marginBottom: "4px",
               }}
             >
-              {submissionWindow.isOpen
+              {canSubmitReading
                 ? "🟢 استقبال القراءة متاح الآن"
-                : "🌙 استقبال القراءة مغلق الآن"}
+                : isReadingWeekOpen
+                  ? "🌙 استقبال القراءة مغلق الآن"
+                  : "✅ انتهت رحلة هذا الأسبوع"}
             </div>
 
             <div>
-              تستقبل الأكاديمية قراءات الطلاب يوميًا من{" "}
+              تستقبل الأكاديمية قراءات الطلاب من الأحد إلى الخميس، من{" "}
               <strong>{STUDENT_SUBMISSION_OPEN_TEXT}</strong>{" "}
               حتى{" "}
               <strong>{STUDENT_SUBMISSION_CLOSE_TEXT}</strong>{" "}
@@ -977,7 +1051,7 @@ export default function ReadingJourneyPage() {
                     disabled={
                       isUploadingAudio ||
                       isSavingReading ||
-                      !submissionWindow.isOpen
+                      !canSubmitReading
                     }
                     style={{
                       width:
@@ -994,7 +1068,7 @@ export default function ReadingJourneyPage() {
                       background:
                         isUploadingAudio ||
                         isSavingReading ||
-                        !submissionWindow.isOpen
+                        !canSubmitReading
                           ? "#94a3b8"
                           : "#087f5b",
                       color:
@@ -1002,14 +1076,14 @@ export default function ReadingJourneyPage() {
                       cursor:
                         isUploadingAudio ||
                         isSavingReading ||
-                        !submissionWindow.isOpen
+                        !canSubmitReading
                           ? "not-allowed"
                           : "pointer",
                       marginTop:
                         "12px",
                     }}
                   >
-                    {submissionWindow.isOpen
+                    {canSubmitReading
                       ? "🎙️ ابدأ القراءة"
                       : "🌙 استقبال القراءة مغلق الآن"}
                   </button>
@@ -1152,7 +1226,7 @@ export default function ReadingJourneyPage() {
                     isUploadingAudio ||
                     isSavingReading ||
                     !audioBlob ||
-                    !submissionWindow.isOpen
+                    !canSubmitReading
                   }
                   onClick={
                     sendReading
@@ -1170,7 +1244,7 @@ export default function ReadingJourneyPage() {
                       isUploadingAudio ||
                       isSavingReading ||
                       !audioBlob ||
-                      !submissionWindow.isOpen
+                      !canSubmitReading
                         ? "#94a3b8"
                         : "#087f5b",
                     color: "white",
@@ -1180,12 +1254,12 @@ export default function ReadingJourneyPage() {
                       isUploadingAudio ||
                       isSavingReading ||
                       !audioBlob ||
-                      !submissionWindow.isOpen
+                      !canSubmitReading
                         ? "not-allowed"
                         : "pointer",
                   }}
                 >
-                  {!submissionWindow.isOpen
+                  {!canSubmitReading
                     ? "🌙 استقبال القراءة مغلق الآن"
                     : isUploadingAudio ||
                         isSavingReading

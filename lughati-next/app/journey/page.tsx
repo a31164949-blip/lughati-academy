@@ -181,6 +181,7 @@ type JourneyData = {
   stars?: number;
   streak?: number;
   readingDays?: number;
+  weeklyReadingDays?: number;
   fluencyLevel?: number;
   personalPhotoUrl?: string;
   selectedAvatarIcon?: string;
@@ -489,6 +490,9 @@ const [
     useState(0);
 
   const [readingDays, setReadingDays] =
+    useState(0);
+
+  const [weeklyReadingDays, setWeeklyReadingDays] =
     useState(0);
 
 
@@ -921,6 +925,21 @@ try {
           typeof data.readingDays ===
             "number"
             ? data.readingDays
+            : 0
+        );
+
+        setWeeklyReadingDays(
+          typeof data.weeklyReadingDays ===
+            "number"
+            ? Math.max(
+                0,
+                Math.min(
+                  5,
+                  Math.round(
+                    data.weeklyReadingDays
+                  )
+                )
+              )
             : 0
         );
 
@@ -5403,7 +5422,7 @@ try {
                         >
                           {loading
                             ? "…"
-                            : readingDays}
+                            : weeklyReadingDays}
                         </strong>
 
                         <span

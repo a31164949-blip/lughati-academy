@@ -77,6 +77,24 @@ function getRiyadhDate() {
   return `${year}-${month}-${day}`;
 }
 
+function isSchoolReadingDay(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+
+  if (!match) {
+    return false;
+  }
+
+  const day = new Date(
+    Date.UTC(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3])
+    )
+  ).getUTCDay();
+
+  return day >= 0 && day <= 4;
+}
+
 /*
  * =====================================================
  * معرف القراءة اليومية
@@ -286,6 +304,24 @@ export async function POST(
   request: Request
 ) {
   try {
+    const readingDate =
+      getRiyadhDate();
+
+    if (!isSchoolReadingDay(readingDate)) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "READING_WEEK_FINISHED",
+          message:
+            "✅ انتهت رحلة القراءة لهذا الأسبوع. نبدأ رحلة جديدة يوم الأحد بإذن الله 🌟",
+          readingDate,
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
     /*
      * =================================================
      * فحص وقت استقبال أعمال الطلاب
@@ -419,9 +455,6 @@ export async function POST(
      * الخادم يحدد اليوم
      * حسب توقيت الرياض.
      */
-    const readingDate =
-      getRiyadhDate();
-
     /*
      * =================================================
      * دعم القراءات القديمة

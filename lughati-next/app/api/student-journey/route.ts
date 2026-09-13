@@ -43,6 +43,64 @@ function getSaudiDateKey(date = new Date()) {
   }).format(date);
 }
 
+function parseDateKey(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+
+  if (!match) {
+    return null;
+  }
+
+  return new Date(
+    Date.UTC(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3])
+    )
+  );
+}
+
+function getSchoolWeekKey(dateKey: string) {
+  const date = parseDateKey(dateKey);
+
+  if (!date) {
+    return "";
+  }
+
+  const day = date.getUTCDay();
+  date.setUTCDate(date.getUTCDate() - day);
+
+  return date.toISOString().slice(0, 10);
+}
+
+function isSchoolReadingDay(dateKey: string) {
+  const date = parseDateKey(dateKey);
+  const day = date?.getUTCDay();
+
+  return day !== undefined && day >= 0 && day <= 4;
+}
+
+function getCurrentWeekApprovedDates(
+  approvedDates: unknown,
+  todayDateKey: string
+) {
+  if (!Array.isArray(approvedDates)) {
+    return [] as string[];
+  }
+
+  const currentWeekKey = getSchoolWeekKey(todayDateKey);
+
+  return Array.from(
+    new Set(
+      approvedDates.filter(
+        (date): date is string =>
+          typeof date === "string" &&
+          isSchoolReadingDay(date) &&
+          getSchoolWeekKey(date) === currentWeekKey
+      )
+    )
+  ).sort();
+}
+
 function getFirestoreDateKey(
   value: unknown
 ): string {
@@ -359,6 +417,12 @@ export async function GET(
           {}
         : {};
 
+    const currentWeekApprovedDates =
+      getCurrentWeekApprovedDates(
+        readingProgressData.approvedDates,
+        dateKey
+      );
+
     const completedSet =
       new Set<number>();
 
@@ -418,6 +482,15 @@ export async function GET(
     ? readingProgressData
         .totalApprovedDays
     : 0,
+
+      weeklyReadingDays:
+        currentWeekApprovedDates.length,
+
+      readingWeekKey:
+        getSchoolWeekKey(dateKey),
+
+      readingWeekCompleted:
+        currentWeekApprovedDates.length >= 5,
 
 // المستوى الرسمي في قمة الطلاقة.
 // لا يعتمد على عدد القراءات.
