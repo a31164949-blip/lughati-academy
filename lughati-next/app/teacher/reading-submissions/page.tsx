@@ -54,6 +54,32 @@ function getTimestampMillis(value: unknown) {
   return 0;
 }
 
+function getRiyadhDateFromValue(value: unknown) {
+  const milliseconds = getTimestampMillis(value);
+
+  if (!milliseconds) {
+    return "";
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Riyadh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(milliseconds));
+
+  const year =
+    parts.find((part) => part.type === "year")?.value || "";
+  const month =
+    parts.find((part) => part.type === "month")?.value || "";
+  const day =
+    parts.find((part) => part.type === "day")?.value || "";
+
+  return year && month && day
+    ? `${year}-${month}-${day}`
+    : "";
+}
+
 type AudioStatus =
   | "idle"
   | "loading"
@@ -114,6 +140,18 @@ export default function ReadingSubmissionsPage() {
           return null;
         }
 
+        const storedReadingDate =
+          typeof data.readingDate === "string" && data.readingDate.trim()
+            ? data.readingDate.trim()
+            : typeof data.date === "string" && data.date.trim()
+              ? data.date.trim()
+              : "";
+
+        const resolvedReadingDate =
+          storedReadingDate ||
+          getRiyadhDateFromValue(data.completedAt) ||
+          getRiyadhDateFromValue(data.createdAt);
+
         return {
           id: `homework-${item.id}`,
           sourceCollection: "homeworkCompletions" as const,
@@ -135,8 +173,7 @@ export default function ReadingSubmissionsPage() {
               : typeof data.durationSeconds === "number"
                 ? data.durationSeconds
                 : 0,
-          readingDate:
-            typeof data.readingDate === "string" ? data.readingDate : "",
+          readingDate: resolvedReadingDate,
           status:
             data.readingStatus === "approved"
               ? "approved"
