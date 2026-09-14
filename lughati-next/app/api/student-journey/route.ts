@@ -364,6 +364,11 @@ export async function GET(
         )
         .doc(studentDocId);
 
+    const weeklyPlanRef =
+      adminDb
+        .collection("weeklyPlans")
+        .doc("current");
+
     const completionRefs =
       tasks.map((task) =>
         adminDb
@@ -378,10 +383,12 @@ export async function GET(
     const [
       studentSnapshot,
       readingProgressSnapshot,
+      weeklyPlanSnapshot,
       ...completionSnapshots
     ] = await adminDb.getAll(
       studentRef,
       readingProgressRef,
+      weeklyPlanRef,
       ...completionRefs
     );
 
@@ -398,11 +405,80 @@ export async function GET(
       );
     }
 
-    const homeworkStatus =
-      await getHomeworkStatusForDate(
+    const [
+      homeworkStatus,
+      studentMessagesSnapshot,
+    ] = await Promise.all([
+      getHomeworkStatusForDate(
         studentDocId,
         dateKey
-      );
+      ),
+      adminDb
+        .collection("studentTeacherMessages")
+        .where("studentId", "==", studentDocId)
+        .get(),
+    ]);
+
+    const unreadMessageCount =
+      studentMessagesSnapshot.docs.filter(
+        (document) => {
+          const data = document.data() ?? {};
+          return (
+            typeof data.teacherReply === "string" &&
+            data.teacherReply.trim().length > 0 &&
+            data.studentViewedReply !== true
+          );
+        }
+      ).length;
+
+    const nextSchoolDayMap: Record<number, string> = {
+      0: "الاثنين",
+      1: "الثلاثاء",
+      2: "الأربعاء",
+      3: "الخميس",
+      4: "الأحد",
+      5: "الأحد",
+      6: "الأحد",
+    };
+
+    const parsedToday = parseDateKey(dateKey);
+    const tomorrowSpellingDay = parsedToday
+      ? nextSchoolDayMap[parsedToday.getUTCDay()] || ""
+      : "";
+
+    const weeklyPlanData =
+      weeklyPlanSnapshot.exists &&
+      weeklyPlanSnapshot.data()?.published === true
+        ? weeklyPlanSnapshot.data() ?? {}
+        : {};
+
+    const weeklyPlanDays = Array.isArray(weeklyPlanData.days)
+      ? weeklyPlanData.days
+      : [];
+
+    const tomorrowPlan = weeklyPlanDays.find(
+      (day) =>
+        day &&
+        typeof day === "object" &&
+        day.day === tomorrowSpellingDay
+    );
+
+    const rawTomorrowSpellingWords =
+      tomorrowPlan &&
+      typeof tomorrowPlan.spellingWords === "string"
+        ? tomorrowPlan.spellingWords
+        : "";
+
+    const tomorrowSpellingWords =
+      rawTomorrowSpellingWords
+        .split(/[\n،,]+/)
+        .flatMap((part: string) =>
+          part
+            .trim()
+            .split(/\s{2,}/)
+        )
+        .map((word: string) => word.trim())
+        .filter(Boolean);
 
     const hasApprovedHomeworkToday =
       homeworkStatus === "approved";
@@ -602,6 +678,9 @@ personalPhotoUrl:
       completedTaskIds,
       hasApprovedHomeworkToday,
       homeworkStatus,
+      tomorrowSpellingDay,
+      tomorrowSpellingWords,
+      unreadMessageCount,
       smartFollowUp:
   studentData.smartFollowUp &&
   typeof studentData.smartFollowUp ===
