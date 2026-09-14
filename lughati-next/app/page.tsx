@@ -1749,6 +1749,114 @@ useEffect(() => {
         </div>
       </section>
 
+      {/* أسبوع الوطن */}
+
+      <section
+        aria-label="أسبوع الوطن في أكاديمية لغتي"
+        style={{
+          maxWidth: "1180px",
+          margin: "18px auto 20px",
+          padding: "clamp(20px, 4vw, 34px)",
+          borderRadius: "32px",
+          position: "relative",
+          overflow: "hidden",
+          color: "#ffffff",
+          background:
+            "radial-gradient(circle at 12% 18%, rgba(250,204,21,.24), transparent 24%), linear-gradient(135deg, #075f46 0%, #0b7a52 54%, #119b68 100%)",
+          boxShadow: "0 18px 42px rgba(6,95,70,.22)",
+          border: "1px solid rgba(250,204,21,.42)",
+        }}
+      >
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: "-28px",
+            bottom: "-58px",
+            fontSize: "150px",
+            opacity: 0.08,
+            transform: "rotate(-8deg)",
+          }}
+        >
+          🇸🇦
+        </div>
+
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "22px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: "1 1 520px" }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "7px 13px",
+                marginBottom: "12px",
+                borderRadius: "999px",
+                color: "#fff4b8",
+                background: "rgba(255,255,255,.12)",
+                border: "1px solid rgba(255,255,255,.18)",
+                fontWeight: 900,
+                fontSize: "14px",
+              }}
+            >
+              🇸🇦 من 20 إلى 26 سبتمبر 2026
+            </div>
+
+            <h2
+              style={{
+                margin: "0 0 8px",
+                fontSize: "clamp(26px, 4vw, 42px)",
+                lineHeight: 1.25,
+                fontWeight: 950,
+              }}
+            >
+              أسبوع الوطن في أكاديمية لغتي
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                maxWidth: "720px",
+                color: "#dcfce7",
+                fontSize: "clamp(15px, 2vw, 18px)",
+                lineHeight: 1.9,
+                fontWeight: 700,
+              }}
+            >
+              سبعة أيام من المسابقات والقراءة والإبداع، نعبّر فيها عن حبنا لوطننا ونحتفي بإنجازات أبطال الأكاديمية.
+            </p>
+          </div>
+
+          <Link
+            href="/national-day"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "9px",
+              minWidth: "190px",
+              padding: "15px 22px",
+              borderRadius: "17px",
+              color: "#075f46",
+              background: "linear-gradient(135deg, #fff7c2, #facc15)",
+              textDecoration: "none",
+              fontWeight: 950,
+              boxShadow: "0 10px 24px rgba(0,0,0,.14)",
+            }}
+          >
+            استكشف الفعاليات ←
+          </Link>
+        </div>
+      </section>
+
       {/* نبض الأكاديمية */}
 
       <section
