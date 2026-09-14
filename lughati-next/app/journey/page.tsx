@@ -11,7 +11,16 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { auth } from "../../firebase";
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
+import {
+  auth,
+  db,
+} from "../../firebase";
 
 const journeyCards = [
   {
@@ -831,6 +840,100 @@ const [
     };
   }, [user]);
  
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadMessageCount(0);
+      return;
+    }
+
+    let active = true;
+    let unsubscribeMessages:
+      | (() => void)
+      | undefined;
+
+    async function subscribeToStudentMessages() {
+      try {
+        const tokenResult =
+          await user.getIdTokenResult();
+
+        const studentDocId =
+          typeof tokenResult.claims.studentDocId ===
+          "string"
+            ? tokenResult.claims.studentDocId
+            : "";
+
+        if (!studentDocId || !active) {
+          return;
+        }
+
+        const messagesQuery = query(
+          collection(
+            db,
+            "studentTeacherMessages"
+          ),
+          where(
+            "studentId",
+            "==",
+            studentDocId
+          )
+        );
+
+        const unsubscribe = onSnapshot(
+          messagesQuery,
+          (snapshot) => {
+            if (!active) return;
+
+            const unreadCount =
+              snapshot.docs.filter(
+                (messageDocument) => {
+                  const data =
+                    messageDocument.data();
+
+                  return (
+                    typeof data.teacherReply ===
+                      "string" &&
+                    data.teacherReply.trim().length >
+                      0 &&
+                    data.studentViewedReply !== true
+                  );
+                }
+              ).length;
+
+            setUnreadMessageCount(
+              unreadCount
+            );
+          },
+          (error) => {
+            console.error(
+              "تعذر تحديث عداد الرسائل:",
+              error
+            );
+          }
+        );
+
+        if (!active) {
+          unsubscribe();
+          return;
+        }
+
+        unsubscribeMessages =
+          unsubscribe;
+      } catch (error) {
+        console.error(
+          "تعذر بدء متابعة رسائل الطالب:",
+          error
+        );
+      }
+    }
+
+    void subscribeToStudentMessages();
+
+    return () => {
+      active = false;
+      unsubscribeMessages?.();
+    };
+  }, [user]);
 
   async function openNotification(
     notification: StudentNotification
