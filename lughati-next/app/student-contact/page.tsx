@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import {
   addDoc,
   collection,
+  doc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import {
@@ -29,6 +31,7 @@ type StudentMessage = {
   message: string;
   teacherReply?: string;
   status?: string;
+  studentViewedReply?: boolean;
   createdAt?: {
     toDate?: () => Date;
   } | null;
@@ -167,7 +170,40 @@ await loadMessages(claimedStudentId);
           })
         );
 
-      setMessages(items);
+      setMessages(
+        items.map((item) =>
+          item.teacherReply?.trim()
+            ? {
+                ...item,
+                studentViewedReply: true,
+              }
+            : item
+        )
+      );
+
+      const unreadReplies = items.filter(
+        (item) =>
+          item.teacherReply?.trim() &&
+          item.studentViewedReply !== true
+      );
+
+      if (unreadReplies.length > 0) {
+        await Promise.all(
+          unreadReplies.map((item) =>
+            updateDoc(
+              doc(
+                db,
+                "studentTeacherMessages",
+                item.id
+              ),
+              {
+                studentViewedReply: true,
+                updatedAt: serverTimestamp(),
+              }
+            )
+          )
+        );
+      }
     } catch (error) {
       console.error(
         "تعذر تحميل الرسائل:",
