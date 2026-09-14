@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  addDoc,
   collection,
   getDocs,
   orderBy,
@@ -18,6 +19,7 @@ type StudentMessage = {
   id: string;
   studentId: string;
   studentName: string;
+  classroom?: string;
   category: string;
   categoryLabel?: string;
   message: string;
@@ -28,6 +30,14 @@ type StudentMessage = {
   createdAt?: {
     toDate?: () => Date;
   } | null;
+};
+
+type StudentOption = {
+  id: string;
+  studentName: string;
+  classroom: string;
+  active: boolean;
+  archived: boolean;
 };
 
 export default function TeacherStudentMessagesPage() {
@@ -45,6 +55,54 @@ export default function TeacherStudentMessagesPage() {
 
   const [feedback, setFeedback] =
     useState("");
+
+  const [students, setStudents] =
+    useState<StudentOption[]>([]);
+
+  const [studentsLoading, setStudentsLoading] =
+    useState(true);
+
+  const [directMessageOpen, setDirectMessageOpen] =
+    useState(false);
+
+  const [selectedClassroom, setSelectedClassroom] =
+    useState("الكل");
+
+  const [selectedStudentId, setSelectedStudentId] =
+    useState("");
+
+  const [directSubject, setDirectSubject] =
+    useState("");
+
+  const [directBody, setDirectBody] =
+    useState("");
+
+  const [sendingDirectMessage, setSendingDirectMessage] =
+    useState(false);
+
+  const classrooms = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          students
+            .map((student) => student.classroom)
+            .filter(Boolean)
+        )
+      ).sort((first, second) =>
+        first.localeCompare(second, "ar")
+      ),
+    [students]
+  );
+
+  const filteredStudents = useMemo(
+    () =>
+      students.filter(
+        (student) =>
+          selectedClassroom === "الكل" ||
+          student.classroom === selectedClassroom
+      ),
+    [selectedClassroom, students]
+  );
 
   async function fetchMessages() {
   const q = query(
@@ -119,6 +177,76 @@ async function loadMessages() {
 useEffect(() => {
   let active = true;
 
+  async function loadStudents() {
+    try {
+      setStudentsLoading(true);
+
+      const snapshot = await getDocs(
+        collection(db, "students")
+      );
+
+      if (!active) return;
+
+      const rows: StudentOption[] = snapshot.docs
+        .map((studentDocument) => {
+          const data = studentDocument.data();
+
+          return {
+            id: studentDocument.id,
+            studentName:
+              typeof data.studentName === "string"
+                ? data.studentName
+                : typeof data.name === "string"
+                  ? data.name
+                  : "طالب دون اسم",
+            classroom:
+              typeof data.classroom === "string"
+                ? data.classroom
+                : "غير محدد",
+            active: data.active !== false,
+            archived: data.archived === true,
+          };
+        })
+        .filter(
+          (student) =>
+            student.active && !student.archived
+        )
+        .sort((first, second) =>
+          first.studentName.localeCompare(
+            second.studentName,
+            "ar"
+          )
+        );
+
+      setStudents(rows);
+    } catch (error) {
+      console.error(
+        "تعذر تحميل قائمة الطلاب:",
+        error
+      );
+
+      if (active) {
+        setFeedback(
+          "❌ تعذر تحميل قائمة الطلاب."
+        );
+      }
+    } finally {
+      if (active) {
+        setStudentsLoading(false);
+      }
+    }
+  }
+
+  void loadStudents();
+
+  return () => {
+    active = false;
+  };
+}, []);
+
+useEffect(() => {
+  let active = true;
+
   async function loadInitialMessages() {
     try {
       const items =
@@ -157,6 +285,79 @@ useEffect(() => {
     active = false;
   };
 }, []);
+
+  async function sendDirectMessage() {
+    const student = students.find(
+      (item) => item.id === selectedStudentId
+    );
+
+    const subject = directSubject.trim();
+    const body = directBody.trim();
+
+    if (!student) {
+      setFeedback("⚠️ اختر الطالب أولًا.");
+      return;
+    }
+
+    if (!subject) {
+      setFeedback("⚠️ اكتب عنوان الرسالة.");
+      return;
+    }
+
+    if (!body) {
+      setFeedback("⚠️ اكتب نص الرسالة.");
+      return;
+    }
+
+    try {
+      setSendingDirectMessage(true);
+      setFeedback("");
+
+      await addDoc(
+        collection(
+          db,
+          "studentTeacherMessages"
+        ),
+        {
+          studentId: student.id,
+          studentName: student.studentName,
+          classroom: student.classroom,
+          category: "teacher",
+          categoryLabel: "✉️ رسالة من المعلم",
+          message: subject,
+          teacherReply: body,
+          status: "replied",
+          studentViewedReply: false,
+          sender: "teacher",
+          createdAt: serverTimestamp(),
+          repliedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+      );
+
+      setFeedback(
+        `✅ أُرسلت الرسالة إلى ${student.studentName}.`
+      );
+
+      setSelectedStudentId("");
+      setDirectSubject("");
+      setDirectBody("");
+      setDirectMessageOpen(false);
+
+      await loadMessages();
+    } catch (error) {
+      console.error(
+        "تعذر إرسال رسالة المعلم:",
+        error
+      );
+
+      setFeedback(
+        "❌ تعذر إرسال الرسالة حاليًا."
+      );
+    } finally {
+      setSendingDirectMessage(false);
+    }
+  }
 
   async function saveReply(
     item: StudentMessage
@@ -291,13 +492,169 @@ useEffect(() => {
             </p>
           </div>
 
-          <Link
-            href="/teacher"
-            className="rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg"
-          >
-            ← العودة إلى لوحة المعلم
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                setDirectMessageOpen(
+                  (current) => !current
+                )
+              }
+              className="rounded-2xl bg-amber-400 px-5 py-3 font-black text-amber-950 shadow-lg transition hover:bg-amber-300"
+            >
+              ✉️ رسالة جديدة لطالب
+            </button>
+
+            <Link
+              href="/teacher"
+              className="rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white no-underline shadow-lg"
+            >
+              ← العودة إلى لوحة المعلم
+            </Link>
+          </div>
         </div>
+
+        {directMessageOpen && (
+          <section className="mb-6 rounded-3xl border-2 border-amber-200 bg-white p-6 shadow-xl">
+            <div className="mb-5">
+              <h2 className="m-0 text-2xl font-black text-slate-800">
+                ✉️ إرسال رسالة جديدة
+              </h2>
+              <p className="mb-0 mt-2 font-bold text-slate-500">
+                اختر الطالب واكتب رسالتك؛ وستظهر له داخل ظرف الرسائل.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block font-black text-slate-700">
+                  الفصل
+                </span>
+                <select
+                  value={selectedClassroom}
+                  onChange={(event) => {
+                    setSelectedClassroom(
+                      event.target.value
+                    );
+                    setSelectedStudentId("");
+                  }}
+                  disabled={studentsLoading}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-emerald-500"
+                >
+                  <option value="الكل">
+                    جميع الفصول
+                  </option>
+                  {classrooms.map((classroom) => (
+                    <option
+                      key={classroom}
+                      value={classroom}
+                    >
+                      {classroom}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block font-black text-slate-700">
+                  اسم الطالب
+                </span>
+                <select
+                  value={selectedStudentId}
+                  onChange={(event) =>
+                    setSelectedStudentId(
+                      event.target.value
+                    )
+                  }
+                  disabled={studentsLoading}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-emerald-500"
+                >
+                  <option value="">
+                    {studentsLoading
+                      ? "جاري تحميل الطلاب..."
+                      : "اختر الطالب"}
+                  </option>
+                  {filteredStudents.map((student) => (
+                    <option
+                      key={student.id}
+                      value={student.id}
+                    >
+                      {student.studentName} — {student.classroom}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="mt-4 block">
+              <span className="mb-2 block font-black text-slate-700">
+                عنوان الرسالة
+              </span>
+              <input
+                type="text"
+                value={directSubject}
+                onChange={(event) =>
+                  setDirectSubject(
+                    event.target.value
+                  )
+                }
+                maxLength={100}
+                placeholder="مثال: تذكير بقراءة درس الغد"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-emerald-500"
+              />
+            </label>
+
+            <label className="mt-4 block">
+              <span className="mb-2 block font-black text-slate-700">
+                نص الرسالة
+              </span>
+              <textarea
+                value={directBody}
+                onChange={(event) =>
+                  setDirectBody(
+                    event.target.value
+                  )
+                }
+                rows={5}
+                maxLength={1000}
+                placeholder="اكتب رسالتك للطالب هنا..."
+                className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 font-bold leading-8 outline-none focus:border-emerald-500"
+              />
+            </label>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <small className="font-bold text-slate-400">
+                🔒 تصل الرسالة إلى الطالب المحدد فقط.
+              </small>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDirectMessageOpen(false)
+                  }
+                  disabled={sendingDirectMessage}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-black text-slate-600"
+                >
+                  إلغاء
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void sendDirectMessage()
+                  }
+                  disabled={sendingDirectMessage}
+                  className="rounded-2xl bg-emerald-700 px-6 py-3 font-black text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {sendingDirectMessage
+                    ? "⏳ جاري الإرسال..."
+                    : "📨 إرسال الرسالة"}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* الملخص */}
 
@@ -410,7 +767,9 @@ useEffect(() => {
 
                     <div className="rounded-2xl bg-slate-50 p-4">
                       <strong className="block text-sm text-slate-500">
-                        💬 رسالة الطالب
+                        {item.category === "teacher"
+                          ? "📝 عنوان رسالة المعلم"
+                          : "💬 رسالة الطالب"}
                       </strong>
 
                       <p className="mb-0 mt-2 whitespace-pre-wrap font-bold leading-8 text-slate-800">
@@ -422,7 +781,9 @@ useEffect(() => {
 
                     <div className="mt-4">
                       <label className="mb-2 block font-black text-emerald-800">
-                        👨‍🏫 رد المعلم
+                        {item.category === "teacher"
+                          ? "👨‍🏫 نص رسالة المعلم"
+                          : "👨‍🏫 رد المعلم"}
                       </label>
 
                       <textarea
