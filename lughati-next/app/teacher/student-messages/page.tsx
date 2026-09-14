@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
+  deleteDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   doc,
@@ -51,6 +53,9 @@ export default function TeacherStudentMessagesPage() {
     useState<Record<string, string>>({});
 
   const [savingId, setSavingId] =
+    useState<string | null>(null);
+
+  const [deletingId, setDeletingId] =
     useState<string | null>(null);
 
   const [feedback, setFeedback] =
@@ -245,45 +250,69 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  let active = true;
+  setLoading(true);
 
-  async function loadInitialMessages() {
-    try {
-      const items =
-        await fetchMessages();
+  const messagesQuery = query(
+    collection(
+      db,
+      "studentTeacherMessages"
+    ),
+    orderBy(
+      "createdAt",
+      "desc"
+    )
+  );
 
-      if (!active) {
-        return;
-      }
+  const unsubscribe = onSnapshot(
+    messagesQuery,
+    (snapshot) => {
+      const items: StudentMessage[] =
+        snapshot.docs.map(
+          (item) => ({
+            id: item.id,
+            ...(item.data() as Omit<
+              StudentMessage,
+              "id"
+            >),
+          })
+        );
 
       setMessages(items);
-
       setReplyTexts(
-        buildReplyTexts(items)
+        (currentReplies) => {
+          const nextReplies = {
+            ...currentReplies,
+          };
+
+          items.forEach((item) => {
+            if (
+              typeof nextReplies[item.id] !==
+              "string"
+            ) {
+              nextReplies[item.id] =
+                item.teacherReply || "";
+            }
+          });
+
+          return nextReplies;
+        }
       );
-    } catch (error) {
+      setLoading(false);
+    },
+    (error) => {
       console.error(
-        "تعذر تحميل رسائل الطلاب:",
+        "تعذر تحديث رسائل الطلاب:",
         error
       );
 
-      if (active) {
-        setFeedback(
-          "❌ تعذر تحميل رسائل الطلاب."
-        );
-      }
-    } finally {
-      if (active) {
-        setLoading(false);
-      }
+      setFeedback(
+        "❌ تعذر تحديث رسائل الطلاب."
+      );
+      setLoading(false);
     }
-  }
+  );
 
-  void loadInitialMessages();
-
-  return () => {
-    active = false;
-  };
+  return unsubscribe;
 }, []);
 
   async function sendDirectMessage() {
@@ -356,6 +385,51 @@ useEffect(() => {
       );
     } finally {
       setSendingDirectMessage(false);
+    }
+  }
+
+  async function deleteMessage(
+    item: StudentMessage
+  ) {
+    const label =
+      item.category === "teacher"
+        ? item.message || "رسالة المعلم"
+        : item.message || "رسالة الطالب";
+
+    const confirmed = window.confirm(
+      `هل تريد حذف رسالة ${item.studentName || "الطالب"}؟\n\n${label}\n\nلن يمكن استعادة الرسالة بعد الحذف.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingId(item.id);
+      setFeedback("");
+
+      await deleteDoc(
+        doc(
+          db,
+          "studentTeacherMessages",
+          item.id
+        )
+      );
+
+      setFeedback(
+        `✅ تم حذف رسالة ${item.studentName || "الطالب"}.`
+      );
+    } catch (error) {
+      console.error(
+        "تعذر حذف الرسالة:",
+        error
+      );
+
+      setFeedback(
+        "❌ تعذر حذف الرسالة حاليًا."
+      );
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -760,6 +834,22 @@ useEffect(() => {
                             ? "✅ تم الرد"
                             : "🔔 جديدة"}
                         </span>
+
+                        {replied && (
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-black ${
+                              item.studentViewedReply ===
+                              true
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {item.studentViewedReply ===
+                            true
+                              ? "👁️ تم اطلاع الطالب"
+                              : "○ لم يطّلع بعد"}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -816,26 +906,51 @@ useEffect(() => {
                           صفحة «رسائلي السابقة».
                         </small>
 
-                        <button
-                          type="button"
-                          disabled={
-                            savingId ===
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            disabled={
+                              deletingId ===
+                                item.id ||
+                              savingId ===
+                                item.id
+                            }
+                            onClick={() =>
+                              void deleteMessage(
+                                item
+                              )
+                            }
+                            className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 font-black text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {deletingId ===
                             item.id
-                          }
-                          onClick={() =>
-                            saveReply(
-                              item
-                            )
-                          }
-                          className="rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white shadow transition disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {savingId ===
-                          item.id
-                            ? "⏳ جاري الحفظ..."
-                            : replied
-                              ? "✏️ تحديث الرد"
-                              : "📨 إرسال الرد"}
-                        </button>
+                              ? "⏳ جاري الحذف..."
+                              : "🗑️ حذف الرسالة"}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={
+                              savingId ===
+                                item.id ||
+                              deletingId ===
+                                item.id
+                            }
+                            onClick={() =>
+                              void saveReply(
+                                item
+                              )
+                            }
+                            className="rounded-2xl bg-emerald-700 px-5 py-3 font-black text-white shadow transition disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {savingId ===
+                            item.id
+                              ? "⏳ جاري الحفظ..."
+                              : replied
+                                ? "✏️ تحديث الرد"
+                                : "📨 إرسال الرد"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </article>
