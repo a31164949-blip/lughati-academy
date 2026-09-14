@@ -508,6 +508,50 @@ useEffect(() => {
     );
   }
 
+  /*
+   * تجهيز رابط تنزيل مباشر للفيديو.
+   * يدعم Cloudinary وGoogle Drive،
+   * ويُبقي بقية الروابط كما هي.
+   */
+  function getVideoDownloadUrl(
+    work: GalleryWork
+  ) {
+    const url =
+      work.fileUrl ||
+      work.imageUrl ||
+      "";
+
+    if (!url) {
+      return "";
+    }
+
+    try {
+      if (
+        url.includes("res.cloudinary.com") &&
+        url.includes("/upload/")
+      ) {
+        return url.replace(
+          "/upload/",
+          "/upload/fl_attachment/"
+        );
+      }
+
+      if (url.includes("drive.google.com")) {
+        const match =
+          url.match(/[?&]id=([^&]+)/) ||
+          url.match(/\/d\/([^/]+)/);
+
+        if (match?.[1]) {
+          return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        }
+      }
+    } catch {
+      return url;
+    }
+
+    return url;
+  }
+
   return (
     <main
       dir="rtl"
@@ -1188,6 +1232,38 @@ useEffect(() => {
                             لا يوجد مرفق للمعاينة
                           </div>
                         )}
+
+                        {isVideoWork(work) &&
+                        getVideoDownloadUrl(work) ? (
+                          <a
+                            href={getVideoDownloadUrl(
+                              work
+                            )}
+                            download
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display:
+                                "block",
+                              textAlign:
+                                "center",
+                              textDecoration:
+                                "none",
+                              background:
+                                "#0f6f55",
+                              color:
+                                "#ffffff",
+                              borderRadius:
+                                "14px",
+                              padding:
+                                "12px",
+                              fontWeight:
+                                800,
+                            }}
+                          >
+                            ⬇️ تنزيل الفيديو
+                          </a>
+                        ) : null}
 
                         {/* تمييز */}
 

@@ -201,73 +201,6 @@ function parsePublishedAt(
   ).getTime();
 }
 
-function isVideoWork(
-  work: GalleryWork
-) {
-  const type = fixArabicText(
-    work.type || ""
-  ).toLowerCase();
-
-  const url =
-    work.fileUrl || "";
-
-  return (
-    type.includes("فيديو") ||
-    type.includes("video") ||
-    type.includes("مقطع") ||
-    /\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(
-      url
-    ) ||
-    /\/video\/upload\//i.test(
-      url
-    )
-  );
-}
-
-function getVideoDownloadUrl(
-  url: string
-) {
-  if (!url) {
-    return "";
-  }
-
-  try {
-    if (
-      url.includes(
-        "res.cloudinary.com"
-      ) &&
-      url.includes("/upload/")
-    ) {
-      return url.replace(
-        "/upload/",
-        "/upload/fl_attachment/"
-      );
-    }
-
-    if (
-      url.includes(
-        "drive.google.com"
-      )
-    ) {
-      const match =
-        url.match(
-          /[?&]id=([^&]+)/
-        ) ||
-        url.match(
-          /\/d\/([^/]+)/
-        );
-
-      if (match?.[1]) {
-        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
-      }
-    }
-  } catch {
-    return url;
-  }
-
-  return url;
-}
-
 function StudentIdentity({
   studentName,
   classroom,
@@ -1615,51 +1548,6 @@ function GalleryPageContent() {
                               👀 مشاهدة العمل
                             </a>
 
-                            {isVideoWork(
-                              work
-                            ) && (
-                              <a
-                                href={getVideoDownloadUrl(
-                                  work.fileUrl
-                                )}
-                                download
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  display:
-                                    "block",
-
-                                  marginTop:
-                                    10,
-
-                                  textDecoration:
-                                    "none",
-
-                                  textAlign:
-                                    "center",
-
-                                  background:
-                                    "#eef8f3",
-
-                                  color:
-                                    "#126b49",
-
-                                  border:
-                                    "1px solid #b9decf",
-
-                                  borderRadius:
-                                    15,
-
-                                  padding:
-                                    "12px 14px",
-
-                                  fontWeight:
-                                    900,
-                                }}
-                              >
-                                ⬇️ تنزيل الفيديو
-                              </a>
-                            )}
                           </div>
                         </article>
                       );
