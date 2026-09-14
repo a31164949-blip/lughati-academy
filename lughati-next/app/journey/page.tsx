@@ -206,6 +206,9 @@ type JourneyData = {
     | "approved"
     | "rejected";
   smartFollowUp?: StudentSmartFollowUp | null;
+  tomorrowSpellingDay?: string;
+  tomorrowSpellingWords?: string[];
+  unreadMessageCount?: number;
   message?: string;
 };
 type CrownAchievement = {
@@ -482,6 +485,21 @@ const [
 
   const unreadNotificationsCount =
     notifications.filter((notification) => !notification.read).length;
+
+  const [
+    unreadMessageCount,
+    setUnreadMessageCount,
+  ] = useState(0);
+
+  const [
+    tomorrowSpellingDay,
+    setTomorrowSpellingDay,
+  ] = useState("");
+
+  const [
+    tomorrowSpellingWords,
+    setTomorrowSpellingWords,
+  ] = useState<string[]>([]);
 
   const [
     smartFollowUp,
@@ -988,6 +1006,26 @@ try {
           Array.isArray(data.spellingHistory) ? data.spellingHistory : []
         );
 
+        setTomorrowSpellingDay(
+          typeof data.tomorrowSpellingDay === "string"
+            ? data.tomorrowSpellingDay
+            : ""
+        );
+
+        setTomorrowSpellingWords(
+          Array.isArray(data.tomorrowSpellingWords)
+            ? data.tomorrowSpellingWords.filter(
+                (word): word is string =>
+                  typeof word === "string" && word.trim().length > 0
+              )
+            : []
+        );
+
+        setUnreadMessageCount(
+          typeof data.unreadMessageCount === "number"
+            ? Math.max(0, Math.round(data.unreadMessageCount))
+            : 0
+        );
 
         setFluencyLevel(
           typeof data.fluencyLevel ===
@@ -3536,6 +3574,53 @@ try {
               flexWrap: "wrap",
             }}
           >
+            <Link
+              href="/student-contact"
+              aria-label={
+                unreadMessageCount > 0
+                  ? `الرسائل: ${unreadMessageCount} رد جديد`
+                  : "الرسائل"
+              }
+              title="رسائلي"
+              style={{
+                ...headerButtonStyle,
+                position: "relative",
+                minWidth: "52px",
+                minHeight: "48px",
+                display: "grid",
+                placeItems: "center",
+                padding: "10px 14px",
+                fontSize: "24px",
+                textDecoration: "none",
+              }}
+            >
+              ✉️
+              {unreadMessageCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-7px",
+                    right: "-7px",
+                    minWidth: "23px",
+                    height: "23px",
+                    padding: "0 6px",
+                    borderRadius: "999px",
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "12px",
+                    fontWeight: 900,
+                    border: "2px solid #ffffff",
+                  }}
+                >
+                  {unreadMessageCount > 99
+                    ? "99+"
+                    : unreadMessageCount}
+                </span>
+              )}
+            </Link>
+
             <div
               style={{
                 position: "relative",
@@ -3813,6 +3898,150 @@ try {
             </div>
           </div> 
         </section>
+
+        {tomorrowSpellingWords.length > 0 && (
+          <section
+            aria-label="كلمات إملاء الغد"
+            style={{
+              ...cardStyle,
+              marginTop: "16px",
+              marginBottom: "20px",
+              border: "2px solid #f1c75b",
+              background:
+                "linear-gradient(135deg,#fff9df 0%,#ffffff 58%,#eefbf5 100%)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                width: "110px",
+                height: "110px",
+                borderRadius: "50%",
+                background: "rgba(34,197,94,.07)",
+                left: "-35px",
+                top: "-42px",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "14px",
+                flexWrap: "wrap",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "13px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "58px",
+                    height: "58px",
+                    borderRadius: "18px",
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: "31px",
+                    background: "#fff2b9",
+                    border: "1px solid #eed98a",
+                    flexShrink: 0,
+                  }}
+                >
+                  ✍️
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      color: "#176c46",
+                      fontSize: "clamp(20px,4vw,27px)",
+                      fontWeight: 950,
+                    }}
+                  >
+                    كلمات إملاء الغد
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      color: "#6b7c73",
+                      fontSize: "14px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    استعد لإملاء يوم {tomorrowSpellingDay}
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                href="/weekly-plan"
+                style={{
+                  padding: "9px 14px",
+                  borderRadius: "999px",
+                  background: "#ffffff",
+                  border: "1px solid #eadb9e",
+                  color: "#176c46",
+                  fontWeight: 900,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                عرض الخطة ←
+              </Link>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "10px",
+                marginTop: "18px",
+                position: "relative",
+              }}
+            >
+              {tomorrowSpellingWords.map((word, index) => (
+                <span
+                  key={`${word}-${index}`}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: "14px",
+                    background: "#ffffff",
+                    border: "1px solid #eadb9e",
+                    color: "#174c36",
+                    fontSize: "18px",
+                    fontWeight: 900,
+                    boxShadow: "0 5px 13px rgba(120,90,0,.06)",
+                  }}
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+
+            <p
+              style={{
+                margin: "14px 0 0",
+                color: "#68786f",
+                fontSize: "13px",
+                fontWeight: 800,
+                lineHeight: 1.7,
+                position: "relative",
+              }}
+            >
+              اقرأ الكلمات ثم غطِّها وحاول كتابتها بنفسك 🌟
+            </p>
+          </section>
+        )}
 
         {/* مستوى الإملاء الظاهر مباشرة للطالب */}
         <section
