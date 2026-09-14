@@ -494,14 +494,16 @@ await loadMessages(claimedStudentId);
                   >
                     <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                       <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">
-                        {categories.find(
-                          (
-                            categoryItem
-                          ) =>
-                            categoryItem.value ===
-                            item.category
-                        )?.label ||
-                          "رسالة"}
+                        {item.category === "teacher"
+                          ? "رسالة من المعلم"
+                          : categories.find(
+                              (
+                                categoryItem
+                              ) =>
+                                categoryItem.value ===
+                                item.category
+                            )?.label ||
+                            "رسالة"}
                       </span>
 
                       <small className="font-bold text-slate-400">
@@ -519,7 +521,9 @@ await loadMessages(claimedStudentId);
 
                     <div className="mt-4 rounded-2xl bg-emerald-50 p-4">
                       <strong className="block text-emerald-800">
-                        👨‍🏫 رد المعلم
+                        {item.category === "teacher"
+                          ? "👨‍🏫 رسالة المعلم"
+                          : "👨‍🏫 رد المعلم"}
                       </strong>
 
                       <p className="mb-0 mt-2 whitespace-pre-wrap font-bold leading-7 text-slate-600">
