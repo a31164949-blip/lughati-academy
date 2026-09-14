@@ -201,6 +201,73 @@ function parsePublishedAt(
   ).getTime();
 }
 
+function isVideoWork(
+  work: GalleryWork
+) {
+  const type = fixArabicText(
+    work.type || ""
+  ).toLowerCase();
+
+  const url =
+    work.fileUrl || "";
+
+  return (
+    type.includes("فيديو") ||
+    type.includes("video") ||
+    type.includes("مقطع") ||
+    /\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(
+      url
+    ) ||
+    /\/video\/upload\//i.test(
+      url
+    )
+  );
+}
+
+function getVideoDownloadUrl(
+  url: string
+) {
+  if (!url) {
+    return "";
+  }
+
+  try {
+    if (
+      url.includes(
+        "res.cloudinary.com"
+      ) &&
+      url.includes("/upload/")
+    ) {
+      return url.replace(
+        "/upload/",
+        "/upload/fl_attachment/"
+      );
+    }
+
+    if (
+      url.includes(
+        "drive.google.com"
+      )
+    ) {
+      const match =
+        url.match(
+          /[?&]id=([^&]+)/
+        ) ||
+        url.match(
+          /\/d\/([^/]+)/
+        );
+
+      if (match?.[1]) {
+        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+      }
+    }
+  } catch {
+    return url;
+  }
+
+  return url;
+}
+
 function StudentIdentity({
   studentName,
   classroom,
@@ -1547,6 +1614,52 @@ function GalleryPageContent() {
                             >
                               👀 مشاهدة العمل
                             </a>
+
+                            {isVideoWork(
+                              work
+                            ) && (
+                              <a
+                                href={getVideoDownloadUrl(
+                                  work.fileUrl
+                                )}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display:
+                                    "block",
+
+                                  marginTop:
+                                    10,
+
+                                  textDecoration:
+                                    "none",
+
+                                  textAlign:
+                                    "center",
+
+                                  background:
+                                    "#eef8f3",
+
+                                  color:
+                                    "#126b49",
+
+                                  border:
+                                    "1px solid #b9decf",
+
+                                  borderRadius:
+                                    15,
+
+                                  padding:
+                                    "12px 14px",
+
+                                  fontWeight:
+                                    900,
+                                }}
+                              >
+                                ⬇️ تنزيل الفيديو
+                              </a>
+                            )}
                           </div>
                         </article>
                       );
@@ -1639,6 +1752,95 @@ function GalleryPageContent() {
                 هنا نحتفي بالخط الجميل، والتنظيم المميز،
                 والعناية بالدفتر، والتطور الملحوظ 🌱
               </p>
+            </div>
+
+            <div
+              style={{
+                maxWidth:
+                  680,
+
+                margin:
+                  "22px auto 8px",
+
+                textAlign:
+                  "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href =
+                    "/notebook-excellence";
+                }}
+                style={{
+                  width:
+                    "100%",
+
+                  border:
+                    "none",
+
+                  borderRadius:
+                    18,
+
+                  padding:
+                    "16px 20px",
+
+                  background:
+                    "linear-gradient(135deg,#168a5c,#0f6f4a)",
+
+                  color:
+                    "#fff",
+
+                  fontSize:
+                    18,
+
+                  fontWeight:
+                    900,
+
+                  cursor:
+                    "pointer",
+
+                  boxShadow:
+                    "0 10px 26px rgba(22,138,92,.20)",
+                }}
+              >
+                📒✨ رشّح دفتري لجماليات الدفاتر
+              </button>
+
+              <div
+                style={{
+                  marginTop:
+                    10,
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    14,
+
+                  background:
+                    "#fff8df",
+
+                  border:
+                    "1px solid #ead274",
+
+                  color:
+                    "#80651a",
+
+                  fontSize:
+                    13,
+
+                  fontWeight:
+                    800,
+
+                  lineHeight:
+                    1.8,
+                }}
+              >
+                📸 صوّر صفحة واضحة من دفترك ورشّحها للتميز.
+                <br />
+                ⭐ كل دفتر يتم اعتماده يمنحك 5 نقاط.
+              </div>
             </div>
 
             <div
