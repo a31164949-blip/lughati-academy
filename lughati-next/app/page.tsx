@@ -1807,7 +1807,8 @@ useEffect(() => {
                 fontSize: "14px",
               }}
             >
-              🇸🇦 من 20 إلى 26 سبتمبر 2026
+              <span aria-hidden="true">◆</span>
+              <span>من 20 إلى 26 سبتمبر 2026</span>
             </div>
 
             <h2

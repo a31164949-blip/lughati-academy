@@ -94,11 +94,12 @@ export default function NationalDayPage() {
           box-shadow: 0 22px 55px rgba(6,78,59,.22);
         }
         .national-hero::before {
-          content: "🇸🇦";
+          content: "وطننا";
           position: absolute;
           left: -24px;
           bottom: -66px;
-          font-size: 190px;
+          font-size: 120px;
+          font-weight: 950;
           opacity: .07;
           transform: rotate(-8deg);
         }
@@ -146,8 +147,36 @@ export default function NationalDayPage() {
 
         <section className="national-hero">
           <div style={{ position: "relative" }}>
-            <div style={{ fontSize: 58, marginBottom: 6 }}>🇸🇦</div>
-            <div style={{ color: "#fde68a", fontWeight: 900 }}>20–26 سبتمبر 2026</div>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "9px 18px",
+                marginBottom: 10,
+                borderRadius: 999,
+                color: "#ffffff",
+                background: "rgba(255,255,255,.13)",
+                border: "1px solid rgba(255,255,255,.28)",
+                fontWeight: 950,
+              }}
+            >
+              راية العز والوطن
+            </div>
+            <div
+              dir="ltr"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 5,
+                color: "#fde68a",
+                fontWeight: 900,
+              }}
+            >
+              <span>20 – 26</span>
+              <span dir="rtl">سبتمبر 2026</span>
+            </div>
             <h1 style={{ margin: "8px 0", fontSize: "clamp(32px, 6vw, 58px)", lineHeight: 1.25 }}>
               أسبوع الوطن في أكاديمية لغتي
             </h1>
