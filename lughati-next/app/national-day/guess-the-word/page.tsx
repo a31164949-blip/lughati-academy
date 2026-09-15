@@ -23,7 +23,21 @@ const HAPPY = ["يا سلام! إجابة ترفع الراية 🇸🇦", "أح
 const FUNNY = ["قريبة... لكن الإجابة الصحيحة هربت منك قليلًا 😄", "السؤال يقول: حاول مرة أخرى في الجولة القادمة!", "لا بأس، حتى الأبطال يحتاجون إعادة تشغيل بسيطة 😅"];
 
 function shuffledQuestions() {
-  return [...QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 6);
+  const shuffle = <T,>(items: T[]) => {
+    const result = [...items];
+    for (let index = result.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
+    }
+    return result;
+  };
+
+  return shuffle(QUESTIONS)
+    .slice(0, 6)
+    .map((question) => ({
+      ...question,
+      choices: shuffle(question.choices),
+    }));
 }
 
 export default function GuessTheWordPage() {
