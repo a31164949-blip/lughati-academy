@@ -1,5 +1,7 @@
 "use client";
 
+// لوحة المعلم مع بوابة إدارة الدروس المباشرة.
+
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 import { useEffect, useState } from "react";
@@ -41,6 +43,12 @@ function getNotificationTime(value: unknown) {
 }
 
 const sections = [
+  {
+    title: "🔴 الدروس المباشرة",
+    description:
+      "إنشاء درس مباشر، تحديد الفصل والموعد، ومتابعة حضور الطلاب.",
+    href: "/teacher/live-lessons",
+  },
   {
     title: "🏆 إدارة أسبوع الوطن",
     description:

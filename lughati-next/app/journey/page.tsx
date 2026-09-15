@@ -1,6 +1,7 @@
 "use client";
 
 import InstallAppButton from "../components/InstallAppButton";
+import LiveLessonCard from "../components/LiveLessonCard";
 import Link from "next/link";
 import {
   useEffect,
@@ -3923,6 +3924,8 @@ try {
           </div>
         </div>
       </header>
+
+      <LiveLessonCard />
 
       <div
         style={{
