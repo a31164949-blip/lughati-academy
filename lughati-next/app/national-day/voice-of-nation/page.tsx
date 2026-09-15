@@ -7,6 +7,10 @@ const CLOUD_NAME = "ffv5igmg";
 const UPLOAD_PRESET = "lughati_homework_upload";
 const MAX_DURATION_SECONDS = 60;
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const EVENT_START = Date.parse("2026-09-20T00:00:00+03:00");
+const EVENT_END = Date.parse("2026-09-26T23:59:59+03:00");
+
+type EventState = "loading" | "upcoming" | "open" | "closed";
 
 type UploadResult = {
   secure_url?: string;
@@ -47,14 +51,30 @@ export default function VoiceOfNationPage() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [eventState, setEventState] = useState<EventState>("loading");
 
   useEffect(() => {
     const savedStudent = getStudentData();
     setStudent(savedStudent);
     setParticipantName(savedStudent.studentName);
+
+    const updateEventState = () => {
+      const now = Date.now();
+      setEventState(now < EVENT_START ? "upcoming" : now > EVENT_END ? "closed" : "open");
+    };
+
+    updateEventState();
+    const timer = window.setInterval(updateEventState, 60000);
+    return () => window.clearInterval(timer);
   }, []);
 
   function chooseFile(event: React.ChangeEvent<HTMLInputElement>) {
+    if (eventState !== "open") {
+      event.target.value = "";
+      setError(eventState === "upcoming" ? "تفتح المشاركة يوم 20 سبتمبر 2026." : "انتهى وقت استقبال المشاركات.");
+      return;
+    }
+
     const selected = event.target.files?.[0] || null;
     setError("");
     setMessage("");
@@ -107,6 +127,11 @@ export default function VoiceOfNationPage() {
   }
 
   async function submit() {
+    if (eventState !== "open") {
+      setError(eventState === "upcoming" ? "تفتح المشاركة يوم 20 سبتمبر 2026." : "انتهى وقت استقبال المشاركات.");
+      return;
+    }
+
     if (!participantName.trim() || !school.trim() || !title.trim() || !file || duration === null) {
       setError("أكمل البيانات واختر فيديو لا يتجاوز دقيقة واحدة.");
       return;
@@ -176,6 +201,12 @@ export default function VoiceOfNationPage() {
             مشاركة واحدة لكل طالب • فيديو فقط • المدة القصوى دقيقة • تخضع المشاركة لمراجعة المعلم.
           </div>
 
+          {eventState !== "open" ? (
+            <div style={{ padding: 15, marginBottom: 20, borderRadius: 16, color: eventState === "closed" ? "#991b1b" : "#075f46", background: eventState === "closed" ? "#fff1f2" : "#ecfdf5", border: `1px solid ${eventState === "closed" ? "#fecdd3" : "#a7f3d0"}`, textAlign: "center", fontWeight: 950 }}>
+              {eventState === "loading" ? "جارٍ التحقق من موعد المسابقة…" : eventState === "upcoming" ? "تفتح المشاركة يوم 20 سبتمبر 2026 ⏳" : "انتهى وقت استقبال المشاركات"}
+            </div>
+          ) : null}
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 15 }}>
             <Field label="اسم الطالب" value={participantName} onChange={setParticipantName} placeholder="اكتب اسم الطالب الثلاثي" disabled={Boolean(student.studentName)} />
             <label style={labelStyle}>الصف<select value={grade} onChange={(e) => setGrade(e.target.value)} style={inputStyle}>{["الصف الثاني","الصف الثالث","الصف الرابع","الصف الخامس","الصف السادس"].map((item) => <option key={item}>{item}</option>)}</select></label>
@@ -187,7 +218,7 @@ export default function VoiceOfNationPage() {
 
           <label style={{ ...labelStyle, marginTop: 18 }}>
             مقطع الإلقاء
-            <input type="file" accept="video/*" onChange={chooseFile} disabled={uploading} style={{ ...inputStyle, padding: 12 }} />
+            <input type="file" accept="video/*" onChange={chooseFile} disabled={uploading || eventState !== "open"} style={{ ...inputStyle, padding: 12, cursor: eventState === "open" ? "pointer" : "not-allowed" }} />
           </label>
 
           {previewUrl ? <video src={previewUrl} controls style={{ width: "100%", maxHeight: 430, marginTop: 15, borderRadius: 18, background: "#000" }} /> : null}
@@ -195,8 +226,8 @@ export default function VoiceOfNationPage() {
           {error ? <div style={{ marginTop: 15, padding: 13, borderRadius: 14, color: "#b91c1c", background: "#fff1f2" }}>{error}</div> : null}
           {message ? <div style={{ marginTop: 15, padding: 13, borderRadius: 14, color: "#087b52", background: "#ecfdf5" }}>{message}</div> : null}
 
-          <button type="button" onClick={() => void submit()} disabled={uploading} style={{ width: "100%", marginTop: 18, padding: 15, border: 0, borderRadius: 16, color: "white", background: uploading ? "#94a3b8" : "#087b52", fontSize: 18, fontWeight: 950, cursor: uploading ? "wait" : "pointer" }}>
-            {uploading ? "جارٍ إرسال المشاركة…" : "إرسال مشاركتي للمعلم"}
+          <button type="button" onClick={() => void submit()} disabled={uploading || eventState !== "open"} style={{ width: "100%", marginTop: 18, padding: 15, border: 0, borderRadius: 16, color: "white", background: uploading || eventState !== "open" ? "#94a3b8" : "#087b52", fontSize: 18, fontWeight: 950, cursor: uploading ? "wait" : eventState === "open" ? "pointer" : "not-allowed" }}>
+            {uploading ? "جارٍ إرسال المشاركة…" : eventState === "upcoming" ? "يفتح الإرسال يوم 20 سبتمبر" : eventState === "closed" ? "انتهى استقبال المشاركات" : "إرسال مشاركتي للمعلم"}
           </button>
         </section>
       </div>
