@@ -41,13 +41,15 @@ const getCachedLesson = unstable_cache(
       title: typeof data.title === "string" ? data.title : "درس مباشر",
       description: typeof data.description === "string" ? data.description : "",
       targetClassroom: typeof data.targetClassroom === "string" ? data.targetClassroom.trim() : "الجميع",
+      targetStudentDocId: typeof data.targetStudentDocId === "string" ? data.targetStudentDocId.trim() : "",
+      targetStudentName: typeof data.targetStudentName === "string" ? data.targetStudentName.trim() : "",
       startAt,
       endAt,
       durationMinutes: typeof data.durationMinutes === "number" ? data.durationMinutes : 30,
       lessonVersion: typeof data.lessonVersion === "string" ? data.lessonVersion : snapshot.id,
     };
   },
-  ["active-live-lesson-student-v1"],
+  ["active-live-lesson-student-v2"],
   { revalidate: 20 }
 );
 
@@ -67,7 +69,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, lesson: null }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
-    if (lesson.targetClassroom && lesson.targetClassroom !== "الجميع") {
+    if (lesson.targetStudentDocId && lesson.targetStudentDocId !== studentDocId) {
+      return NextResponse.json({ success: true, lesson: null }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+
+    if (!lesson.targetStudentDocId && lesson.targetClassroom && lesson.targetClassroom !== "الجميع") {
       const classroom = await getStudentClassroom(studentDocId);
       if (classroom !== lesson.targetClassroom.replace(/\s+/g, " ")) {
         return NextResponse.json({ success: true, lesson: null }, { headers: { "Cache-Control": "private, no-store" } });

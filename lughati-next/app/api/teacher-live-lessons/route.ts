@@ -14,6 +14,7 @@ type Payload = {
   description?: string;
   meetingUrl?: string;
   targetClassroom?: string;
+  targetStudentDocId?: string;
   startAt?: string;
   durationMinutes?: number;
 };
@@ -53,6 +54,8 @@ function serializeLesson(id: string, data: Record<string, unknown>) {
     description: typeof data.description === "string" ? data.description : "",
     meetingUrl: typeof data.meetingUrl === "string" ? data.meetingUrl : "",
     targetClassroom: typeof data.targetClassroom === "string" ? data.targetClassroom : "الجميع",
+    targetStudentDocId: typeof data.targetStudentDocId === "string" ? data.targetStudentDocId : "",
+    targetStudentName: typeof data.targetStudentName === "string" ? data.targetStudentName : "",
     startAt: typeof data.startAt === "string" ? data.startAt : "",
     endAt: typeof data.endAt === "string" ? data.endAt : "",
     durationMinutes: typeof data.durationMinutes === "number" ? data.durationMinutes : 30,
@@ -67,9 +70,21 @@ export async function GET(request: Request) {
     const { adminDb } = getFirebaseAdmin();
     const lessonSnapshot = await adminDb.collection("liveLessons").doc(ACTIVE_LESSON_ID).get();
 
+    const studentsSnapshot = await adminDb.collection("students").limit(300).get();
+    const students = studentsSnapshot.docs
+      .map((document) => {
+        const data = document.data() ?? {};
+        return {
+          id: document.id,
+          studentName: typeof data.studentName === "string" && data.studentName.trim() ? data.studentName.trim() : "طالب",
+          classroom: typeof data.classroom === "string" ? data.classroom.trim() : "",
+        };
+      })
+      .sort((a, b) => `${a.classroom}-${a.studentName}`.localeCompare(`${b.classroom}-${b.studentName}`, "ar"));
+
     if (!lessonSnapshot.exists) {
       return NextResponse.json(
-        { success: true, lesson: null, attendance: [] },
+        { success: true, lesson: null, attendance: [], students },
         { headers: { "Cache-Control": "no-store" } }
       );
     }
@@ -99,7 +114,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(
-      { success: true, lesson: serializeLesson(lessonSnapshot.id, lessonData), attendance },
+      { success: true, lesson: serializeLesson(lessonSnapshot.id, lessonData), attendance, students },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
@@ -134,7 +149,24 @@ export async function POST(request: Request) {
     const title = typeof payload.title === "string" ? payload.title.trim() : "";
     const description = typeof payload.description === "string" ? payload.description.trim() : "";
     const meetingUrl = typeof payload.meetingUrl === "string" ? payload.meetingUrl.trim() : "";
-    const targetClassroom = typeof payload.targetClassroom === "string" && payload.targetClassroom.trim() ? payload.targetClassroom.trim() : "الجميع";
+    let targetClassroom = typeof payload.targetClassroom === "string" && payload.targetClassroom.trim() ? payload.targetClassroom.trim() : "الجميع";
+    const requestedStudentDocId = typeof payload.targetStudentDocId === "string" ? payload.targetStudentDocId.trim() : "";
+    let targetStudentDocId = "";
+    let targetStudentName = "";
+
+    if (targetClassroom === "طالب محدد") {
+      if (!requestedStudentDocId) {
+        return NextResponse.json({ success: false, message: "اختر الطالب المستهدف للتجربة." }, { status: 400 });
+      }
+      const studentSnapshot = await adminDb.collection("students").doc(requestedStudentDocId).get();
+      if (!studentSnapshot.exists) {
+        return NextResponse.json({ success: false, message: "الطالب المحدد غير موجود." }, { status: 404 });
+      }
+      const student = studentSnapshot.data() ?? {};
+      targetStudentDocId = studentSnapshot.id;
+      targetStudentName = typeof student.studentName === "string" && student.studentName.trim() ? student.studentName.trim() : "طالب";
+      targetClassroom = typeof student.classroom === "string" ? student.classroom.trim() : "";
+    }
     const startAt = typeof payload.startAt === "string" ? payload.startAt : "";
     const durationMinutes = typeof payload.durationMinutes === "number" ? payload.durationMinutes : Number.NaN;
 
@@ -167,6 +199,8 @@ export async function POST(request: Request) {
         description,
         meetingUrl: parsedUrl.toString(),
         targetClassroom,
+        targetStudentDocId,
+        targetStudentName,
         startAt: new Date(startTime).toISOString(),
         endAt,
         durationMinutes,

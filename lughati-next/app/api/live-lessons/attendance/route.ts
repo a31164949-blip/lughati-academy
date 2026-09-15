@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     const lessonVersion = typeof lesson.lessonVersion === "string" ? lesson.lessonVersion : "";
     const meetingUrl = typeof lesson.meetingUrl === "string" ? lesson.meetingUrl : "";
     const targetClassroom = typeof lesson.targetClassroom === "string" ? lesson.targetClassroom.trim().replace(/\s+/g, " ") : "الجميع";
+    const targetStudentDocId = typeof lesson.targetStudentDocId === "string" ? lesson.targetStudentDocId.trim() : "";
     const startTime = new Date(typeof lesson.startAt === "string" ? lesson.startAt : "").getTime();
     const endTime = new Date(typeof lesson.endAt === "string" ? lesson.endAt : "").getTime();
     const now = Date.now();
@@ -45,7 +46,11 @@ export async function POST(request: Request) {
     const student = studentSnapshot.data() ?? {};
     const classroom = typeof student.classroom === "string" ? student.classroom.trim().replace(/\s+/g, " ") : "";
 
-    if (targetClassroom !== "الجميع" && classroom !== targetClassroom) {
+    if (targetStudentDocId && targetStudentDocId !== studentDocId) {
+      throw new Error("STUDENT_MISMATCH");
+    }
+
+    if (!targetStudentDocId && targetClassroom !== "الجميع" && classroom !== targetClassroom) {
       throw new Error("CLASSROOM_MISMATCH");
     }
 
@@ -76,6 +81,7 @@ export async function POST(request: Request) {
     if (message === "STUDENT_NOT_FOUND") return NextResponse.json({ success: false, message: "تعذر تحديد الطالب." }, { status: 404 });
     if (message === "LESSON_NOT_OPEN") return NextResponse.json({ success: false, message: "يفتح الانضمام قبل بداية الدرس بعشر دقائق." }, { status: 403 });
     if (message === "CLASSROOM_MISMATCH") return NextResponse.json({ success: false, message: "هذا الدرس غير مخصص لفصلك." }, { status: 403 });
+    if (message === "STUDENT_MISMATCH") return NextResponse.json({ success: false, message: "هذا الدرس مخصص لطالب آخر." }, { status: 403 });
     if (message === "LESSON_CLOSED") return NextResponse.json({ success: false, message: "انتهى الدرس أو تم إغلاقه." }, { status: 410 });
     return NextResponse.json({ success: false, message: "تعذر تسجيل الحضور حاليًا." }, { status: 500 });
   }

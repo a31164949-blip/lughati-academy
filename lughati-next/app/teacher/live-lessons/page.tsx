@@ -11,10 +11,18 @@ type LiveLesson = {
   description: string;
   meetingUrl: string;
   targetClassroom: string;
+  targetStudentDocId?: string;
+  targetStudentName?: string;
   startAt: string;
   endAt: string;
   durationMinutes: number;
   active: boolean;
+};
+
+type StudentOption = {
+  id: string;
+  studentName: string;
+  classroom: string;
 };
 
 type AttendanceRow = {
@@ -28,6 +36,7 @@ type ApiResponse = {
   success?: boolean;
   lesson?: LiveLesson | null;
   attendance?: AttendanceRow[];
+  students?: StudentOption[];
   message?: string;
 };
 
@@ -52,6 +61,8 @@ export default function TeacherLiveLessonsPage() {
   const [description, setDescription] = useState("");
   const [meetingUrl, setMeetingUrl] = useState("");
   const [targetClassroom, setTargetClassroom] = useState("الجميع");
+  const [targetStudentDocId, setTargetStudentDocId] = useState("");
+  const [students, setStudents] = useState<StudentOption[]>([]);
   const [startAt, setStartAt] = useState(defaultStartValue);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [lesson, setLesson] = useState<LiveLesson | null>(null);
@@ -80,6 +91,7 @@ export default function TeacherLiveLessonsPage() {
       }
       setLesson(data.lesson ?? null);
       setAttendance(Array.isArray(data.attendance) ? data.attendance : []);
+      setStudents(Array.isArray(data.students) ? data.students : []);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "تعذر تحميل الدرس.");
     } finally {
@@ -97,6 +109,9 @@ export default function TeacherLiveLessonsPage() {
     if (!title.trim()) return setMessage("اكتب عنوان الدرس.");
     if (!meetingUrl.trim()) return setMessage("ألصق رابط البث أولًا.");
     if (!startAt) return setMessage("حدد موعد بداية الدرس.");
+    if (targetClassroom === "طالب محدد" && !targetStudentDocId) {
+      return setMessage("اختر الطالب المستهدف للتجربة.");
+    }
     if (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 180) {
       return setMessage("مدة الدرس يجب أن تكون من 5 إلى 180 دقيقة.");
     }
@@ -117,6 +132,7 @@ export default function TeacherLiveLessonsPage() {
           description: description.trim(),
           meetingUrl: meetingUrl.trim(),
           targetClassroom,
+          targetStudentDocId: targetClassroom === "طالب محدد" ? targetStudentDocId : "",
           startAt: new Date(startAt).toISOString(),
           durationMinutes,
         }),
@@ -219,8 +235,22 @@ export default function TeacherLiveLessonsPage() {
                 <option value="الجميع">جميع الطلاب</option>
                 <option value="الثاني أ">الثاني أ</option>
                 <option value="الثاني ب">الثاني ب</option>
+                <option value="طالب محدد">طالب محدد للتجربة</option>
               </select>
             </div>
+            {targetClassroom === "طالب محدد" && (
+              <div>
+                <label style={labelStyle}>اختر الطالب</label>
+                <select value={targetStudentDocId} onChange={(e) => setTargetStudentDocId(e.target.value)} style={inputStyle}>
+                  <option value="">— اختر الطالب —</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.studentName} — {student.classroom || "بدون فصل"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label style={labelStyle}>موعد البداية</label>
               <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} style={inputStyle} />
@@ -247,7 +277,9 @@ export default function TeacherLiveLessonsPage() {
                     {lessonState === "live" ? "🔴 الدرس مباشر الآن" : lessonState === "upcoming" ? "🕐 درس قادم" : "انتهى موعد الدرس"}
                   </strong>
                   <h2 style={{ margin: "10px 0 5px" }}>{lesson.title}</h2>
-                  <div>المستهدف: <b>{lesson.targetClassroom}</b></div>
+                  <div>
+                    المستهدف: <b>{lesson.targetStudentDocId ? `${lesson.targetStudentName || "طالب محدد"} — ${lesson.targetClassroom}` : lesson.targetClassroom}</b>
+                  </div>
                   <div>البداية: <b>{formatDate(lesson.startAt)}</b></div>
                   <div>النهاية: <b>{formatDate(lesson.endAt)}</b></div>
                 </div>
