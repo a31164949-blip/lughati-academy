@@ -16,6 +16,13 @@ type Countdown = {
 
 const activities = [
   {
+    icon: "🎮",
+    title: "خَمِّن كلمة الوطن",
+    description: "ألغاز وطنية سريعة بتعليقات طريفة وتحدٍ فردي أو جماعي.",
+    href: "/national-day/guess-the-word",
+    status: "متاحة الآن",
+  },
+  {
     icon: "🎙️",
     title: "صوت الوطن",
     description: "إلقاء قصير يعبّر فيه الطالب عن حبه للمملكة.",
