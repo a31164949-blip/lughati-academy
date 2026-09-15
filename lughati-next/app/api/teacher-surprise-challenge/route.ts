@@ -2,6 +2,8 @@ import {
   NextResponse,
 } from "next/server";
 
+// واجهة المعلم لإطلاق لغز عام أو فصلي أو لطالب محدد.
+
 import {
   FieldValue,
 } from "firebase-admin/firestore";
@@ -26,7 +28,14 @@ type LaunchPayload = {
   correctAnswer?: string;
   points?: number;
   targetClassroom?: string;
+  targetStudentDocId?: string;
   durationMinutes?: number;
+};
+
+type StudentOption = {
+  id: string;
+  studentName: string;
+  classroom: string;
 };
 
 async function requireTeacher(
@@ -141,6 +150,38 @@ export async function GET(
     const challengeSnapshot =
       await challengeRef.get();
 
+    const studentsSnapshot =
+      await adminDb
+        .collection("students")
+        .limit(300)
+        .get();
+
+    const students: StudentOption[] =
+      studentsSnapshot.docs
+        .map((studentDocument) => {
+          const studentData =
+            studentDocument.data() ?? {};
+
+          return {
+            id: studentDocument.id,
+            studentName:
+              typeof studentData.studentName === "string" &&
+              studentData.studentName.trim()
+                ? studentData.studentName.trim()
+                : "طالب",
+            classroom:
+              typeof studentData.classroom === "string"
+                ? studentData.classroom.trim()
+                : "",
+          };
+        })
+        .sort((first, second) =>
+          `${first.classroom} ${first.studentName}`.localeCompare(
+            `${second.classroom} ${second.studentName}`,
+            "ar"
+          )
+        );
+
     if (
       !challengeSnapshot.exists
     ) {
@@ -149,6 +190,7 @@ export async function GET(
           success: true,
           challenge: null,
           answers: [],
+          students,
         },
         {
           headers: {
@@ -202,6 +244,16 @@ export async function GET(
         "string"
           ? data.targetClassroom
           : "الجميع",
+
+      targetStudentDocId:
+        typeof data.targetStudentDocId === "string"
+          ? data.targetStudentDocId
+          : "",
+
+      targetStudentName:
+        typeof data.targetStudentName === "string"
+          ? data.targetStudentName
+          : "",
 
       durationMinutes:
         typeof data.durationMinutes ===
@@ -352,6 +404,7 @@ export async function GET(
         success: true,
         challenge,
         answers,
+        students,
       },
       {
         headers: {
@@ -489,6 +542,11 @@ export async function POST(
         ? payload.targetClassroom.trim()
         : "الجميع";
 
+    const targetStudentDocId =
+      typeof payload.targetStudentDocId === "string"
+        ? payload.targetStudentDocId.trim()
+        : "";
+
     const durationMinutes =
       typeof payload.durationMinutes ===
         "number"
@@ -540,6 +598,50 @@ export async function POST(
       );
     }
 
+    let targetStudentName = "";
+    let resolvedTargetClassroom = targetClassroom;
+
+    if (targetClassroom === "طالب محدد") {
+      if (!targetStudentDocId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "اختر الطالب المستهدف أولًا.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const targetStudentSnapshot =
+        await adminDb
+          .collection("students")
+          .doc(targetStudentDocId)
+          .get();
+
+      if (!targetStudentSnapshot.exists) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "تعذر العثور على الطالب المستهدف.",
+          },
+          { status: 404 }
+        );
+      }
+
+      const targetStudentData =
+        targetStudentSnapshot.data() ?? {};
+
+      targetStudentName =
+        typeof targetStudentData.studentName === "string"
+          ? targetStudentData.studentName.trim()
+          : "طالب";
+
+      resolvedTargetClassroom =
+        typeof targetStudentData.classroom === "string"
+          ? targetStudentData.classroom.trim()
+          : "";
+    }
+
     if (
       !Number.isInteger(
         durationMinutes
@@ -582,7 +684,12 @@ export async function POST(
         question,
         correctAnswer,
         points,
-        targetClassroom,
+        targetClassroom: resolvedTargetClassroom,
+        targetStudentDocId:
+          targetClassroom === "طالب محدد"
+            ? targetStudentDocId
+            : "",
+        targetStudentName,
         durationMinutes,
         active: true,
         challengeVersion,

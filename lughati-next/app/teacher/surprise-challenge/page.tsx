@@ -1,5 +1,7 @@
 "use client";
 
+// إدارة لغز البرق مع دعم الاستهداف الفردي الآمن.
+
 import {
   useEffect,
   useState,
@@ -16,6 +18,8 @@ type SurpriseChallenge = {
   correctAnswer: string;
   points: number;
   targetClassroom: string;
+  targetStudentDocId?: string;
+  targetStudentName?: string;
   durationMinutes: number;
   active: boolean;
   createdAt?: unknown;
@@ -33,10 +37,17 @@ type ChallengeAnswer = {
   submittedAt?: string | null;
 };
 
+type StudentOption = {
+  id: string;
+  studentName: string;
+  classroom: string;
+};
+
 type TeacherChallengeResponse = {
   success?: boolean;
   challenge?: SurpriseChallenge | null;
   answers?: ChallengeAnswer[];
+  students?: StudentOption[];
   message?: string;
 };
 
@@ -63,6 +74,12 @@ export default function SurpriseChallengeTeacherPage() {
 
   const [targetClassroom, setTargetClassroom] =
     useState("الجميع");
+
+  const [targetStudentDocId, setTargetStudentDocId] =
+    useState("");
+
+  const [students, setStudents] =
+    useState<StudentOption[]>([]);
 
   const [durationMinutes, setDurationMinutes] =
     useState(15);
@@ -140,6 +157,12 @@ export default function SurpriseChallengeTeacherPage() {
           ? data.answers
           : []
       );
+
+      setStudents(
+        Array.isArray(data.students)
+          ? data.students
+          : []
+      );
     } catch (error) {
       console.error(
         "تعذر تحميل التحدي:",
@@ -204,6 +227,14 @@ export default function SurpriseChallengeTeacherPage() {
       return;
     }
 
+    if (
+      targetClassroom === "طالب محدد" &&
+      !targetStudentDocId
+    ) {
+      setMessage("اختر الطالب المستهدف أولًا.");
+      return;
+    }
+
     setSaving(true);
     setMessage("");
 
@@ -233,6 +264,10 @@ export default function SurpriseChallengeTeacherPage() {
                 correctAnswer.trim(),
               points,
               targetClassroom,
+              targetStudentDocId:
+                targetClassroom === "طالب محدد"
+                  ? targetStudentDocId
+                  : "",
               durationMinutes,
             }),
           }
@@ -604,9 +639,50 @@ export default function SurpriseChallengeTeacherPage() {
                 <option value="الثاني ب">
                   الثاني ب
                 </option>
+
+                <option value="طالب محدد">
+                  طالب محدد للتجربة
+                </option>
               </select>
             </div>
           </div>
+
+          {targetClassroom === "طالب محدد" && (
+            <div
+              style={{
+                marginTop: "14px",
+                padding: "16px",
+                borderRadius: "18px",
+                background: "#f0f9f4",
+                border: "1px solid #b9e2cc",
+              }}
+            >
+              <label style={labelStyle}>
+                اختر الطالب المستهدف
+              </label>
+
+              <select
+                value={targetStudentDocId}
+                onChange={(event) =>
+                  setTargetStudentDocId(event.target.value)
+                }
+                style={inputStyle}
+              >
+                <option value="">
+                  — اختر طالبًا واحدًا —
+                </option>
+
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.studentName}
+                    {student.classroom
+                      ? ` — ${student.classroom}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button
             onClick={() =>
@@ -702,7 +778,9 @@ export default function SurpriseChallengeTeacherPage() {
                     المستهدف:{" "}
                     <strong>
                       {
-                        activeChallenge.targetClassroom
+                        activeChallenge.targetStudentDocId
+                          ? `${activeChallenge.targetStudentName || "طالب محدد"} — ${activeChallenge.targetClassroom}`
+                          : activeChallenge.targetClassroom
                       }
                     </strong>
                   </div>

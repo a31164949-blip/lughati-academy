@@ -2,6 +2,8 @@ import {
   NextResponse,
 } from "next/server";
 
+// استقبال إجابة الطالب مع التحقق من نطاق الاستهداف.
+
 import {
   FieldValue,
 } from "firebase-admin/firestore";
@@ -74,6 +76,7 @@ async function getStudentFromRequest(
 
   return {
     studentDocId,
+
     studentId:
       typeof decodedToken.studentId ===
       "string"
@@ -98,28 +101,25 @@ function normalizeAnswer(
       ""
     )
 
-    /*
-     * توحيد الهمزات:
-     * أ / إ / آ / ٱ -> ا
-     * ؤ -> و
-     * ئ -> ي
-     */
+    // توحيد الهمزات
     .replace(/[أإآٱ]/g, "ا")
     .replace(/ؤ/g, "و")
     .replace(/ئ/g, "ي")
 
-    /*
-     * تجاهل علامات الترقيم الشائعة:
-     * الفاصلة العربية والإنجليزية،
-     * النقطة، الفاصلة المنقوطة،
-     * النقطتان، علامات الاستفهام والتعجب،
-     * الأقواس والاقتباسات.
-     */
+    // تجاهل علامات الترقيم الشائعة
     .replace(/[،,.;؛:؟?!¡!…"'«»()[\]{}]/g, " ")
 
     // توحيد المسافات
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeClassroom(
+  value: string
+) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function safeDocumentPart(
@@ -312,7 +312,7 @@ export async function POST(
 
     const points =
       typeof challengeData.points ===
-      "number" &&
+        "number" &&
       Number.isFinite(
         challengeData.points
       )
@@ -326,9 +326,16 @@ export async function POST(
 
     const targetClassroom =
       typeof challengeData.targetClassroom ===
-      "string"
-        ? challengeData.targetClassroom.trim()
+        "string"
+        ? normalizeClassroom(
+            challengeData.targetClassroom
+          )
         : "الجميع";
+
+    const targetStudentDocId =
+      typeof challengeData.targetStudentDocId === "string"
+        ? challengeData.targetStudentDocId.trim()
+        : "";
 
     const answerDocumentId =
       `${safeDocumentPart(
@@ -417,14 +424,17 @@ export async function POST(
             return {
               alreadyAnswered:
                 true,
+
               isCorrect:
                 previousData.isCorrect ===
                 true,
+
               pointsAwarded:
                 typeof previousData.pointsAwarded ===
                 "number"
                   ? previousData.pointsAwarded
                   : 0,
+
               message:
                 "لقد أرسلت إجابتك على هذا التحدي مسبقًا 🌟",
             };
@@ -452,10 +462,20 @@ export async function POST(
           const classroom =
             typeof studentData.classroom ===
               "string"
-                ? studentData.classroom.trim()
-                : "";
+              ? normalizeClassroom(
+                  studentData.classroom
+                )
+              : "";
 
           if (
+            targetStudentDocId &&
+            targetStudentDocId !== studentDocId
+          ) {
+            throw new Error("STUDENT_MISMATCH");
+          }
+
+          if (
+            !targetStudentDocId &&
             targetClassroom &&
             targetClassroom !==
               "الجميع" &&
@@ -499,18 +519,29 @@ export async function POST(
             {
               challengeId:
                 ACTIVE_SURPRISE_CHALLENGE_ID,
+
               challengeVersion,
+
               question,
+
               studentId:
                 studentDocId,
+
               academyStudentId,
+
               studentName,
+
               classroom,
+
               answer,
+
               normalizedAnswer:
                 normalizedStudentAnswer,
+
               isCorrect,
+
               pointsAwarded,
+
               submittedAt:
                 FieldValue.serverTimestamp(),
             }
@@ -523,15 +554,21 @@ export async function POST(
             const pointsHistoryEntry = {
               reason:
                 `⚡ لغز البرق: ${question}`,
+
               points:
                 pointsAwarded,
+
               stars:
                 0,
+
               category:
                 "لغز البرق",
+
               type:
                 "surpriseChallenge",
+
               challengeVersion,
+
               createdAt:
                 new Date(),
             };
@@ -543,14 +580,17 @@ export async function POST(
                   FieldValue.increment(
                     pointsAwarded
                   ),
+
                 "journey.xp":
                   FieldValue.increment(
                     pointsAwarded
                   ),
+
                 pointsHistory:
                   FieldValue.arrayUnion(
                     pointsHistoryEntry
                   ),
+
                 updatedAt:
                   FieldValue.serverTimestamp(),
               }
@@ -568,22 +608,33 @@ export async function POST(
               {
                 studentId:
                   studentDocId,
+
                 academyStudentId,
+
                 studentName,
+
                 classroom,
+
                 points:
                   pointsAwarded,
+
                 amount:
                   pointsAwarded,
+
                 type:
                   "surpriseChallenge",
+
                 source:
                   "surpriseChallenge",
+
                 reason:
                   `إجابة صحيحة في لغز البرق: ${question}`,
+
                 challengeId:
                   ACTIVE_SURPRISE_CHALLENGE_ID,
+
                 challengeVersion,
+
                 createdAt:
                   FieldValue.serverTimestamp(),
               }
@@ -593,8 +644,11 @@ export async function POST(
           return {
             alreadyAnswered:
               false,
+
             isCorrect,
+
             pointsAwarded,
+
             message:
               isCorrect
                 ? pointsAwarded > 0
@@ -689,7 +743,7 @@ export async function POST(
         {
           success: false,
           message:
-            "انتهى التحدي أو تم إطلاق تحدٍ جديد.",
+            "انتهى التحدي أو تم إطلاق تحدٍّ جديد.",
         },
         {
           status: 410,
@@ -710,6 +764,16 @@ export async function POST(
         {
           status: 403,
         }
+      );
+    }
+
+    if (message === "STUDENT_MISMATCH") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "هذا التحدي مخصص لطالب آخر.",
+        },
+        { status: 403 }
       );
     }
 
