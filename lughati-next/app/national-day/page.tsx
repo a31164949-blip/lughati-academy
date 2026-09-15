@@ -19,6 +19,8 @@ const activities = [
     icon: "🎙️",
     title: "صوت الوطن",
     description: "إلقاء قصير يعبّر فيه الطالب عن حبه للمملكة.",
+    href: "/national-day/voice-of-nation",
+    status: "تفتح 20 سبتمبر",
   },
   {
     icon: "📖",
@@ -166,7 +168,8 @@ export default function NationalDayPage() {
             <div
               dir="ltr"
               style={{
-                display: "flex",
+                display: "inline-grid",
+                gridTemplateColumns: "auto auto auto",
                 justifyContent: "center",
                 alignItems: "center",
                 gap: 5,
@@ -175,7 +178,8 @@ export default function NationalDayPage() {
               }}
             >
               <span>20 – 26</span>
-              <span dir="rtl">سبتمبر 2026</span>
+              <span>سبتمبر</span>
+              <span>2026</span>
             </div>
             <h1 style={{ margin: "8px 0", fontSize: "clamp(32px, 6vw, 58px)", lineHeight: 1.25 }}>
               أسبوع الوطن في أكاديمية لغتي
@@ -218,11 +222,29 @@ export default function NationalDayPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                   <div style={{ fontSize: 38 }}>{activity.icon}</div>
                   <span style={{ padding: "6px 10px", borderRadius: 999, color: "#996c00", background: "#fff7cc", fontSize: 12, fontWeight: 900 }}>
-                    قريبًا
+                    {activity.status || "قريبًا"}
                   </span>
                 </div>
                 <h3 style={{ margin: "14px 0 7px", color: "#086447", fontSize: 21 }}>{activity.title}</h3>
                 <p style={{ margin: 0, color: "#657b74", lineHeight: 1.8 }}>{activity.description}</p>
+                {activity.href ? (
+                  <Link
+                    href={activity.href}
+                    style={{
+                      display: "block",
+                      marginTop: 16,
+                      padding: "11px 14px",
+                      borderRadius: 13,
+                      color: "#ffffff",
+                      background: "#087b52",
+                      textAlign: "center",
+                      textDecoration: "none",
+                      fontWeight: 900,
+                    }}
+                  >
+                    عرض المسابقة ←
+                  </Link>
+                ) : null}
               </article>
             ))}
           </div>

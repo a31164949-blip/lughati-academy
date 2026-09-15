@@ -42,6 +42,12 @@ function getNotificationTime(value: unknown) {
 
 const sections = [
   {
+    title: "🏆 إدارة أسبوع الوطن",
+    description:
+      "مراجعة مشاركات صوت الوطن واعتمادها أو إعادتها للطالب مع ملاحظة.",
+    href: "/teacher/national-day",
+  },
+  {
     title: "🎁 إهداء النقاط",
     description:
       "إرسال هدية نقاط مباشرة للطالب مع تسجيل السبب وربطها برصيده ومدينة الإنجاز.",
