@@ -210,7 +210,7 @@ export default function AcademyClubPage() {
         </div>
 
         <Link
-          href="/student-journey"
+          href="/journey"
           style={{
             color: "#ffffff",
             textDecoration: "none",

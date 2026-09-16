@@ -196,6 +196,15 @@ type SpellingHistoryItem = LatestSpelling & {
   date: string;
 };
 
+type AcademyClubMembership = {
+  active: boolean;
+  membershipNumber: string;
+  level: "member" | "star" | "ambassador" | "leader";
+  levelLabel: string;
+  joinedAt?: string;
+  expiresAt?: string;
+};
+
 type JourneyData = {
   success: boolean;
   points?: number;
@@ -219,6 +228,7 @@ type JourneyData = {
   tomorrowSpellingDay?: string;
   tomorrowSpellingWords?: string[];
   unreadMessageCount?: number;
+  academyClubMembership?: AcademyClubMembership | null;
   message?: string;
 };
 type CrownAchievement = {
@@ -510,6 +520,11 @@ const [
     tomorrowSpellingWords,
     setTomorrowSpellingWords,
   ] = useState<string[]>([]);
+
+  const [
+    academyClubMembership,
+    setAcademyClubMembership,
+  ] = useState<AcademyClubMembership | null>(null);
 
   const [
     smartFollowUp,
@@ -1129,6 +1144,31 @@ try {
           typeof data.unreadMessageCount === "number"
             ? Math.max(0, Math.round(data.unreadMessageCount))
             : 0
+        );
+
+        setAcademyClubMembership(
+          data.academyClubMembership?.active === true
+            ? {
+                active: true,
+                membershipNumber:
+                  typeof data.academyClubMembership.membershipNumber === "string"
+                    ? data.academyClubMembership.membershipNumber
+                    : "",
+                level:
+                  data.academyClubMembership.level === "star" ||
+                  data.academyClubMembership.level === "ambassador" ||
+                  data.academyClubMembership.level === "leader"
+                    ? data.academyClubMembership.level
+                    : "member",
+                levelLabel:
+                  typeof data.academyClubMembership.levelLabel === "string" &&
+                  data.academyClubMembership.levelLabel.trim()
+                    ? data.academyClubMembership.levelLabel
+                    : "عضو نادي الأكاديمية",
+                joinedAt: data.academyClubMembership.joinedAt,
+                expiresAt: data.academyClubMembership.expiresAt,
+              }
+            : null
         );
 
         setFluencyLevel(
@@ -4004,6 +4044,127 @@ try {
             </div>
           </div> 
         </section>
+
+        {academyClubMembership?.active && (
+          <section
+            aria-label="عضوية نادي الأكاديمية"
+            style={{
+              ...cardStyle,
+              marginTop: "16px",
+              marginBottom: "20px",
+              position: "relative",
+              overflow: "hidden",
+              border: "2px solid #e7c35d",
+              background:
+                "linear-gradient(135deg,#fff8d8 0%,#ffffff 52%,#eaf8f0 100%)",
+              boxShadow: "0 14px 32px rgba(122,92,20,.13)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                width: "145px",
+                height: "145px",
+                borderRadius: "50%",
+                background: "rgba(231,195,93,.16)",
+                left: "-55px",
+                top: "-65px",
+              }}
+            />
+
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "18px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "15px",
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: "72px",
+                    height: "72px",
+                    borderRadius: "22px",
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                    fontSize: "38px",
+                    color: "#fff",
+                    background:
+                      "linear-gradient(145deg,#176c46 0%,#0e5135 100%)",
+                    border: "3px solid #f0cf6b",
+                    boxShadow: "0 8px 18px rgba(23,108,70,.20)",
+                  }}
+                >
+                  🏅
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      color: "#9a6b08",
+                      fontSize: "13px",
+                      fontWeight: 900,
+                      marginBottom: "4px",
+                    }}
+                  >
+                    عضوية مميزة
+                  </div>
+                  <h2
+                    style={{
+                      margin: "0 0 6px",
+                      color: "#176c46",
+                      fontSize: "clamp(20px,4vw,27px)",
+                    }}
+                  >
+                    نادي الأكاديمية 🌟
+                  </h2>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#5f6f66",
+                      fontWeight: 700,
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    {academyClubMembership.levelLabel}
+                    {academyClubMembership.membershipNumber
+                      ? ` • رقم العضوية ${academyClubMembership.membershipNumber}`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/academy-club"
+                style={{
+                  textDecoration: "none",
+                  borderRadius: "15px",
+                  padding: "12px 18px",
+                  color: "#ffffff",
+                  background:
+                    "linear-gradient(135deg,#18835b 0%,#116744 100%)",
+                  border: "2px solid #f0cf6b",
+                  fontWeight: 900,
+                  boxShadow: "0 7px 16px rgba(23,108,70,.17)",
+                }}
+              >
+                دخول النادي ←
+              </Link>
+            </div>
+          </section>
+        )}
 
         {tomorrowSpellingWords.length > 0 && (
           <section
