@@ -7,6 +7,8 @@ import {
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 
 export const runtime = "nodejs";
+const TEACHER_EMAIL = "a31164949@gmail.com";
+
 
 type AcademyClubLevel =
   | "member"
@@ -33,9 +35,20 @@ async function requireTeacher(request: Request) {
     authorization.slice(7)
   );
 
+  const email =
+    typeof decodedToken.email === "string"
+      ? decodedToken.email.trim().toLowerCase()
+      : "";
+
+  const role =
+    typeof decodedToken.role === "string"
+      ? decodedToken.role
+      : "";
+
   if (
-    decodedToken.role !== "teacher" &&
-    decodedToken.role !== "admin"
+    role !== "teacher" &&
+    role !== "admin" &&
+    email !== TEACHER_EMAIL
   ) {
     throw new Error("FORBIDDEN");
   }

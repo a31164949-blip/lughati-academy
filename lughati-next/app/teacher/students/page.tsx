@@ -1034,7 +1034,10 @@ async function updateClubMembership(
   const currentUser = auth.currentUser;
 
   if (!currentUser) {
-    setMessage("❌ انتهت جلسة الدخول. سجل الدخول مرة أخرى.");
+    const sessionMessage =
+      "انتهت جلسة دخول المعلم. سجل الدخول مرة أخرى.";
+    setMessage(`❌ ${sessionMessage}`);
+    window.alert(sessionMessage);
     return;
   }
 
@@ -1082,11 +1085,12 @@ async function updateClubMembership(
     await loadStudents(true);
   } catch (error) {
     console.error("تعذر تحديث عضوية النادي:", error);
-    setMessage(
+    const errorMessage =
       error instanceof Error
-        ? `❌ ${error.message}`
-        : "❌ تعذر تحديث عضوية النادي."
-    );
+        ? error.message
+        : "تعذر تحديث عضوية النادي.";
+    setMessage(`❌ ${errorMessage}`);
+    window.alert(errorMessage);
   } finally {
     setSavingClubMembership(false);
   }
