@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 
 
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 const STUDENTS_PAGE_CACHE_KEY =
   "teacher-students-page-data-v1";
@@ -49,7 +49,69 @@ type Student = {
   loginCount: number;
   firstLoginAt: Date | null;
   lastLoginAt: Date | null;
+  academyClubMembership: AcademyClubMembership | null;
 };
+
+type AcademyClubLevel =
+  | "member"
+  | "star"
+  | "ambassador"
+  | "leader";
+
+type AcademyClubMembership = {
+  active: boolean;
+  membershipNumber: string;
+  level: AcademyClubLevel;
+  levelLabel: string;
+  joinedAt: Date | null;
+  expiresAt: Date | null;
+};
+
+function parseCachedClubMembership(
+  value: unknown
+): AcademyClubMembership | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const membership = value as Record<string, unknown>;
+  const rawLevel = membership.level;
+  const level: AcademyClubLevel =
+    rawLevel === "star" ||
+    rawLevel === "ambassador" ||
+    rawLevel === "leader"
+      ? rawLevel
+      : "member";
+
+  const toDate = (dateValue: unknown) => {
+    if (
+      typeof dateValue !== "string" &&
+      typeof dateValue !== "number"
+    ) {
+      return null;
+    }
+
+    const parsed = new Date(dateValue);
+    return Number.isNaN(parsed.getTime())
+      ? null
+      : parsed;
+  };
+
+  return {
+    active: membership.active === true,
+    membershipNumber:
+      typeof membership.membershipNumber === "string"
+        ? membership.membershipNumber
+        : "",
+    level,
+    levelLabel:
+      typeof membership.levelLabel === "string"
+        ? membership.levelLabel
+        : "عضو نادي الأكاديمية",
+    joinedAt: toDate(membership.joinedAt),
+    expiresAt: toDate(membership.expiresAt),
+  };
+}
 
 type FamilyProfile = {
   studentId: string;
@@ -134,6 +196,18 @@ const [restoringStudentId, setRestoringStudentId] =
 
 const [deletingStudentId, setDeletingStudentId] =
   useState<string | null>(null);
+
+const [clubStudent, setClubStudent] =
+  useState<Student | null>(null);
+
+const [clubLevel, setClubLevel] =
+  useState<AcademyClubLevel>("member");
+
+const [clubDurationDays, setClubDurationDays] =
+  useState("30");
+
+const [savingClubMembership, setSavingClubMembership] =
+  useState(false);
   
   const [classFilter, setClassFilter] =
     useState("الكل");
@@ -191,6 +265,10 @@ const [deletingStudentId, setDeletingStudentId] =
                         student.lastLoginAt
                       )
                     : null,
+                academyClubMembership:
+                  parseCachedClubMembership(
+                    student.academyClubMembership
+                  ),
               })
             ) as Student[];
 
@@ -282,6 +360,36 @@ archived:
           lastLoginAt:
             data.lastLoginAt?.toDate
               ? data.lastLoginAt.toDate()
+              : null,
+
+          academyClubMembership:
+            data.academyClubMembership &&
+            typeof data.academyClubMembership === "object"
+              ? {
+                  active:
+                    data.academyClubMembership.active === true,
+                  membershipNumber: String(
+                    data.academyClubMembership.membershipNumber ?? ""
+                  ),
+                  level:
+                    data.academyClubMembership.level === "star" ||
+                    data.academyClubMembership.level === "ambassador" ||
+                    data.academyClubMembership.level === "leader"
+                      ? data.academyClubMembership.level
+                      : "member",
+                  levelLabel: String(
+                    data.academyClubMembership.levelLabel ??
+                      "عضو نادي الأكاديمية"
+                  ),
+                  joinedAt:
+                    data.academyClubMembership.joinedAt?.toDate
+                      ? data.academyClubMembership.joinedAt.toDate()
+                      : null,
+                  expiresAt:
+                    data.academyClubMembership.expiresAt?.toDate
+                      ? data.academyClubMembership.expiresAt.toDate()
+                      : null,
+                }
               : null,
         };
       }
@@ -904,6 +1012,83 @@ async function handleDeleteArchivedStudent(
     );
   } finally {
     setDeletingStudentId(null);
+  }
+}
+
+function openClubMembership(student: Student) {
+  setClubStudent(student);
+  setClubLevel(
+    student.academyClubMembership?.level ?? "member"
+  );
+  setClubDurationDays("30");
+  setMessage("");
+}
+
+async function updateClubMembership(
+  action: "grant" | "stop"
+) {
+  if (!clubStudent) {
+    return;
+  }
+
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    setMessage("❌ انتهت جلسة الدخول. سجل الدخول مرة أخرى.");
+    return;
+  }
+
+  try {
+    setSavingClubMembership(true);
+    setMessage("");
+
+    const token = await currentUser.getIdToken();
+    const response = await fetch(
+      "/api/teacher/academy-club",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studentId: clubStudent.id,
+          action,
+          level: clubLevel,
+          durationDays: Number(clubDurationDays),
+        }),
+      }
+    );
+
+    const result = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+    };
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || "تعذر تحديث عضوية النادي."
+      );
+    }
+
+    setMessage(
+      action === "stop"
+        ? `✅ تم إيقاف عضوية ${clubStudent.studentName}.`
+        : `✅ تم منح أو تجديد عضوية ${clubStudent.studentName}.`
+    );
+
+    setClubStudent(null);
+    clearStudentsPageCache();
+    await loadStudents(true);
+  } catch (error) {
+    console.error("تعذر تحديث عضوية النادي:", error);
+    setMessage(
+      error instanceof Error
+        ? `❌ ${error.message}`
+        : "❌ تعذر تحديث عضوية النادي."
+    );
+  } finally {
+    setSavingClubMembership(false);
   }
 }
 
@@ -1731,6 +1916,32 @@ useEffect(() => {
                       <button
                         type="button"
                         onClick={() =>
+                          openClubMembership(student)
+                        }
+                        style={{
+                          ...styles.profileButton,
+                          background:
+                            student.academyClubMembership?.active
+                              ? "#fff8dc"
+                              : "#f0fdf4",
+                          color:
+                            student.academyClubMembership?.active
+                              ? "#8a6108"
+                              : "#176c46",
+                          borderColor:
+                            student.academyClubMembership?.active
+                              ? "#e7c35d"
+                              : "#86efac",
+                        }}
+                      >
+                        {student.academyClubMembership?.active
+                          ? `🏅 ${student.academyClubMembership.levelLabel}`
+                          : "🏅 منح عضوية النادي"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
                           setSelectedStudent(
                             student
                           )
@@ -1824,6 +2035,149 @@ useEffect(() => {
         )}
         
       </section>
+
+      {clubStudent && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() =>
+            !savingClubMembership && setClubStudent(null)
+          }
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="إدارة عضوية نادي الأكاديمية"
+            style={{ ...styles.modal, maxWidth: "560px" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.modalHeader}>
+              <div>
+                <p style={styles.modalEyebrow}>نادي الأكاديمية</p>
+                <h2 style={styles.modalTitle}>
+                  🏅 عضوية {clubStudent.studentName}
+                </h2>
+                <p style={styles.modalMeta}>
+                  {clubStudent.classroom}
+                  {clubStudent.academyClubMembership?.membershipNumber
+                    ? ` • رقم العضوية ${clubStudent.academyClubMembership.membershipNumber}`
+                    : " • عضوية جديدة"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={savingClubMembership}
+                onClick={() => setClubStudent(null)}
+                style={styles.closeButton}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: "16px",
+                marginTop: "20px",
+              }}
+            >
+              <label style={{ display: "grid", gap: "7px", fontWeight: 900 }}>
+                مستوى العضوية
+                <select
+                  value={clubLevel}
+                  onChange={(event) =>
+                    setClubLevel(event.target.value as AcademyClubLevel)
+                  }
+                  style={styles.select}
+                >
+                  <option value="member">عضو نادي الأكاديمية</option>
+                  <option value="star">نجم نادي الأكاديمية</option>
+                  <option value="ambassador">سفير نادي الأكاديمية</option>
+                  <option value="leader">قائد نادي الأكاديمية</option>
+                </select>
+              </label>
+
+              <label style={{ display: "grid", gap: "7px", fontWeight: 900 }}>
+                مدة العضوية أو التجديد
+                <select
+                  value={clubDurationDays}
+                  onChange={(event) =>
+                    setClubDurationDays(event.target.value)
+                  }
+                  style={styles.select}
+                >
+                  <option value="30">30 يومًا</option>
+                  <option value="60">60 يومًا</option>
+                  <option value="90">90 يومًا</option>
+                </select>
+              </label>
+
+              {clubStudent.academyClubMembership?.active && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "14px",
+                    background: "#fff8dc",
+                    border: "1px solid #e7c35d",
+                    color: "#7c5708",
+                    fontWeight: 800,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  العضوية فعّالة
+                  {clubStudent.academyClubMembership.expiresAt
+                    ? ` حتى ${clubStudent.academyClubMembership.expiresAt.toLocaleDateString("ar-SA")}`
+                    : ""}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+                  gap: "10px",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={savingClubMembership}
+                  onClick={() => void updateClubMembership("grant")}
+                  style={{
+                    ...styles.profileButton,
+                    padding: "13px 16px",
+                    background: "#176c46",
+                    color: "#ffffff",
+                    borderColor: "#176c46",
+                  }}
+                >
+                  {savingClubMembership
+                    ? "جارٍ الحفظ..."
+                    : clubStudent.academyClubMembership?.active
+                      ? "✅ تحديث وتجديد العضوية"
+                      : "✅ منح العضوية"}
+                </button>
+
+                {clubStudent.academyClubMembership?.active && (
+                  <button
+                    type="button"
+                    disabled={savingClubMembership}
+                    onClick={() => void updateClubMembership("stop")}
+                    style={{
+                      ...styles.profileButton,
+                      padding: "13px 16px",
+                      background: "#fef2f2",
+                      color: "#b91c1c",
+                      borderColor: "#fca5a5",
+                    }}
+                  >
+                    ⛔ إيقاف العضوية
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {activeStat && (
         <div
           style={styles.modalOverlay}

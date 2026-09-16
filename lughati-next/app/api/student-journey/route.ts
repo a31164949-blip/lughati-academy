@@ -183,6 +183,100 @@ type DailyProofStatus =
   | "approved"
   | "rejected";
 
+type AcademyClubLevel =
+  | "member"
+  | "star"
+  | "ambassador"
+  | "leader";
+
+function getAcademyClubMembership(
+  studentData: Record<string, unknown>,
+  todayDateKey: string
+) {
+  const rawMembership =
+    studentData.academyClubMembership;
+
+  if (
+    !rawMembership ||
+    typeof rawMembership !== "object"
+  ) {
+    return null;
+  }
+
+  const membership = rawMembership as Record<
+    string,
+    unknown
+  >;
+
+  const expiresAt =
+    typeof membership.expiresAt === "string"
+      ? membership.expiresAt
+      : getFirestoreDateKey(
+          membership.expiresAt
+        );
+
+  const hasExpired =
+    Boolean(expiresAt) &&
+    expiresAt < todayDateKey;
+
+  if (
+    membership.active !== true ||
+    hasExpired
+  ) {
+    return null;
+  }
+
+  const allowedLevels: AcademyClubLevel[] = [
+    "member",
+    "star",
+    "ambassador",
+    "leader",
+  ];
+
+  const level =
+    typeof membership.level === "string" &&
+    allowedLevels.includes(
+      membership.level as AcademyClubLevel
+    )
+      ? (membership.level as AcademyClubLevel)
+      : "member";
+
+  const defaultLabels: Record<
+    AcademyClubLevel,
+    string
+  > = {
+    member: "عضو نادي الأكاديمية",
+    star: "نجم نادي الأكاديمية",
+    ambassador: "سفير نادي الأكاديمية",
+    leader: "قائد نادي الأكاديمية",
+  };
+
+  const joinedAt =
+    typeof membership.joinedAt === "string"
+      ? membership.joinedAt
+      : getFirestoreDateKey(
+          membership.joinedAt
+        );
+
+  return {
+    active: true,
+    membershipNumber:
+      typeof membership.membershipNumber ===
+      "string"
+        ? membership.membershipNumber
+        : "",
+    level,
+    levelLabel:
+      typeof membership.levelLabel ===
+        "string" &&
+      membership.levelLabel.trim()
+        ? membership.levelLabel.trim()
+        : defaultLabels[level],
+    joinedAt,
+    expiresAt,
+  };
+}
+
 async function getHomeworkStatusForDate(
   studentDocId: string,
   dateKey: string
@@ -487,6 +581,12 @@ export async function GET(
     const studentData =
       studentSnapshot.data() ?? {};
 
+    const academyClubMembership =
+      getAcademyClubMembership(
+        studentData,
+        dateKey
+      );
+
     const readingProgressData =
       readingProgressSnapshot.exists
         ? readingProgressSnapshot.data() ??
@@ -681,6 +781,7 @@ personalPhotoUrl:
       tomorrowSpellingDay,
       tomorrowSpellingWords,
       unreadMessageCount,
+      academyClubMembership,
       smartFollowUp:
   studentData.smartFollowUp &&
   typeof studentData.smartFollowUp ===
