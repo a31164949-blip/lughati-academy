@@ -33,7 +33,7 @@ const clubSections = [
     icon: "🎯",
     title: "تحديات النادي",
     description: "تحديات إثرائية ممتعة للأعضاء ومحبي التميز.",
-    href: "/academy-challenge",
+    href: "/academy-club/challenge",
     color: "#fff7dc",
     border: "#edd27a",
   },
