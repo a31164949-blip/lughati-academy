@@ -4045,8 +4045,7 @@ try {
           </div> 
         </section>
 
-        {academyClubMembership?.active && (
-          <section
+        <section
             aria-label="عضوية نادي الأكاديمية"
             style={{
               ...cardStyle,
@@ -4119,7 +4118,7 @@ try {
                       marginBottom: "4px",
                     }}
                   >
-                    عضوية مميزة
+                    نعمل على استكمال الترتيبات
                   </div>
                   <h2
                     style={{
@@ -4138,33 +4137,31 @@ try {
                       lineHeight: 1.7,
                     }}
                   >
-                    {academyClubMembership.levelLabel}
-                    {academyClubMembership.membershipNumber
-                      ? ` • رقم العضوية ${academyClubMembership.membershipNumber}`
-                      : ""}
+                    تجربة مميزة تجمع بين التعلم والمتعة والتحدي.
                   </p>
                 </div>
               </div>
 
-              <Link
-                href="/academy-club"
+              <span
+                aria-disabled="true"
                 style={{
                   textDecoration: "none",
                   borderRadius: "15px",
                   padding: "12px 18px",
-                  color: "#ffffff",
+                  color: "#71520b",
                   background:
-                    "linear-gradient(135deg,#18835b 0%,#116744 100%)",
+                    "linear-gradient(135deg,#fff3b9 0%,#f4d676 100%)",
                   border: "2px solid #f0cf6b",
                   fontWeight: 900,
-                  boxShadow: "0 7px 16px rgba(23,108,70,.17)",
+                  boxShadow: "0 7px 16px rgba(154,107,8,.14)",
+                  cursor: "not-allowed",
+                  userSelect: "none",
                 }}
               >
-                دخول النادي ←
-              </Link>
+                قريبًا… ✨
+              </span>
             </div>
-          </section>
-        )}
+        </section>
 
         {tomorrowSpellingWords.length > 0 && (
           <section

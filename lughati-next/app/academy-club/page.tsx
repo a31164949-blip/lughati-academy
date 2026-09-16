@@ -74,7 +74,7 @@ function formatDate(value?: string) {
   });
 }
 
-export default function AcademyClubPage() {
+function AcademyClubContent() {
   const [user, setUser] = useState<User | null>(null);
   const [membership, setMembership] =
     useState<AcademyClubMembership | null>(null);
@@ -391,6 +391,130 @@ export default function AcademyClubPage() {
       </div>
     </main>
   );
+}
+
+function AcademyClubComingSoon() {
+  return (
+    <main
+      dir="rtl"
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: "24px 16px",
+        color: "#17352a",
+        fontFamily: "Arial, sans-serif",
+        background:
+          "radial-gradient(circle at 15% 15%,rgba(242,207,101,.24),transparent 28%), linear-gradient(145deg,#0f5c3d 0%,#18754f 48%,#f4fbf7 48%,#fffaf0 100%)",
+      }}
+    >
+      <section
+        aria-label="نادي الأكاديمية قريبًا"
+        style={{
+          width: "min(100%,720px)",
+          position: "relative",
+          overflow: "hidden",
+          padding: "clamp(28px,6vw,52px) clamp(20px,6vw,48px)",
+          textAlign: "center",
+          borderRadius: "30px",
+          border: "2px solid #e7c35d",
+          background:
+            "linear-gradient(145deg,rgba(255,255,255,.98),rgba(255,248,216,.97))",
+          boxShadow: "0 24px 65px rgba(7,58,37,.24)",
+        }}
+      >
+        <div
+          aria-hidden="true"
+          style={{
+            width: "92px",
+            height: "92px",
+            margin: "0 auto 18px",
+            display: "grid",
+            placeItems: "center",
+            borderRadius: "28px",
+            fontSize: "50px",
+            background: "linear-gradient(145deg,#176c46,#0e5135)",
+            border: "3px solid #f0cf6b",
+            boxShadow: "0 12px 26px rgba(23,108,70,.22)",
+          }}
+        >
+          🏅
+        </div>
+
+        <span
+          style={{
+            display: "inline-flex",
+            padding: "8px 18px",
+            borderRadius: "999px",
+            color: "#79560a",
+            background: "#fff0ad",
+            border: "1px solid #e7c35d",
+            fontWeight: 900,
+          }}
+        >
+          قريبًا… ✨
+        </span>
+
+        <h1
+          style={{
+            margin: "18px 0 10px",
+            color: "#176c46",
+            fontSize: "clamp(30px,7vw,48px)",
+          }}
+        >
+          نادي الأكاديمية
+        </h1>
+
+        <p
+          style={{
+            maxWidth: "570px",
+            margin: "0 auto",
+            color: "#52685e",
+            fontSize: "clamp(17px,3.5vw,21px)",
+            fontWeight: 700,
+            lineHeight: 1.9,
+          }}
+        >
+          نعمل حاليًا على استكمال الترتيبات، لنقدّم لأبطالنا تجربة مميزة
+          تجمع بين التعلم والمتعة والتحدي.
+        </p>
+
+        <p
+          style={{
+            margin: "18px 0 24px",
+            color: "#9a6b08",
+            fontWeight: 900,
+            fontSize: "18px",
+          }}
+        >
+          انتظرونا؛ فالقادم أجمل بإذن الله 💫
+        </p>
+
+        <Link
+          href="/journey"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "12px 22px",
+            color: "#ffffff",
+            textDecoration: "none",
+            borderRadius: "15px",
+            background: "linear-gradient(135deg,#18835b,#116744)",
+            border: "2px solid #f0cf6b",
+            fontWeight: 900,
+            boxShadow: "0 8px 18px rgba(23,108,70,.18)",
+          }}
+        >
+          العودة إلى رحلتي ←
+        </Link>
+      </section>
+    </main>
+  );
+}
+
+export default function AcademyClubPage() {
+  return <AcademyClubComingSoon />;
 }
 
 const statusCardStyle: React.CSSProperties = {
