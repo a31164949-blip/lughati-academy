@@ -23,6 +23,13 @@ const activities = [
     status: "متاحة الآن",
   },
   {
+    icon: "🧺",
+    title: "سلة حروف الوطن",
+    description: "التقط الحروف الصحيحة، واجمع كلمات الوطن قبل انتهاء الوقت.",
+    href: "/national-day/letter-basket",
+    status: "متاحة الآن",
+  },
+  {
     icon: "🎙️",
     title: "صوت الوطن",
     description: "إلقاء قصير يعبّر فيه الطالب عن حبه للمملكة.",

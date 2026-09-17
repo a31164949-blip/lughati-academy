@@ -19,57 +19,169 @@ type Body = {
   duration?: number;
 };
 
-function text(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+function text(value: unknown, maximumLength = 200) {
+  return typeof value === "string"
+    ? value.trim().replace(/\s+/g, " ").slice(0, maximumLength)
+    : "";
+}
+
+function isValidVideoUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "res.cloudinary.com" &&
+      url.pathname.startsWith("/ffv5igmg/video/upload/")
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const now = Date.now();
+
     if (now < START_AT || now > END_AT) {
-      return NextResponse.json({ success: false, message: now < START_AT ? "تفتح المشاركة يوم 20 سبتمبر 2026." : "انتهى وقت استقبال المشاركات." }, { status: 403 });
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            now < START_AT
+              ? "تفتح المشاركة يوم 20 سبتمبر 2026."
+              : "انتهى وقت استقبال المشاركات.",
+        },
+        { status: 403 }
+      );
     }
 
     const body = (await request.json()) as Body;
-    const studentId = text(body.studentId);
-    const studentName = text(body.studentName);
-    const classroom = text(body.classroom);
-    const grade = text(body.grade);
-    const school = text(body.school);
-    const title = text(body.title);
-    const fileUrl = text(body.fileUrl);
-    const cloudinaryPublicId = text(body.cloudinaryPublicId);
-    const duration = typeof body.duration === "number" ? body.duration : 0;
+    const studentId = text(body.studentId, 160);
+    const studentName = text(body.studentName, 80);
+    const classroom = text(body.classroom, 40);
+    const grade = text(body.grade, 30);
+    const school = text(body.school, 120);
+    const title = text(body.title, 100);
+    const fileUrl = text(body.fileUrl, 700);
+    const cloudinaryPublicId = text(body.cloudinaryPublicId, 300);
+    const duration =
+      typeof body.duration === "number" && Number.isFinite(body.duration)
+        ? body.duration
+        : 0;
 
-    if (!studentName || studentName.length < 5) return NextResponse.json({ success: false, message: "اكتب اسم الطالب الثلاثي." }, { status: 400 });
-    if (!["الصف الثاني","الصف الثالث","الصف الرابع","الصف الخامس","الصف السادس"].includes(grade)) return NextResponse.json({ success: false, message: "اختر الصف الدراسي الصحيح." }, { status: 400 });
-    if (!school || !title) return NextResponse.json({ success: false, message: "أكمل اسم المدرسة وعنوان المشاركة." }, { status: 400 });
-    if (!fileUrl || !fileUrl.startsWith("https://res.cloudinary.com/ffv5igmg/")) return NextResponse.json({ success: false, message: "رابط الفيديو غير صالح." }, { status: 400 });
-    if (!duration || duration > 60.5) return NextResponse.json({ success: false, message: "يجب ألا تتجاوز مدة الفيديو دقيقة واحدة." }, { status: 400 });
+    if (!studentName || studentName.length < 5) {
+      return NextResponse.json(
+        { success: false, message: "اكتب اسم الطالب الثلاثي." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      ![
+        "الصف الثاني",
+        "الصف الثالث",
+        "الصف الرابع",
+        "الصف الخامس",
+        "الصف السادس",
+      ].includes(grade)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "اختر الصف الدراسي الصحيح." },
+        { status: 400 }
+      );
+    }
+
+    if (!classroom) {
+      return NextResponse.json(
+        { success: false, message: "اكتب الفصل الدراسي." },
+        { status: 400 }
+      );
+    }
+
+    if (!school || !title) {
+      return NextResponse.json(
+        { success: false, message: "أكمل اسم المدرسة وعنوان المشاركة." },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidVideoUrl(fileUrl)) {
+      return NextResponse.json(
+        { success: false, message: "رابط الفيديو غير صالح." },
+        { status: 400 }
+      );
+    }
+
+    if (duration <= 0 || duration > 60.5) {
+      return NextResponse.json(
+        { success: false, message: "يجب ألا تتجاوز مدة الفيديو دقيقة واحدة." },
+        { status: 400 }
+      );
+    }
 
     const { adminDb } = getFirebaseAdmin();
-    const participantIdentity = studentId || `${studentName}|${grade}|${school}`.replace(/\s+/g, " ").toLowerCase();
-    const participantHash = createHash("sha256").update(participantIdentity).digest("hex").slice(0, 32);
+    const participantIdentity =
+      studentId ||
+      `${studentName}|${grade}|${classroom}|${school}`.toLowerCase();
+    const participantHash = createHash("sha256")
+      .update(participantIdentity)
+      .digest("hex")
+      .slice(0, 32);
     const documentId = `${COMPETITION_ID}_${participantHash}`;
-    const reference = adminDb.collection("nationalDaySubmissions").doc(documentId);
+    const reference = adminDb
+      .collection("nationalDaySubmissions")
+      .doc(documentId);
     const existing = await reference.get();
-    if (existing.exists && existing.data()?.status !== "revision_requested") return NextResponse.json({ success: false, message: "سبق أن أرسلت مشاركتك في صوت الوطن. المشاركة متاحة مرة واحدة فقط." }, { status: 409 });
 
-    await reference.set({
-      competitionId: COMPETITION_ID,
-      competitionTitle: "صوت الوطن",
-      studentId, studentName, classroom, grade, school, title,
-      fileUrl, cloudinaryPublicId, duration,
-      status: "pending",
-      teacherNote: "",
-      approved: false,
-      createdAt: existing.exists ? existing.data()?.createdAt || FieldValue.serverTimestamp() : FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: false });
+    if (
+      existing.exists &&
+      existing.data()?.status !== "revision_requested"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "سبق أن أرسلت مشاركتك في صوت الوطن. المشاركة متاحة مرة واحدة فقط.",
+        },
+        { status: 409 }
+      );
+    }
 
-    return NextResponse.json({ success: true, id: reference.id, message: "وصلت مشاركتك بنجاح، وهي الآن بانتظار مراجعة المعلم ✅" });
+    await reference.set(
+      {
+        competitionId: COMPETITION_ID,
+        competitionTitle: "صوت الوطن",
+        studentId,
+        studentName,
+        classroom,
+        grade,
+        school,
+        title,
+        fileUrl,
+        cloudinaryPublicId,
+        duration,
+        status: "pending",
+        teacherNote: "",
+        approved: false,
+        createdAt: existing.exists
+          ? existing.data()?.createdAt || FieldValue.serverTimestamp()
+          : FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: false }
+    );
+
+    return NextResponse.json({
+      success: true,
+      id: reference.id,
+      message:
+        "وصلت مشاركتك بنجاح، وهي الآن بانتظار مراجعة المعلم ✅",
+    });
   } catch (error) {
     console.error("VOICE OF NATION SUBMISSION ERROR:", error);
-    return NextResponse.json({ success: false, message: "تعذر إرسال المشاركة حاليًا." }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "تعذر إرسال المشاركة حاليًا." },
+      { status: 500 }
+    );
   }
 }

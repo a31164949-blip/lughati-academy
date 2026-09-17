@@ -28,11 +28,17 @@ function getStudentData(): StudentData {
   try {
     const saved = window.localStorage.getItem("lughatiStudent");
     const localId = window.localStorage.getItem("student-id") || "";
+    const localName = window.localStorage.getItem("student-name") || "";
+    const localClassroom =
+      window.localStorage.getItem("student-class") ||
+      window.localStorage.getItem("student-classroom") ||
+      window.localStorage.getItem("classroom") ||
+      "";
     const parsed = saved ? JSON.parse(saved) : {};
     return {
       studentId: localId || parsed.studentId || parsed.id || "",
-      studentName: parsed.studentName || parsed.name || "",
-      classroom: parsed.classroom || parsed.className || "",
+      studentName: localName || parsed.studentName || parsed.name || "",
+      classroom: localClassroom || parsed.classroom || parsed.className || "",
     };
   } catch {
     return { studentId: "", studentName: "", classroom: "" };
@@ -42,6 +48,7 @@ function getStudentData(): StudentData {
 export default function VoiceOfNationPage() {
   const [student, setStudent] = useState<StudentData>({ studentId: "", studentName: "", classroom: "" });
   const [participantName, setParticipantName] = useState("");
+  const [classroom, setClassroom] = useState("");
   const [grade, setGrade] = useState("الصف الثاني");
   const [school, setSchool] = useState("");
   const [title, setTitle] = useState("كلمة في حب الوطن");
@@ -52,11 +59,13 @@ export default function VoiceOfNationPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [eventState, setEventState] = useState<EventState>("loading");
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const savedStudent = getStudentData();
     setStudent(savedStudent);
     setParticipantName(savedStudent.studentName);
+    setClassroom(savedStudent.classroom);
 
     const updateEventState = () => {
       const now = Date.now();
@@ -132,7 +141,7 @@ export default function VoiceOfNationPage() {
       return;
     }
 
-    if (!participantName.trim() || !school.trim() || !title.trim() || !file || duration === null) {
+    if (!participantName.trim() || !classroom.trim() || !school.trim() || !title.trim() || !file || duration === null) {
       setError("أكمل البيانات واختر فيديو لا يتجاوز دقيقة واحدة.");
       return;
     }
@@ -162,7 +171,7 @@ export default function VoiceOfNationPage() {
         body: JSON.stringify({
           studentId: student.studentId,
           studentName: participantName.trim(),
-          classroom: student.classroom,
+          classroom: classroom.trim(),
           grade,
           school: school.trim(),
           title: title.trim(),
@@ -177,6 +186,7 @@ export default function VoiceOfNationPage() {
       setMessage(result.message || "وصلت مشاركتك بنجاح وهي بانتظار مراجعة المعلم ✅");
       setFile(null);
       setPreviewUrl("");
+      setSubmitted(true);
     } catch (submitError) {
       setMessage("");
       setError(submitError instanceof Error ? submitError.message : "تعذر إرسال المشاركة.");
@@ -210,7 +220,13 @@ export default function VoiceOfNationPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 15 }}>
             <Field label="اسم الطالب" value={participantName} onChange={setParticipantName} placeholder="اكتب اسم الطالب الثلاثي" disabled={Boolean(student.studentName)} />
             <label style={labelStyle}>الصف<select value={grade} onChange={(e) => setGrade(e.target.value)} style={inputStyle}>{["الصف الثاني","الصف الثالث","الصف الرابع","الصف الخامس","الصف السادس"].map((item) => <option key={item}>{item}</option>)}</select></label>
-            <Field label="الفصل" value={student.classroom || "—"} disabled />
+            <Field
+              label="الفصل"
+              value={classroom}
+              onChange={setClassroom}
+              placeholder="مثال: الثاني أ"
+              disabled={Boolean(student.classroom)}
+            />
             <Field label="المدرسة" value={school} onChange={setSchool} placeholder="اكتب اسم المدرسة" />
           </div>
 
@@ -226,8 +242,8 @@ export default function VoiceOfNationPage() {
           {error ? <div style={{ marginTop: 15, padding: 13, borderRadius: 14, color: "#b91c1c", background: "#fff1f2" }}>{error}</div> : null}
           {message ? <div style={{ marginTop: 15, padding: 13, borderRadius: 14, color: "#087b52", background: "#ecfdf5" }}>{message}</div> : null}
 
-          <button type="button" onClick={() => void submit()} disabled={uploading || eventState !== "open"} style={{ width: "100%", marginTop: 18, padding: 15, border: 0, borderRadius: 16, color: "white", background: uploading || eventState !== "open" ? "#94a3b8" : "#087b52", fontSize: 18, fontWeight: 950, cursor: uploading ? "wait" : eventState === "open" ? "pointer" : "not-allowed" }}>
-            {uploading ? "جارٍ إرسال المشاركة…" : eventState === "upcoming" ? "يفتح الإرسال يوم 20 سبتمبر" : eventState === "closed" ? "انتهى استقبال المشاركات" : "إرسال مشاركتي للمعلم"}
+          <button type="button" onClick={() => void submit()} disabled={uploading || submitted || eventState !== "open"} style={{ width: "100%", marginTop: 18, padding: 15, border: 0, borderRadius: 16, color: "white", background: uploading || submitted || eventState !== "open" ? "#94a3b8" : "#087b52", fontSize: 18, fontWeight: 950, cursor: uploading ? "wait" : submitted || eventState !== "open" ? "not-allowed" : "pointer" }}>
+            {uploading ? "جارٍ إرسال المشاركة…" : submitted ? "تم إرسال مشاركتك بنجاح ✅" : eventState === "upcoming" ? "يفتح الإرسال يوم 20 سبتمبر" : eventState === "closed" ? "انتهى استقبال المشاركات" : "إرسال مشاركتي للمعلم"}
           </button>
         </section>
       </div>
