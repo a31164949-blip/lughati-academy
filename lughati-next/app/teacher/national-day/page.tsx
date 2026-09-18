@@ -13,7 +13,7 @@ import {
 import { db } from "../../../firebase";
 
 type Status = "pending" | "approved" | "revision_requested";
-type Tab = "voice" | "reader";
+type Tab = "voice" | "reader" | "art";
 
 type VoiceItem = {
   id: string;
@@ -40,23 +40,40 @@ type ReaderItem = {
   createdAt?: number;
 };
 
+type ArtItem = {
+  id: string;
+  studentName?: string;
+  studentClassroom?: string;
+  title?: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+  status?: Status;
+  teacherNote?: string;
+  createdAt?: number;
+};
+
 export default function TeacherNationalDayPage() {
   const [tab, setTab] = useState<Tab>("voice");
   const [filter, setFilter] = useState("all");
   const [voice, setVoice] = useState<VoiceItem[]>([]);
   const [reader, setReader] = useState<ReaderItem[]>([]);
+  const [art, setArt] = useState<ArtItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState("");
   const [voiceNotes, setVoiceNotes] = useState<Record<string, string>>({});
   const [readerNotes, setReaderNotes] = useState<Record<string, string>>({});
+  const [artNotes, setArtNotes] = useState<Record<string, string>>({});
 
   async function loadAll() {
     setLoading(true);
 
     try {
-      const [voiceSnapshot, readerResponse] = await Promise.all([
+      const [voiceSnapshot, readerResponse, artResponse] = await Promise.all([
         getDocs(collection(db, "nationalDaySubmissions")),
         fetch("/api/national-day/reader-of-nation", {
+          cache: "no-store",
+        }),
+        fetch("/api/national-day/my-country-with-my-brush", {
           cache: "no-store",
         }),
       ]);
@@ -82,8 +99,19 @@ export default function TeacherNationalDayPage() {
         ? readerResult.submissions
         : [];
 
+      const artResult = await artResponse.json();
+
+      if (!artResponse.ok) {
+        throw new Error(artResult?.message || "تعذر تحميل وطني بريشتي.");
+      }
+
+      const artData: ArtItem[] = Array.isArray(artResult?.submissions)
+        ? artResult.submissions
+        : [];
+
       setVoice(voiceData);
       setReader(readerData);
+      setArt(artData);
 
       setVoiceNotes(
         Object.fromEntries(
@@ -94,6 +122,12 @@ export default function TeacherNationalDayPage() {
       setReaderNotes(
         Object.fromEntries(
           readerData.map((item) => [item.id, item.teacherNote || ""])
+        )
+      );
+
+      setArtNotes(
+        Object.fromEntries(
+          artData.map((item) => [item.id, item.teacherNote || ""])
         )
       );
     } catch (error) {
@@ -112,7 +146,7 @@ export default function TeacherNationalDayPage() {
     setFilter("all");
   }, [tab]);
 
-  const currentItems = tab === "voice" ? voice : reader;
+  const currentItems = tab === "voice" ? voice : tab === "reader" ? reader : art;
 
   const pendingCount = currentItems.filter(
     (item) => !item.status || item.status === "pending"
@@ -247,6 +281,76 @@ export default function TeacherNationalDayPage() {
     }
   }
 
+  async function reviewArt(
+    item: ArtItem,
+    status: "approved" | "revision_requested"
+  ) {
+    const note = (artNotes[item.id] || "").trim();
+
+    if (status === "revision_requested" && !note) {
+      alert("اكتب ملاحظة للطالب قبل طلب إعادة العمل.");
+      return;
+    }
+
+    try {
+      setWorking(`art-${item.id}`);
+
+      const response = await fetch("/api/national-day/my-country-with-my-brush", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: item.id,
+          status,
+          teacherNote: note,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "تعذر تحديث العمل الفني.");
+      }
+
+      setArt((items) =>
+        items.map((x) =>
+          x.id === item.id ? { ...x, status, teacherNote: note } : x
+        )
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "تعذر تحديث العمل الفني.");
+    } finally {
+      setWorking("");
+    }
+  }
+
+  async function deleteArt(item: ArtItem) {
+    if (!confirm(`هل تريد حذف عمل ${item.studentName || "الطالب"}؟`)) {
+      return;
+    }
+
+    try {
+      setWorking(`art-${item.id}`);
+
+      const response = await fetch("/api/national-day/my-country-with-my-brush", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "تعذر حذف العمل الفني.");
+      }
+
+      setArt((items) => items.filter((x) => x.id !== item.id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "تعذر حذف العمل الفني.");
+    } finally {
+      setWorking("");
+    }
+  }
+
   return (
     <main
       dir="rtl"
@@ -278,7 +382,7 @@ export default function TeacherNationalDayPage() {
           </h1>
 
           <p style={{ margin: 0, color: "#dcfce7" }}>
-            إدارة مشاركات صوت الوطن وقارئ الوطن من مكان واحد.
+            إدارة مشاركات صوت الوطن وقارئ الوطن ووطني بريشتي من مكان واحد.
           </p>
         </section>
 
@@ -297,6 +401,13 @@ export default function TeacherNationalDayPage() {
             title="قارئ الوطن"
             count={reader.length}
             onClick={() => setTab("reader")}
+          />
+          <TabButton
+            active={tab === "art"}
+            icon="🎨"
+            title="وطني بريشتي"
+            count={art.length}
+            onClick={() => setTab("art")}
           />
         </div>
 
@@ -340,7 +451,8 @@ export default function TeacherNationalDayPage() {
                     remove={deleteVoice}
                   />
                 ))
-              : (shown as ReaderItem[]).map((item) => (
+              : tab === "reader"
+              ? (shown as ReaderItem[]).map((item) => (
                   <ReaderCard
                     key={item.id}
                     item={item}
@@ -351,6 +463,19 @@ export default function TeacherNationalDayPage() {
                     }
                     review={reviewReader}
                     remove={deleteReader}
+                  />
+                ))
+              : (shown as ArtItem[]).map((item) => (
+                  <ArtCard
+                    key={item.id}
+                    item={item}
+                    note={artNotes[item.id] || ""}
+                    busy={working === `art-${item.id}`}
+                    setNote={(value) =>
+                      setArtNotes((x) => ({ ...x, [item.id]: value }))
+                    }
+                    review={reviewArt}
+                    remove={deleteArt}
                   />
                 ))}
           </section>
@@ -547,6 +672,115 @@ function ReaderCard({
   );
 }
 
+function ArtCard({
+  item,
+  note,
+  busy,
+  setNote,
+  review,
+  remove,
+}: {
+  item: ArtItem;
+  note: string;
+  busy: boolean;
+  setNote: (value: string) => void;
+  review: (
+    item: ArtItem,
+    status: "approved" | "revision_requested"
+  ) => Promise<void>;
+  remove: (item: ArtItem) => Promise<void>;
+}) {
+  return (
+    <article style={cardStyle}>
+      {item.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt={item.title || "عمل فني وطني"}
+          style={{
+            width: "100%",
+            height: 320,
+            objectFit: "contain",
+            background: "#f8faf9",
+            display: "block",
+          }}
+        />
+      ) : (
+        <div style={readerHeadStyle}>
+          <div style={{ fontSize: 42 }}>🎨</div>
+          <strong>وطني بريشتي</strong>
+        </div>
+      )}
+
+      <div style={{ padding: 20 }}>
+        <StatusBadge status={item.status} />
+
+        <h2 style={nameStyle}>{item.studentName || "طالب"}</h2>
+
+        <p style={{ ...infoStyle, fontWeight: 900, color: "#087b52" }}>
+          🎨 {item.title || "لوحة بلا عنوان"}
+        </p>
+
+        <p style={infoStyle}>
+          الفصل: {item.studentClassroom || "غير محدد"}
+          {item.createdAt ? (
+            <>
+              <br />
+              تاريخ المشاركة: {formatDate(item.createdAt)}
+            </>
+          ) : null}
+        </p>
+
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="ملاحظة المعلم للطالب عند الحاجة"
+          style={textareaStyle}
+        />
+
+        <div style={actionsStyle}>
+          <button
+            disabled={busy}
+            onClick={() => void review(item, "approved")}
+            style={button("#087b52")}
+          >
+            ⭐ اعتماد العمل
+          </button>
+
+          <button
+            disabled={busy}
+            onClick={() => void review(item, "revision_requested")}
+            style={button("#b7791f")}
+          >
+            🔄 يحتاج إعادة
+          </button>
+
+          <a
+            href={item.imageUrl || "#"}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              ...button("#2563eb"),
+              textAlign: "center",
+              textDecoration: "none",
+            }}
+          >
+            🖼️ فتح الصورة
+          </a>
+
+          <button
+            disabled={busy}
+            onClick={() => void remove(item)}
+            style={button("#b91c1c")}
+          >
+            حذف 🗑️
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function TabButton({
   active,
   icon,
@@ -669,7 +903,7 @@ const heroStyle: React.CSSProperties = {
 
 const tabsStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+  gridTemplateColumns: "repeat(3,minmax(0,1fr))",
   gap: 12,
   marginTop: 18,
 };

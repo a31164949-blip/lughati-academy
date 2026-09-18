@@ -411,13 +411,14 @@ const fluencyLevels = [
 ] as const;
 
 export default function JourneyPage() {
-  const [studentName] = useState(() =>
-    typeof window !== "undefined"
-      ? window.localStorage.getItem(
-          "student-name"
-        ) || ""
-      : ""
-  );
+  const [studentName, setStudentName] = useState("");
+
+useEffect(() => {
+  const savedStudentName =
+    window.localStorage.getItem("student-name") || "";
+
+  setStudentName(savedStudentName);
+}, []);
   const [user, setUser] =
     useState<User | null>(null);
 const [
