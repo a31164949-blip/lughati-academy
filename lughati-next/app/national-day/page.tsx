@@ -50,6 +50,8 @@ const activities = [
     icon: "🧠",
     title: "تحدي أعرف وطني",
     description: "أسئلة ممتعة ومعلومات مبسطة عن المملكة.",
+    href: "/national-day/know-my-country",
+    status: "متاحة الآن",
   },
   {
     icon: "👨‍👩‍👧‍👦",
