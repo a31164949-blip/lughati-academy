@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export default function MyCountryWithMyBrushPage() {
   const [title, setTitle] = useState("");
@@ -11,12 +16,83 @@ export default function MyCountryWithMyBrushPage() {
   const [isSending, setIsSending] = useState(false);
   const [sendMessage, setSendMessage] = useState("");
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<
+    "none" | "pending" | "approved" | "revision_requested"
+  >("none");
+  const [teacherNote, setTeacherNote] = useState("");
+  const [statusLoading, setStatusLoading] = useState(true);
 
   const [uploadedImageUrl, setUploadedImageUrl] = useState("");
   const [uploadedImagePublicId, setUploadedImagePublicId] =
     useState("");
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSubmissionStatus() {
+      try {
+        const studentId =
+          window.localStorage.getItem("student-id") || "";
+
+        if (!studentId || studentId === "student-demo") {
+          if (active) setStatusLoading(false);
+          return;
+        }
+
+        const response = await fetch(
+          `/api/national-day/my-country-with-my-brush?studentId=${encodeURIComponent(
+            studentId
+          )}`,
+          { cache: "no-store" }
+        );
+
+        const result = (await response.json()) as {
+          success?: boolean;
+          submission?: {
+            status?: string;
+            teacherNote?: string;
+            title?: string;
+            imageUrl?: string;
+          } | null;
+        };
+
+        if (!active) return;
+
+        if (!response.ok || !result.success || !result.submission) {
+          setSubmissionStatus("none");
+          setHasSubmitted(false);
+          return;
+        }
+
+        const status = result.submission.status;
+
+        if (status === "approved") {
+          setSubmissionStatus("approved");
+          setHasSubmitted(true);
+        } else if (status === "revision_requested") {
+          setSubmissionStatus("revision_requested");
+          setHasSubmitted(false);
+          setTeacherNote(result.submission.teacherNote || "");
+          setTitle(result.submission.title || "");
+        } else {
+          setSubmissionStatus("pending");
+          setHasSubmitted(true);
+        }
+      } catch (error) {
+        console.error("NATIONAL DAY ART STATUS ERROR:", error);
+      } finally {
+        if (active) setStatusLoading(false);
+      }
+    }
+
+    void loadSubmissionStatus();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function chooseImage() {
     if (isSending || hasSubmitted) return;
@@ -237,6 +313,8 @@ export default function MyCountryWithMyBrushPage() {
       }
 
       setHasSubmitted(true);
+      setSubmissionStatus("pending");
+      setTeacherNote("");
 
       setSendMessage(
         result.message ||
@@ -343,7 +421,7 @@ export default function MyCountryWithMyBrushPage() {
             </div>
           </div>
 
-          {!hasSubmitted && (
+          {!statusLoading && !hasSubmitted && (
             <>
               <label className="fieldLabel">
                 ماذا تسمي لوحتك؟
@@ -438,23 +516,61 @@ export default function MyCountryWithMyBrushPage() {
             </>
           )}
 
-          {hasSubmitted && (
+          {statusLoading && (
             <div className="submittedCard">
-              <div className="submittedIcon">
-                🎨
-              </div>
-
-              <h3>وصل إبداعك</h3>
-
-              <p>
-                أحسنت يا فنان الوطن 🌟
-              </p>
-
+              <div className="submittedIcon">⏳</div>
+              <h3>جارٍ التحقق من مشاركتك</h3>
               <p className="submittedSmall">
-                عملك الآن بانتظار مراجعة المعلم.
+                لحظات يا بطل...
               </p>
             </div>
           )}
+
+          {!statusLoading &&
+            submissionStatus === "revision_requested" && (
+              <div className="revisionCard">
+                <div className="submittedIcon">🔄</div>
+                <h3>عملك يحتاج تعديلًا بسيطًا</h3>
+                <p>
+                  راجع ملاحظة المعلم، ثم ارفع الصورة الجديدة
+                  وأرسل إبداعك مرة أخرى.
+                </p>
+                {teacherNote && (
+                  <div className="teacherNote">
+                    <strong>ملاحظة المعلم:</strong>
+                    <span>{teacherNote}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+          {!statusLoading &&
+            submissionStatus === "pending" &&
+            hasSubmitted && (
+              <div className="submittedCard">
+                <div className="submittedIcon">🎨</div>
+                <h3>وصل إبداعك</h3>
+                <p>أحسنت يا فنان الوطن 🌟</p>
+                <p className="submittedSmall">
+                  عملك الآن بانتظار مراجعة المعلم.
+                </p>
+              </div>
+            )}
+
+          {!statusLoading &&
+            submissionStatus === "approved" &&
+            hasSubmitted && (
+              <div className="approvedCard">
+                <div className="approvedSpark">✨</div>
+                <div className="submittedIcon">🏅</div>
+                <div className="approvedBadge">فنان الوطن</div>
+                <h3>تم اعتماد إبداعك</h3>
+                <p>مبارك يا فنان الوطن 🌟</p>
+                <p className="submittedSmall">
+                  أبدعت في التعبير عن حب الوطن بريشتك 🎨
+                </p>
+              </div>
+            )}
 
           {sendMessage && (
             <div
@@ -866,6 +982,81 @@ export default function MyCountryWithMyBrushPage() {
           color: #667a72 !important;
           font-size: 14px;
           font-weight: 600 !important;
+        }
+
+        .revisionCard,
+        .approvedCard {
+          position: relative;
+          overflow: hidden;
+          padding: 28px 20px;
+          border-radius: 22px;
+          text-align: center;
+        }
+
+        .revisionCard {
+          margin-bottom: 22px;
+          color: #6f5200;
+          background: linear-gradient(135deg, #fffaf0, #fff4d6);
+          border: 1px solid #efd58a;
+        }
+
+        .revisionCard h3,
+        .approvedCard h3 {
+          margin: 9px 0;
+          font-size: 25px;
+        }
+
+        .revisionCard h3 {
+          color: #8a6500;
+        }
+
+        .revisionCard p,
+        .approvedCard p {
+          margin: 6px 0;
+          font-weight: 800;
+          line-height: 1.8;
+        }
+
+        .teacherNote {
+          display: grid;
+          gap: 7px;
+          margin-top: 16px;
+          padding: 14px 16px;
+          border-radius: 15px;
+          background: white;
+          border: 1px solid #efd58a;
+        }
+
+        .teacherNote strong {
+          color: #8a6500;
+        }
+
+        .approvedCard {
+          background: linear-gradient(135deg, #f0fff7, #fff8d8);
+          border: 2px solid #e3c45e;
+          box-shadow: 0 14px 35px rgba(160, 120, 24, 0.12);
+        }
+
+        .approvedCard h3 {
+          color: #087b52;
+        }
+
+        .approvedBadge {
+          display: inline-block;
+          margin: 4px 0 7px;
+          padding: 7px 16px;
+          border-radius: 999px;
+          color: #795900;
+          background: #fff1a8;
+          border: 1px solid #e5c75f;
+          font-weight: 900;
+        }
+
+        .approvedSpark {
+          position: absolute;
+          top: 14px;
+          right: 18px;
+          font-size: 24px;
         }
 
         .artistCard {
