@@ -4046,6 +4046,242 @@ try {
           </div> 
         </section>
 
+        {/* مدينة الإنجاز - بطاقة بارزة أعلى صفحة الطالب */}
+        <section
+          aria-label="مدينة الإنجاز"
+          style={{
+            ...cardStyle,
+            marginTop: "16px",
+            marginBottom: "20px",
+            position: "relative",
+            overflow: "hidden",
+            border: "2px solid #e7c35d",
+            background:
+              "linear-gradient(135deg,#fff9df 0%,#ffffff 48%,#eaf8f0 100%)",
+            boxShadow:
+              "0 16px 36px rgba(23,108,70,.12)",
+          }}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              width: "170px",
+              height: "170px",
+              borderRadius: "50%",
+              background:
+                "rgba(250,204,21,.12)",
+              left: "-65px",
+              top: "-80px",
+            }}
+          />
+
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              width: "150px",
+              height: "150px",
+              borderRadius: "50%",
+              background:
+                "rgba(34,197,94,.10)",
+              right: "-55px",
+              bottom: "-85px",
+            }}
+          />
+
+          <div
+            style={{
+              position: "relative",
+              zIndex: 2,
+              display: "grid",
+              gridTemplateColumns:
+                "minmax(0,1fr) auto",
+              alignItems: "center",
+              gap: "18px",
+            }}
+          >
+            <div
+              style={{
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "10px",
+                }}
+              >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: "58px",
+                    height: "58px",
+                    borderRadius: "18px",
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                    fontSize: "34px",
+                    background:
+                      "linear-gradient(145deg,#fff3b0,#fffaf0)",
+                    border:
+                      "1px solid #efd77c",
+                    boxShadow:
+                      "0 8px 20px rgba(122,92,20,.10)",
+                  }}
+                >
+                  🏙️
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      color: "#8a6700",
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      marginBottom: "2px",
+                    }}
+                  >
+                    مدينتك تكبر مع إنجازاتك
+                  </div>
+
+                  <h2
+                    style={{
+                      margin: 0,
+                      color: "#176c46",
+                      fontSize:
+                        "clamp(21px,4vw,28px)",
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    مدينة إنجازي
+                  </h2>
+                </div>
+              </div>
+
+              <p
+                style={{
+                  margin: "0 0 13px",
+                  color: "#587064",
+                  lineHeight: 1.8,
+                  fontWeight: 700,
+                }}
+              >
+                كل نقطة تجمعها تبني جزءًا
+                جديدًا من مدينتك. واصل
+                التعلّم والقراءة والإنجاز 🌱
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  flexWrap: "wrap",
+                  marginBottom: "13px",
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 12px",
+                    borderRadius: "999px",
+                    background: "#fff7d6",
+                    border:
+                      "1px solid #f0d977",
+                    color: "#7a5b00",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                  }}
+                >
+                  ⭐ رصيدي: {points} نقطة
+                </span>
+
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 12px",
+                    borderRadius: "999px",
+                    background: "#eaf8f0",
+                    border:
+                      "1px solid #cfe9da",
+                    color: "#176c46",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                  }}
+                >
+                  🏆 {rank}
+                </span>
+              </div>
+
+              <Link
+                href="/journey/city"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "7px",
+                  minHeight: "44px",
+                  padding: "10px 17px",
+                  borderRadius: "14px",
+                  background:
+                    "linear-gradient(135deg,#176c46,#239764)",
+                  color: "#ffffff",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                  fontWeight: 900,
+                  boxShadow:
+                    "0 8px 18px rgba(23,108,70,.18)",
+                }}
+              >
+                ادخل مدينتي
+                <span aria-hidden="true">
+                  ←
+                </span>
+              </Link>
+            </div>
+
+            <div
+              aria-hidden="true"
+              style={{
+                width:
+                  "clamp(100px,18vw,155px)",
+                minHeight: "135px",
+                borderRadius: "24px",
+                display: "grid",
+                placeItems: "center",
+                padding: "14px",
+                background:
+                  "linear-gradient(180deg,#e9f8ff 0%,#f7fcff 55%,#eaf8f0 56%,#dff4e7 100%)",
+                border:
+                  "1px solid #d7e9df",
+                boxShadow:
+                  "inset 0 0 0 1px rgba(255,255,255,.75)",
+                fontSize:
+                  "clamp(42px,7vw,66px)",
+              }}
+            >
+              {points >= 500
+                ? "🏰"
+                : points >= 250
+                  ? "🏙️"
+                  : points >= 100
+                    ? "🏢"
+                    : points >= 50
+                      ? "🏘️"
+                      : points >= 10
+                        ? "🏡"
+                        : "🌱"}
+            </div>
+          </div>
+        </section>
+
         <section
             aria-label="عضوية نادي الأكاديمية"
             style={{
