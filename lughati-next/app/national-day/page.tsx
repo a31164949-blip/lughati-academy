@@ -57,11 +57,13 @@ const activities = [
     href: "/national-day/know-my-country",
     status: "متاحة الآن",
   },
-  {
-    icon: "👨‍👩‍👧‍👦",
-    title: "عائلتي تحتفل",
-    description: "مشاركة وطنية جميلة تجمع الطالب مع أسرته.",
-  },
+ {
+  icon: "🇸🇦",
+  title: "نحن نحتفل",
+  description: "شارك فرحتك بالوطن بصورة أو فيديو قصير، ودعنا نحتفل معًا 💚",
+  href: "/national-day/we-celebrate",
+  status: "متاحة الآن",
+},
 ];
 
 function getCountdown(now: number): Countdown {

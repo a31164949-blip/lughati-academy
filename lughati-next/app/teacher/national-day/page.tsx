@@ -13,7 +13,7 @@ import {
 import { db } from "../../../firebase";
 
 type Status = "pending" | "approved" | "revision_requested";
-type Tab = "voice" | "reader" | "art";
+type Tab = "voice" | "reader" | "art" | "celebrate";
 
 type VoiceItem = {
   id: string;
@@ -52,28 +52,52 @@ type ArtItem = {
   createdAt?: number;
 };
 
+type CelebrateItem = {
+  id: string;
+  studentId?: string;
+  studentName?: string;
+  studentClassroom?: string;
+  title?: string;
+  mediaType?: "image" | "video";
+  mediaUrl?: string;
+  mediaPublicId?: string;
+  parentPublishingConsent?: boolean;
+  publishingConsentAt?: number;
+  featuredForGallery?: boolean;
+  featuredForTikTok?: boolean;
+  status?: Status;
+  teacherNote?: string;
+  createdAt?: number;
+  reviewedAt?: number;
+};
+
 export default function TeacherNationalDayPage() {
   const [tab, setTab] = useState<Tab>("voice");
   const [filter, setFilter] = useState("all");
   const [voice, setVoice] = useState<VoiceItem[]>([]);
   const [reader, setReader] = useState<ReaderItem[]>([]);
   const [art, setArt] = useState<ArtItem[]>([]);
+  const [celebrate, setCelebrate] = useState<CelebrateItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState("");
   const [voiceNotes, setVoiceNotes] = useState<Record<string, string>>({});
   const [readerNotes, setReaderNotes] = useState<Record<string, string>>({});
   const [artNotes, setArtNotes] = useState<Record<string, string>>({});
+  const [celebrateNotes, setCelebrateNotes] = useState<Record<string, string>>({});
 
   async function loadAll() {
     setLoading(true);
 
     try {
-      const [voiceSnapshot, readerResponse, artResponse] = await Promise.all([
+      const [voiceSnapshot, readerResponse, artResponse, celebrateResponse] = await Promise.all([
         getDocs(collection(db, "nationalDaySubmissions")),
         fetch("/api/national-day/reader-of-nation", {
           cache: "no-store",
         }),
         fetch("/api/national-day/my-country-with-my-brush", {
+          cache: "no-store",
+        }),
+        fetch("/api/national-day/we-celebrate", {
           cache: "no-store",
         }),
       ]);
@@ -109,9 +133,20 @@ export default function TeacherNationalDayPage() {
         ? artResult.submissions
         : [];
 
+      const celebrateResult = await celebrateResponse.json();
+
+      if (!celebrateResponse.ok) {
+        throw new Error(celebrateResult?.message || "تعذر تحميل مشاركات نحن نحتفل.");
+      }
+
+      const celebrateData: CelebrateItem[] = Array.isArray(celebrateResult?.submissions)
+        ? celebrateResult.submissions
+        : [];
+
       setVoice(voiceData);
       setReader(readerData);
       setArt(artData);
+      setCelebrate(celebrateData);
 
       setVoiceNotes(
         Object.fromEntries(
@@ -130,6 +165,12 @@ export default function TeacherNationalDayPage() {
           artData.map((item) => [item.id, item.teacherNote || ""])
         )
       );
+
+      setCelebrateNotes(
+        Object.fromEntries(
+          celebrateData.map((item) => [item.id, item.teacherNote || ""])
+        )
+      );
     } catch (error) {
       console.error(error);
       alert("تعذر تحميل بعض مشاركات اليوم الوطني.");
@@ -146,7 +187,8 @@ export default function TeacherNationalDayPage() {
     setFilter("all");
   }, [tab]);
 
-  const currentItems = tab === "voice" ? voice : tab === "reader" ? reader : art;
+  const currentItems =
+    tab === "voice" ? voice : tab === "reader" ? reader : tab === "art" ? art : celebrate;
 
   const pendingCount = currentItems.filter(
     (item) => !item.status || item.status === "pending"
@@ -351,6 +393,93 @@ export default function TeacherNationalDayPage() {
     }
   }
 
+  async function patchCelebrate(item: CelebrateItem, payload: Record<string, unknown>) {
+    const response = await fetch("/api/national-day/we-celebrate", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: item.id, ...payload }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result?.message || "تعذر تحديث المشاركة.");
+  }
+
+  async function reviewCelebrate(
+    item: CelebrateItem,
+    status: "approved" | "revision_requested"
+  ) {
+    const note = (celebrateNotes[item.id] || "").trim();
+    if (status === "revision_requested" && !note) {
+      alert("اكتب ملاحظة للطالب قبل طلب إعادة المشاركة.");
+      return;
+    }
+    try {
+      setWorking(`celebrate-${item.id}`);
+      await patchCelebrate(item, { status, teacherNote: note });
+      setCelebrate((items) =>
+        items.map((x) => x.id === item.id ? { ...x, status, teacherNote: note } : x)
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "تعذر تحديث المشاركة.");
+    } finally { setWorking(""); }
+  }
+
+  async function featureCelebrate(
+    item: CelebrateItem,
+    field: "featuredForGallery" | "featuredForTikTok"
+  ) {
+    if (!item.parentPublishingConsent) {
+      alert("لا توجد موافقة من ولي الأمر على النشر العام.");
+      return;
+    }
+    const nextValue = !item[field];
+    try {
+      setWorking(`celebrate-${item.id}`);
+      await patchCelebrate(item, { [field]: nextValue });
+      setCelebrate((items) =>
+        items.map((x) => x.id === item.id ? { ...x, [field]: nextValue } : x)
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "تعذر تحديث ترشيح المشاركة.");
+    } finally { setWorking(""); }
+  }
+
+  async function deleteCelebrate(item: CelebrateItem) {
+    if (!confirm(`هل تريد حذف مشاركة ${item.studentName || "الطالب"}؟`)) return;
+    try {
+      setWorking(`celebrate-${item.id}`);
+      const response = await fetch("/api/national-day/we-celebrate", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.message || "تعذر حذف المشاركة.");
+      setCelebrate((items) => items.filter((x) => x.id !== item.id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "تعذر حذف المشاركة.");
+    } finally { setWorking(""); }
+  }
+
+  async function downloadCelebrate(item: CelebrateItem) {
+    if (!item.mediaUrl) return;
+    try {
+      setWorking(`celebrate-${item.id}`);
+      const response = await fetch(item.mediaUrl);
+      if (!response.ok) throw new Error("تعذر تنزيل الملف.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${item.title || "national-day"}.${item.mediaType === "video" ? "mp4" : "jpg"}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(item.mediaUrl, "_blank", "noopener,noreferrer");
+    } finally { setWorking(""); }
+  }
+
   return (
     <main
       dir="rtl"
@@ -382,7 +511,7 @@ export default function TeacherNationalDayPage() {
           </h1>
 
           <p style={{ margin: 0, color: "#dcfce7" }}>
-            إدارة مشاركات صوت الوطن وقارئ الوطن ووطني بريشتي من مكان واحد.
+            إدارة مشاركات صوت الوطن وقارئ الوطن ووطني بريشتي ونحن نحتفل من مكان واحد.
           </p>
         </section>
 
@@ -408,6 +537,14 @@ export default function TeacherNationalDayPage() {
             title="وطني بريشتي"
             count={art.length}
             onClick={() => setTab("art")}
+          />
+
+          <TabButton
+            active={tab === "celebrate"}
+            icon="✨"
+            title="نحن نحتفل"
+            count={celebrate.length}
+            onClick={() => setTab("celebrate")}
           />
         </div>
 
@@ -465,7 +602,8 @@ export default function TeacherNationalDayPage() {
                     remove={deleteReader}
                   />
                 ))
-              : (shown as ArtItem[]).map((item) => (
+              : tab === "art"
+              ? (shown as ArtItem[]).map((item) => (
                   <ArtCard
                     key={item.id}
                     item={item}
@@ -476,6 +614,21 @@ export default function TeacherNationalDayPage() {
                     }
                     review={reviewArt}
                     remove={deleteArt}
+                  />
+                ))
+              : (shown as CelebrateItem[]).map((item) => (
+                  <CelebrateCard
+                    key={item.id}
+                    item={item}
+                    note={celebrateNotes[item.id] || ""}
+                    busy={working === `celebrate-${item.id}`}
+                    setNote={(value) =>
+                      setCelebrateNotes((x) => ({ ...x, [item.id]: value }))
+                    }
+                    review={reviewCelebrate}
+                    feature={featureCelebrate}
+                    download={downloadCelebrate}
+                    remove={deleteCelebrate}
                   />
                 ))}
           </section>
@@ -781,6 +934,69 @@ function ArtCard({
   );
 }
 
+function CelebrateCard({
+  item, note, busy, setNote, review, feature, download, remove,
+}: {
+  item: CelebrateItem;
+  note: string;
+  busy: boolean;
+  setNote: (value: string) => void;
+  review: (item: CelebrateItem, status: "approved" | "revision_requested") => Promise<void>;
+  feature: (item: CelebrateItem, field: "featuredForGallery" | "featuredForTikTok") => Promise<void>;
+  download: (item: CelebrateItem) => Promise<void>;
+  remove: (item: CelebrateItem) => Promise<void>;
+}) {
+  const consent = item.parentPublishingConsent === true;
+  return (
+    <article style={cardStyle}>
+      {item.mediaUrl ? (
+        item.mediaType === "video" ? (
+          <video src={item.mediaUrl} controls playsInline preload="metadata" style={{ width: "100%", height: 320, objectFit: "contain", background: "#0b1712" }} />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.mediaUrl} alt={item.title || "مشاركة وطنية"} style={{ width: "100%", height: 320, objectFit: "contain", background: "#f8faf9", display: "block" }} />
+        )
+      ) : (
+        <div style={readerHeadStyle}><div style={{ fontSize: 42 }}>✨</div><strong>نحن نحتفل</strong></div>
+      )}
+
+      <div style={{ padding: 20 }}>
+        <StatusBadge status={item.status} />
+        <h2 style={nameStyle}>{item.studentName || "طالب"}</h2>
+        <p style={{ ...infoStyle, fontWeight: 900, color: "#087b52" }}>
+          {item.mediaType === "video" ? "🎥" : "📸"} {item.title || "مشاركة بلا عنوان"}
+        </p>
+        <p style={infoStyle}>
+          الفصل: {item.studentClassroom || "غير محدد"}
+          {item.createdAt ? <><br />تاريخ المشاركة: {formatDate(item.createdAt)}</> : null}
+        </p>
+
+        <div style={{ marginTop: 12, padding: 12, borderRadius: 14, fontWeight: 900, lineHeight: 1.8, background: consent ? "#eaf8f1" : "#fff6da", color: consent ? "#087b52" : "#765f2d" }}>
+          {consent
+            ? "✓ ولي الأمر موافق على إمكانية النشر في معرض الأكاديمية وركن TikTok."
+            : "🔒 غير مصرح بالنشر العام؛ يمكن مراجعة المشاركة واعتمادها داخل الأكاديمية فقط."}
+        </div>
+
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة المعلم للطالب عند الحاجة" style={textareaStyle} />
+
+        <div style={actionsStyle}>
+          <button disabled={busy} onClick={() => void review(item, "approved")} style={button("#087b52")}>⭐ اعتماد المشاركة</button>
+          <button disabled={busy} onClick={() => void review(item, "revision_requested")} style={button("#b7791f")}>🔄 يحتاج إعادة</button>
+          <button disabled={busy || !item.mediaUrl} onClick={() => void download(item)} style={button("#2563eb")}>⬇️ تنزيل الملف</button>
+          <a href={item.mediaUrl || "#"} target="_blank" rel="noreferrer" style={{ ...button("#475569"), textAlign: "center", textDecoration: "none" }}>👀 فتح الملف</a>
+          <button disabled={busy || !consent} onClick={() => void feature(item, "featuredForGallery")} style={{ ...button(item.featuredForGallery ? "#0f766e" : "#7c3aed"), opacity: !consent ? 0.45 : 1 }}>
+            {item.featuredForGallery ? "✓ مرشحة للمعرض" : "🖼️ ترشيح للمعرض"}
+          </button>
+          <button disabled={busy || !consent} onClick={() => void feature(item, "featuredForTikTok")} style={{ ...button(item.featuredForTikTok ? "#0f766e" : "#111827"), opacity: !consent ? 0.45 : 1 }}>
+            {item.featuredForTikTok ? "✓ مرشحة لـ TikTok" : "🎬 ترشيح لـ TikTok"}
+          </button>
+          <button disabled={busy} onClick={() => void remove(item)} style={{ ...button("#b91c1c"), gridColumn: "1 / -1" }}>حذف 🗑️</button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function TabButton({
   active,
   icon,
@@ -903,7 +1119,7 @@ const heroStyle: React.CSSProperties = {
 
 const tabsStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+  gridTemplateColumns: "repeat(4,minmax(0,1fr))",
   gap: 12,
   marginTop: 18,
 };
