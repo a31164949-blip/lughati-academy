@@ -4046,47 +4046,32 @@ try {
           </div> 
         </section>
 
-        {/* مدينة الإنجاز - بطاقة بارزة أعلى صفحة الطالب */}
+        {/* مدينة الإنجاز - بطاقة مصغرة أعلى صفحة الطالب */}
         <section
           aria-label="مدينة الإنجاز"
           style={{
             ...cardStyle,
-            marginTop: "16px",
-            marginBottom: "20px",
+            marginTop: "12px",
+            marginBottom: "16px",
             position: "relative",
             overflow: "hidden",
             border: "2px solid #e7c35d",
             background:
               "linear-gradient(135deg,#fff9df 0%,#ffffff 48%,#eaf8f0 100%)",
-            boxShadow:
-              "0 16px 36px rgba(23,108,70,.12)",
+            boxShadow: "0 10px 26px rgba(23,108,70,.10)",
+            padding: "18px 20px",
           }}
         >
           <div
             aria-hidden="true"
             style={{
               position: "absolute",
-              width: "170px",
-              height: "170px",
+              width: "110px",
+              height: "110px",
               borderRadius: "50%",
-              background:
-                "rgba(250,204,21,.12)",
-              left: "-65px",
-              top: "-80px",
-            }}
-          />
-
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              width: "150px",
-              height: "150px",
-              borderRadius: "50%",
-              background:
-                "rgba(34,197,94,.10)",
-              right: "-55px",
-              bottom: "-85px",
+              background: "rgba(250,204,21,.10)",
+              left: "-45px",
+              top: "-55px",
             }}
           />
 
@@ -4094,42 +4079,39 @@ try {
             style={{
               position: "relative",
               zIndex: 2,
-              display: "grid",
-              gridTemplateColumns:
-                "minmax(0,1fr) auto",
+              display: "flex",
               alignItems: "center",
-              gap: "18px",
+              justifyContent: "space-between",
+              gap: "16px",
+              flexWrap: "wrap",
             }}
           >
             <div
               style={{
-                minWidth: 0,
+                minWidth: "min(100%, 430px)",
+                flex: "1 1 430px",
               }}
             >
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  marginBottom: "10px",
+                  gap: "10px",
+                  marginBottom: "7px",
                 }}
               >
                 <div
                   aria-hidden="true"
                   style={{
-                    width: "58px",
-                    height: "58px",
-                    borderRadius: "18px",
+                    width: "46px",
+                    height: "46px",
+                    borderRadius: "14px",
                     display: "grid",
                     placeItems: "center",
                     flexShrink: 0,
-                    fontSize: "34px",
-                    background:
-                      "linear-gradient(145deg,#fff3b0,#fffaf0)",
-                    border:
-                      "1px solid #efd77c",
-                    boxShadow:
-                      "0 8px 20px rgba(122,92,20,.10)",
+                    fontSize: "27px",
+                    background: "#fff7d6",
+                    border: "1px solid #efd77c",
                   }}
                 >
                   🏙️
@@ -4139,9 +4121,8 @@ try {
                   <div
                     style={{
                       color: "#8a6700",
-                      fontSize: "12px",
+                      fontSize: "11px",
                       fontWeight: 900,
-                      marginBottom: "2px",
                     }}
                   >
                     مدينتك تكبر مع إنجازاتك
@@ -4151,9 +4132,8 @@ try {
                     style={{
                       margin: 0,
                       color: "#176c46",
-                      fontSize:
-                        "clamp(21px,4vw,28px)",
-                      lineHeight: 1.35,
+                      fontSize: "clamp(19px,3.5vw,25px)",
+                      lineHeight: 1.3,
                     }}
                   >
                     مدينة إنجازي
@@ -4163,108 +4143,95 @@ try {
 
               <p
                 style={{
-                  margin: "0 0 13px",
+                  margin: "0 0 10px",
                   color: "#587064",
-                  lineHeight: 1.8,
+                  lineHeight: 1.65,
+                  fontSize: "14px",
                   fontWeight: 700,
                 }}
               >
-                كل نقطة تجمعها تبني جزءًا
-                جديدًا من مدينتك. واصل
-                التعلّم والقراءة والإنجاز 🌱
+                كل نقطة تجمعها تبني جزءًا جديدًا من مدينتك 🌱
               </p>
 
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "9px",
+                  gap: "8px",
                   flexWrap: "wrap",
-                  marginBottom: "13px",
                 }}
               >
                 <span
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
+                    gap: "5px",
+                    padding: "7px 10px",
                     borderRadius: "999px",
                     background: "#fff7d6",
-                    border:
-                      "1px solid #f0d977",
+                    border: "1px solid #f0d977",
                     color: "#7a5b00",
-                    fontSize: "13px",
+                    fontSize: "12px",
                     fontWeight: 900,
                   }}
                 >
-                  ⭐ رصيدي: {points} نقطة
+                  ⭐ {points} نقطة
                 </span>
 
                 <span
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
+                    gap: "5px",
+                    padding: "7px 10px",
                     borderRadius: "999px",
                     background: "#eaf8f0",
-                    border:
-                      "1px solid #cfe9da",
+                    border: "1px solid #cfe9da",
                     color: "#176c46",
-                    fontSize: "13px",
+                    fontSize: "12px",
                     fontWeight: 900,
                   }}
                 >
                   🏆 {rank}
                 </span>
-              </div>
 
-              <Link
-                href="/journey/city"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "7px",
-                  minHeight: "44px",
-                  padding: "10px 17px",
-                  borderRadius: "14px",
-                  background:
-                    "linear-gradient(135deg,#176c46,#239764)",
-                  color: "#ffffff",
-                  textDecoration: "none",
-                  fontSize: "14px",
-                  fontWeight: 900,
-                  boxShadow:
-                    "0 8px 18px rgba(23,108,70,.18)",
-                }}
-              >
-                ادخل مدينتي
-                <span aria-hidden="true">
-                  ←
-                </span>
-              </Link>
+                <Link
+                  href="/journey/city"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    minHeight: "36px",
+                    padding: "7px 13px",
+                    borderRadius: "12px",
+                    background:
+                      "linear-gradient(135deg,#176c46,#239764)",
+                    color: "#ffffff",
+                    textDecoration: "none",
+                    fontSize: "12px",
+                    fontWeight: 900,
+                    boxShadow: "0 6px 14px rgba(23,108,70,.16)",
+                  }}
+                >
+                  ادخل مدينتي ←
+                </Link>
+              </div>
             </div>
 
             <div
               aria-hidden="true"
               style={{
-                width:
-                  "clamp(100px,18vw,155px)",
-                minHeight: "135px",
-                borderRadius: "24px",
+                width: "92px",
+                height: "82px",
+                flex: "0 0 92px",
+                borderRadius: "20px",
                 display: "grid",
                 placeItems: "center",
-                padding: "14px",
                 background:
                   "linear-gradient(180deg,#e9f8ff 0%,#f7fcff 55%,#eaf8f0 56%,#dff4e7 100%)",
-                border:
-                  "1px solid #d7e9df",
-                boxShadow:
-                  "inset 0 0 0 1px rgba(255,255,255,.75)",
-                fontSize:
-                  "clamp(42px,7vw,66px)",
+                border: "1px solid #d7e9df",
+                fontSize: "43px",
               }}
             >
               {points >= 500
