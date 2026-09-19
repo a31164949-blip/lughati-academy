@@ -790,6 +790,22 @@ useEffect(() => {
                     item.teacherReply?.trim()
                   );
 
+                const studentRecord =
+                  students.find(
+                    (student) =>
+                      student.id === item.studentId
+                  );
+
+                const displayedStudentName =
+                  studentRecord?.studentName ||
+                  item.studentName ||
+                  "الطالب";
+
+                const displayedClassroom =
+                  studentRecord?.classroom ||
+                  item.classroom ||
+                  "";
+
                 return (
                   <article
                     key={item.id}
@@ -805,9 +821,14 @@ useEffect(() => {
                       <div>
                         <div className="text-xl font-black text-slate-800">
                           👤{" "}
-                          {item.studentName ||
-                            "الطالب"}
+                          {displayedStudentName}
                         </div>
+
+                        {displayedClassroom && (
+                          <div className="mt-1 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                            🏫 {displayedClassroom}
+                          </div>
+                        )}
 
                         <div className="mt-1 text-xs font-bold text-slate-400">
                           {formatDate(

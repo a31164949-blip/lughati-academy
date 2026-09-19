@@ -6,6 +6,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -27,6 +28,7 @@ type StudentMessage = {
   id: string;
   studentId: string;
   studentName: string;
+  classroom?: string;
   category: string;
   message: string;
   teacherReply?: string;
@@ -70,6 +72,9 @@ export default function StudentContactPage() {
   const [studentName, setStudentName] =
     useState("");
 
+  const [classroom, setClassroom] =
+    useState("");
+
   const [category, setCategory] =
     useState("lesson");
 
@@ -108,9 +113,6 @@ const claimedStudentId =
     ? tokenResult.claims.studentDocId
     : "";
 
-const name =
-  localStorage.getItem("studentName") || "الطالب";
-
 if (!claimedStudentId) {
   console.error(
     "لا يوجد studentDocId داخل توكن الطالب."
@@ -124,8 +126,42 @@ if (!claimedStudentId) {
   return;
 }
 
+let name =
+  localStorage.getItem("studentName") || "الطالب";
+
+let studentClassroom =
+  localStorage.getItem("classroom") || "";
+
+try {
+  const studentSnapshot = await getDoc(
+    doc(db, "students", claimedStudentId)
+  );
+
+  if (studentSnapshot.exists()) {
+    const studentData = studentSnapshot.data();
+
+    name =
+      typeof studentData.studentName === "string"
+        ? studentData.studentName
+        : typeof studentData.name === "string"
+          ? studentData.name
+          : name;
+
+    studentClassroom =
+      typeof studentData.classroom === "string"
+        ? studentData.classroom
+        : studentClassroom;
+  }
+} catch (error) {
+  console.error(
+    "تعذر تحميل بيانات الطالب:",
+    error
+  );
+}
+
 setStudentId(claimedStudentId);
 setStudentName(name);
+setClassroom(studentClassroom);
 
 await loadMessages(claimedStudentId);
         }
@@ -255,6 +291,7 @@ await loadMessages(claimedStudentId);
         {
           studentId,
           studentName,
+          classroom,
           category,
           categoryLabel:
             selectedCategory?.label ||
@@ -347,14 +384,6 @@ await loadMessages(claimedStudentId);
         </div>
 
         <section className="mb-7 rounded-3xl border border-emerald-100 bg-white p-6 shadow-xl">
-          <div className="mb-5 rounded-2xl bg-emerald-50 px-4 py-3">
-            <p className="m-0 text-sm font-black text-emerald-800">
-              👤 المرسل:{" "}
-              {studentName ||
-                "الطالب"}
-            </p>
-          </div>
-
           <h2 className="mb-4 text-xl font-black text-slate-800">
             ما نوع رسالتك؟
           </h2>
