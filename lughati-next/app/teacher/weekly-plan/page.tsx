@@ -1082,223 +1082,107 @@ export default function WeeklyPlanPage() {
           </section>
         </div>
 
-        <div className="space-y-5">
-          {days.map(
-            (item, index) => (
-              <section
-                key={item.day}
-                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <h2 className="mb-5 text-2xl font-black text-slate-800">
-                  {item.day}
-                </h2>
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-emerald-600">خطة أيام الأسبوع</p>
+              <h2 className="mt-1 text-xl font-black text-slate-800">✍️ إدخال سريع ومنظم</h2>
+            </div>
+            <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
+              {days.length} أيام
+            </span>
+          </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label
-                      htmlFor={`lesson-${index}`}
-                      className="mb-2 block font-bold text-slate-700"
-                    >
-                      الدرس
-                    </label>
+          <div className="space-y-2.5">
+            {days.map((item, index) => (
+              <section key={item.day} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="flex items-center justify-between bg-emerald-700 px-4 py-2 text-white">
+                  <h3 className="text-lg font-black">{item.day}</h3>
+                  <span className="text-xs font-bold text-emerald-100">اليوم {index + 1}</span>
+                </div>
 
+                <div className="grid gap-2.5 p-2.5 lg:grid-cols-3">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-black text-slate-600">الدرس</span>
                     <input
                       id={`lesson-${index}`}
-                      value={
-                        item.lesson
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        updateDay(
-                          index,
-                          "lesson",
-                          event.target
-                            .value
-                        )
-                      }
-                      placeholder="اكتب اسم الدرس"
-                      className="w-full rounded-2xl border border-slate-300 bg-white p-4 font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      value={item.lesson}
+                      onChange={(event) => updateDay(index, "lesson", event.target.value)}
+                      placeholder="اسم الدرس"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                     />
-                  </div>
+                  </label>
 
-                  <div>
-                    <label
-                      htmlFor={`objective-${index}`}
-                      className="mb-2 block font-bold text-slate-700"
-                    >
-                      الهدف
-                    </label>
-
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-black text-slate-600">الهدف</span>
                     <input
                       id={`objective-${index}`}
-                      value={
-                        item.objective
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        updateDay(
-                          index,
-                          "objective",
-                          event.target
-                            .value
-                        )
-                      }
-                      placeholder="اكتب هدف الدرس"
-                      className="w-full rounded-2xl border border-slate-300 bg-white p-4 font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      value={item.objective}
+                      onChange={(event) => updateDay(index, "objective", event.target.value)}
+                      placeholder="هدف الدرس"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                     />
-                  </div>
+                  </label>
 
-                  <div>
-                    <label
-                      htmlFor={`homework-${index}`}
-                      className="mb-2 block font-bold text-slate-700"
-                    >
-                      الواجب
-                    </label>
-
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-black text-slate-600">الواجب</span>
                     <input
                       id={`homework-${index}`}
-                      value={
-                        item.homework
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        updateDay(
-                          index,
-                          "homework",
-                          event.target
-                            .value
-                        )
-                      }
-                      placeholder="اكتب واجب اليوم"
-                      className="w-full rounded-2xl border border-slate-300 bg-white p-4 font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                      value={item.homework}
+                      onChange={(event) => updateDay(index, "homework", event.target.value)}
+                      placeholder="واجب اليوم"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                     />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label
-                    htmlFor={`readingTask-${index}`}
-                    className="mb-2 block font-bold text-slate-700"
-                  >
-                    مهمة القراءة
                   </label>
 
-                  <input
-                    id={`readingTask-${index}`}
-                    value={
-                      item.readingTask
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      updateDay(
-                        index,
-                        "readingTask",
-                        event.target
-                          .value
-                      )
-                    }
-                    placeholder="اكتب مهمة القراءة"
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label
-                    htmlFor={`spellingWords-${index}`}
-                    className="mb-2 block font-bold text-slate-700"
-                  >
-                    كلمات الإملاء
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-black text-violet-700">📖 مهمة القراءة</span>
+                    <input
+                      id={`readingTask-${index}`}
+                      value={item.readingTask}
+                      onChange={(event) => updateDay(index, "readingTask", event.target.value)}
+                      placeholder="مهمة القراءة"
+                      className="w-full rounded-xl border border-violet-200 bg-violet-50/50 px-3 py-2 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    />
                   </label>
 
-                  <textarea
-                    id={`spellingWords-${index}`}
-                    value={
-                      item.spellingWords
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      updateDay(
-                        index,
-                        "spellingWords",
-                        event.target
-                          .value
-                      )
-                    }
-                    placeholder="اكتب كلمات الإملاء وافصل بينها بفاصلة"
-                    rows={3}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label
-                    htmlFor={`bringTomorrow-${index}`}
-                    className="mb-2 block font-bold text-sky-800"
-                  >
-                    🎒 ماذا أحضر غدًا؟
+                  <label className="block lg:col-span-2">
+                    <span className="mb-1 block text-xs font-black text-amber-700">✏️ كلمات الإملاء</span>
+                    <input
+                      id={`spellingWords-${index}`}
+                      value={item.spellingWords}
+                      onChange={(event) => updateDay(index, "spellingWords", event.target.value)}
+                      placeholder="كلمات الإملاء — افصل بينها بفاصلة"
+                      className="w-full rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                    />
                   </label>
 
-                  <input
-                    id={`bringTomorrow-${index}`}
-                    type="text"
-                    value={
-                      item.bringTomorrow ||
-                      ""
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      updateDay(
-                        index,
-                        "bringTomorrow",
-                        event.target
-                          .value
-                      )
-                    }
-                    placeholder="مثال: كتاب لغتي + الدفتر + ملف الإنجاز"
-                    className="w-full rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3"
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label
-                    htmlFor={`teacherNote-${index}`}
-                    className="mb-2 block font-bold text-slate-700"
-                  >
-                    ملاحظة المعلم
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-black text-sky-700">🎒 ماذا أحضر غدًا؟</span>
+                    <input
+                      id={`bringTomorrow-${index}`}
+                      value={item.bringTomorrow || ""}
+                      onChange={(event) => updateDay(index, "bringTomorrow", event.target.value)}
+                      placeholder="كتاب لغتي + الدفتر..."
+                      className="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                    />
                   </label>
 
-                  <textarea
-                    id={`teacherNote-${index}`}
-                    value={
-                      item.teacherNote
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      updateDay(
-                        index,
-                        "teacherNote",
-                        event.target
-                          .value
-                      )
-                    }
-                    placeholder="اكتب رسالة أو توجيهًا للطلاب"
-                    rows={3}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                  />
+                  <label className="block lg:col-span-2">
+                    <span className="mb-1 block text-xs font-black text-slate-600">💬 ملاحظة المعلم</span>
+                    <input
+                      id={`teacherNote-${index}`}
+                      value={item.teacherNote}
+                      onChange={(event) => updateDay(index, "teacherNote", event.target.value)}
+                      placeholder="رسالة أو توجيه مختصر للطلاب"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    />
+                  </label>
                 </div>
               </section>
-            )
-          )}
-        </div>
-
+            ))}
+          </div>
+        </section>
 
         <section className="mt-8 rounded-3xl border border-sky-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">

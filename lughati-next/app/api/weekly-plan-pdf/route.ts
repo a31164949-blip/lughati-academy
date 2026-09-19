@@ -31,63 +31,95 @@ type WeeklyPlanPayload = {
   days?: DayPlan[];
 };
 
+/* =========================================================
+   الخط العربي
+========================================================= */
+
 const fontPath = path.join(
   process.cwd(),
   "public",
   "fonts",
-  "NotoNaskhArabic-VariableFont_wght.ttf"
+  "NotoSansArabic-Variable.ttf"
 );
 
 Font.register({
-  family: "NotoNaskhArabic",
-  src: fontPath,
+  family: "NotoSansArabic",
+  fonts: [
+    {
+      src: fontPath,
+      fontWeight: 400,
+    },
+    {
+      src: fontPath,
+      fontWeight: 700,
+    },
+  ],
 });
+
+/* =========================================================
+   التنسيقات
+========================================================= */
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: "NotoNaskhArabic",
-    paddingTop: 28,
-    paddingBottom: 28,
-    paddingHorizontal: 30,
+    fontFamily: "NotoSansArabic",
+    paddingTop: 24,
+    paddingBottom: 24,
+    paddingHorizontal: 28,
     backgroundColor: "#ffffff",
-    direction: "rtl",
   },
 
   header: {
-    paddingBottom: 15,
-    marginBottom: 16,
+    paddingBottom: 12,
+    marginBottom: 14,
     borderBottomWidth: 2,
     borderBottomColor: "#059669",
     textAlign: "center",
   },
 
   academyName: {
-    fontSize: 20,
+    fontFamily: "NotoSansArabic",
+    fontWeight: 700,
+    fontSize: 21,
     color: "#047857",
     textAlign: "center",
-    marginBottom: 4,
+    lineHeight: 1.5,
+    marginBottom: 5,
+    paddingHorizontal: 4,
+    direction: "rtl",
   },
 
   title: {
-    fontSize: 16,
+    fontFamily: "NotoSansArabic",
+    fontWeight: 700,
+    fontSize: 17,
     color: "#0f172a",
     textAlign: "center",
+    lineHeight: 1.5,
     marginBottom: 4,
+    paddingHorizontal: 4,
+    direction: "rtl",
   },
 
   subtitle: {
-    fontSize: 10,
+    fontFamily: "NotoSansArabic",
+    fontWeight: 400,
+    fontSize: 10.5,
     color: "#64748b",
     textAlign: "center",
+    lineHeight: 1.6,
+    paddingHorizontal: 4,
+    direction: "rtl",
   },
 
   specialBox: {
     borderWidth: 1,
-    borderColor: "#d1fae5",
+    borderColor: "#a7f3d0",
     backgroundColor: "#ecfdf5",
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 9,
   },
 
   challengeBox: {
@@ -95,102 +127,155 @@ const styles = StyleSheet.create({
     borderColor: "#fde68a",
     backgroundColor: "#fffbeb",
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 9,
   },
 
- specialTitle: {
-  fontSize: 12,
-  color: "#065f46",
-  textAlign: "right",
-  marginBottom: 4,
-},
+  specialTitle: {
+    fontFamily: "NotoSansArabic",
+    fontWeight: 700,
+    fontSize: 12,
+    color: "#065f46",
+    textAlign: "right",
+    lineHeight: 1.6,
+    marginBottom: 3,
+    paddingHorizontal: 4,
+    direction: "rtl",
+  },
 
   challengeTitle: {
-  fontSize: 12,
-  color: "#92400e",
-  textAlign: "right",
-  marginBottom: 4,
-},
+    fontFamily: "NotoSansArabic",
+    fontWeight: 700,
+    fontSize: 12,
+    color: "#92400e",
+    textAlign: "right",
+    lineHeight: 1.6,
+    marginBottom: 3,
+    paddingHorizontal: 4,
+    direction: "rtl",
+  },
 
   specialText: {
-    fontSize: 10,
+    fontFamily: "NotoSansArabic",
+    fontWeight: 400,
+    fontSize: 10.5,
     color: "#334155",
-    lineHeight: 1.7,
     textAlign: "right",
+    lineHeight: 1.75,
+    paddingHorizontal: 4,
+    direction: "rtl",
   },
 
   dayCard: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#dbe3ea",
     borderRadius: 9,
-    marginBottom: 10,
+    marginBottom: 9,
     overflow: "hidden",
   },
 
   dayHeader: {
     backgroundColor: "#047857",
     paddingVertical: 7,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
 
   dayTitle: {
+    fontFamily: "NotoSansArabic",
+    fontWeight: 700,
     color: "#ffffff",
-    fontSize: 13,
+    fontSize: 14,
     textAlign: "right",
+    lineHeight: 1.55,
+    paddingHorizontal: 4,
+    direction: "rtl",
   },
 
   dayBody: {
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
 
   row: {
     flexDirection: "row-reverse",
-    marginBottom: 5,
+    marginBottom: 4,
     alignItems: "flex-start",
+    justifyContent: "flex-start",
   },
 
   label: {
-    width: 92,
-    fontSize: 9.5,
+    width: 115,
+    fontFamily: "NotoSansArabic",
+    fontWeight: 700,
+    fontSize: 10.5,
     color: "#047857",
     textAlign: "right",
+    lineHeight: 1.7,
+    paddingRight: 6,
+    paddingLeft: 4,
+    direction: "rtl",
   },
 
   value: {
-    flex: 1,
-    fontSize: 9.5,
+    width: 350,
+    fontFamily: "NotoSansArabic",
+    fontWeight: 400,
+    fontSize: 10.5,
     color: "#1e293b",
     textAlign: "right",
-    lineHeight: 1.6,
+    lineHeight: 1.7,
+    paddingRight: 14,
+    paddingLeft: 10,
+    direction: "rtl",
   },
 
   bringBox: {
     marginTop: 5,
-    padding: 7,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     backgroundColor: "#eff6ff",
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
   },
 
   footer: {
-    marginTop: 10,
-    paddingTop: 8,
+    marginTop: 8,
+    paddingTop: 7,
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",
   },
 
   footerText: {
+    fontFamily: "NotoSansArabic",
+    fontWeight: 400,
     fontSize: 8.5,
     color: "#64748b",
     textAlign: "center",
+    lineHeight: 1.6,
+    paddingHorizontal: 4,
+    direction: "rtl",
   },
 });
 
+/* =========================================================
+   أدوات مساعدة
+========================================================= */
+
 function safeText(value: unknown) {
-  return typeof value === "string" &&
-    value.trim()
-    ? value.trim()
-    : "—";
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    return "—";
+  }
+
+  return value
+    .trim()
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ");
 }
 
 function createRow(
@@ -221,6 +306,10 @@ function createRow(
   );
 }
 
+/* =========================================================
+   مستند الخطة
+========================================================= */
+
 function PlanDocument({
   weekTitle,
   weeklyChallenge,
@@ -244,6 +333,8 @@ function PlanDocument({
         size: "A4",
         style: styles.page,
       },
+
+      /* رأس الصفحة */
 
       React.createElement(
         View,
@@ -282,9 +373,11 @@ function PlanDocument({
           {
             style: styles.subtitle,
           },
-          "نتعلّم، نقرأ، نبدع"
+          "تعلّم، اقرأ، أبدع"
         )
       ),
+
+      /* رسالة فارس */
 
       farisMessage
         ? React.createElement(
@@ -292,6 +385,7 @@ function PlanDocument({
             {
               style: styles.specialBox,
             },
+
             React.createElement(
               Text,
               {
@@ -299,15 +393,18 @@ function PlanDocument({
               },
               "رسالة فارس"
             ),
+
             React.createElement(
               Text,
               {
                 style: styles.specialText,
               },
-              farisMessage
+              safeText(farisMessage)
             )
           )
         : null,
+
+      /* تحدي الأسبوع */
 
       weeklyChallenge
         ? React.createElement(
@@ -315,23 +412,26 @@ function PlanDocument({
             {
               style: styles.challengeBox,
             },
+
             React.createElement(
               Text,
               {
-                style:
-                  styles.challengeTitle,
+                style: styles.challengeTitle,
               },
               "تحدي الأسبوع"
             ),
+
             React.createElement(
               Text,
               {
                 style: styles.specialText,
               },
-              weeklyChallenge
+              safeText(weeklyChallenge)
             )
           )
         : null,
+
+      /* أيام الأسبوع */
 
       ...days.map((item) =>
         React.createElement(
@@ -342,19 +442,24 @@ function PlanDocument({
             wrap: false,
           },
 
+          /* اسم اليوم */
+
           React.createElement(
             View,
             {
               style: styles.dayHeader,
             },
+
             React.createElement(
               Text,
               {
                 style: styles.dayTitle,
               },
-              item.day
+              safeText(item.day)
             )
           ),
+
+          /* بيانات اليوم */
 
           React.createElement(
             View,
@@ -394,6 +499,7 @@ function PlanDocument({
                     style:
                       styles.bringBox,
                   },
+
                   createRow(
                     "ماذا أحضر غدًا؟",
                     item.bringTomorrow
@@ -411,11 +517,14 @@ function PlanDocument({
         )
       ),
 
+      /* التذييل */
+
       React.createElement(
         View,
         {
           style: styles.footer,
         },
+
         React.createElement(
           Text,
           {
@@ -428,13 +537,16 @@ function PlanDocument({
   );
 }
 
+/* =========================================================
+   API
+========================================================= */
+
 export async function POST(
   request: Request
 ) {
   try {
     const body =
-      (await request.json()) as
-        WeeklyPlanPayload;
+      (await request.json()) as WeeklyPlanPayload;
 
     const weekTitle =
       safeText(body.weekTitle);
@@ -474,16 +586,17 @@ export async function POST(
       );
     }
 
-   const document = PlanDocument({
-  weekTitle,
-  weeklyChallenge,
-  farisMessage,
-  classroom,
-  days,
-});
+    const document =
+      PlanDocument({
+        weekTitle,
+        weeklyChallenge,
+        farisMessage,
+        classroom,
+        days,
+      });
 
-const pdfInstance =
-  pdf(document);
+    const pdfInstance =
+      pdf(document);
 
     const blob =
       await pdfInstance.toBlob();
@@ -503,6 +616,7 @@ const pdfInstance =
       arrayBuffer,
       {
         status: 200,
+
         headers: {
           "Content-Type":
             "application/pdf",
