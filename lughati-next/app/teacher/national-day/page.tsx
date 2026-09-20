@@ -460,27 +460,53 @@ export default function TeacherNationalDayPage() {
     } finally { setWorking(""); }
   }
 
-  async function downloadCelebrate(item: CelebrateItem) {
-    if (!item.mediaUrl) return;
-    try {
-      setWorking(`celebrate-${item.id}`);
-      const response = await fetch(item.mediaUrl);
-      if (!response.ok) throw new Error("تعذر تنزيل الملف.");
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = `${item.title || "national-day"}.${item.mediaType === "video" ? "mp4" : "jpg"}`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      window.open(item.mediaUrl, "_blank", "noopener,noreferrer");
-    } finally { setWorking(""); }
-  }
+async function downloadCelebrate(item: CelebrateItem) {
+  if (!item.mediaUrl) return;
 
-  return (
+  try {
+    setWorking(`celebrate-${item.id}`);
+
+    const response = await fetch(item.mediaUrl, {
+      method: "GET",
+      mode: "cors",
+    });
+
+    if (!response.ok) {
+      throw new Error(`تعذر تنزيل الملف (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+
+    const extension =
+      item.mediaType === "video"
+        ? "mp4"
+        : blob.type.includes("png")
+          ? "png"
+          : "jpg";
+
+    anchor.download = `${item.title || "national-day"}.${extension}`;
+    anchor.style.display = "none";
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+    }, 1000);
+  } catch (error) {
+    console.error("Download failed:", error);
+    alert("تعذر تنزيل الملف. جرّب مرة أخرى.");
+  } finally {
+    setWorking("");
+  }
+}
+
+      return (
     <main
       dir="rtl"
       style={{
