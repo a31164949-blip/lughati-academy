@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../firebase";
 
+const CLUB_LAUNCH_AT = Date.parse("2026-09-26T19:00:00+03:00");
+
 type AcademyClubMembership = {
   active: boolean;
   membershipNumber: string;
@@ -329,6 +331,41 @@ function AcademyClubContent() {
               </div>
             </section>
 
+            <section
+              style={{
+                marginTop: "24px",
+                padding: "25px",
+                borderRadius: "26px",
+                color: "#ffffff",
+                background: "linear-gradient(135deg,#7c5808,#c2931f)",
+                boxShadow: "0 16px 35px rgba(124,88,8,.18)",
+              }}
+            >
+              <span style={{ padding: "7px 13px", borderRadius: "999px", background: "rgba(255,255,255,.18)", fontWeight: 900 }}>
+                🎁 حزمة الافتتاح الحصرية
+              </span>
+              <h2 style={{ margin: "14px 0 7px", fontSize: "clamp(24px,5vw,34px)" }}>
+                البداية من هنا يا بطل النادي!
+              </h2>
+              <p style={{ margin: "0 0 17px", lineHeight: 1.9, fontWeight: 700 }}>
+                تحدٍّ خاص بالأعضاء، مهام إثرائية، نقاط إضافية، وأوسمة لا تظهر إلا لأبطال نادي الأكاديمية.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "17px" }}>
+                {[
+                  ["🎯", "تحدي العضو الأول"],
+                  ["⭐", "نقاط حصرية"],
+                  ["🏅", "وسام الافتتاح"],
+                ].map(([icon, title]) => (
+                  <div key={title} style={{ padding: "13px", borderRadius: "16px", textAlign: "center", background: "rgba(255,255,255,.14)", fontWeight: 900 }}>
+                    <div style={{ fontSize: "27px" }}>{icon}</div>{title}
+                  </div>
+                ))}
+              </div>
+              <Link href="/academy-club/challenge" style={{ ...mainButtonStyle, marginTop: 0, background: "#ffffff", color: "#7c5808" }}>
+                اكتشف تحدي الافتتاح ←
+              </Link>
+            </section>
+
             <section style={{ marginTop: "27px" }}>
               <h2 style={{ margin: "0 0 7px", color: "#176c46" }}>
                 ✨ مزايا عضويتك
@@ -393,7 +430,12 @@ function AcademyClubContent() {
   );
 }
 
-function AcademyClubComingSoon() {
+function AcademyClubComingSoon({ remainingMs }: { remainingMs: number }) {
+  const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
   return (
     <main
       dir="rtl"
@@ -479,16 +521,17 @@ function AcademyClubComingSoon() {
           تجمع بين التعلم والمتعة والتحدي.
         </p>
 
-        <p
-          style={{
-            margin: "18px 0 24px",
-            color: "#9a6b08",
-            fontWeight: 900,
-            fontSize: "18px",
-          }}
-        >
-          انتظرونا؛ فالقادم أجمل بإذن الله 💫
+        <p style={{ margin: "18px 0 10px", color: "#9a6b08", fontWeight: 900, fontSize: "18px" }}>
+          الافتتاح السبت 26 سبتمبر — الساعة 7:00 مساءً 💫
         </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "9px", margin: "12px auto 24px", maxWidth: "500px" }}>
+          {[[days,"يوم"],[hours,"ساعة"],[minutes,"دقيقة"],[seconds,"ثانية"]].map(([value,label]) => (
+            <div key={String(label)} style={{ padding: "12px 6px", borderRadius: "16px", background: "#f3faf6", border: "1px solid #cfe6da" }}>
+              <strong style={{ display: "block", color: "#176c46", fontSize: "25px" }}>{value}</strong>
+              <small style={{ fontWeight: 800 }}>{label}</small>
+            </div>
+          ))}
+        </div>
 
         <Link
           href="/journey"
@@ -514,7 +557,14 @@ function AcademyClubComingSoon() {
 }
 
 export default function AcademyClubPage() {
-  return <AcademyClubComingSoon />;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now >= CLUB_LAUNCH_AT
+    ? <AcademyClubContent />
+    : <AcademyClubComingSoon remainingMs={CLUB_LAUNCH_AT - now} />;
 }
 
 const statusCardStyle: React.CSSProperties = {
