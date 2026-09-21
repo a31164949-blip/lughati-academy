@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../firebase";
 
-const CLUB_OPEN = false;
+const CLUB_LAUNCH_AT = Date.parse("2026-09-26T19:00:00+03:00");
 const CLOUD_NAME = "ffv5igmg";
 const UPLOAD_PRESET = "lughati_homework_upload";
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
@@ -32,6 +32,7 @@ function acceptTypes(types:WorkType[]){return types.map(t=>t==="image"?"image/*"
 
 export default function AcademyClubChallengePage(){
   const [user,setUser]=useState<User|null>(null);
+  const [now,setNow]=useState(()=>Date.now());
   const [loading,setLoading]=useState(true);
   const [challenge,setChallenge]=useState<Challenge|null>(null);
   const [submission,setSubmission]=useState<Submission|null>(null);
@@ -43,7 +44,8 @@ export default function AcademyClubChallengePage(){
   const [error,setError]=useState("");
 
   useEffect(()=>onAuthStateChanged(auth,current=>{setUser(current);if(!current)setLoading(false);}),[]);
-  useEffect(()=>{if(!user||!CLUB_OPEN)return;void loadChallenge(user);},[user]);
+  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+  useEffect(()=>{if(!user||now<CLUB_LAUNCH_AT)return;void loadChallenge(user);},[user,now>=CLUB_LAUNCH_AT]);
 
   async function loadChallenge(current:User){
     try{
@@ -84,7 +86,7 @@ export default function AcademyClubChallengePage(){
     finally{setSending(false);}
   }
 
-  if(!CLUB_OPEN)return <main dir="rtl" className="page"><style>{styles}</style><section className="soon"><div className="logo">🏅</div><span className="tag">قريبًا… ✨</span><h1>تحديات نادي الأكاديمية</h1><p>نعمل على تجهيز أول تحديات النادي لأبطالنا، مع مهام ممتعة ونقاط وأوسمة مميزة.</p><Link className="btn" href="/journey">العودة إلى رحلتي ←</Link></section></main>;
+  if(now<CLUB_LAUNCH_AT)return <main dir="rtl" className="page"><style>{styles}</style><section className="soon"><div className="logo">🏅</div><span className="tag">قريبًا… ✨</span><h1>تحديات نادي الأكاديمية</h1><p>موعدنا السبت 26 سبتمبر الساعة 7:00 مساءً؛ استعد لمهام ممتعة ونقاط وأوسمة لا تظهر إلا للأعضاء.</p><Link className="btn" href="/journey">العودة إلى رحلتي ←</Link></section></main>;
 
   return <main dir="rtl" className="page"><style>{styles}</style><div className="shell"><header><Link href="/academy-club">→ نادي الأكاديمية</Link><b>تحديات الأعضاء 🎯</b></header>
     {loading?<section className="card center">⏳ جارٍ تحميل التحدي…</section>:!user?<section className="card center"><h2>سجّل دخولك أولًا</h2><Link className="btn" href="/login">تسجيل الدخول</Link></section>:error&&!challenge?<section className="card center"><h2>تعذر فتح التحدي</h2><p>{error}</p></section>:!challenge?<section className="card center"><div className="big">🌱</div><h2>لا يوجد تحدٍ منشور الآن</h2><p>ترقّب التحدي القادم؛ ففرص التميز تتجدد دائمًا.</p></section>:<><section className="hero"><span className="tag">تحدي أعضاء النادي</span><h1>{challenge.title}</h1><p>{challenge.instructions}</p><div className="meta"><b>⭐ {challenge.points} نقطة</b><b>📎 {challenge.allowedTypes.map(typeLabel).join(" • ")}</b><b>⏳ {challenge.isClosed?"انتهى التحدي":new Date(challenge.closesAt).toLocaleDateString("ar-SA")}</b></div></section>
