@@ -126,13 +126,42 @@ export default function TeacherAcademyClubPage() {
       <header style={headerStyle}>
         <div>
           <div style={{ color: "#f4d46a", fontWeight: 900 }}>🏅 نادي الأكاديمية</div>
-          <h1 style={{ margin: "6px 0" }}>إدارة تحدي النادي الأسبوعي</h1>
+          <h1 style={{ margin: "6px 0" }}>مركز إدارة نادي الأكاديمية</h1>
         </div>
         <Link href="/teacher" style={backStyle}>لوحة المعلم ←</Link>
       </header>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px", display: "grid", gap: 22 }}>
         <section style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ margin: 0, color: "#176c46" }}>لوحة النادي المتكاملة</h2>
+              <p style={{ margin: "7px 0 0", color: "#64748b", fontWeight: 700 }}>الأعضاء والتحديات والدروس المباشرة من مكان واحد.</p>
+            </div>
+            <Link href="/academy-club" target="_blank" style={viewStyle}>معاينة صفحة النادي 👁️</Link>
+          </div>
+          <div style={hubGridStyle}>
+            <Link href="/teacher/students" style={{ ...hubCardStyle, background: "#eaf8f0", borderColor: "#9ed8b8" }}>
+              <span style={hubIconStyle}>👨‍🎓</span>
+              <strong>إدارة أعضاء النادي</strong>
+              <small>منح العضوية وتجديدها أو إيقافها، واختيار مستوى العضو ومدة العضوية.</small>
+              <b>فتح إدارة الطلاب ←</b>
+            </Link>
+            <a href="#club-challenges" style={{ ...hubCardStyle, background: "#fff8dc", borderColor: "#edd27a" }}>
+              <span style={hubIconStyle}>🎯</span>
+              <strong>التحديات والمشاركات</strong>
+              <small>نشر تحدٍ حصري، مراجعة أعمال الأعضاء، واعتماد النقاط.</small>
+              <b>الانتقال إلى التحديات ↓</b>
+            </a>
+            <Link href="/teacher/live-lessons" style={{ ...hubCardStyle, background: "#eef5ff", borderColor: "#a9c9f5" }}>
+              <span style={hubIconStyle}>🔴</span>
+              <strong>بث الدروس المباشرة</strong>
+              <small>إنشاء درس مباشر، تحديد الموعد والرابط، ومتابعة حضور الطلاب.</small>
+              <b>فتح إدارة البث ←</b>
+            </Link>
+          </div>
+        </section>
+        <section id="club-challenges" style={cardStyle}>
           <h2 style={{ marginTop: 0, color: "#176c46" }}>🎯 نشر تحدٍّ جديد</h2>
           {currentTitle && <div style={noticeStyle}>التحدي المنشور حاليًا: {currentTitle}</div>}
           <div style={formGridStyle}>
@@ -181,6 +210,20 @@ export default function TeacherAcademyClubPage() {
             </div>
           )}
         </section>
+
+        <section style={{ ...cardStyle, background: "linear-gradient(135deg,#eff6ff,#ffffff)", borderColor: "#a9c9f5" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ margin: "0 0 7px", color: "#1d4ed8" }}>🔴 بث دروس النادي المباشرة</h2>
+              <p style={{ margin: 0, color: "#64748b", lineHeight: 1.8, fontWeight: 700 }}>
+                أنشئ لقاءً مباشرًا لأعضاء النادي، أضف رابط Teams وحدد الموعد، ثم تابع الحضور من نظام الدروس المباشرة.
+              </p>
+            </div>
+            <Link href="/teacher/live-lessons" style={{ ...publishStyle, width: "auto", marginTop: 0, textDecoration: "none", background: "#1d4ed8" }}>
+              إدارة البث والدروس ←
+            </Link>
+          </div>
+        </section>
       </div>
     </main>
   );
@@ -201,3 +244,7 @@ const approveStyle: React.CSSProperties = { padding: "9px 12px", borderRadius: 1
 const returnStyle: React.CSSProperties = { padding: "9px 12px", borderRadius: 11, border: "1px solid #f0a16f", background: "#fff7ed", color: "#b45309", fontWeight: 900, cursor: "pointer" };
 const errorStyle: React.CSSProperties = { marginTop: 15, padding: 12, borderRadius: 12, background: "#fff1f2", color: "#b91c1c", fontWeight: 800 };
 const successStyle: React.CSSProperties = { marginTop: 15, padding: 12, borderRadius: 12, background: "#ecfdf5", color: "#166534", fontWeight: 800 };
+
+const hubGridStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 14, marginTop: 18 };
+const hubCardStyle: React.CSSProperties = { minHeight: 190, padding: 19, borderRadius: 19, border: "2px solid", color: "#17352a", textDecoration: "none", display: "grid", gap: 9, alignContent: "start" };
+const hubIconStyle: React.CSSProperties = { fontSize: 34 };
