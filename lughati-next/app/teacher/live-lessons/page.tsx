@@ -233,6 +233,7 @@ export default function TeacherLiveLessonsPage() {
               <label style={labelStyle}>المستهدف</label>
               <select value={targetClassroom} onChange={(e) => setTargetClassroom(e.target.value)} style={inputStyle}>
                 <option value="الجميع">جميع الطلاب</option>
+                <option value="أعضاء نادي الأكاديمية">🏅 أعضاء نادي الأكاديمية فقط</option>
                 <option value="الثاني أ">الثاني أ</option>
                 <option value="الثاني ب">الثاني ب</option>
                 <option value="طالب محدد">طالب محدد للتجربة</option>
