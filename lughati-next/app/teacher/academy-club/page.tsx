@@ -64,6 +64,18 @@ export default function TeacherAcademyClubPage() {
     );
   }
 
+  function prepareOpeningChallenge() {
+    setTitle("تحدي العضو الأول: هدفي في نادي الأكاديمية");
+    setInstructions(
+      "اختر إحدى الطريقتين: 1) سجّل مقطعًا صوتيًا أو مرئيًا من 30 إلى 60 ثانية تعرّف فيه بنفسك وتذكر هدفًا تريد تحقيقه في نادي الأكاديمية. 2) اكتب جملة جميلة عن هدفك وصوّرها. شارك بوضوح وبأسلوبك الخاص، وستُعرض المشاركات المميزة في النادي."
+    );
+    setPoints("15");
+    setDurationDays("7");
+    setAllowedTypes(["image", "audio", "video"]);
+    setMessage("تم تجهيز نموذج تحدي الافتتاح؛ راجعه ثم اضغط نشر التحدي للأعضاء.");
+    setError("");
+  }
+
   async function publishChallenge() {
     if (!user) return;
     try {
@@ -163,6 +175,15 @@ export default function TeacherAcademyClubPage() {
         </section>
         <section id="club-challenges" style={cardStyle}>
           <h2 style={{ marginTop: 0, color: "#176c46" }}>🎯 نشر تحدٍّ جديد</h2>
+          <div style={{ marginBottom: 16, padding: 16, borderRadius: 18, background: "linear-gradient(135deg,#fff8dc,#fffdf4)", border: "1px solid #edd27a" }}>
+            <strong style={{ display: "block", color: "#8a6500", marginBottom: 7 }}>🎁 نموذج افتتاح جاهز</strong>
+            <p style={{ margin: "0 0 12px", color: "#6b7280", lineHeight: 1.8 }}>
+              تحدي تعريفي ممتع للأعضاء بقيمة 15 نقطة، يقبل صورة أو تسجيلًا صوتيًا أو فيديو.
+            </p>
+            <button type="button" onClick={prepareOpeningChallenge} style={{ ...typeButtonStyle, background: "#c99b22", color: "white", borderColor: "#c99b22" }}>
+              تجهيز تحدي الافتتاح تلقائيًا
+            </button>
+          </div>
           {currentTitle && <div style={noticeStyle}>التحدي المنشور حاليًا: {currentTitle}</div>}
           <div style={formGridStyle}>
             <label style={labelStyle}>عنوان التحدي<input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} /></label>
