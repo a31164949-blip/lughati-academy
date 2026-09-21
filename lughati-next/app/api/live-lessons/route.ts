@@ -49,16 +49,39 @@ const getCachedLesson = unstable_cache(
       lessonVersion: typeof data.lessonVersion === "string" ? data.lessonVersion : snapshot.id,
     };
   },
-  ["active-live-lesson-student-v2"],
+  ["active-live-lesson-student-v3"],
   { revalidate: 20 }
 );
 
-async function getStudentClassroom(studentDocId: string) {
+async function getStudentAccess(studentDocId: string) {
   const { adminDb } = getFirebaseAdmin();
   const snapshot = await adminDb.collection("students").doc(studentDocId).get();
   if (!snapshot.exists) throw new Error("STUDENT_NOT_FOUND");
+
   const data = snapshot.data() ?? {};
-  return typeof data.classroom === "string" ? data.classroom.trim().replace(/\s+/g, " ") : "";
+  const membership =
+    data.academyClubMembership &&
+    typeof data.academyClubMembership === "object"
+      ? (data.academyClubMembership as Record<string, unknown>)
+      : {};
+
+  const expiresAtValue = membership.expiresAt;
+  const expiresAt =
+    expiresAtValue &&
+    typeof expiresAtValue === "object" &&
+    "toDate" in expiresAtValue &&
+    typeof (expiresAtValue as { toDate?: unknown }).toDate === "function"
+      ? (expiresAtValue as { toDate: () => Date }).toDate().getTime()
+      : Number.POSITIVE_INFINITY;
+
+  return {
+    classroom:
+      typeof data.classroom === "string"
+        ? data.classroom.trim().replace(/\s+/g, " ")
+        : "",
+    isAcademyClubMember:
+      membership.active === true && expiresAt > Date.now(),
+  };
 }
 
 export async function GET(request: Request) {
@@ -74,8 +97,19 @@ export async function GET(request: Request) {
     }
 
     if (!lesson.targetStudentDocId && lesson.targetClassroom && lesson.targetClassroom !== "الجميع") {
-      const classroom = await getStudentClassroom(studentDocId);
-      if (classroom !== lesson.targetClassroom.replace(/\s+/g, " ")) {
+      const access = await getStudentAccess(studentDocId);
+
+      if (
+        lesson.targetClassroom === "أعضاء نادي الأكاديمية" &&
+        !access.isAcademyClubMember
+      ) {
+        return NextResponse.json({ success: true, lesson: null }, { headers: { "Cache-Control": "private, no-store" } });
+      }
+
+      if (
+        lesson.targetClassroom !== "أعضاء نادي الأكاديمية" &&
+        access.classroom !== lesson.targetClassroom.replace(/\s+/g, " ")
+      ) {
         return NextResponse.json({ success: true, lesson: null }, { headers: { "Cache-Control": "private, no-store" } });
       }
     }
