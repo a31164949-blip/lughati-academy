@@ -10,10 +10,24 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 type Status = "pending" | "approved" | "revision_requested";
-type Tab = "voice" | "reader" | "art" | "celebrate";
+type Tab = "voice" | "reader" | "art" | "celebrate" | "family";
+
+type FamilyTeam = {
+  id: string;
+  studentId?: string;
+  name?: string;
+  teamName?: string;
+  classroom?: string;
+  completedStageCount?: number;
+  gameScoreTotal?: number;
+  totalDuration?: number;
+  rewardTotal?: number;
+  speedBonusGranted?: boolean;
+  status?: Status;
+};
 
 type VoiceItem = {
   id: string;
@@ -78,6 +92,9 @@ export default function TeacherNationalDayPage() {
   const [reader, setReader] = useState<ReaderItem[]>([]);
   const [art, setArt] = useState<ArtItem[]>([]);
   const [celebrate, setCelebrate] = useState<CelebrateItem[]>([]);
+  const [familyTeams, setFamilyTeams] = useState<FamilyTeam[]>([]);
+  const [familyAwardGranted, setFamilyAwardGranted] = useState(false);
+  const [familyMessage, setFamilyMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState("");
   const [voiceNotes, setVoiceNotes] = useState<Record<string, string>>({});
@@ -89,7 +106,8 @@ export default function TeacherNationalDayPage() {
     setLoading(true);
 
     try {
-      const [voiceSnapshot, readerResponse, artResponse, celebrateResponse] = await Promise.all([
+      const teacherToken = await auth.currentUser?.getIdToken();
+      const [voiceSnapshot, readerResponse, artResponse, celebrateResponse, familyResponse] = await Promise.all([
         getDocs(collection(db, "nationalDaySubmissions")),
         fetch("/api/national-day/reader-of-nation", {
           cache: "no-store",
@@ -99,6 +117,10 @@ export default function TeacherNationalDayPage() {
         }),
         fetch("/api/national-day/we-celebrate", {
           cache: "no-store",
+        }),
+        fetch("/api/national-day/family-word-challenge?view=leaderboard", {
+          cache: "no-store",
+          headers: teacherToken ? { Authorization: `Bearer ${teacherToken}` } : {},
         }),
       ]);
 
@@ -148,6 +170,12 @@ export default function TeacherNationalDayPage() {
       setArt(artData);
       setCelebrate(celebrateData);
 
+      if (familyResponse.ok) {
+        const familyResult = await familyResponse.json();
+        setFamilyTeams(Array.isArray(familyResult?.teams) ? familyResult.teams : []);
+        setFamilyAwardGranted(familyResult?.awardGranted === true);
+      }
+
       setVoiceNotes(
         Object.fromEntries(
           voiceData.map((item) => [item.id, item.teacherNote || ""])
@@ -188,7 +216,7 @@ export default function TeacherNationalDayPage() {
   }, [tab]);
 
   const currentItems =
-    tab === "voice" ? voice : tab === "reader" ? reader : tab === "art" ? art : celebrate;
+    tab === "voice" ? voice : tab === "reader" ? reader : tab === "art" ? art : tab === "celebrate" ? celebrate : familyTeams;
 
   const pendingCount = currentItems.filter(
     (item) => !item.status || item.status === "pending"
@@ -506,6 +534,29 @@ async function downloadCelebrate(item: CelebrateItem) {
   }
 }
 
+  async function awardFastestFamily() {
+    if (!confirm("هل تريد اعتماد أسرع أسرة ومنحها 10 نقاط؟ لا يمكن منح الجائزة مرتين.")) return;
+    try {
+      setWorking("family-award");
+      setFamilyMessage("");
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("سجّل الدخول بحساب المعلم أولًا.");
+      const response = await fetch("/api/national-day/family-word-challenge", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || "تعذر اعتماد الجائزة.");
+      setFamilyAwardGranted(true);
+      setFamilyMessage(result.message || "تم اعتماد الجائزة.");
+      await loadAll();
+    } catch (error) {
+      setFamilyMessage(error instanceof Error ? error.message : "تعذر اعتماد الجائزة.");
+    } finally {
+      setWorking("");
+    }
+  }
+
       return (
     <main
       dir="rtl"
@@ -572,8 +623,16 @@ async function downloadCelebrate(item: CelebrateItem) {
             count={celebrate.length}
             onClick={() => setTab("celebrate")}
           />
+          <TabButton
+            active={tab === "family"}
+            icon="👨‍👩‍👧‍👦"
+            title="التحدي العائلي"
+            count={familyTeams.length}
+            onClick={() => setTab("family")}
+          />
         </div>
 
+        {tab !== "family" && <>
         <div style={filtersStyle}>
           {[
             ["all", `الكل (${currentItems.length})`],
@@ -657,6 +716,39 @@ async function downloadCelebrate(item: CelebrateItem) {
                     remove={deleteCelebrate}
                   />
                 ))}
+          </section>
+        )}
+        </>}
+
+        {tab === "family" && (
+          <section style={{ display: "grid", gap: 14 }}>
+            <div style={{ ...cardStyle, padding: 20 }}>
+              <h2 style={{ marginTop: 0 }}>🏆 ترتيب الأسر</h2>
+              <p>يُرتب من أكمل المراحل الأربع حسب الزمن الأقل، وعند التعادل يُقدّم مجموع نقاط اللعبة الأعلى.</p>
+              <button
+                onClick={() => void awardFastestFamily()}
+                disabled={familyAwardGranted || working === "family-award"}
+                style={{ ...button(familyAwardGranted ? "#94a3b8" : "#b8860b"), opacity: working === "family-award" ? 0.7 : 1 }}
+              >
+                {familyAwardGranted ? "تم اعتماد جائزة أسرع أسرة ✅" : working === "family-award" ? "جارٍ الاعتماد…" : "اعتماد أسرع أسرة ومنح 10 نقاط ⭐"}
+              </button>
+              {familyMessage && <p style={{ fontWeight: 900, color: "#087b52" }}>{familyMessage}</p>}
+            </div>
+            {familyTeams.length === 0 ? <Empty text="لا توجد نتائج عائلية حتى الآن." /> : familyTeams.map((team, rank) => (
+              <article key={team.id} style={{ ...cardStyle, padding: 18, display: "grid", gridTemplateColumns: "70px 1fr", gap: 16, alignItems: "center" }}>
+                <div style={{ width: 58, height: 58, borderRadius: "50%", display: "grid", placeItems: "center", background: rank === 0 ? "#facc15" : "#e8f3ee", fontSize: 22, fontWeight: 900 }}>{rank + 1}</div>
+                <div>
+                  <h3 style={{ margin: "0 0 6px" }}>{team.teamName || team.name || "أسرة الطالب"} {team.speedBonusGranted ? "⭐" : ""}</h3>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <span>الطالب: {team.name || "—"}</span>
+                    <span>الفصل: {team.classroom || "—"}</span>
+                    <b>المراحل: {team.completedStageCount || 0}/4</b>
+                    <b>نقاط اللعبة: {team.gameScoreTotal || 0}</b>
+                    <b>الزمن: {team.totalDuration ? `${Math.floor(team.totalDuration / 60)} د ${team.totalDuration % 60} ث` : "—"}</b>
+                  </div>
+                </div>
+              </article>
+            ))}
           </section>
         )}
       </div>
