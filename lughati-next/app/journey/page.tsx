@@ -4322,7 +4322,7 @@ try {
                       marginBottom: "4px",
                     }}
                   >
-                    نعمل على استكمال الترتيبات
+                    بوابتك إلى مسابقات النادي الحصرية
                   </div>
                   <h2
                     style={{
@@ -4346,24 +4346,25 @@ try {
                 </div>
               </div>
 
-              <span
-                aria-disabled="true"
+              <Link
+                href="/academy-club"
                 style={{
                   textDecoration: "none",
                   borderRadius: "15px",
                   padding: "12px 18px",
-                  color: "#71520b",
+                  color: "#ffffff",
                   background:
-                    "linear-gradient(135deg,#fff3b9 0%,#f4d676 100%)",
+                    "linear-gradient(135deg,#168a63 0%,#0f6f4e 100%)",
                   border: "2px solid #f0cf6b",
                   fontWeight: 900,
-                  boxShadow: "0 7px 16px rgba(154,107,8,.14)",
-                  cursor: "not-allowed",
-                  userSelect: "none",
+                  boxShadow: "0 7px 16px rgba(23,108,70,.18)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "7px",
                 }}
               >
-                قريبًا… ✨
-              </span>
+                دخول النادي ←
+              </Link>
             </div>
         </section>
 
