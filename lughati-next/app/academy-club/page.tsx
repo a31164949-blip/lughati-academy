@@ -84,15 +84,16 @@ function formatDate(value?: string) {
   });
 }
 
-function AcademyClubContent() {
+function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boolean }) {
   const [user, setUser] = useState<User | null>(null);
   const [membership, setMembership] =
     useState<AcademyClubMembership | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const studentName =
-    typeof window !== "undefined"
+  const studentName = teacherPreview
+    ? "الأستاذ إبراهيم"
+    : typeof window !== "undefined"
       ? window.localStorage.getItem("student-name") || "بطل الأكاديمية"
       : "بطل الأكاديمية";
 
@@ -121,6 +122,29 @@ function AcademyClubContent() {
         setErrorMessage("");
 
         const token = await user!.getIdToken();
+
+        if (teacherPreview) {
+          const response = await fetch("/api/teacher/academy-club/challenge", {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error("المعاينة متاحة لحساب المعلم فقط.");
+          }
+
+          if (active) {
+            setMembership({
+              active: true,
+              membershipNumber: "TEACHER-PREVIEW",
+              level: "leader",
+              levelLabel: "معاينة المعلم",
+            });
+          }
+          return;
+        }
+
         const response = await fetch("/api/student-journey", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -163,7 +187,7 @@ function AcademyClubContent() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, teacherPreview]);
 
   return (
     <main
@@ -566,12 +590,18 @@ function AcademyClubComingSoon({ remainingMs }: { remainingMs: number }) {
 
 export default function AcademyClubPage() {
   const [now, setNow] = useState(() => Date.now());
+  const [teacherPreview, setTeacherPreview] = useState(false);
+
   useEffect(() => {
+    setTeacherPreview(
+      new URLSearchParams(window.location.search).get("teacherPreview") === "1"
+    );
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  return now >= CLUB_LAUNCH_AT
-    ? <AcademyClubContent />
+
+  return now >= CLUB_LAUNCH_AT || teacherPreview
+    ? <AcademyClubContent teacherPreview={teacherPreview} />
     : <AcademyClubComingSoon remainingMs={CLUB_LAUNCH_AT - now} />;
 }
 
