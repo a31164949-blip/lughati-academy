@@ -150,7 +150,7 @@ export default function TeacherAcademyClubPage() {
               <h2 style={{ margin: 0, color: "#176c46" }}>لوحة النادي المتكاملة</h2>
               <p style={{ margin: "7px 0 0", color: "#64748b", fontWeight: 700 }}>الأعضاء والتحديات والدروس المباشرة من مكان واحد.</p>
             </div>
-            <Link href="/academy-club" target="_blank" style={viewStyle}>معاينة صفحة النادي 👁️</Link>
+            <Link href="/academy-club?teacherPreview=1" target="_blank" style={viewStyle}>معاينة صفحة النادي 👁️</Link>
           </div>
           <div style={hubGridStyle}>
             <Link href="/teacher/students" style={{ ...hubCardStyle, background: "#eaf8f0", borderColor: "#9ed8b8" }}>
