@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth } from "../../../firebase";
+import { auth } from "../../../../firebase";
 
 type Room = {
   code: string;
