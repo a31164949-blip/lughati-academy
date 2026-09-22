@@ -24,6 +24,14 @@ type JourneyResponse = {
 
 const clubSections = [
   {
+    icon: "🔴",
+    title: "التحدي المباشر",
+    description: "ادخل برمز الغرفة ونافس زملاءك في الوقت نفسه.",
+    href: "/academy-club/live-game",
+    color: "#fff0f0",
+    border: "#f4a7a7",
+  },
+  {
     icon: "📖",
     title: "حصص التمكين القرائي",
     description: "تدريبات مباشرة تساعدك على القراءة بثقة وطلاقة.",
