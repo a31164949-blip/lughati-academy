@@ -148,9 +148,9 @@ export default function TeacherStudentMessagesPage() {
   function prepareReturnMessage(student: StudentOption) {
     setSelectedClassroom(student.classroom);
     setSelectedStudentId(student.id);
-    setDirectSubject("اشتقنا لعودتك إلى الأكاديمية 🌟");
+    setDirectSubject("أكاديمية لغتي تشتاق لعودتك 🌟");
     setDirectBody(
-      `يا بطل ${student.studentName}، لاحظنا غيابك عن أكاديمية لغتي خلال الأيام الماضية، واشتقنا لمشاركتك وإنجازاتك. عد إلينا اليوم؛ فهناك تحديات ونقاط جديدة بانتظارك 🚀📚`
+      `يا بطل ${student.studentName} 🌟 اشتقنا لوجودك في أكاديمية لغتي! لاحظنا أنك لم تدخل منذ عدة أيام، وهناك تحديات ونقاط ومفاجآت جميلة بانتظار عودتك. عد إلينا اليوم، وواصل رحلتك نحو التميز 🚀📚\n\nأكاديمية لغتي الرقمية — نتعلّم، نقرأ، نبدع.`
     );
     setDirectMessageOpen(true);
     setFeedback(
