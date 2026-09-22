@@ -40,6 +40,14 @@ const clubSections = [
     border: "#edd27a",
   },
   {
+    icon: "🎮",
+    title: "مدينة لغتي",
+    description: "مغامرة مجسّمة حصرية لأعضاء النادي؛ اعبر المراحل واجمع النجوم.",
+    href: "/academy-club/lughati-city",
+    color: "#eef2ff",
+    border: "#a5b4fc",
+  },
+  {
     icon: "🎙️",
     title: "رحلة القراءة",
     description: "واصل تسجيل قراءتك وتقدم نحو مستويات أعلى.",
