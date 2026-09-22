@@ -416,7 +416,11 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
                 {clubSections.map((section) => (
                   <Link
                     key={section.title}
-                    href={section.href}
+                    href={
+                      teacherPreview && section.href === "/academy-club/lughati-city"
+                        ? "/academy-club/lughati-city?teacherPreview=1"
+                        : section.href
+                    }
                     style={{
                       minHeight: "170px",
                       padding: "21px",
