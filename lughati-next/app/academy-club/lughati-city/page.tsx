@@ -28,6 +28,8 @@ export default function LughatiCityPage() {
   const [authReady, setAuthReady] = useState(false);
   const [member, setMember] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [teacherPreview, setTeacherPreview] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
   const [heroId, setHeroId] = useState("");
   const [started, setStarted] = useState(false);
   const [stage, setStage] = useState(0);
@@ -38,23 +40,52 @@ export default function LughatiCityPage() {
   const [finished, setFinished] = useState(false);
   const [answerLocked, setAnswerLocked] = useState(false);
 
-  useEffect(() => onAuthStateChanged(auth, (current) => { setUser(current); setAuthReady(true); }), []);
+  useEffect(() => {
+    setTeacherPreview(
+      new URLSearchParams(window.location.search).get("teacherPreview") === "1"
+    );
+    setPreviewReady(true);
+    return onAuthStateChanged(auth, (current) => {
+      setUser(current);
+      setAuthReady(true);
+    });
+  }, []);
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || !previewReady) return;
     if (!user) { setChecking(false); return; }
     let active = true;
     (async () => {
       try {
         const token = await user.getIdToken();
-        const response = await fetch("/api/student-journey", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+
+        if (teacherPreview) {
+          const response = await fetch("/api/teacher/academy-club/challenge", {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          const data = await response.json();
+          if (active) setMember(response.ok && data.success === true);
+          return;
+        }
+
+        const response = await fetch("/api/student-journey", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
         const data = await response.json();
-        if (active) setMember(response.ok && data.success && data.academyClubMembership?.active === true);
+        if (active) {
+          setMember(
+            response.ok &&
+            data.success &&
+            data.academyClubMembership?.active === true
+          );
+        }
       } catch { if (active) setMember(false); }
       finally { if (active) setChecking(false); }
     })();
     return () => { active = false; };
-  }, [authReady, user]);
+  }, [authReady, previewReady, teacherPreview, user]);
 
   useEffect(() => {
     if (!started || finished || answerLocked) return;
@@ -119,13 +150,20 @@ export default function LughatiCityPage() {
 
   return <main dir="rtl" className="page"><style>{styles}</style>
     <header className="topbar">
-      <Link href="/academy-club" className="back">→ نادي الأكاديمية</Link>
+      <Link
+        href={teacherPreview ? "/academy-club?teacherPreview=1" : "/academy-club"}
+        className="back"
+      >
+        → نادي الأكاديمية
+      </Link>
       <div><strong>مدينة لغتي</strong><small>ساحة المسابقات والتحديات</small></div>
       <div className="hud"><span>⭐ {stars}</span><span>🔥 {combo}</span></div>
     </header>
 
     {!started ? <section className="selectScreen">
-      <span className="exclusive">🏅 حصرية لأعضاء النادي</span>
+      <span className="exclusive">
+        {teacherPreview ? "👁️ وضع معاينة المعلم" : "🏅 حصرية لأعضاء النادي"}
+      </span>
       <h1>اختر بطلك في مدينة لغتي</h1>
       <p>لكل بطل شخصية وأسلوب مميز، والجميع يملكون الفرصة نفسها للفوز.</p>
       <div className="heroes">
