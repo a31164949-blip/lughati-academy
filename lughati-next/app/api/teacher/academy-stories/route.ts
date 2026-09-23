@@ -3,14 +3,18 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 
 export const runtime = "nodejs";
+const TEACHER_EMAIL = "a31164949@gmail.com";
 
 async function requireTeacher(request: Request) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
   const { adminAuth } = getFirebaseAdmin();
   const decoded = await adminAuth.verifyIdToken(authorization.slice(7));
+  const email = typeof decoded.email === "string" ? decoded.email.trim().toLowerCase() : "";
   const role = typeof decoded.role === "string" ? decoded.role : "";
-  if (role !== "teacher" && role !== "admin") throw new Error("FORBIDDEN");
+  if (role !== "teacher" && role !== "admin" && email !== TEACHER_EMAIL) {
+    throw new Error("FORBIDDEN");
+  }
 }
 
 function millis(value: unknown) {
