@@ -139,11 +139,13 @@ export default function AcademyStories() {
   const activeStory = viewerIndex === null ? null : stories[viewerIndex];
 
   return (
-    <section dir="rtl" style={wrapStyle}>
+    <section dir="rtl" style={{ ...wrapStyle, padding: stories.length === 0 ? "14px 16px" : 17 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: 0, color: "#176c46", fontSize: 22 }}>✨ نبض الأكاديمية</h2>
-          <p style={{ margin: "5px 0 0", color: "#6b7b73" }}>لحظات سريعة من تحديات وأبطال الأكاديمية.</p>
+          <p style={{ margin: "5px 0 0", color: "#6b7b73" }}>
+            {stories.length === 0 ? "شارك صورة أو مقطعًا قصيرًا بعد موافقة المعلّم." : "لحظات سريعة من تحديات وأبطال الأكاديمية."}
+          </p>
         </div>
         {data?.ownPending && (
           <span style={{ padding: "7px 11px", borderRadius: 999, background: "#fff5cf", color: "#8a6200", fontWeight: 900 }}>
@@ -152,9 +154,9 @@ export default function AcademyStories() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 13, overflowX: "auto", padding: "15px 2px 3px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 13, overflowX: "auto", padding: stories.length === 0 ? "8px 2px 0" : "15px 2px 3px" }}>
         <button type="button" onClick={() => setUploadOpen(true)} style={circleButtonStyle}>
-          <span style={{ ...circleStyle, border: "3px dashed #178b5a", background: "#edfbf3", fontSize: 28 }}>＋</span>
+          <span style={{ ...circleStyle, width: stories.length === 0 ? 54 : 66, height: stories.length === 0 ? 54 : 66, border: "3px dashed #178b5a", background: "#edfbf3", fontSize: stories.length === 0 ? 24 : 28 }}>＋</span>
           <small style={{ fontWeight: 900, color: "#176c46" }}>أضف حالتك</small>
         </button>
 
@@ -174,8 +176,8 @@ export default function AcademyStories() {
         ))}
 
         {stories.length === 0 && (
-          <div style={{ alignSelf: "center", padding: "12px 16px", color: "#7a887f", background: "#f7fbf9", borderRadius: 14 }}>
-            أول حالة في نبض الأكاديمية قادمة قريبًا 🌟
+          <div style={{ flex: 1, minWidth: 210, padding: "10px 14px", color: "#65766d", background: "#f7fbf9", borderRadius: 14 }}>
+            🌟 أضف أول حالة وابدأ نبض الأكاديمية
           </div>
         )}
       </div>
