@@ -1967,7 +1967,8 @@ useEffect(() => {
         </span>
         </section>
 {/* نبض الأكاديمية — حالات الطلاب المعتمدة */}
-      <section
+      <div
+        role="region"
         aria-label="نبض الأكاديمية"
         style={{
           maxWidth: "1180px",
@@ -1975,7 +1976,7 @@ useEffect(() => {
         }}
       >
         <AcademyStories />
-      </section>
+      </div>
 
       <ReadingSupportRegistration />
 
