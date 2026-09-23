@@ -83,6 +83,12 @@ function getCompactCountdown(
   return "تمت ✅";
 }
 
+function getJourneyIcon(event: AcademicJourneyEvent) {
+  if (event.category === "national") return "🎉";
+  if (event.category === "holiday") return event.icon === "🍂" ? "🍁" : event.icon;
+  return event.icon;
+}
+
 export default function AcademicJourney({
   events,
 }: AcademicJourneyProps) {
@@ -226,6 +232,13 @@ const [showAll, setShowAll] =
       );
     }, [events, today]);
 
+  const journeyProgress = events.length > 1
+    ? Math.round((currentIndex / (events.length - 1)) * 100)
+    : 0;
+  const daysToNext = nextEvent?.date && today
+    ? Math.max(0, getDaysDifference(parseEventDate(nextEvent.date), today))
+    : null;
+
   return (
     <section
       dir="rtl"
@@ -300,7 +313,7 @@ const [showAll, setShowAll] =
           >
             {currentWeek === 0
               ? "🚀 نستعد للانطلاق"
-              : `📅 الأسبوع ${currentWeek}`}
+              : `📅 الأسبوع ${currentWeek}  •  ${journeyProgress}% من الرحلة`}
           </div>
         )}
       </div>
@@ -319,7 +332,7 @@ const [showAll, setShowAll] =
           <article
             style={{
               background:
-                "linear-gradient(135deg, #fff9cf, #ffffff)",
+                "linear-gradient(135deg, #fff6bf 0%, #fffdf0 58%, #ffffff 100%)",
               border:
                 "2px solid #f1d45d",
               borderRadius:
@@ -430,7 +443,7 @@ const [showAll, setShowAll] =
                 flexShrink: 0,
               }}
             >
-              {nextEvent.icon}
+              {getJourneyIcon(nextEvent)}
             </div>
 
             <div>
@@ -476,6 +489,26 @@ const [showAll, setShowAll] =
             </div>
           </article>
         )}
+      </div>
+
+      <div
+        style={{
+          marginTop: "14px",
+          padding: "12px 14px",
+          borderRadius: "18px",
+          background: "rgba(255,255,255,.82)",
+          border: "1px solid #dcebe3",
+          display: "grid",
+          gap: "9px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", color: "#176c46", fontWeight: 900, fontSize: "13px" }}>
+          <span>🏁 تقدّم الرحلة: {journeyProgress}%</span>
+          <span>{daysToNext === null ? "موعد المحطة القادمة سيُعلن قريبًا" : daysToNext === 0 ? "المحطة القادمة اليوم ✨" : `بقي ${daysToNext} يومًا للمحطة القادمة`}</span>
+        </div>
+        <div style={{ height: "10px", borderRadius: "999px", background: "#e4eee9", overflow: "hidden" }}>
+          <div style={{ width: `${Math.max(6, journeyProgress)}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg,#20a66a,#efc629)", transition: "width .4s ease" }} />
+        </div>
       </div>
 
       {/* خط المحطات */}
@@ -545,7 +578,7 @@ const [showAll, setShowAll] =
                         : 0.65,
                   }}
                 >
-                  {event.icon}
+                  {getJourneyIcon(event)}
                 </span>
               </div>
             );
