@@ -16,19 +16,13 @@ export const runtime = "nodejs";
 const tasks = [
   {
     id: 1,
-    title: "قراءة درس اليوم",
-    rewardPoints: 0,
-    rewardStars: 2,
-  },
-  {
-    id: 2,
-    title: "حل الواجب اليومي",
+    title: "تسجيل دقيقة قراءة",
     rewardPoints: 0,
     rewardStars: 0,
   },
   {
-    id: 4,
-    title: "مراجعة كلمات الإملاء",
+    id: 2,
+    title: "إنجاز واجب اليوم",
     rewardPoints: 0,
     rewardStars: 0,
   },
@@ -612,6 +606,14 @@ export async function GET(
       }
     );
 
+    // لا تُحتسب القراءة بمجرد الضغط؛
+    // تصبح مكتملة فقط بعد اعتماد تسجيل اليوم.
+    if (currentWeekApprovedDates.includes(dateKey)) {
+      completedSet.add(1);
+    } else {
+      completedSet.delete(1);
+    }
+
     // المهمة 2 لا تصبح مكتملة إلا
     // بعد اعتماد الواجب.
     if (
@@ -976,8 +978,22 @@ export async function POST(
     }
 
     // حماية الخادم:
-    // لا يمكن تحويل الواجب أو القراءة
-    // إلى نقاط/إنجاز بمجرد استدعاء API.
+    // لا تُحتسب القراءة بمجرد الضغط؛
+    // يجب تسجيلها ثم اعتمادها من المعلم.
+    if (task.id === 1) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "READING_APPROVAL_REQUIRED",
+          message:
+            "سجّل دقيقة قراءة من رحلة القراءة، وتُحتسب بعد اعتماد المعلم.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // لا يمكن تحويل الواجب إلى إنجاز
+    // إلا بعد رفعه واعتماده رسميًا.
     if (task.id === 2) {
       return NextResponse.json(
         {
