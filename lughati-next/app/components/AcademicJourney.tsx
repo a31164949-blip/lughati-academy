@@ -245,10 +245,10 @@ const [showAll, setShowAll] =
       style={{
         maxWidth: "1180px",
         margin:
-          "20px auto",
+          "12px auto",
         padding:
-          "20px",
-        borderRadius: "28px",
+          "14px",
+        borderRadius: "22px",
         background:
           "linear-gradient(135deg, #f7fffa, #fffdf2)",
         border:
@@ -268,7 +268,7 @@ const [showAll, setShowAll] =
           gap: "15px",
           flexWrap: "wrap",
           marginBottom:
-            "16px",
+            "10px",
         }}
       >
         <div>
@@ -289,7 +289,7 @@ const [showAll, setShowAll] =
               margin: 0,
               color: "#164f39",
               fontSize:
-                "clamp(21px,3vw,28px)",
+                "clamp(19px,2.5vw,23px)",
             }}
           >
             أين نحن الآن؟
@@ -303,7 +303,7 @@ const [showAll, setShowAll] =
                 "#e8f9ef",
               color: "#126b49",
               padding:
-                "9px 14px",
+                "7px 11px",
               borderRadius:
                 "999px",
               fontWeight: 900,
@@ -324,7 +324,7 @@ const [showAll, setShowAll] =
         style={{
           display: "grid",
           gridTemplateColumns:
-            "repeat(auto-fit, minmax(240px, 1fr))",
+            "repeat(auto-fit, minmax(220px, 1fr))",
           gap: "12px",
         }}
       >
@@ -338,7 +338,7 @@ const [showAll, setShowAll] =
               borderRadius:
                 "22px",
               padding:
-                "16px",
+                "10px",
               display: "flex",
               alignItems:
                 "center",
@@ -383,7 +383,7 @@ const [showAll, setShowAll] =
                   margin:
                     "4px 0",
                   fontSize:
-                    "19px",
+                    "17px",
                   color:
                     "#5d4b00",
                 }}
@@ -420,7 +420,7 @@ const [showAll, setShowAll] =
               borderRadius:
                 "22px",
               padding:
-                "16px",
+                "10px",
               display: "flex",
               alignItems:
                 "center",
@@ -463,7 +463,7 @@ const [showAll, setShowAll] =
                   margin:
                     "4px 0",
                   fontSize:
-                    "19px",
+                    "17px",
                   color:
                     "#174d38",
                 }}
@@ -493,20 +493,20 @@ const [showAll, setShowAll] =
 
       <div
         style={{
-          marginTop: "14px",
-          padding: "12px 14px",
+          marginTop: "10px",
+          padding: "9px 11px",
           borderRadius: "18px",
           background: "rgba(255,255,255,.82)",
           border: "1px solid #dcebe3",
           display: "grid",
-          gap: "9px",
+          gap: "7px",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", color: "#176c46", fontWeight: 900, fontSize: "13px" }}>
           <span>🏁 تقدّم الرحلة: {journeyProgress}%</span>
           <span>{daysToNext === null ? "موعد المحطة القادمة سيُعلن قريبًا" : daysToNext === 0 ? "المحطة القادمة اليوم ✨" : `بقي ${daysToNext} يومًا للمحطة القادمة`}</span>
         </div>
-        <div style={{ height: "10px", borderRadius: "999px", background: "#e4eee9", overflow: "hidden" }}>
+        <div style={{ height: "7px", borderRadius: "999px", background: "#e4eee9", overflow: "hidden" }}>
           <div style={{ width: `${Math.max(6, journeyProgress)}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg,#20a66a,#efc629)", transition: "width .4s ease" }} />
         </div>
       </div>
@@ -516,7 +516,7 @@ const [showAll, setShowAll] =
       <div
         style={{
           marginTop:
-            "16px",
+            "10px",
           display: "flex",
           alignItems:
             "center",
@@ -571,7 +571,7 @@ const [showAll, setShowAll] =
                 <span
                   style={{
                     fontSize:
-                      "20px",
+                      "14px",
                     opacity:
                       active
                         ? 1
@@ -610,7 +610,7 @@ const [showAll, setShowAll] =
               "#eef9f3",
             color: "#14724d",
             padding:
-              "9px 15px",
+              "7px 12px",
             borderRadius:
               "14px",
             fontWeight: 900,
@@ -643,7 +643,7 @@ const [showAll, setShowAll] =
                 key={event.id}
                 style={{
                   padding:
-                    "13px",
+                    "8px",
                   borderRadius:
                     "18px",
                   background:
