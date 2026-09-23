@@ -2,6 +2,7 @@
 
 import InstallAppButton from "../components/InstallAppButton";
 import LiveLessonCard from "../components/LiveLessonCard";
+import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
 import Link from "next/link";
 import {
   useEffect,
@@ -5945,46 +5946,7 @@ try {
             marginBottom: "24px",
           }}
         >
-          <div
-            style={
-              rewardCardStyle
-            }
-          >
-            <div
-              style={{
-                fontSize: "36px",
-                marginBottom: "8px",
-              }}
-            >
-              🎁
-            </div>
-
-            <h3
-              style={{
-                margin: "0 0 8px",
-                color: "#7b5c00",
-              }}
-            >
-              {allTasksCompleted
-                ? "تم فتح المكافأة 🎉"
-                : "المكافأة القادمة"}
-            </h3>
-
-            <p
-              style={{
-                margin: 0,
-                lineHeight: 1.8,
-                color: "#6e623a",
-              }}
-            >
-              {allTasksCompleted
-                ? "أحسنت! حصلت على مكافأة النشاط اليومي."
-                : `بقيت لك ${
-                    dailyTasks.length -
-                    completedCount
-                  } مهام لإكمال تحدي اليوم.`}
-            </p>
-          </div>
+          <WeeklyRewardWheel />
 
           <div
             style={
