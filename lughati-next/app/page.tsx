@@ -3381,9 +3381,9 @@ useEffect(() => {
 <section
   style={{
     maxWidth: "1180px",
-    margin: "14px auto",
-    padding: "17px",
-    borderRadius: "22px",
+    margin: "10px auto",
+    padding: "8px 10px",
+    borderRadius: "18px",
     background:
       "linear-gradient(135deg,#ffffff 0%,#f6fff9 55%,#fffaf0 100%)",
     border: "1px solid #dcece4",
@@ -3398,8 +3398,8 @@ useEffect(() => {
   <div
     style={{
       position: "absolute",
-      width: "150px",
-      height: "150px",
+      width: "100px",
+      height: "100px",
       borderRadius: "50%",
       background:
         "rgba(255,214,64,.08)",
@@ -3419,11 +3419,11 @@ useEffect(() => {
       alignItems: "center",
       justifyContent:
         "space-between",
-      gap: "12px",
+      gap: "9px",
       flexWrap: "wrap",
       marginBottom:
         weeklyHeroes.length > 0
-          ? "14px"
+          ? "9px"
           : 0,
     }}
   >
@@ -3431,21 +3431,21 @@ useEffect(() => {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "11px",
+        gap: "8px",
       }}
     >
       <div
         style={{
-          width: "48px",
-          height: "48px",
-          borderRadius: "15px",
+          width: "40px",
+          height: "40px",
+          borderRadius: "12px",
           display: "grid",
           placeItems: "center",
           background:
             "linear-gradient(135deg,#fff4c7,#fff9e6)",
           border:
             "1px solid #f5dfa0",
-          fontSize: "26px",
+          fontSize: "22px",
           flexShrink: 0,
         }}
       >
@@ -3457,7 +3457,7 @@ useEffect(() => {
           style={{
             display: "block",
             color: "#176c46",
-            fontSize: "16px",
+            fontSize: "15px",
             fontWeight: 900,
           }}
         >
@@ -3486,8 +3486,8 @@ useEffect(() => {
         color: "#14744d",
         fontWeight: 900,
         fontSize: "13px",
-        padding: "9px 13px",
-        borderRadius: "13px",
+        padding: "7px 10px",
+        borderRadius: "10px",
         background: "#eaf9f0",
         border:
           "1px solid #d4ecdf",
@@ -3560,7 +3560,7 @@ useEffect(() => {
                 display: "flex",
                 alignItems:
                   "center",
-                gap: "11px",
+                gap: "8px",
                 padding: "11px",
                 borderRadius:
                   "17px",
@@ -3717,26 +3717,26 @@ useEffect(() => {
         position: "relative",
         zIndex: 2,
         display: "grid",
-        gap: "11px",
-        marginTop: "12px",
+        gap: "8px",
+        marginTop: "8px",
       }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "10px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px" }}>
         {[
           { icon: "🥇", title: "نجم الإنجاز", text: "لمن يُكمل مهامه بإتقان", color: "#fff8dc", border: "#eed57b" },
           { icon: "🌱", title: "نجم التطور", text: "لمن يصنع تقدمًا ملحوظًا", color: "#eefbf3", border: "#a8dfbf" },
           { icon: "⭐", title: "نجم الالتزام", text: "للمواظب والمبادر دائمًا", color: "#eef5ff", border: "#b9d2f5" },
         ].map((item) => (
-          <div key={item.title} style={{ padding: "12px 14px", borderRadius: "16px", background: item.color, border: `1px solid ${item.border}`, display: "flex", alignItems: "center", gap: "11px" }}>
-            <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "#fff", display: "grid", placeItems: "center", fontSize: "23px", flexShrink: 0 }}>{item.icon}</span>
+          <div key={item.title} style={{ padding: "8px 10px", borderRadius: "16px", background: item.color, border: `1px solid ${item.border}`, display: "flex", alignItems: "center", gap: "11px" }}>
+            <span style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#fff", display: "grid", placeItems: "center", fontSize: "19px", flexShrink: 0 }}>{item.icon}</span>
             <span>
-              <strong style={{ display: "block", color: "#176c46", fontSize: "14px" }}>{item.title}</strong>
+              <strong style={{ display: "block", color: "#176c46", fontSize: "9px" }}>{item.title}</strong>
               <small style={{ color: "#64748b", fontWeight: 700 }}>{item.text}</small>
             </span>
           </div>
         ))}
       </div>
-      <div style={{ padding: "9px 12px", borderRadius: "13px", background: "#176c46", color: "#fff", textAlign: "center", fontSize: "12px", fontWeight: 900 }}>
+      <div style={{ padding: "7px 10px", borderRadius: "10px", background: "#176c46", color: "#fff", textAlign: "center", fontSize: "12px", fontWeight: 900 }}>
         🕛 تُعلن أسماء أبطال الأسبوع كل خميس الساعة 12 ظهرًا
       </div>
     </div>
