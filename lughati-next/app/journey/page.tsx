@@ -3,6 +3,7 @@
 import InstallAppButton from "../components/InstallAppButton";
 import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
+import AcademyStories from "../components/AcademyStories";
 import Link from "next/link";
 import {
   useEffect,
@@ -5283,6 +5284,8 @@ try {
 </Link>
           </div>
         </section>
+
+        <AcademyStories />
 
         {/* الإحصاءات */}
 
