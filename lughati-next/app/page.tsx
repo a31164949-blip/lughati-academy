@@ -11,6 +11,7 @@ import ClassDiary from "./components/ClassDiary";
 import InstallAppButton from "./components/InstallAppButton";
 import ReadingSupportRegistration from "./components/ReadingSupportRegistration";
 import TikTokShowcase from "./components/TikTokShowcase";
+import AcademyStories from "./components/AcademyStories";
 type AcademySection = {
   icon: string;
   title: string;
@@ -1965,104 +1966,15 @@ useEffect(() => {
           مباشر
         </span>
         </section>
-{/* تنويه قناة التليجرام */}
+{/* نبض الأكاديمية — حالات الطلاب المعتمدة */}
       <section
-        aria-label="تنويه قناة التليجرام"
+        aria-label="نبض الأكاديمية"
         style={{
           maxWidth: "1180px",
           margin: "14px auto 18px",
-          padding: "16px 18px",
-          borderRadius: "22px",
-          border: "1px solid #bae6fd",
-          background:
-            "linear-gradient(135deg, #effaff 0%, #f8fcff 100%)",
-          boxShadow:
-            "0 10px 26px rgba(14, 116, 144, 0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "14px",
-          flexWrap: "wrap",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            minWidth: 0,
-            flex: "1 1 520px",
-          }}
-        >
-          <div
-            aria-hidden="true"
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "16px",
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-              background: "#229ED9",
-              color: "#ffffff",
-              fontSize: "25px",
-              boxShadow:
-                "0 8px 18px rgba(34, 158, 217, 0.22)",
-            }}
-          >
-            ✈️
-          </div>
-
-          <div>
-            <strong
-              style={{
-                display: "block",
-                color: "#075985",
-                fontSize: "16px",
-                fontWeight: 900,
-              }}
-            >
-              📢 تنويه مهم
-            </strong>
-
-            <p
-              style={{
-                margin: "4px 0 0",
-                color: "#334155",
-                fontSize: "14px",
-                fontWeight: 800,
-                lineHeight: 1.8,
-              }}
-            >
-              أرجو الانضمام إلى قناتنا على التليجرام؛
-              لضمان متابعة جميع المهام.
-            </p>
-          </div>
-        </div>
-
-        <a
-          href="https://t.me/LughatiDigitalAcademy"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "7px",
-            padding: "11px 17px",
-            borderRadius: "14px",
-            background: "#229ED9",
-            color: "#ffffff",
-            textDecoration: "none",
-            fontSize: "14px",
-            fontWeight: 900,
-            whiteSpace: "nowrap",
-            boxShadow:
-              "0 8px 18px rgba(34, 158, 217, 0.2)",
-          }}
-        >
-          📲 الانضمام إلى القناة
-        </a>
+        <AcademyStories />
       </section>
 
       <ReadingSupportRegistration />
