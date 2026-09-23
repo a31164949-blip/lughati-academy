@@ -43,12 +43,30 @@ function millis(value: unknown) {
 
 export async function GET(request: Request) {
   try {
-    const { studentId } = await getStudent(request);
-    const { adminDb } = getFirebaseAdmin();
-    const [approvedSnapshot, ownSnapshot] = await Promise.all([
-      adminDb.collection("academyStories").where("status", "==", "approved").limit(60).get(),
-      adminDb.collection("academyStories").where("studentId", "==", studentId).limit(10).get(),
-    ]);
+    const { adminAuth, adminDb } = getFirebaseAdmin();
+    let studentId = "";
+    const authorization = request.headers.get("authorization");
+
+    if (authorization?.startsWith("Bearer ")) {
+      try {
+        const decoded = await adminAuth.verifyIdToken(authorization.slice(7));
+        if (decoded.role === "student" && typeof decoded.studentDocId === "string") {
+          studentId = decoded.studentDocId;
+        }
+      } catch {
+        // عرض الحالات المعتمدة عام، وتعطل الرمز لا يمنع مشاهدة النبض.
+      }
+    }
+
+    const approvedSnapshot = await adminDb
+      .collection("academyStories")
+      .where("status", "==", "approved")
+      .limit(60)
+      .get();
+    const ownSnapshot = studentId
+      ? await adminDb.collection("academyStories").where("studentId", "==", studentId).limit(10).get()
+      : null;
+
     const now = Date.now();
     const stories = approvedSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -66,19 +84,21 @@ export async function GET(request: Request) {
           expiresAt: millis(item.expiresAt),
         };
       });
-    const ownPending = ownSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((story) => (story as {status?: unknown}).status === "pending")
-      .sort((a, b) => millis((b as {createdAt?: unknown}).createdAt) - millis((a as {createdAt?: unknown}).createdAt))[0] ?? null;
+
+    const ownPending = ownSnapshot
+      ? ownSnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((story) => (story as {status?: unknown}).status === "pending")
+          .sort((a, b) => millis((b as {createdAt?: unknown}).createdAt) - millis((a as {createdAt?: unknown}).createdAt))[0] ?? null
+      : null;
+
     return NextResponse.json({
       success: true,
       stories,
       ownPending: ownPending ? { id: ownPending.id, status: "pending" } : null,
     });
-  } catch (error) {
-    const code = error instanceof Error ? error.message : "";
-    const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : code === "STUDENT_NOT_FOUND" ? 404 : 500;
-    return NextResponse.json({ success: false, message: status === 500 ? "تعذر تحميل نبض الأكاديمية." : "تعذر التحقق من حساب الطالب." }, { status });
+  } catch {
+    return NextResponse.json({ success: false, message: "تعذر تحميل نبض الأكاديمية." }, { status: 500 });
   }
 }
 
