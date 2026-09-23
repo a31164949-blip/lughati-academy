@@ -5329,30 +5329,19 @@ try {
             }
           />
         </section>
-{/* تاج لغتي */}
+{/* تاج لغتي المختصر */}
 
 <section
   style={{
     ...cardStyle,
     border: "2px solid #edc84d",
     background:
-      "linear-gradient(135deg,#fff7c9 0%,#fffdf2 55%,#ffffff 100%)",
+      "linear-gradient(135deg,#fff8d2 0%,#fffdf5 70%,#ffffff 100%)",
+    padding: "18px",
     position: "relative",
     overflow: "hidden",
   }}
 >
-  <div
-    style={{
-      position: "absolute",
-      top: "12px",
-      left: "18px",
-      fontSize: "30px",
-      opacity: 0.35,
-    }}
-  >
-    ✨
-  </div>
-
   <div
     style={{
       display: "flex",
@@ -5360,28 +5349,31 @@ try {
       alignItems: "center",
       gap: "14px",
       flexWrap: "wrap",
-      marginBottom: "18px",
     }}
   >
     <div>
       <h2
         style={{
-          margin: "0 0 6px",
+          margin: "0 0 5px",
           color: "#805b00",
-          fontSize: "25px",
+          fontSize: "23px",
         }}
       >
-        👑 تاج لغتي
+        👑 {readingKingCount + spellingKingCount > 0
+          ? "تاج لغتي"
+          : "رحلتي نحو تاج لغتي"}
       </h2>
 
       <p
         style={{
           margin: 0,
-          color: "#7f7147",
+          color: "#76683d",
           lineHeight: 1.7,
         }}
       >
-        هنا أحتفظ بتيجاني وإنجازاتي في القراءة والإملاء.
+        {readingKingCount + spellingKingCount > 0
+          ? "إنجازاتي المعتمدة في القراءة والإملاء."
+          : "أتقن المهارة واجتز تقييم معلمي لأحصل على أول تاج."}
       </p>
     </div>
 
@@ -5389,267 +5381,123 @@ try {
       href="/lughati-crown"
       style={{
         textDecoration: "none",
-        padding: "10px 15px",
-        borderRadius: "14px",
+        padding: "10px 14px",
+        borderRadius: "13px",
         background: "#8a6500",
         color: "#ffffff",
         fontWeight: 900,
+        whiteSpace: "nowrap",
       }}
     >
-      شاهد تيجاني ←
+      {readingKingCount + spellingKingCount > 0
+        ? "شاهد تيجاني ←"
+        : "كيف أحصل على التاج؟ ←"}
     </Link>
   </div>
 
   {crownLoading ? (
     <div
       style={{
-        padding: "18px",
-        borderRadius: "18px",
-        background: "rgba(255,255,255,.65)",
+        marginTop: "12px",
+        padding: "12px",
+        borderRadius: "14px",
+        background: "rgba(255,255,255,.7)",
         textAlign: "center",
         color: "#8a783e",
         fontWeight: 800,
       }}
     >
-      ⏳ جارٍ تجهيز تيجاني...
+      ⏳ جارٍ تجهيز رحلة التاج...
     </div>
-  ) : (
-    <>
-      {latestCrownAssessment && (
-        <div
-          style={{
-            marginBottom: "14px",
-            padding: "16px",
-            borderRadius: "18px",
-            background: "#ffffff",
-            border: "2px solid #d9e9df",
-            boxShadow:
-              "0 7px 18px rgba(24,108,70,.06)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "10px",
-              flexWrap: "wrap",
-              marginBottom: "9px",
-            }}
-          >
-            <strong
-              style={{
-                color: "#176c46",
-                fontSize: "17px",
-              }}
-            >
-              📘 آخر تقييم من معلمي
-            </strong>
-
-            <span
-              style={{
-                padding: "6px 10px",
-                borderRadius: "999px",
-                background: "#fff6cf",
-                color: "#8a6500",
-                fontWeight: 900,
-              }}
-            >
-              {latestCrownAssessment.title}
-            </span>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit,minmax(145px,1fr))",
-              gap: "9px",
-              color: "#5f6f67",
-              fontWeight: 700,
-              lineHeight: 1.7,
-            }}
-          >
-            <span>
-              📚 الدرس: {latestCrownAssessment.lessonName || "—"}
-            </span>
-            <span>
-              📄 الصفحة: {latestCrownAssessment.pageNumber || "—"}
-            </span>
-            <span>
-              ✅ أفضل نتيجة: {latestCrownAssessment.bestErrors} أخطاء
-            </span>
-            <span>
-              🔁 المحاولات: {latestCrownAssessment.attemptCount}
-            </span>
-          </div>
-        </div>
-      )}
+  ) : readingKingCount + spellingKingCount === 0 ? (
+    <div
+      style={{
+        marginTop: "14px",
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit,minmax(180px,1fr))",
+        gap: "10px",
+      }}
+    >
+      <div
+        style={{
+          ...crownStatStyle,
+          padding: "12px",
+          gridTemplateColumns: "auto 1fr",
+          alignItems: "center",
+          textAlign: "right",
+        }}
+      >
+        <span style={{ fontSize: "27px" }}>📖👑</span>
+        <span>
+          <strong style={{ display: "block" }}>تاج القراءة</strong>
+          <small>بانتظار تقييم القراءة</small>
+        </span>
+      </div>
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(150px,1fr))",
-          gap: "11px",
+          ...crownStatStyle,
+          padding: "12px",
+          gridTemplateColumns: "auto 1fr",
+          alignItems: "center",
+          textAlign: "right",
         }}
       >
-        <div style={crownStatStyle}>
-          <span
-            style={{
-              fontSize: "29px",
-            }}
-          >
-            📖👑
-          </span>
-
-          <strong>
-            {readingKingCount}
-          </strong>
-
-          <small>
-            تاج قراءة
-          </small>
+        <span style={{ fontSize: "27px" }}>✍️👑</span>
+        <span>
+          <strong style={{ display: "block" }}>تاج الإملاء</strong>
+          <small>بانتظار تقييم الإملاء</small>
+        </span>
+      </div>
+    </div>
+  ) : (
+    <>
+      <div
+        style={{
+          marginTop: "14px",
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(135px,1fr))",
+          gap: "10px",
+        }}
+      >
+        <div style={{ ...crownStatStyle, padding: "11px" }}>
+          <span style={{ fontSize: "25px" }}>📖👑</span>
+          <strong>{readingKingCount}</strong>
+          <small>تاج قراءة</small>
         </div>
 
-        <div style={crownStatStyle}>
-          <span
-            style={{
-              fontSize: "29px",
-            }}
-          >
-            ✍️👑
-          </span>
-
-          <strong>
-            {spellingKingCount}
-          </strong>
-
-          <small>
-            تاج إملاء
-          </small>
+        <div style={{ ...crownStatStyle, padding: "11px" }}>
+          <span style={{ fontSize: "25px" }}>✍️👑</span>
+          <strong>{spellingKingCount}</strong>
+          <small>تاج إملاء</small>
         </div>
 
-        <div style={crownStatStyle}>
-          <span
-            style={{
-              fontSize: "29px",
-            }}
-          >
-            💎
-          </span>
-
-          <strong>
-            {masteryCount}
-          </strong>
-
-          <small>
-            إتقان كامل
-          </small>
-        </div>
+        {masteryCount > 0 && (
+          <div style={{ ...crownStatStyle, padding: "11px" }}>
+            <span style={{ fontSize: "25px" }}>💎</span>
+            <strong>{masteryCount}</strong>
+            <small>إتقان كامل</small>
+          </div>
+        )}
       </div>
 
-      {latestCrownAchievement ? (
+      {latestCrownAchievement && (
         <div
           style={{
-            marginTop: "14px",
-            padding: "15px",
-            borderRadius: "18px",
-            background: "#ffffff",
-            border: "1px solid #edd88a",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              display: "grid",
-              placeItems: "center",
-              overflow: "hidden",
-              background: "#fff8d9",
-              border: "2px solid #e6bf3d",
-              fontSize: "31px",
-              flexShrink: 0,
-            }}
-          >
-            {latestCrownAchievement.personalPhotoUrl ? (
-              <img
-                src={
-                  latestCrownAchievement.personalPhotoUrl
-                }
-                alt=""
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
-            ) : (
-              <span>
-                {latestCrownAchievement.selectedAvatarIcon ||
-                  selectedAvatarIcon}
-              </span>
-            )}
-          </div>
-
-          <div>
-            <div
-              style={{
-                color: "#8a6500",
-                fontWeight: 900,
-                fontSize: "17px",
-              }}
-            >
-              {
-                latestCrownAchievement.kingTitle
-              }
-            </div>
-
-            <div
-              style={{
-                marginTop: "4px",
-                color: "#6c705f",
-                fontSize: "14px",
-                fontWeight: 700,
-              }}
-            >
-              في درس:{" "}
-              {
-                latestCrownAchievement.lessonName
-              }
-            </div>
-
-            {latestCrownAchievement.fullMastery && (
-              <div
-                style={{
-                  marginTop: "5px",
-                  color: "#16724d",
-                  fontSize: "13px",
-                  fontWeight: 900,
-                }}
-              >
-                💎 إتقان كامل للدرس
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div
-          style={{
-            marginTop: "14px",
-            padding: "15px",
-            textAlign: "center",
-            borderRadius: "18px",
-            background: "rgba(255,255,255,.6)",
-            color: "#8b7a46",
+            marginTop: "10px",
+            padding: "10px 13px",
+            borderRadius: "14px",
+            background: "rgba(255,255,255,.76)",
+            color: "#6c5a20",
             fontWeight: 800,
           }}
         >
-          🌱 ابدأ رحلتك نحو أول تاج في القراءة أو الإملاء.
+          ⭐ آخر إنجاز: {latestCrownAchievement.kingTitle}
+          {latestCrownAchievement.lessonName
+            ? ` — ${latestCrownAchievement.lessonName}`
+            : ""}
         </div>
       )}
     </>
