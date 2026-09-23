@@ -40,6 +40,9 @@ type StudentOption = {
   classroom: string;
   active: boolean;
   archived: boolean;
+  accountActivated: boolean;
+  loginCount: number;
+  lastLoginAt: Date | null;
 };
 
 export default function TeacherStudentMessagesPage() {
@@ -108,6 +111,53 @@ export default function TeacherStudentMessagesPage() {
       ),
     [selectedClassroom, students]
   );
+
+  const INACTIVE_DAYS = 3;
+  const inactiveThreshold =
+    Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
+
+  const inactiveStudents = useMemo(
+    () =>
+      students
+        .filter(
+          (student) =>
+            student.accountActivated &&
+            student.loginCount > 0 &&
+            Boolean(student.lastLoginAt) &&
+            (student.lastLoginAt?.getTime() ?? 0) < inactiveThreshold
+        )
+        .sort(
+          (first, second) =>
+            (first.lastLoginAt?.getTime() ?? 0) -
+            (second.lastLoginAt?.getTime() ?? 0)
+        ),
+    [students, inactiveThreshold]
+  );
+
+  function getInactiveDays(student: StudentOption) {
+    if (!student.lastLoginAt) return INACTIVE_DAYS;
+    return Math.max(
+      INACTIVE_DAYS,
+      Math.floor(
+        (Date.now() - student.lastLoginAt.getTime()) /
+          (24 * 60 * 60 * 1000)
+      )
+    );
+  }
+
+  function prepareReturnMessage(student: StudentOption) {
+    setSelectedClassroom(student.classroom);
+    setSelectedStudentId(student.id);
+    setDirectSubject("أكاديمية لغتي تشتاق لعودتك 🌟");
+    setDirectBody(
+      `يا بطل ${student.studentName} 🌟 اشتقنا لوجودك في أكاديمية لغتي! لاحظنا أنك لم تدخل منذ عدة أيام، وهناك تحديات ونقاط ومفاجآت جميلة بانتظار عودتك. عد إلينا اليوم، وواصل رحلتك نحو التميز 🚀📚\n\nأكاديمية لغتي الرقمية — نتعلّم، نقرأ، نبدع.`
+    );
+    setDirectMessageOpen(true);
+    setFeedback(
+      `✉️ تم تجهيز رسالة العودة للطالب ${student.studentName}؛ راجعها ثم اضغط إرسال.`
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function fetchMessages() {
   const q = query(
@@ -210,6 +260,16 @@ useEffect(() => {
                 : "غير محدد",
             active: data.active !== false,
             archived: data.archived === true,
+            accountActivated:
+              data.accountActivated === true,
+            loginCount:
+              typeof data.loginCount === "number"
+                ? data.loginCount
+                : 0,
+            lastLoginAt:
+              data.lastLoginAt?.toDate
+                ? data.lastLoginAt.toDate()
+                : null,
           };
         })
         .filter(
@@ -732,7 +792,7 @@ useEffect(() => {
 
         {/* الملخص */}
 
-        <section className="mb-6 grid gap-4 sm:grid-cols-2">
+        <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow">
             <div className="text-sm font-black text-slate-500">
               📨 جميع الرسائل
@@ -752,6 +812,67 @@ useEffect(() => {
               {newMessagesCount}
             </div>
           </div>
+
+          <div className="rounded-3xl border border-rose-100 bg-white p-5 shadow">
+            <div className="text-sm font-black text-slate-500">
+              🕒 منقطعون 3 أيام فأكثر
+            </div>
+
+            <div className="mt-2 text-3xl font-black text-rose-600">
+              {inactiveStudents.length}
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-3xl border-2 border-rose-100 bg-white p-6 shadow-xl">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="m-0 text-2xl font-black text-slate-800">
+                💌 رسائل العودة للأكاديمية
+              </h2>
+              <p className="mb-0 mt-2 font-bold text-slate-500">
+                الحسابات التي لم تدخل منذ {INACTIVE_DAYS} أيام فأكثر.
+              </p>
+            </div>
+            <span className="rounded-full bg-rose-100 px-4 py-2 font-black text-rose-700">
+              {inactiveStudents.length} طالبًا
+            </span>
+          </div>
+
+          {studentsLoading ? (
+            <p className="m-0 rounded-2xl bg-slate-50 p-4 text-center font-bold text-slate-500">
+              ⏳ جاري فحص نشاط الحسابات...
+            </p>
+          ) : inactiveStudents.length === 0 ? (
+            <p className="m-0 rounded-2xl bg-emerald-50 p-4 text-center font-black text-emerald-700">
+              ✅ جميع الطلاب المتابعين دخلوا خلال آخر ثلاثة أيام.
+            </p>
+          ) : (
+            <div className="grid gap-3">
+              {inactiveStudents.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-rose-50/50 p-4"
+                >
+                  <div>
+                    <div className="font-black text-slate-800">
+                      👤 {student.studentName}
+                    </div>
+                    <div className="mt-1 text-sm font-bold text-slate-500">
+                      {student.classroom} — منقطع منذ {getInactiveDays(student)} أيام
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => prepareReturnMessage(student)}
+                    className="rounded-2xl bg-rose-600 px-5 py-3 font-black text-white shadow transition hover:bg-rose-500"
+                  >
+                    💌 تجهيز رسالة العودة
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {feedback && (
