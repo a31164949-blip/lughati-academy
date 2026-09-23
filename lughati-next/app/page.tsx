@@ -3716,14 +3716,29 @@ useEffect(() => {
       style={{
         position: "relative",
         zIndex: 2,
-        padding: "9px 0 2px",
-        color: "#6f7f76",
-        fontSize: "13px",
-        fontWeight: 700,
+        display: "grid",
+        gap: "11px",
+        marginTop: "12px",
       }}
     >
-      🌟 قريبًا نحتفي هنا بأبطال
-      هذا الأسبوع.
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "10px" }}>
+        {[
+          { icon: "🥇", title: "نجم الإنجاز", text: "لمن يُكمل مهامه بإتقان", color: "#fff8dc", border: "#eed57b" },
+          { icon: "🌱", title: "نجم التطور", text: "لمن يصنع تقدمًا ملحوظًا", color: "#eefbf3", border: "#a8dfbf" },
+          { icon: "⭐", title: "نجم الالتزام", text: "للمواظب والمبادر دائمًا", color: "#eef5ff", border: "#b9d2f5" },
+        ].map((item) => (
+          <div key={item.title} style={{ padding: "12px 14px", borderRadius: "16px", background: item.color, border: `1px solid ${item.border}`, display: "flex", alignItems: "center", gap: "11px" }}>
+            <span style={{ width: "42px", height: "42px", borderRadius: "13px", background: "#fff", display: "grid", placeItems: "center", fontSize: "23px", flexShrink: 0 }}>{item.icon}</span>
+            <span>
+              <strong style={{ display: "block", color: "#176c46", fontSize: "14px" }}>{item.title}</strong>
+              <small style={{ color: "#64748b", fontWeight: 700 }}>{item.text}</small>
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: "9px 12px", borderRadius: "13px", background: "#176c46", color: "#fff", textAlign: "center", fontSize: "12px", fontWeight: 900 }}>
+        🕛 تُعلن أسماء أبطال الأسبوع كل خميس الساعة 12 ظهرًا
+      </div>
     </div>
   )}
 </section>
