@@ -6462,14 +6462,6 @@ const headerButtonStyle = {
   cursor: "pointer",
 };
 
-const rewardCardStyle = {
-  background:
-    "linear-gradient(135deg, #fff8d8, #fffdf1)",
-  border: "2px solid #f6da66",
-  borderRadius: "24px",
-  padding: "20px",
-};
-
 const streakCardStyle = {
   background:
     "linear-gradient(135deg, #ffece8, #fff8f5)",
