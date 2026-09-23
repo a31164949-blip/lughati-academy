@@ -629,6 +629,117 @@ export async function GET(
           first - second
       );
 
+    /*
+     * سلسلة الإنجاز:
+     * يُحتسب اليوم مرة واحدة فقط عندما يجتمع
+     * دخول الطالب اليوم مع إنجاز فعلي اليوم.
+     */
+    const hasLoggedInToday =
+      getFirestoreDateKey(studentData.lastLoginAt) === dateKey;
+
+    const hasAchievementToday =
+      completedTaskIds.length > 0 ||
+      hasApprovedHomeworkToday ||
+      currentWeekApprovedDates.includes(dateKey);
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = getSaudiDateKey(yesterday);
+
+    const storedJourney =
+      studentData.journey &&
+      typeof studentData.journey === "object"
+        ? (studentData.journey as Record<string, unknown>)
+        : {};
+
+    let journeyStreak =
+      typeof storedJourney.streak === "number"
+        ? Math.max(0, Math.round(storedJourney.streak))
+        : 0;
+
+    const storedLastCompletedDate =
+      typeof storedJourney.lastCompletedDate === "string"
+        ? storedJourney.lastCompletedDate
+        : "";
+
+    if (hasLoggedInToday && hasAchievementToday) {
+      const streakMarkerRef =
+        adminDb
+          .collection("dailyCompletions")
+          .doc(`${studentDocId}_${dateKey}_streak`);
+
+      journeyStreak = await adminDb.runTransaction(
+        async (transaction) => {
+          const [freshStudentSnapshot, markerSnapshot] =
+            await Promise.all([
+              transaction.get(studentRef),
+              transaction.get(streakMarkerRef),
+            ]);
+
+          const freshData =
+            freshStudentSnapshot.data() ?? {};
+
+          const freshJourney =
+            freshData.journey &&
+            typeof freshData.journey === "object"
+              ? (freshData.journey as Record<string, unknown>)
+              : {};
+
+          const currentStreak =
+            typeof freshJourney.streak === "number"
+              ? Math.max(0, Math.round(freshJourney.streak))
+              : 0;
+
+          const lastCompletedDate =
+            typeof freshJourney.lastCompletedDate === "string"
+              ? freshJourney.lastCompletedDate
+              : "";
+
+          if (
+            markerSnapshot.exists ||
+            lastCompletedDate === dateKey
+          ) {
+            if (!markerSnapshot.exists) {
+              transaction.set(streakMarkerRef, {
+                studentId: studentDocId,
+                date: dateKey,
+                type: "achievement-streak",
+                createdAt: FieldValue.serverTimestamp(),
+              });
+            }
+
+            return currentStreak;
+          }
+
+          const nextStreak =
+            lastCompletedDate === yesterdayKey
+              ? currentStreak + 1
+              : 1;
+
+          transaction.set(streakMarkerRef, {
+            studentId: studentDocId,
+            date: dateKey,
+            type: "achievement-streak",
+            createdAt: FieldValue.serverTimestamp(),
+          });
+
+          transaction.update(studentRef, {
+            "journey.streak": nextStreak,
+            "journey.lastCompletedDate": dateKey,
+            "journey.lastAchievementAt":
+              FieldValue.serverTimestamp(),
+          });
+
+          return nextStreak;
+        }
+      );
+    } else if (
+      storedLastCompletedDate &&
+      storedLastCompletedDate < yesterdayKey
+    ) {
+      journeyStreak = 0;
+    }
+
     const spellingHistory = Array.isArray(studentData.spellingHistory)
       ? studentData.spellingHistory
           .filter(
@@ -688,12 +799,7 @@ export async function GET(
           ? studentData.stars
           : 0,
 
-      streak:
-        typeof studentData?.journey
-          ?.streak === "number"
-          ? studentData.journey
-              .streak
-          : 0,
+      streak: journeyStreak,
 
      readingDays:
   typeof readingProgressData
@@ -1064,6 +1170,43 @@ export async function POST(
                   .journey.streak
               : 0;
 
+          const lastLoginDate =
+            getFirestoreDateKey(
+              studentData.lastLoginAt
+            );
+
+          const lastCompletedDate =
+            typeof studentData
+              ?.journey
+              ?.lastCompletedDate ===
+            "string"
+              ? studentData
+                  .journey
+                  .lastCompletedDate
+              : "";
+
+          const yesterday =
+            new Date();
+
+          yesterday.setDate(
+            yesterday.getDate() - 1
+          );
+
+          const yesterdayKey =
+            getSaudiDateKey(yesterday);
+
+          const advanceStreak =
+            lastLoginDate === dateKey &&
+            lastCompletedDate !== dateKey;
+
+          if (advanceStreak) {
+            resultingStreak =
+              lastCompletedDate ===
+              yesterdayKey
+                ? resultingStreak + 1
+                : 1;
+          }
+
           transaction.set(
             selectedCompletionRef,
             {
@@ -1083,48 +1226,6 @@ export async function POST(
           );
 
           if (grantDailyBonus) {
-            const currentStreak =
-              typeof studentData
-                ?.journey
-                ?.streak ===
-              "number"
-                ? studentData
-                    .journey
-                    .streak
-                : 0;
-
-            const lastCompletedDate =
-              typeof studentData
-                ?.journey
-                ?.lastCompletedDate ===
-              "string"
-                ? studentData
-                    .journey
-                    .lastCompletedDate
-                : "";
-
-            const yesterday =
-              new Date();
-
-            yesterday.setDate(
-              yesterday.getDate() -
-                1
-            );
-
-            const yesterdayKey =
-              getSaudiDateKey(
-                yesterday
-              );
-
-            const newStreak =
-              lastCompletedDate ===
-              yesterdayKey
-                ? currentStreak + 1
-                : 1;
-
-            resultingStreak =
-              newStreak;
-
             transaction.set(
               bonusRef,
               {
@@ -1140,15 +1241,6 @@ export async function POST(
               }
             );
 
-            transaction.update(
-              studentRef,
-              {
-                "journey.streak":
-                  newStreak,
-                "journey.lastCompletedDate":
-                  dateKey,
-              }
-            );
           }
 
           const historyEntries:
@@ -1196,6 +1288,17 @@ export async function POST(
               updatedAt:
                 FieldValue.serverTimestamp(),
             };
+
+          if (advanceStreak) {
+            studentUpdate["journey.streak"] =
+              resultingStreak;
+            studentUpdate[
+              "journey.lastCompletedDate"
+            ] = dateKey;
+            studentUpdate[
+              "journey.lastAchievementAt"
+            ] = FieldValue.serverTimestamp();
+          }
 
           if (
             addedStars > 0
