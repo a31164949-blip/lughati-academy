@@ -153,7 +153,7 @@ export default function AcademyStories() {
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 13, overflowX: "auto", padding: stories.length === 0 ? "8px 2px 0" : "15px 2px 3px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 13, overflowX: "auto", overflowY: "hidden", padding: stories.length === 0 ? "8px 2px 0" : "15px 2px 5px", scrollbarWidth: "thin" }}>
         <button type="button" onClick={() => setUploadOpen(true)} style={circleButtonStyle}>
           <span style={{ ...circleStyle, width: stories.length === 0 ? 54 : 66, height: stories.length === 0 ? 54 : 66, border: "3px dashed #178b5a", background: "#edfbf3", fontSize: stories.length === 0 ? 24 : 28 }}>＋</span>
           <small style={{ fontWeight: 900, color: "#176c46" }}>أضف حالتك</small>
@@ -163,7 +163,7 @@ export default function AcademyStories() {
           <button key={story.id} type="button" onClick={() => openStory(index)} style={circleButtonStyle}>
             <span style={{ ...circleStyle, border: viewed.has(story.id) ? "3px solid #cbd5ce" : "3px solid #18a66a", padding: 3 }}>
               {story.mediaType === "image" ? (
-                <img src={story.mediaUrl} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                <img src={story.mediaUrl} alt="" style={{ display: "block", width: "100%", height: "100%", minWidth: 0, minHeight: 0, borderRadius: "50%", objectFit: "cover" }} />
               ) : (
                 <span style={{ fontSize: 26 }}>🎬</span>
               )}
@@ -231,7 +231,7 @@ export default function AcademyStories() {
 
 const wrapStyle = { background: "#fff", border: "1px solid #d7e9df", borderRadius: 24, padding: 17, marginBottom: 20, boxShadow: "0 8px 22px rgba(20,90,60,.06)" } as const;
 const circleButtonStyle = { border: 0, background: "transparent", display: "grid", justifyItems: "center", gap: 6, minWidth: 82, cursor: "pointer" } as const;
-const circleStyle = { width: 66, height: 66, borderRadius: "50%", display: "grid", placeItems: "center", boxSizing: "border-box" } as const;
+const circleStyle = { width: 66, height: 66, borderRadius: "50%", display: "grid", placeItems: "center", boxSizing: "border-box", overflow: "hidden", flexShrink: 0 } as const;
 const overlayStyle = { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(8,35,24,.75)", display: "grid", placeItems: "center", padding: 16 } as const;
 const modalStyle = { width: "min(470px,94vw)", background: "#fff", borderRadius: 24, padding: 20, position: "relative", boxSizing: "border-box" } as const;
 const closeStyle = { border: 0, borderRadius: "50%", width: 38, height: 38, fontSize: 28, lineHeight: 1, cursor: "pointer", background: "#edf4f0", color: "#17352a" } as const;
