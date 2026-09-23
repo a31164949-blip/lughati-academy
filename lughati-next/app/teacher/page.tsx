@@ -44,6 +44,12 @@ function getNotificationTime(value: unknown) {
 
 const sections = [
   {
+    title: "✨ إدارة نبض الأكاديمية",
+    description:
+      "مراجعة حالات الطلاب والموافقة على الصور والمقاطع قبل ظهورها.",
+    href: "/teacher/academy-stories",
+  },
+  {
     title: "🔴 الدروس المباشرة",
     description:
       "إنشاء درس مباشر، تحديد الفصل والموعد، ومتابعة حضور الطلاب.",
