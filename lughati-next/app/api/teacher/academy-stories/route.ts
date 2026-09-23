@@ -15,6 +15,16 @@ async function requireTeacher(request: Request) {
   if (role !== "teacher" && role !== "admin" && email !== TEACHER_EMAIL) {
     throw new Error("FORBIDDEN");
   }
+  return decoded.uid;
+}
+
+function validCloudinaryUrl(value: string, mediaType: "image" | "video") {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "res.cloudinary.com" && url.pathname.includes(`/${mediaType}/upload/`);
+  } catch {
+    return false;
+  }
 }
 
 function millis(value: unknown) {
@@ -51,6 +61,54 @@ export async function GET(request: Request) {
     const code = error instanceof Error ? error.message : "";
     const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : 500;
     return NextResponse.json({ success: false, message: status === 500 ? "تعذر تحميل الحالات." : "غير مصرح بالدخول." }, { status });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const teacherUid = await requireTeacher(request);
+    const body = await request.json();
+    const mediaType = body?.mediaType === "video" ? "video" : "image";
+    const mediaUrl = typeof body?.mediaUrl === "string" ? body.mediaUrl.trim() : "";
+    const publicId = typeof body?.publicId === "string" ? body.publicId.trim().slice(0, 300) : "";
+    const caption = typeof body?.caption === "string" ? body.caption.trim().slice(0, 120) : "";
+    const duration = typeof body?.duration === "number" ? body.duration : 0;
+    const durationHours = [24, 48, 72].includes(Number(body?.durationHours)) ? Number(body.durationHours) : 24;
+
+    if (!validCloudinaryUrl(mediaUrl, mediaType)) {
+      return NextResponse.json({ success: false, message: "رابط الملف غير صالح." }, { status: 400 });
+    }
+    if (mediaType === "video" && (duration <= 0 || duration > 30)) {
+      return NextResponse.json({ success: false, message: "يجب ألا يتجاوز الفيديو 30 ثانية." }, { status: 400 });
+    }
+
+    const { adminDb } = getFirebaseAdmin();
+    const now = new Date();
+    const reference = await adminDb.collection("academyStories").add({
+      studentId: "",
+      studentName: "أكاديمية لغتي",
+      classroom: "",
+      authorType: "teacher",
+      mediaType,
+      mediaUrl,
+      publicId,
+      caption,
+      duration: mediaType === "video" ? duration : null,
+      status: "approved",
+      approved: true,
+      createdBy: teacherUid,
+      createdAt: FieldValue.serverTimestamp(),
+      approvedAt: FieldValue.serverTimestamp(),
+      reviewedAt: FieldValue.serverTimestamp(),
+      durationHours,
+      expiresAt: Timestamp.fromDate(new Date(now.getTime() + durationHours * 60 * 60 * 1000)),
+    });
+
+    return NextResponse.json({ success: true, id: reference.id, message: "تم نشر حالة الأكاديمية مباشرة ✅" });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : 500;
+    return NextResponse.json({ success: false, message: status === 500 ? "تعذر نشر الحالة." : "غير مصرح بالدخول." }, { status });
   }
 }
 
