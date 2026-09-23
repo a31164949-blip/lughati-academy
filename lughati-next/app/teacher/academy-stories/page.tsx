@@ -16,11 +16,19 @@ type StoryItem = {
   expiresAt: number;
 };
 
+const CLOUD_NAME = "ffv5igmg";
+const UPLOAD_PRESET = "lughati_homework_upload";
+
 export default function TeacherAcademyStoriesPage() {
   const [items, setItems] = useState<StoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
   const [message, setMessage] = useState("");
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [file, setFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState("");
+  const [durationHours, setDurationHours] = useState("24");
+  const [publishing, setPublishing] = useState(false);
 
   async function load() {
     const user = auth.currentUser;
@@ -40,6 +48,70 @@ export default function TeacherAcademyStoriesPage() {
     if (user) void load();
     else setLoading(false);
   }), []);
+
+  async function getVideoDuration(selected: File) {
+    return new Promise<number>((resolve, reject) => {
+      const video = document.createElement("video");
+      const url = URL.createObjectURL(selected);
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        const duration = video.duration;
+        URL.revokeObjectURL(url);
+        resolve(duration);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("تعذر قراءة مدة الفيديو."));
+      };
+      video.src = url;
+    });
+  }
+
+  async function publishAcademyStory() {
+    const user = auth.currentUser;
+    if (!user || !file || publishing) return;
+    setPublishing(true);
+    setMessage("");
+    try {
+      if (file.size > 30 * 1024 * 1024) throw new Error("حجم الملف كبير؛ الحد الأقصى 30 ميجابايت.");
+      const duration = mediaType === "video" ? await getVideoDuration(file) : 0;
+      if (mediaType === "video" && duration > 30) throw new Error("اختر فيديو مدته 30 ثانية أو أقل.");
+
+      const form = new FormData();
+      form.append("file", file);
+      form.append("upload_preset", UPLOAD_PRESET);
+      const upload = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${mediaType}/upload`, {
+        method: "POST",
+        body: form,
+      });
+      const uploaded = await upload.json();
+      if (!upload.ok || !uploaded.secure_url) throw new Error("تعذر رفع الملف.");
+
+      const token = await user.getIdToken();
+      const response = await fetch("/api/teacher/academy-stories", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mediaType,
+          mediaUrl: uploaded.secure_url,
+          publicId: uploaded.public_id || "",
+          duration,
+          caption,
+          durationHours: Number(durationHours),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.message || "تعذر نشر الحالة.");
+      setMessage(body.message);
+      setFile(null);
+      setCaption("");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "تعذر نشر الحالة.");
+    } finally {
+      setPublishing(false);
+    }
+  }
 
   async function review(id: string, action: "approve" | "reject", durationHours = 24) {
     const user = auth.currentUser;
@@ -77,6 +149,36 @@ export default function TeacherAcademyStoriesPage() {
         </header>
 
         {message && <div style={{ marginBottom: 15, padding: 12, borderRadius: 14, background: "#fff5cf", color: "#7b5900", fontWeight: 900 }}>{message}</div>}
+
+        <section style={{ ...sectionStyle, border: "2px solid #efc84a", background: "linear-gradient(135deg,#fffaf0,#ffffff)" }}>
+          <h2 style={{ marginTop: 0, color: "#176c46" }}>📣 نشر حالة الأكاديمية</h2>
+          <p style={{ color: "#65766d", lineHeight: 1.8 }}>انشر صورة أو فيديو رسميًا باسم «أكاديمية لغتي» مباشرة لجميع الطلاب.</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            {(["image", "video"] as const).map((type) => (
+              <button key={type} type="button" onClick={() => { setMediaType(type); setFile(null); }} style={{ ...secondaryButtonStyle, background: mediaType === type ? "#176c46" : "#fff", color: mediaType === type ? "#fff" : "#176c46" }}>
+                {type === "image" ? "🖼️ صورة" : "🎬 فيديو قصير"}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(150px,1fr)", gap: 12 }}>
+            <label style={{ display: "grid", gap: 7, fontWeight: 900 }}>
+              اختر الملف
+              <input type="file" accept={mediaType === "image" ? "image/*" : "video/*"} onChange={(event) => setFile(event.target.files?.[0] || null)} style={{ padding: 11, border: "1px solid #bdd8ca", borderRadius: 12, background: "#fff" }} />
+            </label>
+            <label style={{ display: "grid", gap: 7, fontWeight: 900 }}>
+              مدة العرض
+              <select value={durationHours} onChange={(event) => setDurationHours(event.target.value)} style={{ padding: 11, border: "1px solid #bdd8ca", borderRadius: 12, background: "#fff", font: "inherit" }}>
+                <option value="24">24 ساعة</option>
+                <option value="48">48 ساعة</option>
+                <option value="72">72 ساعة</option>
+              </select>
+            </label>
+          </div>
+          <textarea value={caption} onChange={(event) => setCaption(event.target.value.slice(0, 120))} placeholder="اكتب عبارة قصيرة للحالة — اختياري" style={{ width: "100%", minHeight: 76, boxSizing: "border-box", marginTop: 12, borderRadius: 12, border: "1px solid #bdd8ca", padding: 11, resize: "vertical", font: "inherit" }} />
+          <button type="button" disabled={!file || publishing} onClick={() => void publishAcademyStory()} style={{ ...buttonStyle, width: "100%", marginTop: 12, padding: 13, background: !file || publishing ? "#aebbb4" : "#176c46" }}>
+            {publishing ? "جارٍ رفع الحالة ونشرها..." : "🚀 نشر الحالة مباشرة"}
+          </button>
+        </section>
 
         <section style={sectionStyle}>
           <h2 style={{ marginTop: 0 }}>⏳ بانتظار المراجعة ({pending.length})</h2>
