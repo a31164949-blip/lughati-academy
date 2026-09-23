@@ -43,10 +43,9 @@ export default function AcademyStories() {
 
   async function load() {
     const user = auth.currentUser;
-    if (!user) return;
-    const token = await user.getIdToken();
+    const token = user ? await user.getIdToken() : "";
     const response = await fetch("/api/academy-stories", {
-      headers: { Authorization: `Bearer ${token}` },
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       cache: "no-store",
     });
     const body = (await response.json()) as StoriesData;
@@ -55,8 +54,8 @@ export default function AcademyStories() {
 
   useEffect(() => {
     setViewed(readViewed());
-    return onAuthStateChanged(auth, (user) => {
-      if (user) void load();
+    return onAuthStateChanged(auth, () => {
+      void load();
     });
   }, []);
 
