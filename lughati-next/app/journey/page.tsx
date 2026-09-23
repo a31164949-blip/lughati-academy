@@ -149,27 +149,19 @@ const journeyCards = [
 const dailyTasks = [
   {
     id: 1,
-    title: "قراءة درس اليوم",
-    reward: "نجمتان",
-    icon: "📖",
-    actionLabel: "تمت القراءة",
-    href: "",
+    title: "سجّل دقيقة قراءة بصوتك",
+    reward: "إنجاز موثّق بعد اعتماد المعلم",
+    icon: "🎙️",
+    actionLabel: "ابدأ التسجيل",
+    href: "/reading-journey",
   },
   {
     id: 2,
-    title: "حل الواجب اليومي",
+    title: "أنجز واجب اليوم وارفع الإثبات",
     reward: "+3 نقاط بعد اعتماد المعلم",
     icon: "✏️",
     actionLabel: "📎 أرفق واجبك",
     href: "/homeworks",
-  },
-  {
-    id: 4,
-    title: "مراجعة كلمات الإملاء",
-    reward: "مهمة تدريبية دون نقاط مباشرة",
-    icon: "🔤",
-    actionLabel: "تمت المراجعة",
-    href: "",
   },
 ];
 
@@ -2012,6 +2004,22 @@ try {
     taskId: number,
     completed: boolean
   ) {
+    if (taskId === 1) {
+      return completed
+        ? {
+            label: "✅ قراءة معتمدة",
+            background: "#dcfce7",
+            color: "#08734b",
+            disabled: true,
+          }
+        : {
+            label: "🎙️ سجّل قراءتك",
+            background: "#eef8ff",
+            color: "#185b89",
+            disabled: false,
+          };
+    }
+
     if (taskId === 2) {
       if (
         homeworkStatus ===
@@ -5948,52 +5956,6 @@ try {
         >
           <WeeklyRewardWheel />
 
-          <div
-            style={
-              streakCardStyle
-            }
-          >
-            <div
-              style={{
-                fontSize: "36px",
-                marginBottom: "8px",
-              }}
-            >
-              🔥
-            </div>
-
-            <h3
-              style={{
-                margin: "0 0 8px",
-                color: "#a34025",
-              }}
-            >
-              سلسلة الإنجاز
-            </h3>
-
-            <p
-              style={{
-                margin: 0,
-                lineHeight: 1.8,
-                color: "#795044",
-              }}
-            >
-              {streak > 0 ? (
-                <>
-                  أنت مستمر منذ{" "}
-                  <strong>
-                    {streak} أيام
-                  </strong>
-                  . واصل تألقك يا بطل!
-                </>
-              ) : (
-                <>
-                  ابدأ اليوم أول خطوة
-                  في سلسلة إنجازك 🔥
-                </>
-              )}
-            </p>
-          </div>
         </section>
 
         {/* مستواي في قمة الطلاقة */}
@@ -6460,14 +6422,6 @@ const headerButtonStyle = {
     "0 5px 12px rgba(0,0,0,0.12)",
   border: "none",
   cursor: "pointer",
-};
-
-const streakCardStyle = {
-  background:
-    "linear-gradient(135deg, #ffece8, #fff8f5)",
-  border: "2px solid #ffbcae",
-  borderRadius: "24px",
-  padding: "20px",
 };
 
 const studentLevelCardStyle = {
