@@ -51,9 +51,9 @@ type AcademyHero = {
   photoConsent: boolean;
   published: boolean;
   weeklyTrack:
-    | "achievement"
-    | "progress"
-    | "commitment";
+    | "classHero"
+    | "academyAchievement"
+    | "academyProgress";
 };
 type DayMessage = {
   show: boolean;
@@ -756,7 +756,6 @@ useEffect(() => {
 
       if (cached) {
         applyBoardData(cached);
-        return;
       }
 
       const response = await fetch(
@@ -1093,9 +1092,9 @@ useEffect(() => {
   const weeklyHeroes =
   [...heroes].sort((a, b) => {
     const order = {
-      achievement: 0,
-      progress: 1,
-      commitment: 2,
+      classHero: 0,
+      academyAchievement: 1,
+      academyProgress: 2,
     };
 
     return (
@@ -3516,7 +3515,7 @@ useEffect(() => {
         .map((hero) => {
           const track =
             hero.weeklyTrack ===
-            "achievement"
+            "academyAchievement"
               ? {
                   icon: "🥇",
                   label:
@@ -3529,7 +3528,7 @@ useEffect(() => {
                     "#8a6700",
                 }
               : hero.weeklyTrack ===
-                "progress"
+                "academyProgress"
               ? {
                   icon: "🌱",
                   label:
@@ -3542,9 +3541,9 @@ useEffect(() => {
                     "#15803d",
                 }
               : {
-                  icon: "⭐",
+                  icon: "🏫",
                   label:
-                    "الأكثر التزامًا",
+                    "بطل الفصل",
                   background:
                     "#eff6ff",
                   border:
