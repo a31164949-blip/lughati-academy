@@ -50,9 +50,9 @@ type PublicAcademyHero = {
   photoConsent: boolean;
   published: boolean;
   weeklyTrack:
-    | "achievement"
-    | "progress"
-    | "commitment";
+    | "classHero"
+    | "academyAchievement"
+    | "academyProgress";
 };
 
 type PublicAcademyBoardPayload = {
@@ -71,7 +71,7 @@ const defaultAcademyBoardSettings: PublicAcademyBoardSettings = {
     "🌟 كل إنجاز جديد يكتب اسمًا جديدًا في تاريخ أكاديمية لغتي",
 };
 
-const CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 1000;
 
 let cachedPayload: PublicAcademyBoardPayload | null = null;
 let cachedAt = 0;
@@ -111,7 +111,7 @@ function jsonWithCache(
     headers: {
       // اللوحة عامة؛ يسمح هذا لكاش CDN بتقليل استدعاءات الـ API في الإنتاج.
       "Cache-Control":
-        "public, s-maxage=1800, stale-while-revalidate=300",
+        "public, s-maxage=60, stale-while-revalidate=60",
       "X-Academy-Board-Cache": cacheState,
     },
   });
@@ -133,11 +133,10 @@ export async function GET() {
   try {
     const { adminDb } = getFirebaseAdmin();
 
-    // لوحة الصفحة الرئيسية أصبحت مخصصة للإعلانات المهمة فقط.
-    // لذلك نقرأ الإعدادات وشرائح اللوحة فقط، ولا نقرأ الإنجازات أو الأبطال هنا.
     const [
       settingsSnapshot,
       slidesSnapshot,
+      heroesSnapshot,
     ] = await Promise.all([
       adminDb
         .collection("academyBoardSettings")
@@ -146,6 +145,11 @@ export async function GET() {
 
       adminDb
         .collection("academyBoardSlides")
+        .get(),
+
+      // قراءة واحدة خفيفة للأبطال المنشورين بدل قراءة سجلات الطلاب.
+      adminDb
+        .collection("academyHeroes")
         .get(),
     ]);
 
@@ -265,10 +269,59 @@ export async function GET() {
             first.createdAtMilliseconds
         );
 
-    // أبقينا الحقلين في الاستجابة للتوافق مع الصفحة الحالية،
-    // لكن دون أي قراءة إضافية من Firestore.
     const milestones: PublicAcademyMilestone[] = [];
-    const heroes: PublicAcademyHero[] = [];
+    const heroes: PublicAcademyHero[] =
+      heroesSnapshot.docs
+        .map((document) => {
+          const data = document.data() ?? {};
+          const weeklyTrack:
+            PublicAcademyHero["weeklyTrack"] =
+            data.weeklyTrack === "classHero"
+              ? "classHero"
+              : data.weeklyTrack === "academyProgress"
+              ? "academyProgress"
+              : "academyAchievement";
+
+          return {
+            id: document.id,
+            studentFirstName:
+              typeof data.studentFirstName === "string"
+                ? data.studentFirstName
+                : "بطل الأكاديمية",
+            title:
+              typeof data.title === "string"
+                ? data.title
+                : "بطل الأكاديمية",
+            badge:
+              typeof data.badge === "string"
+                ? data.badge
+                : "",
+            achievementsCount:
+              typeof data.achievementsCount === "number"
+                ? data.achievementsCount
+                : 0,
+            imageUrl:
+              typeof data.imageUrl === "string"
+                ? data.imageUrl
+                : "",
+            photoConsent:
+              data.photoConsent === true,
+            published:
+              data.published === true,
+            weeklyTrack,
+            updatedAtMilliseconds:
+              toMillis(data.updatedAt) ||
+              toMillis(data.createdAt),
+          };
+        })
+        .filter((hero) => hero.published)
+        .sort(
+          (first, second) =>
+            second.updatedAtMilliseconds -
+            first.updatedAtMilliseconds
+        )
+        .slice(0, 3)
+        .map(({ updatedAtMilliseconds, ...hero }) => hero);
 
     const payload: PublicAcademyBoardPayload = {
       success: true,
