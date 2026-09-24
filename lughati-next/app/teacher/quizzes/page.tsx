@@ -17,6 +17,7 @@ import { db } from "../../../firebase";
 import type { Question } from "./types";
 import { createEmptyQuestion } from "./helpers";
 import { styles } from "./styles";
+import FamilyResourcesManager from "./FamilyResourcesManager";
 
 type TeacherQuizResult = {
   id: string;
@@ -907,6 +908,8 @@ export default function TeacherQuizzesPage() {
             </p>
           </div>
         </div>
+
+        <FamilyResourcesManager />
 
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>بيانات الاختبار</h2>

@@ -21,6 +21,7 @@ import AcademyLogo from "../components/AcademyLogo";
 import DailyPulseCard from "./components/DailyPulseCard";
 import FamilyRecommendationCard from "./components/FamilyRecommendationCard";
 import FamilyImpactCard from "./components/FamilyImpactCard";
+import FamilyLearningResources from "./components/FamilyLearningResources";
 
 type ParentQuizResult = {
   id: string;
@@ -1293,6 +1294,8 @@ setReadingDays(
             </div>
           </div>
         </header>
+
+        <FamilyLearningResources />
 
         {/* نتائج الاختبارات */}
 

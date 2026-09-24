@@ -203,6 +203,7 @@ allow update: if isTeacher()
 
       allow write: if isTeacher();
     }
+
 match /reading-submissions/{submissionId} {
   allow read: if isTeacher();
 
