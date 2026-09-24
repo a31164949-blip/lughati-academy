@@ -204,15 +204,6 @@ allow update: if isTeacher()
       allow write: if isTeacher();
     }
 
-    match /familyLearningResources/{resourceId} {
-      allow read: if isTeacher()
-        || (
-          isStudent()
-          && resource.data.published == true
-        );
-
-      allow write: if isTeacher();
-    }
 match /reading-submissions/{submissionId} {
   allow read: if isTeacher();
 

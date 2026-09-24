@@ -1,19 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
-
-import { db } from "../../../firebase";
+import { auth } from "../../../firebase";
 
 type Resource = {
   id: string;
@@ -50,28 +38,12 @@ export default function FamilyResourcesManager() {
   async function loadItems() {
     try {
       setLoading(true);
-      const snapshot = await getDocs(
-        query(collection(db, "familyLearningResources"), orderBy("createdAt", "desc"))
-      );
-      setItems(
-        snapshot.docs.map((snapshotDoc) => {
-          const data = snapshotDoc.data();
-          return {
-            id: snapshotDoc.id,
-            title: String(data.title ?? "مادة تعليمية"),
-            description: String(data.description ?? ""),
-            category:
-              data.category === "test" || data.category === "review"
-                ? data.category
-                : "worksheet",
-            classroom: String(data.classroom ?? "جميع طلاب الصف الثاني"),
-            fileUrl: String(data.fileUrl ?? ""),
-            fileName: String(data.fileName ?? "الملف"),
-            fileKind: data.fileKind === "pdf" ? "pdf" : "image",
-            published: data.published === true,
-          };
-        })
-      );
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("UNAUTHORIZED");
+      const response = await fetch("/api/family-learning-resources", { headers: { Authorization: `Bearer ${token}` } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message ?? "LOAD_FAILED");
+      setItems(Array.isArray(result.items) ? result.items : []);
     } catch (error) {
       console.error("تعذر تحميل مواد الأسرة:", error);
       setMessage("تعذر تحميل المواد حاليًا.");
@@ -111,7 +83,9 @@ export default function FamilyResourcesManager() {
       setSaving(true);
       setMessage("جارٍ رفع الملف ونشره...");
       const uploaded = await uploadFile(file);
-      await addDoc(collection(db, "familyLearningResources"), {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("UNAUTHORIZED");
+      const response = await fetch("/api/family-learning-resources", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({
         title: title.trim(),
         description: description.trim(),
         category,
@@ -119,10 +93,8 @@ export default function FamilyResourcesManager() {
         fileUrl: uploaded.fileUrl,
         fileName: file.name.slice(0, 160),
         fileKind: uploaded.fileKind,
-        published: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      }) });
+      if (!response.ok) throw new Error("SAVE_FAILED");
       setTitle("");
       setDescription("");
       setFile(null);
@@ -137,10 +109,10 @@ export default function FamilyResourcesManager() {
   }
 
   async function togglePublished(item: Resource) {
-    await updateDoc(doc(db, "familyLearningResources", item.id), {
-      published: !item.published,
-      updatedAt: serverTimestamp(),
-    });
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return setMessage("أعد تسجيل الدخول ثم حاول مرة أخرى.");
+    const response = await fetch("/api/family-learning-resources", { method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, published: !item.published }) });
+    if (!response.ok) return setMessage("تعذر تحديث حالة النشر.");
     setItems((current) =>
       current.map((entry) => entry.id === item.id ? { ...entry, published: !entry.published } : entry)
     );
@@ -148,7 +120,10 @@ export default function FamilyResourcesManager() {
 
   async function removeItem(item: Resource) {
     if (!window.confirm(`هل تريد حذف «${item.title}»؟`)) return;
-    await deleteDoc(doc(db, "familyLearningResources", item.id));
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) return setMessage("أعد تسجيل الدخول ثم حاول مرة أخرى.");
+    const response = await fetch(`/api/family-learning-resources?id=${encodeURIComponent(item.id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return setMessage("تعذر حذف المادة.");
     setItems((current) => current.filter((entry) => entry.id !== item.id));
   }
 

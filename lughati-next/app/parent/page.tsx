@@ -1295,7 +1295,7 @@ setReadingDays(
           </div>
         </header>
 
-        <FamilyLearningResources classroom={student.className} />
+        <FamilyLearningResources />
 
         {/* نتائج الاختبارات */}
 

@@ -1,18 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../../firebase";
 
 type Resource = { id: string; title: string; description: string; category: string; classroom: string; fileUrl: string; fileName: string; fileKind: "image" | "pdf"; createdAt: Date | null };
-
-function normalizeClassroom(value: string) {
-  const normalized = value.trim().replace(/\s+/g, " ");
-  if (normalized.includes("جميع")) return "all";
-  if (normalized.endsWith("أ")) return "أ";
-  if (normalized.endsWith("ب")) return "ب";
-  return normalized;
-}
 
 function categoryLabel(value: string) {
   if (value === "test") return "اختبار";
@@ -20,51 +12,28 @@ function categoryLabel(value: string) {
   return "ورقة عمل";
 }
 
-export default function FamilyLearningResources({ classroom }: { classroom: string }) {
+export default function FamilyLearningResources() {
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
-        const snapshot = await getDocs(
-          query(
-            collection(db, "familyLearningResources"),
-            where("published", "==", true)
-          )
-        );
-        const studentClassroom = normalizeClassroom(classroom);
-        const visibleItems = snapshot.docs.flatMap((snapshotDoc) => {
-          const data = snapshotDoc.data();
-          const target = normalizeClassroom(String(data.classroom ?? ""));
-          if (data.published !== true || (target !== "all" && target !== studentClassroom)) return [];
-          return [{
-            id: snapshotDoc.id,
-            title: String(data.title ?? "مادة تعليمية"),
-            description: String(data.description ?? ""),
-            category: String(data.category ?? "worksheet"),
-            classroom: String(data.classroom ?? ""),
-            fileUrl: String(data.fileUrl ?? ""),
-            fileName: String(data.fileName ?? "الملف"),
-            fileKind: data.fileKind === "pdf" ? "pdf" as const : "image" as const,
-            createdAt: data.createdAt?.toDate?.() ?? null,
-          }];
-        });
-        visibleItems.sort(
-          (first, second) =>
-            (second.createdAt?.getTime() ?? 0) -
-            (first.createdAt?.getTime() ?? 0)
-        );
-        setItems(visibleItems);
+        if (!user) return setItems([]);
+        const token = await user.getIdToken();
+        const response = await fetch("/api/family-learning-resources", { headers: { Authorization: `Bearer ${token}` } });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message ?? "LOAD_FAILED");
+        setItems((Array.isArray(result.items) ? result.items : []).map((item: Resource & { createdAt?: number }) => ({ ...item, createdAt: typeof item.createdAt === "number" ? new Date(item.createdAt) : null })));
       } catch (error) {
         console.error("تعذر تحميل أوراق العمل:", error);
         setItems([]);
       } finally {
         setLoading(false);
       }
-    }
-    void load();
-  }, [classroom]);
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <section style={cardStyle}>
