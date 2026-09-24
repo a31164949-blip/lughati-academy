@@ -288,10 +288,7 @@ export default function TeacherHeroesPage() {
   const [
     students,
     setStudents,
-  ] =
-    useState<StudentOption[]>(
-      []
-    );
+  ] = useState<StudentOption[]>([]);
 
   const [
     savedHeroes,
@@ -305,6 +302,21 @@ export default function TeacherHeroesPage() {
     selectedStudentId,
     setSelectedStudentId,
   ] = useState("");
+
+  const [
+    studentName,
+    setStudentName,
+  ] = useState("");
+
+  const [
+    classroom,
+    setClassroom,
+  ] = useState("");
+
+  const [
+    photoConsent,
+    setPhotoConsent,
+  ] = useState(false);
 
   const [
     weeklyTrack,
@@ -373,10 +385,7 @@ export default function TeacherHeroesPage() {
   const [
     weeklyStudentStats,
     setWeeklyStudentStats,
-  ] =
-    useState<WeeklyStudentStats | null>(
-      null
-    );
+  ] = useState<WeeklyStudentStats | null>(null);
 
   const [
     isLoadingStudentStats,
@@ -521,6 +530,11 @@ export default function TeacherHeroesPage() {
         setIsLoading(true);
         setStatusMessage("");
 
+        // لوحة الأبطال تُدار يدويًا؛ لا حاجة لتحميل جميع الطلاب
+        // وتنفيذ قراءة منفصلة لموافقة كل أسرة قبل فتح الصفحة.
+        await loadSavedHeroes();
+        return;
+
         const studentsSnapshot =
           await getDocs(
             collection(
@@ -574,11 +588,11 @@ export default function TeacherHeroesPage() {
                 caseStudySnapshot.data();
 
               photoConsent =
-                caseStudyData.photoConsent ===
+                caseStudyData?.photoConsent ===
                   true ||
-                caseStudyData.photoConsent ===
+                caseStudyData?.photoConsent ===
                   "نعم" ||
-                caseStudyData.photoConsent ===
+                caseStudyData?.photoConsent ===
                   "yes";
             }
           } catch (error) {
@@ -629,15 +643,39 @@ export default function TeacherHeroesPage() {
 
   const selectedStudent =
     useMemo(
-      () =>
-        students.find(
-          (student) =>
-            student.id ===
-            selectedStudentId
-        ) ?? null,
+      () => {
+        const trimmedName =
+          studentName.trim();
+
+        if (trimmedName) {
+          return {
+            id:
+              selectedStudentId ||
+              `manual_${trimmedName.replace(/\s+/g, "_")}`,
+            name: trimmedName,
+            classroom:
+              classroom.trim(),
+            photoConsent:
+              !imageUrl.trim() ||
+              photoConsent,
+          };
+        }
+
+        return (
+          students.find(
+            (student) =>
+              student.id ===
+              selectedStudentId
+          ) ?? null
+        );
+      },
       [
         students,
         selectedStudentId,
+        studentName,
+        classroom,
+        imageUrl,
+        photoConsent,
       ]
     );
 
@@ -712,7 +750,12 @@ export default function TeacherHeroesPage() {
     let active = true;
 
     async function loadSelectedStudentStats() {
-      if (!selectedStudentId) {
+      if (
+        !selectedStudentId ||
+        selectedStudentId.startsWith(
+          "manual_"
+        )
+      ) {
         setWeeklyStudentStats(null);
         setAchievementsCount(0);
         setReadingCount(0);
@@ -1062,6 +1105,9 @@ export default function TeacherHeroesPage() {
 
   function resetForm() {
     setSelectedStudentId("");
+    setStudentName("");
+    setClassroom("");
+    setPhotoConsent(false);
     setWeeklyTrack(
       "classHero"
     );
@@ -1084,7 +1130,16 @@ export default function TeacherHeroesPage() {
     hero: SavedHero
   ) {
     setSelectedStudentId(
-      hero.studentId
+      `manual_${hero.studentFirstName.replace(/\s+/g, "_")}`
+    );
+    setStudentName(
+      hero.studentFirstName
+    );
+    setClassroom(
+      hero.classroom
+    );
+    setPhotoConsent(
+      hero.photoConsent
     );
     setWeeklyTrack(
       hero.weeklyTrack
@@ -1171,7 +1226,7 @@ export default function TeacherHeroesPage() {
   async function handleSave() {
     if (!selectedStudent) {
       setStatusMessage(
-        "⚠️ اختر الطالب أولًا."
+        "⚠️ اكتب اسم الطالب أولًا."
       );
       return;
     }
@@ -1208,9 +1263,7 @@ export default function TeacherHeroesPage() {
             selectedStudent.id,
 
           studentFirstName:
-            firstNameOnly(
-              selectedStudent.name
-            ),
+            selectedStudent.name.trim(),
 
           classroom:
             selectedStudent.classroom,
@@ -1407,40 +1460,44 @@ export default function TeacherHeroesPage() {
         <section className="mb-6 grid gap-4 md:grid-cols-2">
           <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="mb-3 block text-lg font-black text-slate-800">
-              👨‍🎓 اختر الطالب
+              👨‍🎓 اسم الطالب
             </label>
 
-            <select
-              value={selectedStudentId}
+            <input
+              value={studentName}
               onChange={(event) => {
+                const value =
+                  event.target.value;
+
+                setStudentName(value);
                 setSelectedStudentId(
-                  event.target.value
+                  value.trim()
+                    ? `manual_${value
+                        .trim()
+                        .replace(/\s+/g, "_")}`
+                    : ""
                 );
                 setWeeklyStudentStats(null);
                 setStatusMessage("");
               }}
+              placeholder="اكتب اسم الطالب هنا"
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 font-bold"
-            >
-              <option value="">
-                اختر الطالب
-              </option>
+            />
 
-              {students.map(
-                (student) => (
-                  <option
-                    key={student.id}
-                    value={student.id}
-                  >
-                    {student.name} — {student.classroom}
-                    {" — 🏆 "}
-                    {heroWinsByStudent.get(
-                      student.id
-                    ) ?? 0}
-                    {" مرة"}
-                  </option>
+            <label className="mb-3 mt-4 block font-black text-slate-800">
+              🏫 الفصل — اختياري
+            </label>
+
+            <input
+              value={classroom}
+              onChange={(event) =>
+                setClassroom(
+                  event.target.value
                 )
-              )}
-            </select>
+              }
+              placeholder="مثال: الثاني أ"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-4 font-bold"
+            />
 
             {selectedStudent && (
               <div
@@ -1451,8 +1508,8 @@ export default function TeacherHeroesPage() {
                 }`}
               >
                 {selectedStudent.photoConsent
-                  ? "✅ الأسرة موافقة على النشر في الواجهة العامة."
-                  : "⚠️ لا توجد موافقة أسرة على النشر للزوار."}
+                  ? "✅ الاسم جاهز للحفظ والنشر."
+                  : "⚠️ فعّل موافقة الأسرة قبل نشر صورة الطالب."}
               </div>
             )}
 
@@ -1674,9 +1731,24 @@ export default function TeacherHeroesPage() {
           />
 
           <p className="mt-2 text-sm text-slate-500">
-            يمكن ترك الرابط فارغًا، ولن يتم نشر الطالب للزوار
-            إذا لم تكن موافقة الأسرة موجودة.
+            يمكن ترك الرابط فارغًا والاكتفاء باسم الطالب.
           </p>
+
+          {imageUrl.trim() && (
+            <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl bg-amber-50 p-4 font-bold text-amber-900">
+              <input
+                type="checkbox"
+                checked={photoConsent}
+                onChange={(event) =>
+                  setPhotoConsent(
+                    event.target.checked
+                  )
+                }
+                className="h-6 w-6 accent-emerald-600"
+              />
+              أؤكد وجود موافقة الأسرة على نشر صورة الطالب
+            </label>
+          )}
         </section>
 
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
