@@ -54,6 +54,8 @@ export default function LoginPage() {
   const router =
     useRouter();
 
+  const [returnTo, setReturnTo] = useState("/journey");
+
   const [
     classrooms,
     setClassrooms,
@@ -114,6 +116,11 @@ export default function LoginPage() {
     =====================================================
   */
   useEffect(() => {
+    const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo");
+    if (requestedReturnTo && requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")) {
+      setReturnTo(requestedReturnTo);
+    }
+
     let active =
       true;
 
@@ -589,7 +596,7 @@ export default function LoginPage() {
       );
 
       router.push(
-        "/journey"
+        returnTo
       );
     } catch (error) {
       console.error(
