@@ -18,8 +18,9 @@ export default function LiveGamePage() {
   const [answered,setAnswered]=useState(-1);
   const [message,setMessage]=useState("أدخل رمز الغرفة الذي يعرضه المعلم.");
   const [busy,setBusy]=useState(false);
+  const [authReady,setAuthReady]=useState(false);
 
-  useEffect(()=>onAuthStateChanged(auth,setUser),[]);
+  useEffect(()=>onAuthStateChanged(auth,current=>{setUser(current);setAuthReady(true);}),[]);
 
   async function request(action?:string,option?:number) {
     if(!user)return;
@@ -51,8 +52,8 @@ export default function LiveGamePage() {
     <Link href="/academy-club" style={back}>العودة للنادي ←</Link>
   </header><div style={shell}>
     {!room?<section style={card}><div style={{fontSize:65}}>🎮</div><h2>ادخل ساحة المنافسة</h2>
-      <input value={code} onChange={(e)=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" placeholder="رمز الغرفة" style={input}/>
-      <button disabled={code.length!==6||!user||busy} onClick={()=>void request("join")} style={primary}>انضم إلى التحدي</button>
+      {!authReady?<p>⏳ جارٍ التحقق من حسابك…</p>:!user?<><p>سجّل دخولك بحساب الطالب العضو أولًا.</p><Link href="/login?returnTo=%2Facademy-club%2Flive-game" style={{...primary,display:"inline-block",textDecoration:"none"}}>تسجيل الدخول</Link></>:<><input value={code} onChange={(e)=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" placeholder="رمز الغرفة" style={input}/>
+      <button disabled={code.length!==6||busy} onClick={()=>void request("join")} style={primary}>انضم إلى التحدي</button></>}
     </section>:<>
       <section style={{...card,background:"linear-gradient(135deg,#fff8d8,#fff,#eaf8f0)"}}>
         <b>الغرفة {room.code}</b><h2>{room.status==="waiting"?"بانتظار بدء المعلم… ⏳":room.status==="finished"?"انتهت المنافسة 🏆":"المنافسة مباشرة الآن 🔴"}</h2>
