@@ -601,7 +601,7 @@ function AcademyClubComingSoon({ remainingMs }: { remainingMs: number }) {
 }
 
 export default function AcademyClubPage() {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
   const [teacherPreview, setTeacherPreview] = useState(false);
 
   useEffect(() => {
@@ -611,6 +611,10 @@ export default function AcademyClubPage() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  if (now === null) {
+    return null;
+  }
 
   return now >= CLUB_LAUNCH_AT || teacherPreview
     ? <AcademyClubContent teacherPreview={teacherPreview} />
