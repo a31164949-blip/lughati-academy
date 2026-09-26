@@ -138,6 +138,14 @@ const journeyCards = [
     background: "#e9fbff",
   },
   {
+    icon: "🤝",
+    title: "نتعاون من أجل تقدّمي",
+    description:
+      "تتعاون أسرتي مع معلمي لتحديد الصعوبة واختيار خطوة تساعدني هذا الأسبوع",
+    href: "/parent/support",
+    background: "#eaf8f1",
+  },
+  {
     icon: "💬",
     title: "تواصل مع معلمي",
     description:
