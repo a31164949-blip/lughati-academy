@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../../../firebase";
 
 const options=[
@@ -24,13 +24,18 @@ export default function FamilySupportPage(){
  useEffect(()=>onAuthStateChanged(auth,async user=>{
    if(!user){window.location.replace("/login?returnTo=%2Fparent%2Fsupport");return;}
    try{
-    const token=await user.getIdToken();
+    const token=await user.getIdToken(true);
     const response=await fetch("/api/family-support",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
     const data=await response.json();
+    if(response.status===401||response.status===403){
+      await signOut(auth);
+      window.location.replace("/login?returnTo=%2Fparent%2Fsupport");
+      return;
+    }
     if(!response.ok) throw new Error(data.message||"تعذر التحميل");
     setStudentName(data.student?.name||"الطالب");
     const s=data.support||{};
-    setTeacherMessage(typeof s.teacherMessage==="string"?s.teacherMessage:"لاحظنا أن ابننا واجه صعوبة في إتمام بعض الواجبات. نود معرفة ما الذي أعاقه لنختار معكم خطوة تساعده هذا الأسبوع.");
+    setTeacherMessage(typeof s.teacherMessage==="string"?s.teacherMessage:"لاحظنا أن ابننا واجه صعوبة في إتمام بعض الواجبات. نود معرفة ما الذي صعّب عليه إتمام الواجب لنختار معكم خطوة تساعده هذا الأسبوع.");
     setPlan(typeof s.followUpPlan==="string"?s.followUpPlan:"");
     setReviewDate(typeof s.reviewDate==="string"?s.reviewDate:"");
     if(Array.isArray(s.barriers)) setBarriers(s.barriers);
@@ -58,7 +63,7 @@ export default function FamilySupportPage(){
   <section style={styles.hero}><div style={{fontSize:45}}>🤝</div><h1 style={{margin:"5px 0"}}>نتعاون من أجل تقدّمه</h1><p style={{margin:0,lineHeight:1.9}}>ضمن مبادرة «خطوتي تصنع الفرق»</p><div style={styles.student}>👦 {studentName}</div></section>
   <div style={styles.steps}><b>1 العائق</b><span>←</span><b>2 خطوتنا هذا الأسبوع</b><span>←</span><b>3 المراجعة</b></div>
   <section style={styles.card}><h2 style={styles.title}>👨‍🏫 رسالة المعلم</h2><p style={styles.bubble}>{teacherMessage}</p></section>
-  <section style={styles.card}><h2 style={styles.title}>👨‍👩‍👦 ما الذي أعاقه؟</h2><p>يمكن اختيار أكثر من سبب:</p><div style={styles.grid}>{options.map(o=><button key={o} onClick={()=>toggle(o)} style={{...styles.choice,...(barriers.includes(o)?styles.selected:{})}}>{barriers.includes(o)?"✓ ":""}{o}</button>)}</div>
+  <section style={styles.card}><h2 style={styles.title}>👨‍👩‍👦 ما الذي صعّب عليه إتمام الواجب؟</h2><p>يمكن اختيار أكثر من سبب:</p><div style={styles.grid}>{options.map(o=><button key={o} onClick={()=>toggle(o)} style={{...styles.choice,...(barriers.includes(o)?styles.selected:{})}}>{barriers.includes(o)?"✓ ":""}{o}</button>)}</div>
    <label style={styles.label}>توضيح إضافي (اختياري)</label><textarea value={note} onChange={e=>setNote(e.target.value)} style={styles.input} placeholder="اكتبوا ما ترونه مهمًا للمعلم…" />
    <label style={styles.label}>ما نوع المساعدة التي ترون أنها ستفيده؟</label><textarea value={help} onChange={e=>setHelp(e.target.value)} style={styles.input} placeholder="مثال: شرح بداية المهمة، وقت إضافي، مساعدة في الدخول…" />
    <button onClick={submit} disabled={sending} style={styles.send}>{sending?"جارٍ الإرسال…":"إرسال الرد للمعلم"}</button>{message&&<p style={styles.notice}>{message}</p>}
