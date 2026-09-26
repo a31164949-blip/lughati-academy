@@ -32,6 +32,7 @@ function acceptTypes(types:WorkType[]){return types.map(t=>t==="image"?"image/*"
 
 export default function AcademyClubChallengePage(){
   const [user,setUser]=useState<User|null>(null);
+  const [teacherPreview,setTeacherPreview]=useState(false);
   const [now,setNow]=useState(()=>Date.now());
   const [loading,setLoading]=useState(true);
   const [challenge,setChallenge]=useState<Challenge|null>(null);
@@ -43,18 +44,20 @@ export default function AcademyClubChallengePage(){
   const [message,setMessage]=useState("");
   const [error,setError]=useState("");
 
-  useEffect(()=>onAuthStateChanged(auth,current=>{setUser(current);if(!current)setLoading(false);}),[]);
+  useEffect(()=>{setTeacherPreview(new URLSearchParams(window.location.search).get("teacherPreview")==="1");return onAuthStateChanged(auth,current=>{setUser(current);if(!current)setLoading(false);});},[]);
   useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
-  useEffect(()=>{if(!user||now<CLUB_LAUNCH_AT)return;void loadChallenge(user);},[user,now>=CLUB_LAUNCH_AT]);
+  useEffect(()=>{if(!user||(!teacherPreview&&now<CLUB_LAUNCH_AT))return;void loadChallenge(user);},[user,teacherPreview,now>=CLUB_LAUNCH_AT]);
 
   async function loadChallenge(current:User){
     try{
       setLoading(true);setError("");
       const token=await current.getIdToken();
-      const response=await fetch("/api/academy-club/challenge",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+      const endpoint=teacherPreview?"/api/teacher/academy-club/challenge":"/api/academy-club/challenge";
+      const response=await fetch(endpoint,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
       const data=await response.json();
       if(!response.ok||!data.success)throw new Error(data.message||"تعذر تحميل التحدي.");
-      setChallenge(data.challenge||null);setSubmission(data.submission||null);
+      const loadedChallenge=data.challenge?{...data.challenge,isClosed:data.challenge.closesAt?new Date(data.challenge.closesAt).getTime()<Date.now():false}:null;
+      setChallenge(loadedChallenge);setSubmission(teacherPreview?null:(data.submission||null));
       if(data.challenge?.allowedTypes?.length)setWorkType(data.challenge.allowedTypes[0]);
     }catch(e){setError(e instanceof Error?e.message:"تعذر تحميل التحدي.");}
     finally{setLoading(false);}
@@ -86,11 +89,11 @@ export default function AcademyClubChallengePage(){
     finally{setSending(false);}
   }
 
-  if(now<CLUB_LAUNCH_AT)return <main dir="rtl" className="page"><style>{styles}</style><section className="soon"><div className="logo">🏅</div><span className="tag">قريبًا… ✨</span><h1>تحديات نادي الأكاديمية</h1><p>موعدنا السبت 26 سبتمبر الساعة 7:00 مساءً؛ استعد لمهام ممتعة ونقاط وأوسمة لا تظهر إلا للأعضاء.</p><Link className="btn" href="/journey">العودة إلى رحلتي ←</Link></section></main>;
+  if(now<CLUB_LAUNCH_AT&&!teacherPreview)return <main dir="rtl" className="page"><style>{styles}</style><section className="soon"><div className="logo">🏅</div><span className="tag">قريبًا… ✨</span><h1>تحديات نادي الأكاديمية</h1><p>موعدنا السبت 26 سبتمبر الساعة 7:00 مساءً؛ استعد لمهام ممتعة ونقاط وأوسمة لا تظهر إلا للأعضاء.</p><Link className="btn" href="/journey">العودة إلى رحلتي ←</Link></section></main>;
 
-  return <main dir="rtl" className="page"><style>{styles}</style><div className="shell"><header><Link href="/academy-club">→ نادي الأكاديمية</Link><b>تحديات الأعضاء 🎯</b></header>
+  return <main dir="rtl" className="page"><style>{styles}</style><div className="shell"><header><Link href={teacherPreview?"/academy-club?teacherPreview=1":"/academy-club"}>→ نادي الأكاديمية</Link><b>تحديات الأعضاء 🎯</b></header>
     {loading?<section className="card center">⏳ جارٍ تحميل التحدي…</section>:!user?<section className="card center"><h2>سجّل دخولك أولًا</h2><Link className="btn" href="/login">تسجيل الدخول</Link></section>:error&&!challenge?<section className="card center"><h2>تعذر فتح التحدي</h2><p>{error}</p></section>:!challenge?<section className="card center"><div className="big">🌱</div><h2>لا يوجد تحدٍ منشور الآن</h2><p>ترقّب التحدي القادم؛ ففرص التميز تتجدد دائمًا.</p></section>:<><section className="hero"><span className="tag">تحدي أعضاء النادي</span><h1>{challenge.title}</h1><p>{challenge.instructions}</p><div className="meta"><b>⭐ {challenge.points} نقطة</b><b>📎 {challenge.allowedTypes.map(typeLabel).join(" • ")}</b><b>⏳ {challenge.isClosed?"انتهى التحدي":new Date(challenge.closesAt).toLocaleDateString("ar-SA")}</b></div></section>
-    {submission?<section className="card center"><div className="big">{submission.status==="approved"?"🏆":submission.status==="returned"?"🔄":"⏳"}</div><h2>{submission.status==="approved"?"تم اعتماد مشاركتك":submission.status==="returned"?"تحتاج مشاركتك إلى مراجعة":"مشاركتك بانتظار المعلم"}</h2>{submission.teacherNote&&<p className="notice">ملاحظة المعلم: {submission.teacherNote}</p>}<p>لا يمكن إرسال أكثر من مشاركة في التحدي نفسه.</p></section>:<section className="card"><h2>ارفع مشاركتك</h2><p>الأنواع المتاحة: {challenge.allowedTypes.map(typeLabel).join("، ")}</p><input className="file" type="file" accept={acceptTypes(challenge.allowedTypes)} disabled={challenge.isClosed||sending} onChange={chooseFile}/>{file&&<div className="selected">✅ {file.name} — {typeLabel(workType)}</div>}<label>رسالة قصيرة مع المشاركة<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} placeholder="اكتب وصفًا بسيطًا لعملك…"/></label>{message&&<p className="notice ok">{message}</p>}{error&&<p className="notice bad">{error}</p>}<button className="btn full" disabled={!file||sending||challenge.isClosed} onClick={submit}>{sending?"جارٍ الإرسال…":"إرسال المشاركة 🚀"}</button></section>}</>}
+    {teacherPreview?<section className="card center"><div className="big">👁️</div><h2>معاينة المعلم</h2><p>هذه هي تفاصيل التحدي كما ستظهر للعضو. رفع المشاركات متاح للطلاب الأعضاء فقط.</p></section>:submission?<section className="card center"><div className="big">{submission.status==="approved"?"🏆":submission.status==="returned"?"🔄":"⏳"}</div><h2>{submission.status==="approved"?"تم اعتماد مشاركتك":submission.status==="returned"?"تحتاج مشاركتك إلى مراجعة":"مشاركتك بانتظار المعلم"}</h2>{submission.teacherNote&&<p className="notice">ملاحظة المعلم: {submission.teacherNote}</p>}<p>لا يمكن إرسال أكثر من مشاركة في التحدي نفسه.</p></section>:<section className="card"><h2>ارفع مشاركتك</h2><p>الأنواع المتاحة: {challenge.allowedTypes.map(typeLabel).join("، ")}</p><input className="file" type="file" accept={acceptTypes(challenge.allowedTypes)} disabled={challenge.isClosed||sending} onChange={chooseFile}/>{file&&<div className="selected">✅ {file.name} — {typeLabel(workType)}</div>}<label>رسالة قصيرة مع المشاركة<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} placeholder="اكتب وصفًا بسيطًا لعملك…"/></label>{message&&<p className="notice ok">{message}</p>}{error&&<p className="notice bad">{error}</p>}<button className="btn full" disabled={!file||sending||challenge.isClosed} onClick={submit}>{sending?"جارٍ الإرسال…":"إرسال المشاركة 🚀"}</button></section>}</>}
   </div></main>;
 }
 

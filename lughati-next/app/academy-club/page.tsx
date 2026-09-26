@@ -32,10 +32,10 @@ const clubSections = [
     border: "#f4a7a7",
   },
   {
-    icon: "📖",
-    title: "حصص التمكين القرائي",
-    description: "تدريبات مباشرة تساعدك على القراءة بثقة وطلاقة.",
-    href: "/reading-support",
+    icon: "📚",
+    title: "مكتبة النخبة",
+    description: "تدريبات وأوراق عمل وأنشطة خاصة بأعضاء النادي لتنمّي مهاراتك خطوة بخطوة.",
+    href: "/academy-club/challenge",
     color: "#eaf8f0",
     border: "#9ed8b8",
   },
@@ -401,7 +401,7 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
                   </div>
                 ))}
               </div>
-              <Link href="/academy-club/challenge" style={{ ...mainButtonStyle, marginTop: 0, background: "#ffffff", color: "#7c5808" }}>
+              <Link href={teacherPreview ? "/academy-club/challenge?teacherPreview=1" : "/academy-club/challenge"} style={{ ...mainButtonStyle, marginTop: 0, background: "#ffffff", color: "#7c5808" }}>
                 اكتشف تحدي الافتتاح ←
               </Link>
             </section>
@@ -425,8 +425,8 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
                   <Link
                     key={section.title}
                     href={
-                      teacherPreview && section.href === "/academy-club/lughati-city"
-                        ? "/academy-club/lughati-city?teacherPreview=1"
+                      teacherPreview && section.href.startsWith("/academy-club/")
+                        ? `${section.href}?teacherPreview=1`
                         : section.href
                     }
                     style={{
@@ -601,7 +601,7 @@ function AcademyClubComingSoon({ remainingMs }: { remainingMs: number }) {
 }
 
 export default function AcademyClubPage() {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
   const [teacherPreview, setTeacherPreview] = useState(false);
 
   useEffect(() => {
@@ -611,6 +611,10 @@ export default function AcademyClubPage() {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  if (now === null) {
+    return null;
+  }
 
   return now >= CLUB_LAUNCH_AT || teacherPreview
     ? <AcademyClubContent teacherPreview={teacherPreview} />
