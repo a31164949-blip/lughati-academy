@@ -170,6 +170,9 @@ export async function PATCH(request: Request) {
 
       if (decision === "approved" && submission.pointsGranted !== true && points > 0) {
         const studentRef = adminDb.collection("students").doc(String(submission.studentId));
+        const isOpeningChallenge =
+          typeof challenge.title === "string" &&
+          challenge.title.includes("تحدي العضو الأول");
         transaction.update(studentRef, {
           points: FieldValue.increment(points),
           pointsHistory: FieldValue.arrayUnion({
@@ -179,6 +182,9 @@ export async function PATCH(request: Request) {
             challengeId: challenge.challengeId ?? "",
             createdAt: Timestamp.now(),
           }),
+          ...(isOpeningChallenge
+            ? { badges: FieldValue.arrayUnion("وسام الافتتاح 🏅") }
+            : {}),
           updatedAt: FieldValue.serverTimestamp(),
         });
       }
