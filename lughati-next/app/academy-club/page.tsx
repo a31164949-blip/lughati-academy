@@ -401,7 +401,7 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
                   </div>
                 ))}
               </div>
-              <Link href="/academy-club/challenge" style={{ ...mainButtonStyle, marginTop: 0, background: "#ffffff", color: "#7c5808" }}>
+              <Link href={teacherPreview ? "/academy-club/challenge?teacherPreview=1" : "/academy-club/challenge"} style={{ ...mainButtonStyle, marginTop: 0, background: "#ffffff", color: "#7c5808" }}>
                 اكتشف تحدي الافتتاح ←
               </Link>
             </section>
@@ -425,8 +425,8 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
                   <Link
                     key={section.title}
                     href={
-                      teacherPreview && section.href === "/academy-club/lughati-city"
-                        ? "/academy-club/lughati-city?teacherPreview=1"
+                      teacherPreview && section.href.startsWith("/academy-club/")
+                        ? `${section.href}?teacherPreview=1`
                         : section.href
                     }
                     style={{
