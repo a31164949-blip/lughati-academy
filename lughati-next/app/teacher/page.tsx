@@ -44,6 +44,12 @@ function getNotificationTime(value: unknown) {
 
 const sections = [
   {
+    title: "🤝 نتعاون من أجل تقدّمه",
+    description:
+      "متابعة ردود الأسر، تحديد خطوة هذا الأسبوع، وتسجيل موعد المراجعة.",
+    href: "/teacher/family-support",
+  },
+  {
     title: "✨ إدارة نبض الأكاديمية",
     description:
       "مراجعة حالات الطلاب والموافقة على الصور والمقاطع قبل ظهورها.",
