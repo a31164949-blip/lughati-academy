@@ -46,7 +46,7 @@ export default function AcademyClubChallengePage(){
 
   useEffect(()=>{setTeacherPreview(new URLSearchParams(window.location.search).get("teacherPreview")==="1");return onAuthStateChanged(auth,current=>{setUser(current);if(!current)setLoading(false);});},[]);
   useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
-  useEffect(()=>{if(!user||now<CLUB_LAUNCH_AT)return;void loadChallenge(user);},[user,now>=CLUB_LAUNCH_AT]);
+  useEffect(()=>{if(!user||(!teacherPreview&&now<CLUB_LAUNCH_AT))return;void loadChallenge(user);},[user,teacherPreview,now>=CLUB_LAUNCH_AT]);
 
   async function loadChallenge(current:User){
     try{
