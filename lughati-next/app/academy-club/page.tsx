@@ -34,8 +34,8 @@ const clubSections = [
   {
     icon: "📖",
     title: "حصص التمكين القرائي",
-    description: "تدريبات مباشرة تساعدك على القراءة بثقة وطلاقة.",
-    href: "/reading-support",
+    description: "واصل تدريبات القراءة والطلاقة، وتابع تقدمك في مسارك القرائي.",
+    href: "/reading-journey",
     color: "#eaf8f0",
     border: "#9ed8b8",
   },
