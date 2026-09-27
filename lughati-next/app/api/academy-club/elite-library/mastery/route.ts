@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
-import { getFirebaseAdmin } from "../../../../firebase-admin";
+import { getFirebaseAdmin } from "../../../../../firebase-admin";
 
 export const runtime = "nodejs";
 
