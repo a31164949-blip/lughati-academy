@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../../../firebase";
 
 const stages = [
   {
@@ -31,6 +33,13 @@ export default function MasteryPage(){
   const [attempts,setAttempts]=useState(0);
   const [revealed,setRevealed]=useState(false);
   const [finished,setFinished]=useState(false);
+  const [teacherPreview,setTeacherPreview]=useState(false);
+  const [savingKey,setSavingKey]=useState(false);
+  const [keySaved,setKeySaved]=useState(false);
+
+  useEffect(()=>{
+    setTeacherPreview(new URLSearchParams(window.location.search).get("teacherPreview")==="1");
+  },[]);
   const item=stages[stage];
   const correct=selected===item.answer;
   const progress=useMemo(()=>finished?100:Math.round((stage/stages.length)*100),[stage,finished]);
@@ -48,9 +57,30 @@ export default function MasteryPage(){
     if(nextAttempts>=2)setRevealed(true);
   }
 
+  async function saveMasteryKey(){
+    if(teacherPreview||savingKey||keySaved)return;
+    setSavingKey(true);
+    try{
+      const currentUser=auth.currentUser;
+      if(!currentUser)return;
+      const token=await currentUser.getIdToken();
+      const response=await fetch("/api/academy-club/elite-library/mastery",{
+        method:"POST",
+        headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+        body:JSON.stringify({score:3,total:3}),
+      });
+      const data=await response.json();
+      if(response.ok&&data.success)setKeySaved(true);
+    }finally{setSavingKey(false);}
+  }
+
   function next(){
     if(selected===null)return;
-    if(stage===stages.length-1){setFinished(true);return;}
+    if(stage===stages.length-1){
+      setFinished(true);
+      if(score===2&&correct) void saveMasteryKey();
+      return;
+    }
     setStage(v=>v+1);setSelected(null);setAttempts(0);setRevealed(false);
   }
 
@@ -58,7 +88,7 @@ export default function MasteryPage(){
 
   return <main dir="rtl" style={{minHeight:"100vh",padding:"28px 16px 60px",fontFamily:"Arial,sans-serif",background:"linear-gradient(180deg,#0f6b49,#f2fbf6 310px)",color:"#17352a"}}>
     <div style={{maxWidth:820,margin:"0 auto"}}>
-      <Link href="/academy-club/elite-library" style={{color:"#fff",fontWeight:900,textDecoration:"none"}}>← العودة إلى مكتبة النخبة</Link>
+      <Link href={`/academy-club/elite-library${teacherPreview?"?teacherPreview=1":""}`} style={{color:"#fff",fontWeight:900,textDecoration:"none"}}>← العودة إلى مكتبة النخبة</Link>
       <section style={{marginTop:24,padding:"clamp(24px,6vw,40px)",borderRadius:30,background:"#fff",border:"2px solid #9ed8b8",boxShadow:"0 18px 45px rgba(18,90,60,.16)"}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:15,alignItems:"center",flexWrap:"wrap"}}>
           <div><div style={{fontSize:54}}>🌱</div><div style={{color:"#16845b",fontWeight:900}}>الباب الأول • مختبر المهارة</div><h1 style={{margin:"5px 0",fontSize:"clamp(30px,7vw,44px)"}}>أتقن</h1></div>
@@ -92,9 +122,9 @@ export default function MasteryPage(){
           <div style={{fontSize:65}}>{score===3?<span style={{display:"inline-block",animation:"eliteKeyWin .75s ease-in-out 2"}}>🗝️</span>:"🌟"}</div>
           <h2 style={{margin:"8px 0",color:"#176c46",fontSize:30}}>{score===3?"أحسنت! أتقنت المهارة":"أكملت التجربة!"}</h2>
           <p style={{fontSize:20,fontWeight:900}}>نتيجتك: {score} من {stages.length}</p>
-          <p style={{color:"#65766d",fontWeight:700,lineHeight:1.8}}>{score===3?"حصلت على قطعة من مفتاح النخبة 🗝️ — في النسخة التجريبية لن نضيفها إلى حسابك بعد.":score===2?"اقتربت جدًا! بقيت لك خطوة واحدة نحو قطعة المفتاح 🗝️":"أعد التجربة وحاول الوصول إلى الإتقان الكامل لتحصل على المفتاح."}</p>
+          <p style={{color:"#65766d",fontWeight:700,lineHeight:1.8}}>{score===3?(teacherPreview?"معاينة المعلم: سيحصل الطالب على قطعة مفتاح النخبة 🗝️ عند الإتقان.":savingKey?"جارٍ حفظ قطعة مفتاح النخبة...":keySaved?"تم حفظ قطعة مفتاح النخبة في حسابك 🗝️":"حصلت على قطعة مفتاح النخبة 🗝️"):score===2?"اقتربت جدًا! بقيت لك خطوة واحدة نحو قطعة المفتاح 🗝️":"أعد التجربة وحاول الوصول إلى الإتقان الكامل لتحصل على المفتاح."}</p>
           {score<3&&<button onClick={restart} style={{padding:"12px 20px",border:0,borderRadius:15,background:"#176c46",color:"#fff",fontWeight:900,fontSize:17,cursor:"pointer"}}>أحاول مرة أخرى 🔄</button>}
-          {score===3&&<Link href="/academy-club/elite-library" style={{display:"inline-block",padding:"12px 20px",borderRadius:15,background:"#176c46",color:"#fff",fontWeight:900,textDecoration:"none"}}>العودة للمكتبة ←</Link>}
+          {score===3&&<Link href={`/academy-club/elite-library${teacherPreview?"?teacherPreview=1":""}`} style={{display:"inline-block",padding:"12px 20px",borderRadius:15,background:"#176c46",color:"#fff",fontWeight:900,textDecoration:"none"}}>العودة للمكتبة ←</Link>}
         </section>}
       </section>
     </div>
