@@ -889,6 +889,14 @@ personalPhotoUrl:
       tomorrowSpellingWords,
       unreadMessageCount,
       academyClubMembership,
+      eliteLibrary:
+        studentData.eliteLibrary &&
+        typeof studentData.eliteLibrary === "object"
+          ? {
+              masteryKey:
+                (studentData.eliteLibrary as Record<string, unknown>).masteryKey === true,
+            }
+          : { masteryKey: false },
       smartFollowUp:
   studentData.smartFollowUp &&
   typeof studentData.smartFollowUp ===
