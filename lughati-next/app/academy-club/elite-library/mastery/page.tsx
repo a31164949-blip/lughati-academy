@@ -27,7 +27,9 @@ const stages = [
 export default function MasteryPage(){
   const [stage,setStage]=useState(0);
   const [selected,setSelected]=useState<number|null>(null);
-  const [score,setScore]=useState(0);\n  const [attempts,setAttempts]=useState(0);\n  const [revealed,setRevealed]=useState(false);
+  const [score,setScore]=useState(0);
+  const [attempts,setAttempts]=useState(0);
+  const [revealed,setRevealed]=useState(false);
   const [finished,setFinished]=useState(false);
   const item=stages[stage];
   const correct=selected===item.answer;
@@ -96,5 +98,6 @@ export default function MasteryPage(){
         </section>}
       </section>
     </div>
-    <style jsx global>{`@keyframes eliteKeyWin{0%{transform:scale(1) rotate(0)}50%{transform:scale(1.28) rotate(-10deg)}100%{transform:scale(1) rotate(0)}}`}</style>\n  </main>
+    <style jsx global>{`@keyframes eliteKeyWin{0%{transform:scale(1) rotate(0)}50%{transform:scale(1.28) rotate(-10deg)}100%{transform:scale(1) rotate(0)}}`}</style>
+  </main>
 }
