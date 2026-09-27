@@ -35,7 +35,7 @@ const clubSections = [
     icon: "📚",
     title: "مكتبة النخبة",
     description: "تدريبات وأوراق عمل وأنشطة خاصة بأعضاء النادي لتنمّي مهاراتك خطوة بخطوة.",
-    href: "/academy-club/challenge",
+    href: "/academy-club/elite-library",
     color: "#eaf8f0",
     border: "#9ed8b8",
   },
