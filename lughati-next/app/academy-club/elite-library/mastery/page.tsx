@@ -27,25 +27,32 @@ const stages = [
 export default function MasteryPage(){
   const [stage,setStage]=useState(0);
   const [selected,setSelected]=useState<number|null>(null);
-  const [score,setScore]=useState(0);
+  const [score,setScore]=useState(0);\n  const [attempts,setAttempts]=useState(0);\n  const [revealed,setRevealed]=useState(false);
   const [finished,setFinished]=useState(false);
   const item=stages[stage];
   const correct=selected===item.answer;
   const progress=useMemo(()=>finished?100:Math.round((stage/stages.length)*100),[stage,finished]);
 
   function choose(index:number){
-    if(selected!==null)return;
+    if(revealed||correct)return;
     setSelected(index);
-    if(index===item.answer)setScore(v=>v+1);
+    if(index===item.answer){
+      setScore(v=>v+1);
+      setRevealed(true);
+      return;
+    }
+    const nextAttempts=attempts+1;
+    setAttempts(nextAttempts);
+    if(nextAttempts>=2)setRevealed(true);
   }
 
   function next(){
     if(selected===null)return;
     if(stage===stages.length-1){setFinished(true);return;}
-    setStage(v=>v+1);setSelected(null);
+    setStage(v=>v+1);setSelected(null);setAttempts(0);setRevealed(false);
   }
 
-  function restart(){setStage(0);setSelected(null);setScore(0);setFinished(false);}
+  function restart(){setStage(0);setSelected(null);setScore(0);setAttempts(0);setRevealed(false);setFinished(false);}
 
   return <main dir="rtl" style={{minHeight:"100vh",padding:"28px 16px 60px",fontFamily:"Arial,sans-serif",background:"linear-gradient(180deg,#0f6b49,#f2fbf6 310px)",color:"#17352a"}}>
     <div style={{maxWidth:820,margin:"0 auto"}}>
@@ -69,25 +76,25 @@ export default function MasteryPage(){
               const picked=selected===index;
               const isAnswer=index===item.answer;
               let bg="#fff",border="#d8e4de",color="#17352a";
-              if(selected!==null&&isAnswer){bg="#e6f8ee";border="#42a878";color="#126743";}
-              else if(picked){bg="#fff0ed";border="#e27b69";color="#9b3d31";}
-              return <button key={choice} onClick={()=>choose(index)} style={{padding:"15px 17px",borderRadius:17,border:`2px solid ${border}`,background:bg,color,textAlign:"right",fontSize:18,fontWeight:900,cursor:selected===null?"pointer":"default"}}>{choice}</button>;
+              if(revealed&&isAnswer){bg="#e6f8ee";border="#42a878";color="#126743";}
+              else if(picked&&!correct){bg="#fff0ed";border="#e27b69";color="#9b3d31";}
+              return <button key={choice} onClick={()=>choose(index)} disabled={revealed||correct} style={{padding:"15px 17px",borderRadius:17,border:`2px solid ${border}`,background:bg,color,textAlign:"right",fontSize:18,fontWeight:900,cursor:revealed||correct?"default":"pointer"}}>{choice}</button>;
             })}
           </div>
 
           {selected!==null&&<div style={{marginTop:17,padding:16,borderRadius:18,background:correct?"#e9f9f0":"#fff6e5",border:correct?"1px solid #9dd8b9":"1px solid #ecd18d",fontWeight:900,color:correct?"#126743":"#8a620b"}}>
-            {correct?"👏 أحسنت! اخترت الفكرة التي تجمع أهم ما في النص.":"💡 محاولة جميلة. لاحظ الجملة الخضراء؛ فهي تجمع أهم ما حدث في النص."}
+            {correct?"👏 أحسنت! اخترت الفكرة التي تجمع أهم ما في النص.":attempts<2?"💡 اقتربت! فكر: أي جملة تجمع أهم ما حدث في النص؟ حاول مرة أخرى.":"💡 أحسنت المحاولة. الآن ظهرت لك الفكرة الرئيسة؛ اقرأها ثم انتقل للمهمة التالية."}
           </div>}
-          {selected!==null&&<button onClick={next} style={{marginTop:15,width:"100%",padding:14,border:0,borderRadius:16,background:"#176c46",color:"#fff",fontSize:18,fontWeight:900,cursor:"pointer"}}>{stage===stages.length-1?"شاهد نتيجتي 🗝️":"المهمة التالية ←"}</button>}
+          {revealed&&<button onClick={next} style={{marginTop:15,width:"100%",padding:14,border:0,borderRadius:16,background:"#176c46",color:"#fff",fontSize:18,fontWeight:900,cursor:"pointer"}}>{stage===stages.length-1?"شاهد نتيجتي 🗝️":"المهمة التالية ←"}</button>}
         </> : <section style={{marginTop:25,padding:"32px 20px",borderRadius:26,textAlign:"center",background:"linear-gradient(135deg,#fff7d4,#eefaf4)",border:"2px solid #e0bd4d"}}>
-          <div style={{fontSize:65}}>{score===3?"🗝️":"🌟"}</div>
-          <h2 style={{margin:"8px 0",color:"#176c46",fontSize:30}}>{score===3?"أتقنت التجربة!":"أكملت التجربة!"}</h2>
+          <div style={{fontSize:65}}>{score===3?<span style={{display:"inline-block",animation:"eliteKeyWin .75s ease-in-out 2"}}>🗝️</span>:"🌟"}</div>
+          <h2 style={{margin:"8px 0",color:"#176c46",fontSize:30}}>{score===3?"أحسنت! أتقنت المهارة":"أكملت التجربة!"}</h2>
           <p style={{fontSize:20,fontWeight:900}}>نتيجتك: {score} من {stages.length}</p>
-          <p style={{color:"#65766d",fontWeight:700,lineHeight:1.8}}>{score===3?"رائع! أنت جاهز لقطعة مفتاح النخبة. في النسخة التجريبية لن نضيفها إلى حسابك بعد.":"أعد التجربة وحاول الوصول إلى الإتقان الكامل لتحصل على المفتاح."}</p>
+          <p style={{color:"#65766d",fontWeight:700,lineHeight:1.8}}>{score===3?"حصلت على قطعة من مفتاح النخبة 🗝️ — في النسخة التجريبية لن نضيفها إلى حسابك بعد.":score===2?"اقتربت جدًا! بقيت لك خطوة واحدة نحو قطعة المفتاح 🗝️":"أعد التجربة وحاول الوصول إلى الإتقان الكامل لتحصل على المفتاح."}</p>
           {score<3&&<button onClick={restart} style={{padding:"12px 20px",border:0,borderRadius:15,background:"#176c46",color:"#fff",fontWeight:900,fontSize:17,cursor:"pointer"}}>أحاول مرة أخرى 🔄</button>}
           {score===3&&<Link href="/academy-club/elite-library" style={{display:"inline-block",padding:"12px 20px",borderRadius:15,background:"#176c46",color:"#fff",fontWeight:900,textDecoration:"none"}}>العودة للمكتبة ←</Link>}
         </section>}
       </section>
     </div>
-  </main>
+    <style jsx global>{`@keyframes eliteKeyWin{0%{transform:scale(1) rotate(0)}50%{transform:scale(1.28) rotate(-10deg)}100%{transform:scale(1) rotate(0)}}`}</style>\n  </main>
 }
