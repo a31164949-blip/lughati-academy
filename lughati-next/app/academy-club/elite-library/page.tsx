@@ -80,7 +80,7 @@ export default function EliteLibraryPage() {
             </div>
             <div style={{display:"flex",gap:8}}>{[0,1,2,3].map(i=><div key={i} style={{width:48,height:48,borderRadius:16,display:"grid",placeItems:"center",background:i===0&&(masteryKey||teacherPreview)?"#fff0b5":"#f2f4f3",border:i===0&&(masteryKey||teacherPreview)?"2px solid #d8ad2f":"2px dashed #bdc9c3",fontSize:25}}>{i===0&&(masteryKey||teacherPreview)?"🗝️":"?"}</div>)}</div>
           </div>
-          <div style={{marginTop:15,fontSize:13,fontWeight:900,color:"#7b887f"}}>{teacherPreview?"معاينة المعلم: تظهر قطعة «أتقن» للتعريف بالمسار.":masteryKey?"أحسنت! حصلت على قطعة «أتقن» من مفتاح النخبة.":"أتقن المهارة الأولى لتحصل على أول قطعة من المفتاح."}</div>
+          <div style={{marginTop:15,fontSize:13,fontWeight:900,color:"#7b887f"}}>{teacherPreview?"معاينة المعلم: تظهر قطعة «أتقن» للتعريف بالمسار.":masteryKey?"أحسنت! حصلت على أول قطعة من مفتاح النخبة 🗝️ بقيت 3 قطع لفتح الخزنة الذهبية.":"أتقن المهارة الأولى لتحصل على أول قطعة من المفتاح."}</div>
         </section>
 
         <section style={{marginTop:25}}>
