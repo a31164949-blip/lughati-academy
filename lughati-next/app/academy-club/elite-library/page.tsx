@@ -27,6 +27,7 @@ export default function EliteLibraryPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [teacherPreview, setTeacherPreview] = useState(false);
+  const [masteryKey, setMasteryKey] = useState(false);
 
   useEffect(() => {
     const preview = new URLSearchParams(window.location.search).get("teacherPreview") === "1";
@@ -40,6 +41,7 @@ export default function EliteLibraryPage() {
         const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
         const data = await response.json();
         setAllowed(preview ? response.ok && data.success : response.ok && data.success && Boolean(data.academyClubMembership?.active));
+        if (!preview && response.ok && data.success) setMasteryKey(data.eliteLibrary?.masteryKey === true);
       } catch {
         setAllowed(false);
       } finally {
@@ -76,9 +78,9 @@ export default function EliteLibraryPage() {
               <h2 style={{margin:"8px 0 5px",color:"#176c46"}}>اجمع قطع المفتاح وافتح الخزنة</h2>
               <p style={{margin:0,color:"#65756d",fontWeight:700,lineHeight:1.8}}>كل باب يختبر مهارة مختلفة. أكمل المهام، واجمع القطع، ثم افتح مهمة «أتميز».</p>
             </div>
-            <div style={{display:"flex",gap:8}}>{[0,1,2,3].map(i=><div key={i} style={{width:48,height:48,borderRadius:16,display:"grid",placeItems:"center",background:i===0?"#fff0b5":"#f2f4f3",border:i===0?"2px solid #d8ad2f":"2px dashed #bdc9c3",fontSize:25}}>{i===0?"🗝️":"?"}</div>)}</div>
+            <div style={{display:"flex",gap:8}}>{[0,1,2,3].map(i=><div key={i} style={{width:48,height:48,borderRadius:16,display:"grid",placeItems:"center",background:i===0&&(masteryKey||teacherPreview)?"#fff0b5":"#f2f4f3",border:i===0&&(masteryKey||teacherPreview)?"2px solid #d8ad2f":"2px dashed #bdc9c3",fontSize:25}}>{i===0&&(masteryKey||teacherPreview)?"🗝️":"?"}</div>)}</div>
           </div>
-          <div style={{marginTop:15,fontSize:13,fontWeight:900,color:"#7b887f"}}>المرحلة التجريبية: قطعة البداية ظاهرة للتعريف بالمسار، وسيُربط التقدم الفعلي بعد اعتماد أول نشاط.</div>
+          <div style={{marginTop:15,fontSize:13,fontWeight:900,color:"#7b887f"}}>{teacherPreview?"معاينة المعلم: تظهر قطعة «أتقن» للتعريف بالمسار.":masteryKey?"أحسنت! حصلت على قطعة «أتقن» من مفتاح النخبة.":"أتقن المهارة الأولى لتحصل على أول قطعة من المفتاح."}</div>
         </section>
 
         <section style={{marginTop:25}}>
