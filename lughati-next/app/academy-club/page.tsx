@@ -24,6 +24,14 @@ type JourneyResponse = {
 
 const clubSections = [
   {
+    icon: "🗳️",
+    title: "مجلس النادي",
+    description: "شارك بصوتك في اختيارات وقرارات خاصة بأعضاء النادي.",
+    href: "/academy-club/council",
+    color: "#f5efff",
+    border: "#cbb4ee",
+  },
+  {
     icon: "🔴",
     title: "التحدي المباشر",
     description: "ادخل برمز الغرفة ونافس زملاءك في الوقت نفسه.",
