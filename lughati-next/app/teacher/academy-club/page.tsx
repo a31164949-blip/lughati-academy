@@ -153,6 +153,12 @@ export default function TeacherAcademyClubPage() {
             <Link href="/academy-club?teacherPreview=1" target="_blank" style={viewStyle}>معاينة صفحة النادي 👁️</Link>
           </div>
           <div style={hubGridStyle}>
+            <Link href="/teacher/academy-club/council" style={{ ...hubCardStyle, background: "#f5efff", borderColor: "#cbb4ee" }}>
+              <span style={hubIconStyle}>🗳️</span>
+              <strong>مجلس النادي</strong>
+              <small>أنشئ تصويتًا للأعضاء، تحكم في إظهار النتائج، وأغلق التصويت متى شئت.</small>
+              <b>إدارة التصويت ←</b>
+            </Link>
             <Link href="/teacher/academy-club/live-game" style={{ ...hubCardStyle, background: "#fff0f0", borderColor: "#f4a7a7" }}>
               <span style={hubIconStyle}>🏟️</span>
               <strong>التحدي المباشر</strong>
