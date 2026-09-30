@@ -2366,7 +2366,7 @@ useEffect(() => {
                     marginBottom: "4px",
                   }}
                 >
-                  بطل التفاعل
+                  بطل التعلّم الأسبوعي
                 </span>
 
                 <strong
