@@ -979,8 +979,14 @@ useEffect(() => {
         }
       }
 
+      const teacherPreview =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("teacherPreview") === "1";
+
       const response = await fetch(
-        "/api/public-weekly-engagement",
+        teacherPreview
+          ? "/api/public-weekly-engagement?teacherPreview=1"
+          : "/api/public-weekly-engagement",
         {
           method: "GET",
           cache: "default",
