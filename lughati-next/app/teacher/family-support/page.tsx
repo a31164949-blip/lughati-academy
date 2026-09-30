@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import Link from "next/link";
 import {onAuthStateChanged} from "firebase/auth";
 import {auth} from "../../../firebase";
-type C={id:string;studentName?:string;classroom?:string;barriers?:string[];note?:string;requestedHelp?:string;teacherMessage?:string;followUpPlan?:string;reviewDate?:string;status?:string;supportInvitedAt?:unknown};
+type C={id:string;studentName?:string;classroom?:string;barriers?:string[];note?:string;requestedHelp?:string;teacherMessage?:string;followUpPlan?:string;reviewDate?:string;status?:string;supportInvitedAt?:string|number|boolean|null};
 export default function TeacherFamilySupport(){
  const [items,setItems]=useState<C[]>([]),[loading,setLoading]=useState(true),[msg,setMsg]=useState("");
  async function load(){const u=auth.currentUser;if(!u)return;const t=await u.getIdToken();const r=await fetch("/api/teacher/family-support",{headers:{Authorization:`Bearer ${t}`},cache:"no-store"});const d=await r.json();if(r.ok)setItems(d.cases||[]);else setMsg(d.message||"تعذر التحميل");setLoading(false);}
