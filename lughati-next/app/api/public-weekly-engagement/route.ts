@@ -267,17 +267,19 @@ function getPublicStudentName(fullName: string) {
     .join(" ");
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const now = Date.now();
     const { startDate, endDate } = getWeekRange();
+    const url = new URL(request.url);
+    const teacherPreview = url.searchParams.get("teacherPreview") === "1";
 
     /*
       خارج نافذة التكريم لا نقرأ Firestore إطلاقًا.
       العرض المعتمد:
       الخميس 12:00 ظهرًا -> السبت 12:00 ظهرًا بتوقيت الرياض.
     */
-    if (!isTopFiveDisplayWindow()) {
+    if (!isTopFiveDisplayWindow() && !teacherPreview) {
       return NextResponse.json(
         getInactivePayload(startDate, endDate),
         {
@@ -303,7 +305,11 @@ export async function GET() {
     const { adminDb } = getFirebaseAdmin();
     const summaryRef = adminDb
       .collection("weeklyEngagementSummaries")
-      .doc(`${startDate}-${SUMMARY_VERSION}`);
+      .doc(
+        teacherPreview
+          ? `${startDate}-${SUMMARY_VERSION}-preview`
+          : `${startDate}-${SUMMARY_VERSION}`
+      );
 
     const storedSummary = await readReadySummary(summaryRef);
     if (storedSummary && storedSummary.weekStart === startDate) {
