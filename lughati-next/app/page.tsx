@@ -103,6 +103,9 @@ type WeeklyEngagementStudent = {
   studentId: string;
   studentName: string;
   score: number;
+  readings: number;
+  homeworks: number;
+  galleryWorks: number;
   movement: number;
 };
 
@@ -856,6 +859,9 @@ useEffect(() => {
       studentId?: string;
       studentName?: string;
       score?: number;
+      readings?: number;
+      homeworks?: number;
+      galleryWorks?: number;
     }>,
     champion: PointsChampion | null
   ) {
@@ -891,6 +897,18 @@ useEffect(() => {
             typeof item.score === "number"
               ? item.score
               : 0,
+          readings:
+            typeof item.readings === "number"
+              ? item.readings
+              : 0,
+          homeworks:
+            typeof item.homeworks === "number"
+              ? item.homeworks
+              : 0,
+          galleryWorks:
+            typeof item.galleryWorks === "number"
+              ? item.galleryWorks
+              : 0,
           movement:
             typeof previousRank === "number"
               ? previousRank - rank
@@ -923,6 +941,9 @@ useEffect(() => {
               studentId?: string;
               studentName?: string;
               score?: number;
+      readings?: number;
+      homeworks?: number;
+      galleryWorks?: number;
             }>
           >(
             WEEKLY_ENGAGEMENT_CACHE_KEY
@@ -976,6 +997,9 @@ useEffect(() => {
           studentId?: string;
           studentName?: string;
           score?: number;
+      readings?: number;
+      homeworks?: number;
+      galleryWorks?: number;
         }>;
         pointsChampion?: PointsChampion | null;
         displayActive?: boolean;
@@ -2203,7 +2227,7 @@ useEffect(() => {
                 fontWeight: 800,
               }}
             >
-              إنجاز • تفاعل • استمرار
+              قراءة • واجبات • إبداع
             </span>
           </div>
         </div>
@@ -2222,7 +2246,7 @@ useEffect(() => {
             whiteSpace: "nowrap",
           }}
         >
-          الخميس 12 ظهرًا ← السبت 4 عصرًا
+          الخميس 12 ظهرًا ← السبت 12 ظهرًا
         </span>
       </div>
 
@@ -2431,7 +2455,7 @@ useEffect(() => {
                 color: "#ffffff",
               }}
             >
-              🏅 قائمة الأكثر تفاعلًا
+              🏅 أفضل خمسة طلاب
             </strong>
 
             <span
@@ -2502,16 +2526,32 @@ useEffect(() => {
                         minWidth: 0,
                         overflow:
                           "hidden",
-                        textOverflow:
-                          "ellipsis",
-                        whiteSpace:
-                          "nowrap",
-                        fontSize:
-                          "13px",
-                        fontWeight: 900,
                       }}
                     >
-                      {row.studentName}
+                      <strong
+                        style={{
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: "13px",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {row.studentName}
+                      </strong>
+                      <small
+                        style={{
+                          display: "block",
+                          marginTop: "3px",
+                          color: "#d1fae5",
+                          fontSize: "10px",
+                          fontWeight: 800,
+                          whiteSpace: "normal",
+                        }}
+                      >
+                        📖 {row.readings} قراءة • 📝 {row.homeworks} واجب • 🎨 {row.galleryWorks} معرض
+                      </small>
                     </span>
 
                     <span
@@ -2533,7 +2573,7 @@ useEffect(() => {
                         fontWeight: 900,
                       }}
                     >
-                      {row.score} تفاعل
+                      {row.score}%
                     </span>
                   </div>
                 );
