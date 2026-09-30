@@ -27,8 +27,26 @@ export async function POST(request:Request){
  const payload:Record<string,unknown>={studentId,teacherMessage,followUpPlan,reviewDate,status:followUpPlan?"plan-set":"teacher-message",teacherUpdatedBy:uid,teacherUpdatedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
  if(studentName)payload.studentName=studentName;
  if(classroom)payload.classroom=classroom;
- if(supportInvite){payload.supportInvitedAt=FieldValue.serverTimestamp();payload.status="support-invited";}
+ if(supportInvite){
+  payload.supportInvitedAt=FieldValue.serverTimestamp();
+  payload.status="support-invited";
+ }
  await adminDb.collection("familySupportCases").doc(studentId).set(payload,{merge:true});
+ if(supportInvite){
+  const notificationRef=adminDb.collection("studentNotifications").doc(`support-step-${studentId}`);
+  await notificationRef.set({
+   studentId,
+   studentDocId:studentId,
+   title:"🚨 تنبيه مهم جدًا",
+   message:teacherMessage || "لديك خطوة دعم مهمة من معلمك. افتح «خطوتي تصنع الفرق» وابدأ خطوتك القادمة.",
+   type:"important-support",
+   href:"/support",
+   read:false,
+   opened:false,
+   createdAt:FieldValue.serverTimestamp(),
+   updatedAt:FieldValue.serverTimestamp(),
+  },{merge:true});
+ }
  return NextResponse.json({success:true,message:supportInvite?"تم إرسال خطوة الدعم للطالب والأسرة.":"تم حفظ المتابعة."});}
  catch(e){const m=e instanceof Error?e.message:"";return NextResponse.json({success:false,message:"تعذر حفظ المتابعة."},{status:m==="UNAUTHORIZED"?401:m==="FORBIDDEN"?403:500});}
 }
