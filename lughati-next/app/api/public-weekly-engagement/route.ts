@@ -9,27 +9,28 @@ type EngagementRow = {
   studentName: string;
   score: number;
   details: {
-    weeklyPlan: number;
     homeworks: number;
     readings: number;
-    dailyCompletions: number;
-    login: number;
+    galleryWorks: number;
   };
 };
 
 const WEIGHTS = {
-  weeklyPlan: 1,
-  homework: 3,
-  reading: 3,
-  dailyCompletion: 1,
-  weeklyLogin: 1,
+  reading: 40,
+  homework: 40,
+  gallery: 20,
 } as const;
+
+const SUMMARY_VERSION = "learning-v2";
 
 type RankingItem = {
   rank: number;
   studentId: string;
   studentName: string;
   score: number;
+  readings: number;
+  homeworks: number;
+  galleryWorks: number;
 };
 
 type PointsChampion = {
@@ -103,9 +104,9 @@ function isTopFiveDisplayWindow(date = new Date()) {
     return true;
   }
 
-  // السبت حتى 4:00 عصرًا، والساعة 4:00 نفسها هي وقت الإيقاف.
+  // السبت حتى 12:00 ظهرًا، والساعة 12:00 نفسها هي وقت الإيقاف.
   if (weekday === "Sat") {
-    return minutes < 16 * 60;
+    return minutes < 12 * 60;
   }
 
   return false;
@@ -168,7 +169,7 @@ function isInsideWeek(dateKey: string, startDate: string, endDate: string) {
 function getInactivePayload(startDate: string, endDate: string) {
   return {
     success: true as const,
-    title: "الأكثر تفاعلًا هذا الأسبوع",
+    title: "أفضل خمسة طلاب هذا الأسبوع",
     weekStart: startDate,
     weekEnd: endDate,
     weights: WEIGHTS,
@@ -266,17 +267,19 @@ function getPublicStudentName(fullName: string) {
     .join(" ");
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const now = Date.now();
     const { startDate, endDate } = getWeekRange();
+    const url = new URL(request.url);
+    const teacherPreview = url.searchParams.get("teacherPreview") === "1";
 
     /*
       خارج نافذة التكريم لا نقرأ Firestore إطلاقًا.
       العرض المعتمد:
-      الخميس 12:00 ظهرًا -> السبت 4:00 عصرًا بتوقيت الرياض.
+      الخميس 12:00 ظهرًا -> السبت 12:00 ظهرًا بتوقيت الرياض.
     */
-    if (!isTopFiveDisplayWindow()) {
+    if (!isTopFiveDisplayWindow() && !teacherPreview) {
       return NextResponse.json(
         getInactivePayload(startDate, endDate),
         {
@@ -302,7 +305,11 @@ export async function GET() {
     const { adminDb } = getFirebaseAdmin();
     const summaryRef = adminDb
       .collection("weeklyEngagementSummaries")
-      .doc(startDate);
+      .doc(
+        teacherPreview
+          ? `${startDate}-${SUMMARY_VERSION}-preview`
+          : `${startDate}-${SUMMARY_VERSION}`
+      );
 
     const storedSummary = await readReadySummary(summaryRef);
     if (storedSummary && storedSummary.weekStart === startDate) {
@@ -343,20 +350,16 @@ export async function GET() {
 
     const [
       studentsSnapshot,
-      weeklyPlanViewsSnapshot,
       homeworkSnapshot,
       readingSnapshot,
-      dailySnapshot,
+      studentWorksSnapshot,
+      notebookGallerySnapshot,
     ] = await Promise.all([
       adminDb.collection("students").get(),
-      adminDb.collection("weeklyPlanViews").get(),
       adminDb.collection("homeworkCompletions").get(),
       adminDb.collection("reading-submissions").get(),
-      adminDb
-        .collection("dailyCompletions")
-        .where("date", ">=", startDate)
-        .where("date", "<=", endDate)
-        .get(),
+      adminDb.collection("studentWorks").get(),
+      adminDb.collection("notebookGallery").get(),
     ]);
 
     const rows = new Map<string, EngagementRow>();
@@ -396,11 +399,9 @@ export async function GET() {
         studentName: publicStudentName,
         score: 0,
         details: {
-          weeklyPlan: 0,
           homeworks: 0,
           readings: 0,
-          dailyCompletions: 0,
-          login: 0,
+          galleryWorks: 0,
         },
       };
 
@@ -408,16 +409,6 @@ export async function GET() {
       aliases.set(studentDoc.id, studentDoc.id);
       aliases.set(logicalId, studentDoc.id);
 
-      const lastLoginKey = firstDateKey(data, [
-        "lastLoginAt",
-        "lastLogin",
-        "lastLoginDate",
-        "lastSeenAt",
-      ]);
-
-      if (isInsideWeek(lastLoginKey, startDate, endDate)) {
-        row.details.login = WEIGHTS.weeklyLogin;
-      }
     });
 
     const resolveStudent = (rawId: unknown) => {
@@ -426,29 +417,8 @@ export async function GET() {
       return rows.get(canonical) ?? null;
     };
 
-    const weeklyPlanSeen = new Set<string>();
-    weeklyPlanViewsSnapshot.docs.forEach((docSnapshot) => {
-      const data = docSnapshot.data() as Record<string, unknown>;
-      const row = resolveStudent(data.studentId ?? data.studentDocId);
-      if (!row) return;
-
-      const dateKey = firstDateKey(data, [
-        "viewedAt",
-        "firstViewedAt",
-        "lastViewedAt",
-        "createdAt",
-        "updatedAt",
-        "date",
-      ]);
-
-      if (!isInsideWeek(dateKey, startDate, endDate)) return;
-      if (weeklyPlanSeen.has(row.studentId)) return;
-
-      weeklyPlanSeen.add(row.studentId);
-      row.details.weeklyPlan += WEIGHTS.weeklyPlan;
-    });
-
     const homeworkSeen = new Set<string>();
+    const homeworkCompletionSeen = new Set<string>();
     homeworkSnapshot.docs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;
       const row = resolveStudent(data.studentId ?? data.studentDocId);
@@ -482,7 +452,8 @@ export async function GET() {
       if (homeworkSeen.has(uniqueKey)) return;
 
       homeworkSeen.add(uniqueKey);
-      row.details.homeworks += WEIGHTS.homework;
+      homeworkCompletionSeen.add(`${row.studentId}:${docSnapshot.id}`);
+      row.details.homeworks += 1;
     });
 
     const readingSeen = new Set<string>();
@@ -502,47 +473,118 @@ export async function GET() {
       if (readingSeen.has(uniqueKey)) return;
 
       readingSeen.add(uniqueKey);
-      row.details.readings += WEIGHTS.reading;
+      row.details.readings += 1;
     });
 
-    const dailySeen = new Set<string>();
-    dailySnapshot.docs.forEach((docSnapshot) => {
+    const gallerySeen = new Set<string>();
+
+    studentWorksSnapshot.docs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;
       const row = resolveStudent(data.studentId ?? data.studentDocId);
-      if (!row || data.completed !== true) return;
+      if (!row) return;
 
-      const dateKey =
-        typeof data.date === "string" && data.date.trim()
-          ? data.date.trim().slice(0, 10)
-          : firstDateKey(data, ["completedAt", "updatedAt", "createdAt"]);
+      const approved =
+        data.status === "approved" ||
+        data.status === "معتمد" ||
+        data.teacherApproved === true;
+
+      const published =
+        data.publishedToGallery === true ||
+        data.published === true;
+
+      if (!approved || !published) return;
+
+      const dateKey = firstDateKey(data, [
+        "publishedAt",
+        "approvedAt",
+        "updatedAt",
+        "createdAt",
+      ]);
 
       if (!isInsideWeek(dateKey, startDate, endDate)) return;
 
-      const uniqueKey = `${row.studentId}:${dateKey}`;
-      if (dailySeen.has(uniqueKey)) return;
+      const sourceCompletionId =
+        typeof data.sourceCompletionId === "string"
+          ? data.sourceCompletionId.trim()
+          : "";
 
-      dailySeen.add(uniqueKey);
-      row.details.dailyCompletions += WEIGHTS.dailyCompletion;
+      // إذا كان العمل منشورًا من واجب سبق احتسابه، فلا نحسبه مرة ثانية.
+      if (
+        sourceCompletionId &&
+        homeworkCompletionSeen.has(`${row.studentId}:${sourceCompletionId}`)
+      ) {
+        return;
+      }
+
+      const uniqueKey = `${row.studentId}:work:${docSnapshot.id}`;
+      if (gallerySeen.has(uniqueKey)) return;
+
+      gallerySeen.add(uniqueKey);
+      row.details.galleryWorks += 1;
     });
 
-    const ranked = [...rows.values()]
+    notebookGallerySnapshot.docs.forEach((docSnapshot) => {
+      const data = docSnapshot.data() as Record<string, unknown>;
+      const row = resolveStudent(data.studentId ?? data.studentDocId);
+      if (!row || data.isPublished === false) return;
+
+      const dateKey = firstDateKey(data, [
+        "publishedAt",
+        "approvedAt",
+        "updatedAt",
+        "createdAt",
+      ]);
+
+      if (!isInsideWeek(dateKey, startDate, endDate)) return;
+
+      const uniqueKey = `${row.studentId}:notebook:${docSnapshot.id}`;
+      if (gallerySeen.has(uniqueKey)) return;
+
+      gallerySeen.add(uniqueKey);
+      row.details.galleryWorks += 1;
+    });
+
+    const activeRows = [...rows.values()].filter(
+      (row) =>
+        row.details.readings > 0 ||
+        row.details.homeworks > 0 ||
+        row.details.galleryWorks > 0
+    );
+
+    const maxReadings = Math.max(
+      1,
+      ...activeRows.map((row) => row.details.readings)
+    );
+    const maxHomeworks = Math.max(
+      1,
+      ...activeRows.map((row) => row.details.homeworks)
+    );
+    const maxGalleryWorks = Math.max(
+      1,
+      ...activeRows.map((row) => row.details.galleryWorks)
+    );
+
+    const ranked = activeRows
       .map((row) => ({
         ...row,
-        score:
-          row.details.weeklyPlan +
-          row.details.homeworks +
-          row.details.readings +
-          row.details.dailyCompletions +
-          row.details.login,
+        score: Number(
+          (
+            (row.details.readings / maxReadings) * WEIGHTS.reading +
+            (row.details.homeworks / maxHomeworks) * WEIGHTS.homework +
+            (row.details.galleryWorks / maxGalleryWorks) * WEIGHTS.gallery
+          ).toFixed(2)
+        ),
       }))
-      .filter((row) => row.score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
+        if (b.details.readings !== a.details.readings) {
+          return b.details.readings - a.details.readings;
+        }
         if (b.details.homeworks !== a.details.homeworks) {
           return b.details.homeworks - a.details.homeworks;
         }
-        if (b.details.readings !== a.details.readings) {
-          return b.details.readings - a.details.readings;
+        if (b.details.galleryWorks !== a.details.galleryWorks) {
+          return b.details.galleryWorks - a.details.galleryWorks;
         }
         return a.studentName.localeCompare(b.studentName, "ar");
       })
@@ -552,11 +594,14 @@ export async function GET() {
         studentId: row.studentId,
         studentName: row.studentName,
         score: row.score,
+        readings: row.details.readings,
+        homeworks: row.details.homeworks,
+        galleryWorks: row.details.galleryWorks,
       }));
 
     const payload: WeeklyEngagementPayload = {
       success: true,
-      title: "الأكثر تفاعلًا هذا الأسبوع",
+      title: "أفضل خمسة طلاب هذا الأسبوع",
       weekStart: startDate,
       weekEnd: endDate,
       weights: WEIGHTS,
