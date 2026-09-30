@@ -2009,7 +2009,7 @@ useEffect(() => {
 
       <ReadingSupportRegistration />
 
-{/* أبطال الأكاديمية — بطل النقاط وبطل التفاعل وأفضل خمسة */}
+{/* أبطال الأكاديمية — بطل النقاط وبطل التعلّم الأسبوعي وأفضل خمسة */}
 {(pointsChampion || weeklyEngagement.length > 0) && (
   <section
     aria-label="أبطال الأكاديمية"
@@ -2403,7 +2403,7 @@ useEffect(() => {
                     fontWeight: 900,
                   }}
                 >
-                  ⚡ {weeklyEngagement[0].score} تفاعل
+                  ⚡ {weeklyEngagement[0].score}%
                 </span>
               </div>
             </div>
@@ -2461,7 +2461,7 @@ useEffect(() => {
                 color: "#ffffff",
               }}
             >
-              🏅 أفضل خمسة طلاب
+              🏅 أفضل خمسة طلاب هذا الأسبوع
             </strong>
 
             <span
@@ -2471,7 +2471,7 @@ useEffect(() => {
                 fontWeight: 800,
               }}
             >
-              أفضل خمسة أبطال هذا الأسبوع
+              قراءة 40% • واجبات 40% • معرض 20%
             </span>
           </div>
 
