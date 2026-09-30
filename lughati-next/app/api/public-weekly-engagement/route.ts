@@ -21,11 +21,16 @@ const WEIGHTS = {
   gallery: 20,
 } as const;
 
+const SUMMARY_VERSION = "learning-v2";
+
 type RankingItem = {
   rank: number;
   studentId: string;
   studentName: string;
   score: number;
+  readings: number;
+  homeworks: number;
+  galleryWorks: number;
 };
 
 type PointsChampion = {
@@ -164,7 +169,7 @@ function isInsideWeek(dateKey: string, startDate: string, endDate: string) {
 function getInactivePayload(startDate: string, endDate: string) {
   return {
     success: true as const,
-    title: "الأكثر تفاعلًا هذا الأسبوع",
+    title: "أفضل خمسة طلاب هذا الأسبوع",
     weekStart: startDate,
     weekEnd: endDate,
     weights: WEIGHTS,
@@ -298,7 +303,7 @@ export async function GET() {
     const { adminDb } = getFirebaseAdmin();
     const summaryRef = adminDb
       .collection("weeklyEngagementSummaries")
-      .doc(startDate);
+      .doc(`${startDate}-${SUMMARY_VERSION}`);
 
     const storedSummary = await readReadySummary(summaryRef);
     if (storedSummary && storedSummary.weekStart === startDate) {
@@ -407,6 +412,7 @@ export async function GET() {
     };
 
     const homeworkSeen = new Set<string>();
+    const homeworkCompletionSeen = new Set<string>();
     homeworkSnapshot.docs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;
       const row = resolveStudent(data.studentId ?? data.studentDocId);
@@ -440,6 +446,7 @@ export async function GET() {
       if (homeworkSeen.has(uniqueKey)) return;
 
       homeworkSeen.add(uniqueKey);
+      homeworkCompletionSeen.add(`${row.studentId}:${docSnapshot.id}`);
       row.details.homeworks += 1;
     });
 
@@ -498,7 +505,7 @@ export async function GET() {
       // إذا كان العمل منشورًا من واجب سبق احتسابه، فلا نحسبه مرة ثانية.
       if (
         sourceCompletionId &&
-        homeworkSeen.has(`${row.studentId}:${sourceCompletionId}`)
+        homeworkCompletionSeen.has(`${row.studentId}:${sourceCompletionId}`)
       ) {
         return;
       }
@@ -581,6 +588,9 @@ export async function GET() {
         studentId: row.studentId,
         studentName: row.studentName,
         score: row.score,
+        readings: row.details.readings,
+        homeworks: row.details.homeworks,
+        galleryWorks: row.details.galleryWorks,
       }));
 
     const payload: WeeklyEngagementPayload = {
