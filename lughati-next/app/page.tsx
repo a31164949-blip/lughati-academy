@@ -385,7 +385,7 @@ function isWeeklyEngagementDisplayActive() {
 
   if (values.weekday === "Thu") return minutes >= 12 * 60;
   if (values.weekday === "Fri") return true;
-  if (values.weekday === "Sat") return minutes < 16 * 60;
+  if (values.weekday === "Sat") return minutes < 12 * 60;
   return false;
 }
 
