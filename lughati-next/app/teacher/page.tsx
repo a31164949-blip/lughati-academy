@@ -74,6 +74,12 @@ const sections = [
     href: "/teacher/national-day",
   },
   {
+    title: "🎡 الفائزون في عجلة الحظ",
+    description:
+      "معرفة الطلاب الذين استخدموا العجلة وما حصلوا عليه من نقاط أو جوائز هذا الأسبوع.",
+    href: "/teacher/weekly-wheel-winners",
+  },
+  {
     title: "🎁 إهداء النقاط",
     description:
       "إرسال هدية نقاط مباشرة للطالب مع تسجيل السبب وربطها برصيده ومدينة الإنجاز.",
