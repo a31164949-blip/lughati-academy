@@ -30,18 +30,23 @@ export async function GET(request:Request){
   await teacher(request);const {adminDb}=getFirebaseAdmin();const {start,end}=week();
   // لا نحمل السجل التاريخي كاملًا: نقرأ فقط نشاط الأسبوع الحالي.
   // هذا يخفض قراءات Firestore بصورة كبيرة كلما كبرت الأكاديمية.
-  const [students,homeworks,readings,cases]=await Promise.all([
+  const startAt=new Date(start+"T00:00:00+03:00"),endAt=new Date(end+"T23:59:59.999+03:00");
+  const [students,homeworksByReview,homeworksLegacy,readings,cases]=await Promise.all([
    adminDb.collection("students").where("active","==",true).get(),
-   adminDb.collection("homeworkCompletions").where("createdAt",">=",new Date(start+"T00:00:00+03:00")).get(),
+   adminDb.collection("homeworkCompletions").where("solutionReviewedAt",">=",startAt).where("solutionReviewedAt","<=",endAt).get(),
+   adminDb.collection("homeworkCompletions").where("createdAt",">=",startAt).where("createdAt","<=",endAt).get(),
    adminDb.collection("reading-submissions").where("readingDate",">=",start).where("readingDate","<=",end).get(),
    adminDb.collection("familySupportCases").where("supportInvitedAt","!=",null).get()
   ]);
+  const homeworks=new Map<string,FirebaseFirestore.QueryDocumentSnapshot>();
+  homeworksByReview.docs.forEach(doc=>homeworks.set(doc.id,doc));
+  homeworksLegacy.docs.forEach(doc=>homeworks.set(doc.id,doc));
   type Row={id:string;studentName:string;classroom:string;readings:number;homeworks:number;invited:boolean};
   const rows=new Map<string,Row>(),aliases=new Map<string,string>();
   students.docs.forEach(doc=>{const d=doc.data() as Record<string,unknown>;if(d.deleted===true||d.active===false||d.isActive===false||d.archived===true||d.temporary===true)return;const logical=typeof d.studentId==="string"&&d.studentId.trim()?d.studentId.trim():doc.id;const name=String(d.studentName??d.name??d.fullName??"الطالب").trim();if(!name||/تجريبي|اختبار|test/i.test(name))return;rows.set(doc.id,{id:doc.id,studentName:name,classroom:String(d.classroom??""),readings:0,homeworks:0,invited:false});aliases.set(doc.id,doc.id);aliases.set(logical,doc.id);});
   const resolve=(v:unknown)=>typeof v==="string"?rows.get(aliases.get(v.trim())??v.trim()):undefined;
   const hwSeen=new Set<string>();
-  homeworks.docs.forEach(doc=>{const d=doc.data() as Record<string,unknown>,r=resolve(d.studentId??d.studentDocId);if(!r)return;const ok=d.solutionStatus==="approved"||d.status==="approved"||d.teacherReviewed===true||d.approved===true;if(!ok)return;const k=firstDate(d,["solutionReviewedAt","reviewedAt","approvedAt","updatedAt","completedAt","createdAt"]);if(k<start||k>end)return;const hid=typeof d.homeworkId==="string"&&d.homeworkId.trim()?d.homeworkId.trim():doc.id;const u=r.id+":"+hid;if(hwSeen.has(u))return;hwSeen.add(u);r.homeworks++;});
+  homeworks.forEach(doc=>{const d=doc.data() as Record<string,unknown>,r=resolve(d.studentId??d.studentDocId);if(!r)return;const ok=d.solutionStatus==="approved"||d.status==="approved"||d.teacherReviewed===true||d.approved===true;if(!ok)return;const k=firstDate(d,["solutionReviewedAt","reviewedAt","approvedAt","updatedAt","completedAt","createdAt"]);if(k<start||k>end)return;const hid=typeof d.homeworkId==="string"&&d.homeworkId.trim()?d.homeworkId.trim():doc.id;const u=r.id+":"+hid;if(hwSeen.has(u))return;hwSeen.add(u);r.homeworks++;});
   const rdSeen=new Set<string>();
   readings.docs.forEach(doc=>{const d=doc.data() as Record<string,unknown>,r=resolve(d.studentId??d.studentDocId);if(!r||d.status!=="approved")return;const k=typeof d.readingDate==="string"?d.readingDate.slice(0,10):firstDate(d,["reviewedAt","approvedAt","createdAt"]);if(k<start||k>end)return;const u=r.id+":"+k;if(rdSeen.has(u))return;rdSeen.add(u);r.readings++;});
   cases.docs.forEach(doc=>{const r=rows.get(doc.id);if(r&&(doc.data() as Record<string,unknown>).supportInvitedAt)r.invited=true;});
