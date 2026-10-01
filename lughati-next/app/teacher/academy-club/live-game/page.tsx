@@ -46,7 +46,7 @@ export default function TeacherLiveGamePage() {
 
   useEffect(() => {
     if (!user || !room?.code) return;
-    const timer = window.setInterval(() => void call(), 2000);
+    const timer = window.setInterval(() => void call(), 10000);
     return () => window.clearInterval(timer);
   }, [user, room?.code]);
 

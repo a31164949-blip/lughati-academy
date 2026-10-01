@@ -7,7 +7,7 @@ import {
   collection,
   deleteDoc,
   getDocs,
-  onSnapshot,
+  limit,
   orderBy,
   query,
   doc,
@@ -168,7 +168,8 @@ export default function TeacherStudentMessagesPage() {
     orderBy(
       "createdAt",
       "desc"
-    )
+    ),
+    limit(100)
   );
 
   const snapshot =
@@ -310,69 +311,28 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  setLoading(true);
+  let active = true;
 
-  const messagesQuery = query(
-    collection(
-      db,
-      "studentTeacherMessages"
-    ),
-    orderBy(
-      "createdAt",
-      "desc"
-    )
-  );
-
-  const unsubscribe = onSnapshot(
-    messagesQuery,
-    (snapshot) => {
-      const items: StudentMessage[] =
-        snapshot.docs.map(
-          (item) => ({
-            id: item.id,
-            ...(item.data() as Omit<
-              StudentMessage,
-              "id"
-            >),
-          })
-        );
-
+  async function loadInitialMessages() {
+    try {
+      setLoading(true);
+      const items = await fetchMessages();
+      if (!active) return;
       setMessages(items);
-      setReplyTexts(
-        (currentReplies) => {
-          const nextReplies = {
-            ...currentReplies,
-          };
-
-          items.forEach((item) => {
-            if (
-              typeof nextReplies[item.id] !==
-              "string"
-            ) {
-              nextReplies[item.id] =
-                item.teacherReply || "";
-            }
-          });
-
-          return nextReplies;
-        }
-      );
-      setLoading(false);
-    },
-    (error) => {
-      console.error(
-        "تعذر تحديث رسائل الطلاب:",
-        error
-      );
-
-      setFeedback(
-        "❌ تعذر تحديث رسائل الطلاب."
-      );
-      setLoading(false);
+      setReplyTexts(buildReplyTexts(items));
+    } catch (error) {
+      console.error("تعذر تحميل رسائل الطلاب:", error);
+      if (active) setFeedback("❌ تعذر تحميل رسائل الطلاب.");
+    } finally {
+      if (active) setLoading(false);
     }
-  );
+  }
 
-  return unsubscribe;
+  void loadInitialMessages();
+
+  return () => {
+    active = false;
+  };
 }, []);
 
   async function sendDirectMessage() {

@@ -7,7 +7,10 @@ import {
   collection,
   deleteDoc,
   doc,
-  onSnapshot,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   serverTimestamp,
   Timestamp,
   updateDoc,
@@ -35,47 +38,44 @@ export default function AnnouncementsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "announcements"),
-      (snapshot) => {
-        const items = snapshot.docs.map((item) => {
-          const data = item.data();
+  async function loadAnnouncements() {
+    try {
+      const snapshot = await getDocs(
+        query(
+          collection(db, "announcements"),
+          orderBy("createdAt", "desc"),
+          limit(30)
+        )
+      );
 
-          return {
-            id: item.id,
-            title: data.title ?? "",
-            message: data.message ?? "",
-            priority: data.priority ?? "normal",
-            published: data.published ?? false,
-            pinned: data.pinned ?? false,
-            createdAt: data.createdAt ?? null,
-          } as Announcement;
-        });
+      const items = snapshot.docs.map((item) => {
+        const data = item.data();
+        return {
+          id: item.id,
+          title: data.title ?? "",
+          message: data.message ?? "",
+          priority: data.priority ?? "normal",
+          published: data.published ?? false,
+          pinned: data.pinned ?? false,
+          createdAt: data.createdAt ?? null,
+        } as Announcement;
+      });
 
-        items.sort((a, b) => {
-  if (a.pinned !== b.pinned) {
-    return a.pinned ? -1 : 1;
+      items.sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0);
+      });
+
+      setAnnouncements(items);
+      setStatusMessage("");
+    } catch (error) {
+      console.error(error);
+      setStatusMessage("تعذر قراءة الإعلانات. سنراجع صلاحيات Firestore في الخطوة التالية.");
+    }
   }
 
-  const firstDate = a.createdAt?.toMillis() ?? 0;
-  const secondDate = b.createdAt?.toMillis() ?? 0;
-
-  return secondDate - firstDate;
-});
-
-        setAnnouncements(items);
-        setStatusMessage("");
-      },
-      (error) => {
-        console.error(error);
-        setStatusMessage(
-          "تعذر قراءة الإعلانات. سنراجع صلاحيات Firestore في الخطوة التالية."
-        );
-      }
-    );
-
-    return unsubscribe;
+  useEffect(() => {
+    void loadAnnouncements();
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -100,6 +100,7 @@ export default function AnnouncementsPage() {
 
   setEditingId(null);
   setStatusMessage("تم تحديث الإعلان بنجاح ✅");
+  await loadAnnouncements();
 } else {
   await addDoc(collection(db, "announcements"), {
     title: title.trim(),
@@ -110,6 +111,7 @@ export default function AnnouncementsPage() {
   });
 
   setStatusMessage("تم حفظ الإعلان بنجاح ✅");
+  await loadAnnouncements();
 }
 
       setTitle("");
@@ -142,6 +144,7 @@ function startEditing(item: Announcement) {
       await updateDoc(doc(db, "announcements", item.id), {
         published: !item.published,
       });
+      await loadAnnouncements();
     } catch (error) {
       console.error(error);
       setStatusMessage("تعذر تغيير حالة الإعلان.");
@@ -152,6 +155,8 @@ function startEditing(item: Announcement) {
     await updateDoc(doc(db, "announcements", item.id), {
       pinned: !item.pinned,
     });
+
+    await loadAnnouncements();
 
     setStatusMessage(
       item.pinned
@@ -171,6 +176,7 @@ async function removeAnnouncement(id: string) {
 
     try {
       await deleteDoc(doc(db, "announcements", id));
+      await loadAnnouncements();
       setStatusMessage("تم حذف الإعلان.");
     } catch (error) {
       console.error(error);

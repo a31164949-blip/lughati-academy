@@ -41,7 +41,7 @@ export default function LiveGamePage() {
 
   useEffect(()=>{
     if(!user||!room?.code)return;
-    const timer=window.setInterval(()=>void request(),2000);
+    const timer=window.setInterval(()=>void request(),10000);
     return()=>window.clearInterval(timer);
   },[user,room?.code,code]);
 

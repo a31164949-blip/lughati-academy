@@ -503,6 +503,8 @@ export async function GET(
       adminDb
         .collection("studentTeacherMessages")
         .where("studentId", "==", studentDocId)
+        .where("studentViewedReply", "==", false)
+        .limit(20)
         .get(),
     ]);
 

@@ -226,12 +226,12 @@ async function readReadySummary(summaryRef: FirebaseFirestore.DocumentReference)
 
 async function waitForReadySummary(
   summaryRef: FirebaseFirestore.DocumentReference,
-  attempts = 120
+  attempts = 4
 ) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const summary = await readReadySummary(summaryRef);
     if (summary) return summary;
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 750));
   }
 
   return null;
@@ -348,19 +348,46 @@ export async function GET(request: Request) {
       });
     }
 
+    const startAt = new Date(startDate + "T00:00:00+03:00");
+    const endAt = new Date(endDate + "T23:59:59.999+03:00");
     const [
       studentsSnapshot,
-      homeworkSnapshot,
+      homeworkByReviewSnapshot,
+      homeworkLegacySnapshot,
       readingSnapshot,
-      studentWorksSnapshot,
-      notebookGallerySnapshot,
+      studentWorksByPublishSnapshot,
+      studentWorksLegacySnapshot,
+      notebookByPublishSnapshot,
+      notebookLegacySnapshot,
     ] = await Promise.all([
-      adminDb.collection("students").get(),
-      adminDb.collection("homeworkCompletions").get(),
-      adminDb.collection("reading-submissions").get(),
-      adminDb.collection("studentWorks").get(),
-      adminDb.collection("notebookGallery").get(),
+      adminDb.collection("students").where("active", "==", true).get(),
+      adminDb.collection("homeworkCompletions")
+        .where("solutionReviewedAt", ">=", startAt).where("solutionReviewedAt", "<=", endAt).get(),
+      adminDb.collection("homeworkCompletions")
+        .where("createdAt", ">=", startAt).where("createdAt", "<=", endAt).get(),
+      adminDb.collection("reading-submissions")
+        .where("readingDate", ">=", startDate).where("readingDate", "<=", endDate).get(),
+      adminDb.collection("studentWorks")
+        .where("publishedAt", ">=", startAt).where("publishedAt", "<=", endAt).get(),
+      adminDb.collection("studentWorks")
+        .where("createdAt", ">=", startAt).where("createdAt", "<=", endAt).get(),
+      adminDb.collection("notebookGallery")
+        .where("publishedAt", ">=", startAt).where("publishedAt", "<=", endAt).get(),
+      adminDb.collection("notebookGallery")
+        .where("createdAt", ">=", startAt).where("createdAt", "<=", endAt).get(),
     ]);
+
+    const mergeSnapshots = (...snapshots: FirebaseFirestore.QuerySnapshot[]) => {
+      const documents = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+      snapshots.forEach((snapshot) =>
+        snapshot.docs.forEach((document) => documents.set(document.id, document))
+      );
+      return [...documents.values()];
+    };
+
+    const homeworkDocs = mergeSnapshots(homeworkByReviewSnapshot, homeworkLegacySnapshot);
+    const studentWorkDocs = mergeSnapshots(studentWorksByPublishSnapshot, studentWorksLegacySnapshot);
+    const notebookGalleryDocs = mergeSnapshots(notebookByPublishSnapshot, notebookLegacySnapshot);
 
     const rows = new Map<string, EngagementRow>();
     const aliases = new Map<string, string>();
@@ -419,7 +446,7 @@ export async function GET(request: Request) {
 
     const homeworkSeen = new Set<string>();
     const homeworkCompletionSeen = new Set<string>();
-    homeworkSnapshot.docs.forEach((docSnapshot) => {
+    homeworkDocs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;
       const row = resolveStudent(data.studentId ?? data.studentDocId);
       if (!row) return;
@@ -478,7 +505,7 @@ export async function GET(request: Request) {
 
     const gallerySeen = new Set<string>();
 
-    studentWorksSnapshot.docs.forEach((docSnapshot) => {
+    studentWorkDocs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;
       const row = resolveStudent(data.studentId ?? data.studentDocId);
       if (!row) return;
@@ -523,7 +550,7 @@ export async function GET(request: Request) {
       row.details.galleryWorks += 1;
     });
 
-    notebookGallerySnapshot.docs.forEach((docSnapshot) => {
+    notebookGalleryDocs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Record<string, unknown>;
       const row = resolveStudent(data.studentId ?? data.studentDocId);
       if (!row || data.isPublished === false) return;
