@@ -4050,187 +4050,71 @@ try {
 
         {/* مدينة الإنجاز - بطاقة مصغرة أعلى صفحة الطالب */}
         <section
-          aria-label="مدينة الإنجاز"
+          aria-label="بنك إنجازي"
           style={{
             ...cardStyle,
             marginTop: "12px",
             marginBottom: "16px",
             position: "relative",
             overflow: "hidden",
-            border: "2px solid #e7c35d",
+            border: "2px solid #e4bd49",
             background:
-              "linear-gradient(135deg,#fff9df 0%,#ffffff 48%,#eaf8f0 100%)",
-            boxShadow: "0 10px 26px rgba(23,108,70,.10)",
+              "linear-gradient(145deg,#fff7c9 0%,#fffdf1 42%,#e8f8ef 100%)",
+            boxShadow: "0 12px 28px rgba(23,108,70,.12)",
             padding: "18px 20px",
           }}
         >
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              width: "110px",
-              height: "110px",
-              borderRadius: "50%",
-              background: "rgba(250,204,21,.10)",
-              left: "-45px",
-              top: "-55px",
-            }}
-          />
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity: .18, backgroundImage: "radial-gradient(#d9ad27 1px,transparent 1px)", backgroundSize: "18px 18px" }} />
 
-          <div
-            style={{
-              position: "relative",
-              zIndex: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
+          <div style={{ position: "relative", zIndex: 2, display: "flex", gap: "16px", alignItems: "stretch", flexWrap: "wrap" }}>
             <div
+              aria-hidden="true"
               style={{
-                minWidth: "min(100%, 430px)",
-                flex: "1 1 430px",
+                width: "150px",
+                minHeight: "154px",
+                flex: "0 1 150px",
+                borderRadius: "24px",
+                display: "grid",
+                placeItems: "center",
+                alignContent: "center",
+                gap: "3px",
+                background: "linear-gradient(180deg,#fff3a8,#ffd965 48%,#f2bd38 49%,#fff2a2)",
+                border: "2px solid #d9a92c",
+                boxShadow: "inset 0 0 0 5px rgba(255,255,255,.35),0 8px 18px rgba(141,103,0,.12)",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "7px",
-                }}
-              >
-                <div
-                  aria-hidden="true"
-                  style={{
-                    width: "46px",
-                    height: "46px",
-                    borderRadius: "14px",
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
-                    fontSize: "27px",
-                    background: "#fff7d6",
-                    border: "1px solid #efd77c",
-                  }}
-                >
-                  🏙️
-                </div>
+              <div style={{ fontSize: "24px" }}>⭐</div>
+              <div style={{ fontSize: "52px", lineHeight: 1 }}>🏦</div>
+              <strong style={{ color: "#6f5200", fontSize: "14px" }}>بنك إنجازي</strong>
+              <span style={{ color: "#8b6a08", fontSize: "10px", fontWeight: 900 }}>كل نقطة تبني إنجازك</span>
+            </div>
 
+            <div style={{ minWidth: "min(100%,430px)", flex: "1 1 430px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "start", flexWrap: "wrap" }}>
                 <div>
-                  <div
-                    style={{
-                      color: "#8a6700",
-                      fontSize: "11px",
-                      fontWeight: 900,
-                    }}
-                  >
-                    مدينتك تكبر مع إنجازاتك
-                  </div>
+                  <div style={{ color: "#8a6700", fontSize: "11px", fontWeight: 900 }}>خزنتك تكبر مع كل إنجاز ⭐</div>
+                  <h2 style={{ margin: "2px 0 0", color: "#176c46", fontSize: "clamp(22px,4vw,29px)", lineHeight: 1.25 }}>بنك إنجازي</h2>
+                </div>
+                <span style={{ padding: "7px 11px", borderRadius: "999px", background: "#eaf8f0", border: "1px solid #cfe9da", color: "#176c46", fontSize: "12px", fontWeight: 900 }}>
+                  🏆 {rank}
+                </span>
+              </div>
 
-                  <h2
-                    style={{
-                      margin: 0,
-                      color: "#176c46",
-                      fontSize: "clamp(19px,3.5vw,25px)",
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    مدينة إنجازي
-                  </h2>
+              <div style={{ margin: "12px 0", padding: "13px 15px", borderRadius: "18px", background: "rgba(255,255,255,.88)", border: "1px solid #ead47b", boxShadow: "0 5px 12px rgba(122,91,0,.07)" }}>
+                <div style={{ color: "#806000", fontSize: "11px", fontWeight: 900 }}>💰 رصيدي في البنك</div>
+                <div style={{ color: "#176c46", fontSize: "clamp(28px,6vw,40px)", fontWeight: 1000, lineHeight: 1.15 }}>{points} <span style={{ fontSize: "15px" }}>نقطة</span></div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "8px" }}>
+                <div style={{ padding: "9px 11px", borderRadius: "14px", background: "#fff0e6", border: "1px solid #f3c7a8", color: "#9a4f16", fontSize: "12px", fontWeight: 900 }}>
+                  🔥 رصيد الأسبوع<br/><strong style={{ fontSize: "18px" }}>{weeklyPoints}</strong> نقطة
+                </div>
+                <div style={{ padding: "9px 11px", borderRadius: "14px", background: "#fff8db", border: "1px solid #ead58a", color: "#7a5a00", fontSize: "12px", fontWeight: 900 }}>
+                  👑 أسابيع الصدارة<br/><strong style={{ fontSize: "18px" }}>{leadershipWeeks}</strong>
                 </div>
               </div>
 
-              <p
-                style={{
-                  margin: "0 0 10px",
-                  color: "#587064",
-                  lineHeight: 1.65,
-                  fontSize: "14px",
-                  fontWeight: 700,
-                }}
-              >
-                اجمع نقاطك هذا الأسبوع، واحفظ إنجازاتك في بنك إنجازي 🏦
-              </p>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "7px 10px",
-                    borderRadius: "999px",
-                    background: "#fff7d6",
-                    border: "1px solid #f0d977",
-                    color: "#7a5b00",
-                    fontSize: "12px",
-                    fontWeight: 900,
-                  }}
-                >
-                  🏦 بنك إنجازي: {points} نقطة
-                </span>
-
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "7px 10px",
-                    borderRadius: "999px",
-                    background: "#fff0e6",
-                    border: "1px solid #f3c7a8",
-                    color: "#9a4f16",
-                    fontSize: "12px",
-                    fontWeight: 900,
-                  }}
-                >
-                  🔥 رصيد الأسبوع: {weeklyPoints} نقطة
-                </span>
-
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "7px 10px",
-                    borderRadius: "999px",
-                    background: "#fff8db",
-                    border: "1px solid #ead58a",
-                    color: "#7a5a00",
-                    fontSize: "12px",
-                    fontWeight: 900,
-                  }}
-                >
-                  👑 أسابيع الصدارة: {leadershipWeeks}
-                </span>
-
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "7px 10px",
-                    borderRadius: "999px",
-                    background: "#eaf8f0",
-                    border: "1px solid #cfe9da",
-                    color: "#176c46",
-                    fontSize: "12px",
-                    fontWeight: 900,
-                  }}
-                >
-                  🏆 {rank}
-                </span>
-
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "11px" }}>
                 <Link
                   href="/journey/city"
                   style={{
@@ -4238,49 +4122,21 @@ try {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "6px",
-                    minHeight: "36px",
-                    padding: "7px 13px",
-                    borderRadius: "12px",
-                    background:
-                      "linear-gradient(135deg,#176c46,#239764)",
-                    color: "#ffffff",
+                    minHeight: "38px",
+                    padding: "8px 14px",
+                    borderRadius: "13px",
+                    background: "linear-gradient(135deg,#176c46,#239764)",
+                    color: "#fff",
                     textDecoration: "none",
                     fontSize: "12px",
                     fontWeight: 900,
                     boxShadow: "0 6px 14px rgba(23,108,70,.16)",
                   }}
                 >
-                  ادخل مدينتي ←
+                  🏙️ ادخل مدينة إنجازي ←
                 </Link>
+                <span style={{ color: "#687a70", fontSize: "11px", fontWeight: 800 }}>اجمع نقاطك هذا الأسبوع واحفظ إنجازك في بنكك.</span>
               </div>
-            </div>
-
-            <div
-              aria-hidden="true"
-              style={{
-                width: "92px",
-                height: "82px",
-                flex: "0 0 92px",
-                borderRadius: "20px",
-                display: "grid",
-                placeItems: "center",
-                background:
-                  "linear-gradient(180deg,#e9f8ff 0%,#f7fcff 55%,#eaf8f0 56%,#dff4e7 100%)",
-                border: "1px solid #d7e9df",
-                fontSize: "43px",
-              }}
-            >
-              {points >= 500
-                ? "🏰"
-                : points >= 250
-                  ? "🏙️"
-                  : points >= 100
-                    ? "🏢"
-                    : points >= 50
-                      ? "🏘️"
-                      : points >= 10
-                        ? "🏡"
-                        : "🌱"}
             </div>
           </div>
         </section>
