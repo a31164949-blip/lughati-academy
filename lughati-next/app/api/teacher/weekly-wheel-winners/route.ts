@@ -48,8 +48,11 @@ export async function GET(request: Request) {
     const { adminDb } = getFirebaseAdmin();
     const weekKey = getWeekKey();
 
-    // استعلام أسبوع واحد فقط لتقليل قراءات Firestore.
     /*
+      نقرأ سجلات العجلة ثم نرشّح الأسبوع في الخادم.
+      مجموعة weeklyRewardSpins صغيرة (محاولتان كحد أقصى لكل طالب في الأسبوع)،
+      وهذا يتجنب اعتماد الصفحة على فهرس Firestore إضافي.
+      
       معرّفات سجلات العجلة تبدأ بمعرّف الطالب ثم مفتاح الأسبوع،
       لذلك نقرأ مجموعة العجلة مرة واحدة ونرشّح الأسبوع في الخادم.
       هذا يتجنب اعتماد الصفحة على فهرس Firestore إضافي قد لا يكون منشورًا بعد.
@@ -58,7 +61,7 @@ export async function GET(request: Request) {
       .collection("weeklyRewardSpins")
       .get();
 
-    const weekSpinDocs = weekSpinDocs.filter(
+    const weekSpinDocs = spinsSnapshot.docs.filter(
       (doc) => doc.data()?.weekKey === weekKey
     );
 
