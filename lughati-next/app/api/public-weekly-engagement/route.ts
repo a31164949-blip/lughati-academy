@@ -226,12 +226,12 @@ async function readReadySummary(summaryRef: FirebaseFirestore.DocumentReference)
 
 async function waitForReadySummary(
   summaryRef: FirebaseFirestore.DocumentReference,
-  attempts = 120
+  attempts = 4
 ) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const summary = await readReadySummary(summaryRef);
     if (summary) return summary;
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 750));
   }
 
   return null;
