@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
-  onSnapshot,
+  getDocs,
+  limit,
+  orderBy,
+  query,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -74,13 +77,19 @@ export default function TeacherNotificationsPage() {
     setLoading(true);
     setError("");
 
-    const unsubscribe = onSnapshot(
-      collection(
-        db,
-        "homeworkCompletions"
-      ),
+    let cancelled = false;
 
-      (snapshot) => {
+    async function loadNotifications() {
+      try {
+        const snapshot = await getDocs(
+          query(
+            collection(db, "homeworkCompletions"),
+            orderBy("updatedAt", "desc"),
+            limit(80)
+          )
+        );
+
+        if (cancelled) return;
         const items: NotificationItem[] =
           [];
 
@@ -204,24 +213,21 @@ export default function TeacherNotificationsPage() {
 
         setNotifications(items);
         setLoading(false);
-      },
-
-      (error) => {
+      } catch (error) {
+        if (cancelled) return;
         console.error(
           "تعذر تحميل إشعارات المعلم:",
           error
         );
-
-        setError(
-          "تعذر تحميل مركز الإشعارات."
-        );
-
+        setError("تعذر تحميل مركز الإشعارات.");
         setLoading(false);
       }
-    );
+    }
+
+    void loadNotifications();
 
     return () => {
-      unsubscribe();
+      cancelled = true;
     };
   }, []);
 
