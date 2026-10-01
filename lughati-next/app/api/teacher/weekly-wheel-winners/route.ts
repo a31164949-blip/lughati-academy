@@ -49,14 +49,22 @@ export async function GET(request: Request) {
     const weekKey = getWeekKey();
 
     // استعلام أسبوع واحد فقط لتقليل قراءات Firestore.
+    /*
+      معرّفات سجلات العجلة تبدأ بمعرّف الطالب ثم مفتاح الأسبوع،
+      لذلك نقرأ مجموعة العجلة مرة واحدة ونرشّح الأسبوع في الخادم.
+      هذا يتجنب اعتماد الصفحة على فهرس Firestore إضافي قد لا يكون منشورًا بعد.
+    */
     const spinsSnapshot = await adminDb
       .collection("weeklyRewardSpins")
-      .where("weekKey", "==", weekKey)
       .get();
+
+    const weekSpinDocs = weekSpinDocs.filter(
+      (doc) => doc.data()?.weekKey === weekKey
+    );
 
     const studentIds = Array.from(
       new Set(
-        spinsSnapshot.docs
+        weekSpinDocs
           .map((doc) => doc.data()?.studentId)
           .filter((id): id is string => typeof id === "string" && Boolean(id))
       )
@@ -77,7 +85,7 @@ export async function GET(request: Request) {
       })
     );
 
-    const winners = spinsSnapshot.docs
+    const winners = weekSpinDocs
       .map((doc) => {
         const data = doc.data() ?? {};
         const prizePoints = typeof data.prizePoints === "number" ? data.prizePoints : 0;
