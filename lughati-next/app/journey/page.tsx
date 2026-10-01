@@ -16,7 +16,9 @@ import {
 } from "firebase/auth";
 import {
   collection,
-  onSnapshot,
+  getDocs,
+  limit,
+  orderBy,
   query,
   where,
 } from "firebase/firestore";
@@ -865,92 +867,49 @@ const [
       setUnreadMessageCount(0);
       return;
     }
-    const currentUser = user;
+
     let active = true;
-    let unsubscribeMessages:
-      | (() => void)
-      | undefined;
 
-    async function subscribeToStudentMessages() {
+    async function loadUnreadMessageCount() {
       try {
-        const tokenResult =
-         await currentUser.getIdTokenResult();
-
+        const tokenResult = await user.getIdTokenResult();
         const studentDocId =
-          typeof tokenResult.claims.studentDocId ===
-          "string"
+          typeof tokenResult.claims.studentDocId === "string"
             ? tokenResult.claims.studentDocId
             : "";
 
-        if (!studentDocId || !active) {
-          return;
-        }
+        if (!studentDocId || !active) return;
 
-        const messagesQuery = query(
-          collection(
-            db,
-            "studentTeacherMessages"
-          ),
-          where(
-            "studentId",
-            "==",
-            studentDocId
+        const snapshot = await getDocs(
+          query(
+            collection(db, "studentTeacherMessages"),
+            where("studentId", "==", studentDocId),
+            orderBy("createdAt", "desc"),
+            limit(30)
           )
         );
 
-        const unsubscribe = onSnapshot(
-          messagesQuery,
-          (snapshot) => {
-            if (!active) return;
+        if (!active) return;
 
-            const unreadCount =
-              snapshot.docs.filter(
-                (messageDocument) => {
-                  const data =
-                    messageDocument.data();
+        const unreadCount = snapshot.docs.filter((messageDocument) => {
+          const data = messageDocument.data();
+          return (
+            typeof data.teacherReply === "string" &&
+            data.teacherReply.trim().length > 0 &&
+            data.studentViewedReply !== true
+          );
+        }).length;
 
-                  return (
-                    typeof data.teacherReply ===
-                      "string" &&
-                    data.teacherReply.trim().length >
-                      0 &&
-                    data.studentViewedReply !== true
-                  );
-                }
-              ).length;
-
-            setUnreadMessageCount(
-              unreadCount
-            );
-          },
-          (error) => {
-            console.error(
-              "تعذر تحديث عداد الرسائل:",
-              error
-            );
-          }
-        );
-
-        if (!active) {
-          unsubscribe();
-          return;
-        }
-
-        unsubscribeMessages =
-          unsubscribe;
+        setUnreadMessageCount(unreadCount);
       } catch (error) {
-        console.error(
-          "تعذر بدء متابعة رسائل الطالب:",
-          error
-        );
+        console.error("تعذر تحميل عداد رسائل الطالب:", error);
       }
     }
 
-    void subscribeToStudentMessages();
+    void loadUnreadMessageCount();
 
     return () => {
       active = false;
-      unsubscribeMessages?.();
     };
   }, [user]);
 
