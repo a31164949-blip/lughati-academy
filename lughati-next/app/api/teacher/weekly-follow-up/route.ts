@@ -28,11 +28,13 @@ function week(){
 export async function GET(request:Request){
  try{
   await teacher(request);const {adminDb}=getFirebaseAdmin();const {start,end}=week();
+  // لا نحمل السجل التاريخي كاملًا: نقرأ فقط نشاط الأسبوع الحالي.
+  // هذا يخفض قراءات Firestore بصورة كبيرة كلما كبرت الأكاديمية.
   const [students,homeworks,readings,cases]=await Promise.all([
-   adminDb.collection("students").get(),
-   adminDb.collection("homeworkCompletions").get(),
-   adminDb.collection("reading-submissions").get(),
-   adminDb.collection("familySupportCases").get()
+   adminDb.collection("students").where("active","==",true).get(),
+   adminDb.collection("homeworkCompletions").where("createdAt",">=",new Date(start+"T00:00:00+03:00")).get(),
+   adminDb.collection("reading-submissions").where("readingDate",">=",start).where("readingDate","<=",end).get(),
+   adminDb.collection("familySupportCases").where("supportInvitedAt","!=",null).get()
   ]);
   type Row={id:string;studentName:string;classroom:string;readings:number;homeworks:number;invited:boolean};
   const rows=new Map<string,Row>(),aliases=new Map<string,string>();
