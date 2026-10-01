@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export const runtime = "nodejs";
@@ -638,11 +639,30 @@ export async function GET(request: Request) {
       displayActive: true,
     };
 
-    await summaryRef.set({
+    const batch = adminDb.batch();
+
+    batch.set(summaryRef, {
       ...payload,
       status: "ready",
       claimExpiresAt: null,
     });
+
+    /*
+      تُسجّل الصدارة مرة واحدة فقط لكل أسبوع.
+      arrayUnion يجعل العملية آمنة حتى لو أُعيد تنفيذ الملخص.
+      المقصود بالصدارة هنا: المركز الأول في ترتيب التعلّم الأسبوعي.
+    */
+    const weeklyLearningChampion = ranked[0];
+    if (weeklyLearningChampion) {
+      batch.update(
+        adminDb.collection("students").doc(weeklyLearningChampion.studentId),
+        {
+          weeklyLeadershipWeeks: FieldValue.arrayUnion(startDate),
+        }
+      );
+    }
+
+    await batch.commit();
 
     cachedPayload = payload;
     cachedWeekStart = startDate;
