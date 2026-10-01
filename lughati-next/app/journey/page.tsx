@@ -4054,14 +4054,9 @@ try {
           const nextGoal =
             bankMilestones.find((goal) => goal > points) ??
             Math.ceil((points + 1) / 500) * 500;
-          const previousGoal =
-            [...bankMilestones].reverse().find((goal) => goal <= points) ?? 0;
           const goalProgress = Math.min(
             100,
-            Math.max(
-              0,
-              ((points - previousGoal) / Math.max(1, nextGoal - previousGoal)) * 100
-            )
+            Math.max(0, (points / Math.max(1, nextGoal)) * 100)
           );
 
           return (
