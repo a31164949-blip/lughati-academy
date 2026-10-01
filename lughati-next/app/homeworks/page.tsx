@@ -472,7 +472,6 @@ useEffect(() => {
       setLoadingCompletions(
         false
       );
-    },
     })
     .catch((error) => {
       if (!active) return;
