@@ -355,11 +355,15 @@ export async function GET(request: Request) {
       studentWorksSnapshot,
       notebookGallerySnapshot,
     ] = await Promise.all([
-      adminDb.collection("students").get(),
-      adminDb.collection("homeworkCompletions").get(),
-      adminDb.collection("reading-submissions").get(),
-      adminDb.collection("studentWorks").get(),
-      adminDb.collection("notebookGallery").get(),
+      adminDb.collection("students").where("active", "==", true).get(),
+      adminDb.collection("homeworkCompletions")
+        .where("createdAt", ">=", new Date(startDate + "T00:00:00+03:00")).get(),
+      adminDb.collection("reading-submissions")
+        .where("readingDate", ">=", startDate).where("readingDate", "<=", endDate).get(),
+      adminDb.collection("studentWorks")
+        .where("createdAt", ">=", new Date(startDate + "T00:00:00+03:00")).get(),
+      adminDb.collection("notebookGallery")
+        .where("createdAt", ">=", new Date(startDate + "T00:00:00+03:00")).get(),
     ]);
 
     const rows = new Map<string, EngagementRow>();
