@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   collection,
+  getDocs,
   limit,
-  onSnapshot,
   orderBy,
   query,
   where,
@@ -254,26 +254,29 @@ useEffect(() => {
       limit(10)
     );
 
-    const unsubscribe = onSnapshot(
-      homeworksQuery,
-      (snapshot) => {
+    let active = true;
+
+    void getDocs(homeworksQuery)
+      .then((snapshot) => {
+        if (!active) return;
         const items = snapshot.docs.map((document) => ({
           id: document.id,
           ...(document.data() as Omit<Homework, "id">),
         }));
-
         setHomeworks(items);
         setLoading(false);
         setErrorMessage("");
-      },
-      (error) => {
+      })
+      .catch((error) => {
+        if (!active) return;
         console.error(error);
         setLoading(false);
         setErrorMessage("تعذر تحميل الواجبات حاليًا.");
-      }
-    );
+      });
 
-    return unsubscribe;
+    return () => {
+      active = false;
+    };
   }, [student.classroom, studentLoaded]);
 
 useEffect(() => {
@@ -340,10 +343,11 @@ useEffect(() => {
     )
   );
 
-  const unsubscribe = onSnapshot(
-    completionsQuery,
+  let active = true;
 
-    (snapshot) => {
+  void getDocs(completionsQuery)
+    .then((snapshot) => {
+      if (!active) return;
       const ids =
         new Set<string>();
 
@@ -469,8 +473,9 @@ useEffect(() => {
         false
       );
     },
-
-    (error) => {
+    })
+    .catch((error) => {
+      if (!active) return;
       console.error(
         "تعذر تحميل إنجازات الطالب:",
         error
@@ -479,10 +484,11 @@ useEffect(() => {
       setLoadingCompletions(
         false
       );
-    }
-  );
+    });
 
-  return unsubscribe;
+  return () => {
+    active = false;
+  };
 }, [
   student.id,
   studentLoaded,
