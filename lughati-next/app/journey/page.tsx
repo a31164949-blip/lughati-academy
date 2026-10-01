@@ -212,7 +212,12 @@ type AcademyClubMembership = {
 type JourneyData = {
   success: boolean;
   points?: number;
-  achievementBank?: { total?: number; weekly?: number; weekKey?: string };
+  achievementBank?: {
+    total?: number;
+    weekly?: number;
+    weekKey?: string;
+    leadershipWeeks?: number;
+  };
   stars?: number;
   streak?: number;
   readingDays?: number;
@@ -547,6 +552,9 @@ const [
     useState(0);
 
   const [weeklyPoints, setWeeklyPoints] =
+    useState(0);
+
+  const [leadershipWeeks, setLeadershipWeeks] =
     useState(0);
 
   const [stars, setStars] =
@@ -1040,6 +1048,12 @@ try {
         setWeeklyPoints(
           typeof data.achievementBank?.weekly === "number"
             ? data.achievementBank.weekly
+            : 0
+        );
+
+        setLeadershipWeeks(
+          typeof data.achievementBank?.leadershipWeeks === "number"
+            ? data.achievementBank.leadershipWeeks
             : 0
         );
 
@@ -4181,6 +4195,23 @@ try {
                   }}
                 >
                   🔥 رصيد الأسبوع: {weeklyPoints} نقطة
+                </span>
+
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "7px 10px",
+                    borderRadius: "999px",
+                    background: "#fff8db",
+                    border: "1px solid #ead58a",
+                    color: "#7a5a00",
+                    fontSize: "12px",
+                    fontWeight: 900,
+                  }}
+                >
+                  👑 أسابيع الصدارة: {leadershipWeeks}
                 </span>
 
                 <span
