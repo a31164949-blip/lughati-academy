@@ -68,7 +68,7 @@ export default function WeeklyWheelWinnersPage() {
         <section style={{ marginTop: 16, padding: 24, borderRadius: 28, background: "linear-gradient(135deg,#0f7654,#168a63)", color: "white" }}>
           <div style={{ fontSize: 40 }}>🎡</div>
           <h1 style={{ margin: "6px 0", fontSize: "clamp(27px,5vw,40px)" }}>الفائزون في عجلة الحظ</h1>
-          <p style={{ margin: 0, fontWeight: 700 }}>متابعة من حصد النقاط والجوائز خلال الأسبوع الحالي.</p>
+          <p style={{ margin: 0, fontWeight: 700 }}>متابعة من حصد النقاط والجوائز خلال الأسبوع الحالي 🎯</p>
         </section>
 
         {loading ? (
