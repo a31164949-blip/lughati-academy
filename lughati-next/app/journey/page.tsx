@@ -4049,6 +4049,22 @@ try {
         </section>
 
         {/* مدينة الإنجاز - بطاقة مصغرة أعلى صفحة الطالب */}
+        {(() => {
+          const bankMilestones = [50, 150, 300, 500, 750, 1000];
+          const nextGoal =
+            bankMilestones.find((goal) => goal > points) ??
+            Math.ceil((points + 1) / 500) * 500;
+          const previousGoal =
+            [...bankMilestones].reverse().find((goal) => goal <= points) ?? 0;
+          const goalProgress = Math.min(
+            100,
+            Math.max(
+              0,
+              ((points - previousGoal) / Math.max(1, nextGoal - previousGoal)) * 100
+            )
+          );
+
+          return (
         <section
           aria-label="بنك إنجازي"
           style={{
@@ -4061,7 +4077,7 @@ try {
             background:
               "linear-gradient(145deg,#fff7c9 0%,#fffdf1 42%,#e8f8ef 100%)",
             boxShadow: "0 12px 28px rgba(23,108,70,.12)",
-            padding: "18px 20px",
+            padding: "14px 16px",
           }}
         >
           <div aria-hidden="true" style={{ position: "absolute", inset: 0, opacity: .18, backgroundImage: "radial-gradient(#d9ad27 1px,transparent 1px)", backgroundSize: "18px 18px" }} />
@@ -4070,9 +4086,9 @@ try {
             <div
               aria-hidden="true"
               style={{
-                width: "150px",
-                minHeight: "154px",
-                flex: "0 1 150px",
+                width: "124px",
+                minHeight: "132px",
+                flex: "0 1 124px",
                 borderRadius: "24px",
                 display: "grid",
                 placeItems: "center",
@@ -4084,7 +4100,7 @@ try {
               }}
             >
               <div style={{ fontSize: "24px" }}>⭐</div>
-              <div style={{ fontSize: "52px", lineHeight: 1 }}>🏦</div>
+              <div style={{ fontSize: "43px", lineHeight: 1 }}>🏦</div>
               <strong style={{ color: "#6f5200", fontSize: "14px" }}>بنك إنجازي</strong>
               <span style={{ color: "#8b6a08", fontSize: "10px", fontWeight: 900 }}>كل نقطة تبني إنجازك</span>
             </div>
@@ -4093,16 +4109,26 @@ try {
               <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "start", flexWrap: "wrap" }}>
                 <div>
                   <div style={{ color: "#8a6700", fontSize: "11px", fontWeight: 900 }}>خزنتك تكبر مع كل إنجاز ⭐</div>
-                  <h2 style={{ margin: "2px 0 0", color: "#176c46", fontSize: "clamp(22px,4vw,29px)", lineHeight: 1.25 }}>بنك إنجازي</h2>
+                  <h2 style={{ margin: "2px 0 0", color: "#176c46", fontSize: "clamp(20px,3.5vw,26px)", lineHeight: 1.25 }}>بنك إنجازي</h2>
                 </div>
                 <span style={{ padding: "7px 11px", borderRadius: "999px", background: "#eaf8f0", border: "1px solid #cfe9da", color: "#176c46", fontSize: "12px", fontWeight: 900 }}>
                   🏆 {rank}
                 </span>
               </div>
 
-              <div style={{ margin: "12px 0", padding: "13px 15px", borderRadius: "18px", background: "rgba(255,255,255,.88)", border: "1px solid #ead47b", boxShadow: "0 5px 12px rgba(122,91,0,.07)" }}>
+              <div style={{ margin: "9px 0", padding: "10px 13px", borderRadius: "18px", background: "rgba(255,255,255,.88)", border: "1px solid #ead47b", boxShadow: "0 5px 12px rgba(122,91,0,.07)" }}>
                 <div style={{ color: "#806000", fontSize: "11px", fontWeight: 900 }}>💰 رصيدي في البنك</div>
-                <div style={{ color: "#176c46", fontSize: "clamp(28px,6vw,40px)", fontWeight: 1000, lineHeight: 1.15 }}>{points} <span style={{ fontSize: "15px" }}>نقطة</span></div>
+                <div style={{ color: "#176c46", fontSize: "clamp(25px,5vw,35px)", fontWeight: 1000, lineHeight: 1.15 }}>{points} <span style={{ fontSize: "15px" }}>نقطة</span></div>
+              </div>
+
+              <div style={{ margin: "0 0 9px", padding: "8px 10px", borderRadius: "13px", background: "rgba(255,255,255,.72)", border: "1px solid #ead47b" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", color: "#725800", fontSize: "11px", fontWeight: 900 }}>
+                  <span>⭐ الهدف القادم</span>
+                  <span>{points} / {nextGoal}</span>
+                </div>
+                <div style={{ height: "7px", marginTop: "6px", borderRadius: "999px", background: "#f4e8b2", overflow: "hidden" }}>
+                  <div style={{ width: `${goalProgress}%`, height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg,#e3b72e,#176c46)" }} />
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "8px" }}>
@@ -4140,6 +4166,8 @@ try {
             </div>
           </div>
         </section>
+          );
+        })()}
 
         <section
             aria-label="عضوية نادي الأكاديمية"
