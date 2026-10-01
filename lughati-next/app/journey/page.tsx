@@ -4125,7 +4125,7 @@ try {
                   <div style={{ position: "absolute", left: 0, right: 0, bottom: "2px", height: "8px", borderRadius: "999px", background: "#d7d8d2", border: "1px solid #c5c7c0", overflow: "hidden" }}>
                     <div style={{ width: `${goalProgress}%`, height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg,#7fcf55,#176c46)" }} />
                   </div>
-                  <span aria-hidden="true" style={{ position: "absolute", left: `${goalProgress}%`, transform: "translateX(-50%)", bottom: "4px", fontSize: "28px", lineHeight: 1, filter: "drop-shadow(0 2px 2px rgba(0,0,0,.12))" }}>🏎️</span>
+                  <span aria-hidden="true" style={{ position: "absolute", left: `${goalProgress}%`, transform: "translateX(-50%) scaleX(-1)", bottom: "4px", fontSize: "28px", lineHeight: 1, filter: "drop-shadow(0 2px 2px rgba(0,0,0,.12))" }}>🏎️</span>
                   <span aria-hidden="true" style={{ position: "absolute", right: "-1px", bottom: "7px", fontSize: "18px", lineHeight: 1 }}>🏁</span>
                 </div>
               </div>
