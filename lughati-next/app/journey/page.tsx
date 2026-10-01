@@ -4124,10 +4124,14 @@ try {
               <div style={{ margin: "0 0 9px", padding: "8px 10px", borderRadius: "13px", background: "rgba(255,255,255,.72)", border: "1px solid #ead47b" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", color: "#725800", fontSize: "11px", fontWeight: 900 }}>
                   <span>⭐ الهدف القادم</span>
-                  <span>{points} / {nextGoal}</span>
+                  <span dir="ltr">{points} / {nextGoal}</span>
                 </div>
-                <div style={{ height: "7px", marginTop: "6px", borderRadius: "999px", background: "#f4e8b2", overflow: "hidden" }}>
-                  <div style={{ width: `${goalProgress}%`, height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg,#e3b72e,#176c46)" }} />
+                <div aria-label={`تقدمك نحو الهدف القادم: ${Math.round(goalProgress)}٪`} style={{ position: "relative", height: "25px", marginTop: "5px" }}>
+                  <div style={{ position: "absolute", left: 0, right: 0, bottom: "2px", height: "8px", borderRadius: "999px", background: "#d7d8d2", border: "1px solid #c5c7c0", overflow: "hidden" }}>
+                    <div style={{ width: `${goalProgress}%`, height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg,#7fcf55,#176c46)" }} />
+                  </div>
+                  <span aria-hidden="true" style={{ position: "absolute", left: `clamp(7px, calc(${goalProgress}% - 10px), calc(100% - 31px))`, bottom: "5px", fontSize: "22px", lineHeight: 1, filter: "drop-shadow(0 2px 2px rgba(0,0,0,.12))" }}>🏎️</span>
+                  <span aria-hidden="true" style={{ position: "absolute", right: "-1px", bottom: "7px", fontSize: "18px", lineHeight: 1 }}>🏁</span>
                 </div>
               </div>
 
