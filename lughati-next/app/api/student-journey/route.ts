@@ -824,6 +824,16 @@ export async function GET(
           ),
         weekKey:
           getSchoolWeekKey(dateKey),
+        leadershipWeeks:
+          Array.isArray(studentData.weeklyLeadershipWeeks)
+            ? new Set(
+                studentData.weeklyLeadershipWeeks.filter(
+                  (week): week is string =>
+                    typeof week === "string" &&
+                    Boolean(week)
+                )
+              ).size
+            : 0,
       },
 
       stars:
