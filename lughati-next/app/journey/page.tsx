@@ -4126,11 +4126,11 @@ try {
                   <span>⭐ الهدف القادم</span>
                   <span dir="ltr">{points} / {nextGoal}</span>
                 </div>
-                <div aria-label={`تقدمك نحو الهدف القادم: ${Math.round(goalProgress)}٪`} style={{ position: "relative", height: "25px", marginTop: "5px" }}>
+                <div dir="ltr" aria-label={`تقدمك نحو الهدف القادم: ${Math.round(goalProgress)}٪`} style={{ position: "relative", height: "30px", marginTop: "5px", direction: "ltr" }}>
                   <div style={{ position: "absolute", left: 0, right: 0, bottom: "2px", height: "8px", borderRadius: "999px", background: "#d7d8d2", border: "1px solid #c5c7c0", overflow: "hidden" }}>
                     <div style={{ width: `${goalProgress}%`, height: "100%", borderRadius: "inherit", background: "linear-gradient(90deg,#7fcf55,#176c46)" }} />
                   </div>
-                  <span aria-hidden="true" style={{ position: "absolute", left: `calc(${goalProgress}% - ${goalProgress * 0.22}px)`, bottom: "5px", fontSize: "22px", lineHeight: 1, filter: "drop-shadow(0 2px 2px rgba(0,0,0,.12))" }}>🏎️</span>
+                  <span aria-hidden="true" style={{ position: "absolute", left: `calc(${goalProgress}% - ${goalProgress * 0.28}px)`, bottom: "4px", fontSize: "28px", lineHeight: 1, filter: "drop-shadow(0 2px 2px rgba(0,0,0,.12))" }}>🏎️</span>
                   <span aria-hidden="true" style={{ position: "absolute", right: "-1px", bottom: "7px", fontSize: "18px", lineHeight: 1 }}>🏁</span>
                 </div>
               </div>
