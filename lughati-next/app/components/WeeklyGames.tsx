@@ -11,7 +11,6 @@ import {
 import {
   doc,
   getDoc,
-  onSnapshot,
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
@@ -339,117 +338,31 @@ const [
     };
   }, []);
 useEffect(() => {
-  const recordRef = doc(
-    db,
-    "gameRecords",
-    "lughati-maze"
-  );
-
-  const unsubscribe = onSnapshot(
-    recordRef,
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        setMazeBestTime(null);
-        return;
-      }
-
-      const data = snapshot.data();
-
-      setMazeBestTime(
-        typeof data.bestTime === "number"
-          ? data.bestTime
-          : null
-      );
-    },
-    (error) => {
-      console.error(
-        "تعذر تحميل أسرع وقت للمتاهة:",
-        error
-      );
-    }
-  );
-
-  return () => {
-    unsubscribe();
-  };
+  let active = true;
+  void getDoc(doc(db, "gameRecords", "lughati-maze")).then((snapshot) => {
+    if (!active) return;
+    setMazeBestTime(snapshot.exists() && typeof snapshot.data().bestTime === "number" ? snapshot.data().bestTime : null);
+  }).catch((error) => console.error("تعذر تحميل أسرع وقت للمتاهة:", error));
+  return () => { active = false; };
 }, []);
 useEffect(() => {
-  const recordRef = doc(
-    db,
-    "gameRecords",
-    "lughati-crossword"
-  );
-
-  const unsubscribe = onSnapshot(
-    recordRef,
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        setCrosswordBestTime(null);
-        return;
-      }
-
-      const data = snapshot.data();
-
-      setCrosswordBestTime(
-        typeof data.bestTime === "number"
-          ? data.bestTime
-          : null
-      );
-    },
-    (error) => {
-      console.error(
-        "تعذر تحميل أسرع وقت للكلمات المتقاطعة:",
-        error
-      );
-    }
-  );
-
-  return () => {
-    unsubscribe();
-  };
+  let active = true;
+  void getDoc(doc(db, "gameRecords", "lughati-crossword")).then((snapshot) => {
+    if (!active) return;
+    setCrosswordBestTime(snapshot.exists() && typeof snapshot.data().bestTime === "number" ? snapshot.data().bestTime : null);
+  }).catch((error) => console.error("تعذر تحميل أسرع وقت للكلمات المتقاطعة:", error));
+  return () => { active = false; };
 }, []);
 
 useEffect(() => {
-  const recordRef = doc(
-    db,
-    "gameRecords",
-    "lughati-family-challenge"
-  );
-
-  const unsubscribe = onSnapshot(
-    recordRef,
-    (snapshot) => {
-      if (!snapshot.exists()) {
-        setFamilyBestScore(null);
-        setFamilyBestTime(null);
-        return;
-      }
-
-      const data = snapshot.data();
-
-      setFamilyBestScore(
-        typeof data.bestScore === "number"
-          ? data.bestScore
-          : null
-      );
-
-      setFamilyBestTime(
-        typeof data.bestTime === "number"
-          ? data.bestTime
-          : null
-      );
-    },
-    (error) => {
-      console.error(
-        "تعذر تحميل الرقم القياسي للتحدي العائلي:",
-        error
-      );
-    }
-  );
-
-  return () => {
-    unsubscribe();
-  };
+  let active = true;
+  void getDoc(doc(db, "gameRecords", "lughati-family-challenge")).then((snapshot) => {
+    if (!active) return;
+    const data = snapshot.exists() ? snapshot.data() : {};
+    setFamilyBestScore(typeof data.bestScore === "number" ? data.bestScore : null);
+    setFamilyBestTime(typeof data.bestTime === "number" ? data.bestTime : null);
+  }).catch((error) => console.error("تعذر تحميل الرقم القياسي للتحدي العائلي:", error));
+  return () => { active = false; };
 }, []);
 
   const riyadhWeekday =
