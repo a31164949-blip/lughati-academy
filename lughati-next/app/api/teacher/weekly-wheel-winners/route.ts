@@ -35,9 +35,14 @@ function getWeekKey() {
 }
 
 function timestampMillis(value: unknown) {
-  if (value && typeof value === "object" && "toMillis" in value) {
-    const fn = (value as { toMillis?: unknown }).toMillis;
-    if (typeof fn === "function") return (fn as () => number)();
+  if (
+    value &&
+    typeof value === "object" &&
+    "toMillis" in value &&
+    typeof (value as { toMillis?: unknown }).toMillis === "function"
+  ) {
+    // استدعاء الدالة من الكائن نفسه حتى لا نفقد سياق Firestore Timestamp.
+    return (value as { toMillis: () => number }).toMillis();
   }
   return 0;
 }
