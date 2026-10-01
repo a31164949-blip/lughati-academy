@@ -128,6 +128,22 @@ function getFirestoreDateKey(
   return "";
 }
 
+
+function getWeeklyPointsFromHistory(history: unknown, todayDateKey: string) {
+  if (!Array.isArray(history)) return 0;
+  const weekKey = getSchoolWeekKey(todayDateKey);
+  return history.reduce((sum: number, raw: unknown) => {
+    if (!raw || typeof raw !== "object") return sum;
+    const entry = raw as Record<string, unknown>;
+    const points = typeof entry.points === "number" ? entry.points : 0;
+    if (points <= 0) return sum;
+    const rawDate = entry.date;
+    let key = typeof rawDate === "string" ? rawDate.slice(0, 10) : "";
+    if (!key) key = getFirestoreDateKey(entry.createdAt);
+    return key && getSchoolWeekKey(key) === weekKey ? sum + points : sum;
+  }, 0);
+}
+
 async function getStudentFromRequest(
   request: Request
 ) {
@@ -795,6 +811,20 @@ export async function GET(
         "number"
           ? studentData.points
           : 0,
+
+      achievementBank: {
+        total:
+          typeof studentData.points === "number"
+            ? studentData.points
+            : 0,
+        weekly:
+          getWeeklyPointsFromHistory(
+            studentData.pointsHistory,
+            dateKey
+          ),
+        weekKey:
+          getSchoolWeekKey(dateKey),
+      },
 
       stars:
         typeof studentData.stars ===
