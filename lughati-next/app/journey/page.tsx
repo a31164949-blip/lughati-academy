@@ -868,11 +868,12 @@ const [
       return;
     }
 
+    const currentUser = user;
     let active = true;
 
     async function loadUnreadMessageCount() {
       try {
-        const tokenResult = await user.getIdTokenResult();
+        const tokenResult = await currentUser.getIdTokenResult();
         const studentDocId =
           typeof tokenResult.claims.studentDocId === "string"
             ? tokenResult.claims.studentDocId
