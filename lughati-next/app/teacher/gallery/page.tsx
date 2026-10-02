@@ -528,7 +528,7 @@ useEffect(() => {
       ) {
         const mp4Url = url.replace(
           "/upload/",
-          "/upload/f_mp4,vc_h264,ac_aac/"
+          "/upload/f_mp4,vc_h264/"
         );
 
         return mp4Url.replace(
@@ -1039,11 +1039,6 @@ useEffect(() => {
                         ) ? (
                         workUrl ? (
                           <video
-                            src={
-                              getVideoPreviewUrl(
-                                work
-                              )
-                            }
                             controls
                             playsInline
                             preload="metadata"
@@ -1061,6 +1056,13 @@ useEffect(() => {
                                 "#000000",
                             }}
                           >
+                            <source
+                              src={getVideoPreviewUrl(work)}
+                              type="video/mp4"
+                            />
+                            <source
+                              src={workUrl}
+                            />
                             متصفحك لا يدعم تشغيل هذا الفيديو.
                           </video>
                         ) : (
