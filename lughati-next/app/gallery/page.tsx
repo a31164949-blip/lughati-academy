@@ -131,6 +131,15 @@ function getDriveImageUrl(
   }
 }
 
+function getVideoDeliveryUrl(url: string) {
+  if (!url || !url.includes("res.cloudinary.com") || !url.includes("/video/upload/")) {
+    return url;
+  }
+
+  // Choose a browser-compatible video format at delivery time without changing the original asset.
+  return url.replace("/video/upload/", "/video/upload/f_auto:video/q_auto/");
+}
+
 function parsePublishedAt(
   value: string
 ) {
@@ -1381,7 +1390,7 @@ function GalleryPageContent() {
                             {String(work.type || "").toLowerCase().includes("video") ||
                             String(work.type || "").includes("فيديو") ? (
                               <video
-                                src={work.fileUrl}
+                                src={getVideoDeliveryUrl(work.fileUrl)}
                                 controls
                                 playsInline
                                 preload="metadata"
@@ -1516,9 +1525,7 @@ function GalleryPageContent() {
                             )}
 
                             <a
-                              href={
-                                work.fileUrl
-                              }
+                              href={getVideoDeliveryUrl(work.fileUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{
