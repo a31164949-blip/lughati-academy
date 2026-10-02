@@ -509,6 +509,41 @@ useEffect(() => {
   }
 
   /*
+   * Safari على iPad قد لا يشغّل بعض فيديوهات Cloudinary بصيغتها الأصلية
+   * (مثل webm). نطلب MP4 للمعاينة فقط، مع إبقاء رابط التنزيل الأصلي.
+   */
+  function getVideoPreviewUrl(
+    work: GalleryWork
+  ) {
+    const url = getWorkUrl(work);
+
+    if (!url) {
+      return "";
+    }
+
+    try {
+      if (
+        url.includes("res.cloudinary.com") &&
+        url.includes("/upload/")
+      ) {
+        const mp4Url = url.replace(
+          "/upload/",
+          "/upload/f_mp4,vc_h264,ac_aac/"
+        );
+
+        return mp4Url.replace(
+          /\.[^./?]+(?=\?|$)/,
+          ".mp4"
+        );
+      }
+    } catch {
+      return url;
+    }
+
+    return url;
+  }
+
+  /*
    * تجهيز رابط تنزيل مباشر للفيديو.
    * يدعم Cloudinary وGoogle Drive،
    * ويُبقي بقية الروابط كما هي.
@@ -1005,9 +1040,13 @@ useEffect(() => {
                         workUrl ? (
                           <video
                             src={
-                              workUrl
+                              getVideoPreviewUrl(
+                                work
+                              )
                             }
                             controls
+                            playsInline
+                            preload="metadata"
                             style={{
                               width:
                                 "100%",
@@ -1021,7 +1060,9 @@ useEffect(() => {
                               background:
                                 "#000000",
                             }}
-                          />
+                          >
+                            متصفحك لا يدعم تشغيل هذا الفيديو.
+                          </video>
                         ) : (
                           <div
                             style={{
