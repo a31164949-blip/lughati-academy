@@ -13,7 +13,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 type GalleryWork = {
   id: string;
