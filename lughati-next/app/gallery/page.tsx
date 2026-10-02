@@ -1378,35 +1378,37 @@ function GalleryPageContent() {
                                 12,
                             }}
                           >
-                            <img
-                              src={
-                                imageUrl
-                              }
-                              alt={
-                                work.title
-                              }
-                              onClick={() =>
-                                setSelectedWork(
-                                  work
-                                )
-                              }
-                              style={{
-                                width:
-                                  "100%",
-
-                                height:
-                                  270,
-
-                                objectFit:
-                                  "cover",
-
-                                borderRadius:
-                                  18,
-
-                                cursor:
-                                  "zoom-in",
-                              }}
-                            />
+                            {String(work.type || "").toLowerCase().includes("video") ||
+                            String(work.type || "").includes("فيديو") ? (
+                              <video
+                                src={work.fileUrl}
+                                controls
+                                playsInline
+                                preload="metadata"
+                                style={{
+                                  width: "100%",
+                                  height: 270,
+                                  objectFit: "contain",
+                                  borderRadius: 18,
+                                  background: "#000",
+                                }}
+                              >
+                                متصفحك لا يدعم تشغيل هذا الفيديو.
+                              </video>
+                            ) : (
+                              <img
+                                src={imageUrl}
+                                alt={work.title}
+                                onClick={() => setSelectedWork(work)}
+                                style={{
+                                  width: "100%",
+                                  height: 270,
+                                  objectFit: "cover",
+                                  borderRadius: 18,
+                                  cursor: "zoom-in",
+                                }}
+                              />
+                            )}
                           </div>
 
                           <div
