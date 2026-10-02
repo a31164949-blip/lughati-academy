@@ -22,6 +22,7 @@ type GalleryWork = {
   title?: string;
   type?: string;
   fileUrl?: string;
+  cloudinaryPublicId?: string;
   imageUrl?: string;
   classroom?: string;
   note?: string;
@@ -515,32 +516,37 @@ useEffect(() => {
   function getVideoPreviewUrl(
     work: GalleryWork
   ) {
-    const url = getWorkUrl(work);
+    const originalUrl = getWorkUrl(work);
+    const publicId =
+      typeof work.cloudinaryPublicId === "string"
+        ? work.cloudinaryPublicId.trim()
+        : "";
 
-    if (!url) {
-      return "";
-    }
+    if (
+      publicId &&
+      originalUrl.includes("res.cloudinary.com")
+    ) {
+      try {
+        const parsed = new URL(originalUrl);
+        const pathParts = parsed.pathname.split("/");
+        const cloudName = pathParts[1];
 
-    try {
-      if (
-        url.includes("res.cloudinary.com") &&
-        url.includes("/upload/")
-      ) {
-        const mp4Url = url.replace(
-          "/upload/",
-          "/upload/vc_h264:baseline,q_auto/"
-        );
+        if (cloudName) {
+          const encodedPublicId = publicId
+            .split("/")
+            .map((part) => encodeURIComponent(part))
+            .join("/");
 
-        return mp4Url.replace(
-          /\.[^./?]+(?=\?|$)/,
-          ".mp4"
-        );
+          return `https://res.cloudinary.com/${encodeURIComponent(
+            cloudName
+          )}/video/upload/vc_h264:baseline,q_auto/${encodedPublicId}.mp4`;
+        }
+      } catch {
+        // نعود إلى الرابط الأصلي أدناه.
       }
-    } catch {
-      return url;
     }
 
-    return url;
+    return originalUrl;
   }
 
   /*
