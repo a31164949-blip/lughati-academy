@@ -528,7 +528,7 @@ useEffect(() => {
       ) {
         const mp4Url = url.replace(
           "/upload/",
-          "/upload/f_mp4,vc_h264/"
+          "/upload/vc_h264:baseline,q_auto/"
         );
 
         return mp4Url.replace(
