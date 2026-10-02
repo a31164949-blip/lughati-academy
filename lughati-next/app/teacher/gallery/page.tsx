@@ -593,6 +593,56 @@ useEffect(() => {
     return url;
   }
 
+  async function diagnoseVideo(work: GalleryWork) {
+    const publicId =
+      typeof work.cloudinaryPublicId === "string"
+        ? work.cloudinaryPublicId.trim()
+        : "";
+
+    if (!publicId) {
+      alert("لا يوجد Cloudinary Public ID لهذا المقطع.");
+      return;
+    }
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        alert("يرجى تسجيل الدخول كمعلم أولًا.");
+        return;
+      }
+
+      const token = await currentUser.getIdToken();
+      const response = await fetch(
+        `/api/teacher/video-diagnostics?publicId=${encodeURIComponent(publicId)}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        alert(`تعذر فحص الفيديو: ${data.message || response.status}`);
+        return;
+      }
+
+      const resource = data.resource || {};
+      const video = resource.video || {};
+      const audio = resource.audio || {};
+      alert(
+        [
+          `الطالب: ${work.studentName || "غير معروف"}`,
+          `Public ID: ${resource.public_id || publicId}`,
+          `الصيغة: ${resource.format || "غير محددة"}`,
+          `المدة: ${resource.duration ?? "غير محددة"} ثانية`,
+          `الفيديو: ${video.codec || video.codec_name || "غير محدد"}`,
+          `الصوت: ${audio.codec || audio.codec_name || "غير محدد"}`,
+          `الأبعاد: ${resource.width || "?"} × ${resource.height || "?"}`,
+          `النسخ المشتقة: ${Array.isArray(resource.derived) ? resource.derived.length : 0}`,
+        ].join("\n")
+      );
+    } catch (error) {
+      console.error("Video diagnostics error:", error);
+      alert("تعذر فحص الفيديو حاليًا.");
+    }
+  }
+
   return (
     <main
       dir="rtl"
@@ -1312,6 +1362,25 @@ useEffect(() => {
                           >
                             ⬇️ تنزيل الفيديو
                           </a>
+                        ) : null}
+
+                        {isVideoWork(work) ? (
+                          <button
+                            type="button"
+                            onClick={() => void diagnoseVideo(work)}
+                            style={{
+                              width: "100%",
+                              border: "1px dashed #6b8f83",
+                              background: "#f5faf8",
+                              color: "#174f3c",
+                              borderRadius: "14px",
+                              padding: "12px",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            🔍 فحص الفيديو
+                          </button>
                         ) : null}
 
                         {/* تمييز */}
