@@ -152,7 +152,7 @@ export default function WeeklyPicks() {
         <div className="picks-featured weekly-hero-featured" style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(220px,.55fr)", alignItems: "center", gap: "24px" }}>
           <div>
             <span style={{ display: "inline-flex", padding: "7px 12px", borderRadius: "999px", background: "#fff0a8", color: "#765800", fontSize: "13px", fontWeight: 900 }}>🏆 نجم أكاديمية لغتي</span>
-            <h3 style={{ margin: "12px 0 4px", fontSize: "clamp(30px,4vw,43px)", lineHeight: 1.35 }}>بطلنا هذا الأسبوع</h3>
+            <h3 style={{ margin: "12px 0 4px", fontSize: "clamp(30px,4vw,43px)", lineHeight: 1.35 }}>🌟 قصة بطل هذا الأسبوع</h3>
             <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>شخصية قصتنا ما زالت سرًّا 🤫</strong>
             <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}><span className="pick-chip">🌱 بدأ متأخرًا</span><span className="pick-chip">💪 لم يستسلم</span><span className="pick-chip">🏆 ينافس على الصدارة</span></div>
             <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>في بداية الرحلة كان بعيدًا عن المقدمة، لكنه قرر أن يبدأ. قرأ، وأنجز، وشارك، وحاول مرة بعد مرة. ومع الأيام اقترب أكثر فأكثر، واليوم أصبح ينافس بقوة على الصدارة. فمن يكون هذا البطل؟ 🤔</p>
