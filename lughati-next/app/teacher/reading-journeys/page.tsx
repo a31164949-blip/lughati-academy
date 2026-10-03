@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   getDocs,
+  query,
+  where,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -134,9 +136,9 @@ export default function ReadingJourneysPage() {
           ),
 
           getDocs(
-            collection(
-              db,
-              "homeworkCompletions"
+            query(
+              collection(db, "homeworkCompletions"),
+              where("readingAudioUrl", "!=", "")
             )
           ),
           getDocs(collection(db, "reading-submissions")),
