@@ -1,5 +1,7 @@
 "use client";
 
+
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -213,9 +215,9 @@ export default function AcademyStories() {
             </div>
             <strong style={{ display: "block", marginBottom: 10 }}>{activeStory.authorLabel}</strong>
             {activeStory.mediaType === "image" ? (
-              <img src={activeStory.mediaUrl} alt="" style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 20 }} />
+              <img src={cloudinaryImageUrl(activeStory.mediaUrl, 1200)} alt="" style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 20 }} />
             ) : (
-              <video src={activeStory.mediaUrl} controls autoPlay playsInline style={{ width: "100%", maxHeight: "70vh", borderRadius: 20 }} />
+              <video src={cloudinaryVideoUrl(activeStory.mediaUrl, 720)} controls autoPlay playsInline preload="metadata" style={{ width: "100%", maxHeight: "70vh", borderRadius: 20 }} />
             )}
             {activeStory.caption && <p style={{ lineHeight: 1.7 }}>{activeStory.caption}</p>}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
