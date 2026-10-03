@@ -106,7 +106,7 @@ export default function ReadingJourneyPage() {
     isSchoolReadingDay(getRiyadhDateKey());
 
   // إيقاف مؤقت لرفع تسجيلات القراءة حتى اكتمال تحسينات الاستهلاك.
-  const isReadingUploadPaused = true;
+  const isReadingUploadPaused = false;
 
   const canSubmitReading =
     !isReadingUploadPaused && submissionWindow.isOpen && isReadingWeekOpen;
@@ -911,7 +911,7 @@ export default function ReadingJourneyPage() {
             }}
           >
             لديك قراءة واحدة فقط يوميًا.
-            سجّل قراءتك لمدة دقيقة،
+            سجّل قراءتك لمدة 30 ثانية،
             واستمع إليها قبل إرسالها
             للمعلم.
           </p>
