@@ -8,6 +8,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
+  where,
   increment,
   runTransaction,
   serverTimestamp,
@@ -165,7 +167,7 @@ export default function ReadingSubmissionsPage() {
      */
     const [journeySnapshot, homeworkSnapshot] = await Promise.all([
       getDocs(collection(db, "reading-submissions")),
-      getDocs(collection(db, "homeworkCompletions")),
+      getDocs(query(collection(db, "homeworkCompletions"), where("readingAudioUrl", "!=", ""))),
     ]);
 
     const journeyRows = journeySnapshot.docs.map((item) => ({
