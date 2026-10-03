@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 
 type GalleryWork = {
   id?: number;
@@ -239,9 +240,7 @@ function StudentIdentity({
       >
         {personalPhotoUrl ? (
           <img
-            src={
-              personalPhotoUrl
-            }
+            src={cloudinaryImageUrl(personalPhotoUrl, 160)}
             alt={`صورة ${studentName}`}
             style={{
               width:
@@ -1891,9 +1890,7 @@ function GalleryPageContent() {
                           }}
                         >
                           <img
-                            src={
-                              item.imageUrl
-                            }
+                            src={cloudinaryImageUrl(item.imageUrl, 900)}
                             alt={`دفتر ${item.studentName}`}
                             onClick={() =>
                               window.open(
