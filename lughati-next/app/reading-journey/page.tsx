@@ -106,7 +106,7 @@ export default function ReadingJourneyPage() {
     isSchoolReadingDay(getRiyadhDateKey());
 
   // إيقاف مؤقت لرفع تسجيلات القراءة حتى اكتمال تحسينات الاستهلاك.
-  const isReadingUploadPaused = true;
+  const isReadingUploadPaused = false;
 
   const canSubmitReading =
     !isReadingUploadPaused && submissionWindow.isOpen && isReadingWeekOpen;
