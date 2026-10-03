@@ -14,6 +14,7 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
+import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import {
   collection,
   getDocs,
@@ -2299,9 +2300,9 @@ try {
 
               {tiktokConsentRequest.fileUrl && (
                 <video
-                  src={tiktokConsentRequest.fileUrl}
+                  src={cloudinaryVideoUrl(tiktokConsentRequest.fileUrl, 720)}
                   controls
-                  preload="metadata"
+                  preload="none"
                   style={{
                     width: "100%",
                     maxHeight: "260px",

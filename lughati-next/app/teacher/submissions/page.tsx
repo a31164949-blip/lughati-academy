@@ -21,6 +21,8 @@ import {
 
 import { db } from "../../../firebase";
 
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../../lib/cloudinaryDelivery";
+
 type WorkStatus =
   | "pending"
   | "approved"
@@ -1224,19 +1226,19 @@ useEffect(() => {
                         styles.previewBox
                       }
                     >
-                      {submission.workType ===
-                        "image" &&
-                      submission.fileUrl ? (
+                      {submission.workType === "image" && submission.fileUrl ? (
                         <img
-                          src={
-                            submission.fileUrl
-                          }
-                          alt={
-                            submission.title
-                          }
-                          style={
-                            styles.previewImage
-                          }
+                          src={cloudinaryImageUrl(submission.fileUrl, 900)}
+                          alt={submission.title}
+                          style={styles.previewImage}
+                        />
+                      ) : submission.workType === "video" && submission.fileUrl ? (
+                        <video
+                          src={cloudinaryVideoUrl(submission.fileUrl, 720)}
+                          controls
+                          playsInline
+                          preload="none"
+                          style={styles.previewImage}
                         />
                       ) : (
                         <span
@@ -1417,10 +1419,9 @@ useEffect(() => {
                           {submission.workType ===
                             "audio" && (
                             <audio
-                              src={
-                                submission.fileUrl
-                              }
+                              src={submission.fileUrl}
                               controls
+                              preload="none"
                               style={{
                                 width:
                                   "100%",
@@ -1431,10 +1432,10 @@ useEffect(() => {
                           {submission.workType ===
                             "video" && (
                             <video
-                              src={
-                                submission.fileUrl
-                              }
+                              src={cloudinaryVideoUrl(submission.fileUrl, 720)}
                               controls
+                              preload="none"
+                              playsInline
                               style={
                                 styles.videoPreview
                               }

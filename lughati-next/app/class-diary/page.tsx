@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import { cloudinaryImageUrl } from "../lib/cloudinaryDelivery";
 
 type DiaryPost = {
   id: string;
@@ -238,9 +239,7 @@ export default function ClassDiaryPage() {
                   {post.imageUrl ? (
                     <div className="aspect-[16/10] overflow-hidden bg-slate-100">
                       <img
-                        src={
-                          post.imageUrl
-                        }
+                        src={cloudinaryImageUrl(post.imageUrl, 1000)}
                         alt={
                           post.title
                         }

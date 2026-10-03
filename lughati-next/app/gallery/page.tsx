@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 
 type GalleryWork = {
   id?: number;
@@ -131,6 +132,17 @@ function getDriveImageUrl(
   }
 }
 
+function isVideoWork(work: GalleryWork) {
+  const type = (work.type || "").toLowerCase();
+  const url = (work.fileUrl || "").toLowerCase().split("?")[0];
+
+  return (
+    type.includes("video") ||
+    type.includes("فيديو") ||
+    /\.(mp4|mov|m4v|webm|ogv|avi)$/.test(url)
+  );
+}
+
 function parsePublishedAt(
   value: string
 ) {
@@ -239,9 +251,7 @@ function StudentIdentity({
       >
         {personalPhotoUrl ? (
           <img
-            src={
-              personalPhotoUrl
-            }
+            src={cloudinaryImageUrl(personalPhotoUrl, 160)}
             alt={`صورة ${studentName}`}
             style={{
               width:
@@ -1218,10 +1228,16 @@ function GalleryPageContent() {
                       work,
                       index
                     ) => {
-                      const imageUrl =
-                        getDriveImageUrl(
-                          work.fileUrl
-                        );
+                      const isVideo =
+                        isVideoWork(work);
+
+                      const mediaUrl =
+                        isVideo
+                          ? cloudinaryVideoUrl(work.fileUrl, 720)
+                          : cloudinaryImageUrl(
+                              getDriveImageUrl(work.fileUrl),
+                              900
+                            );
 
                       const publishedTime =
                         parsePublishedAt(
@@ -1378,35 +1394,34 @@ function GalleryPageContent() {
                                 12,
                             }}
                           >
-                            <img
-                              src={
-                                imageUrl
-                              }
-                              alt={
-                                work.title
-                              }
-                              onClick={() =>
-                                setSelectedWork(
-                                  work
-                                )
-                              }
-                              style={{
-                                width:
-                                  "100%",
-
-                                height:
-                                  270,
-
-                                objectFit:
-                                  "cover",
-
-                                borderRadius:
-                                  18,
-
-                                cursor:
-                                  "zoom-in",
-                              }}
-                            />
+                            {isVideo ? (
+                              <video
+                                src={mediaUrl}
+                                controls
+                                playsInline
+                                preload="none"
+                                style={{
+                                  width: "100%",
+                                  height: 270,
+                                  objectFit: "cover",
+                                  borderRadius: 18,
+                                  background: "#000",
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={mediaUrl}
+                                alt={work.title}
+                                onClick={() => setSelectedWork(work)}
+                                style={{
+                                  width: "100%",
+                                  height: 270,
+                                  objectFit: "cover",
+                                  borderRadius: 18,
+                                  cursor: "zoom-in",
+                                }}
+                              />
+                            )}
                           </div>
 
                           <div
@@ -1891,9 +1906,7 @@ function GalleryPageContent() {
                           }}
                         >
                           <img
-                            src={
-                              item.imageUrl
-                            }
+                            src={cloudinaryImageUrl(item.imageUrl, 900)}
                             alt={`دفتر ${item.studentName}`}
                             onClick={() =>
                               window.open(
@@ -2166,48 +2179,42 @@ function GalleryPageContent() {
             ✕
           </button>
 
-          <img
-            src={getDriveImageUrl(
-              selectedWork.fileUrl
-            )}
-            alt={
-              selectedWork.title ||
-              "العمل المختار"
-            }
-            onClick={(
-              event
-            ) =>
-              event.stopPropagation()
-            }
-            style={{
-              display:
-                "block",
-
-              maxWidth:
-                "94vw",
-
-              maxHeight:
-                "88vh",
-
-              width:
-                "auto",
-
-              height:
-                "auto",
-
-              objectFit:
-                "contain",
-
-              borderRadius:
-                22,
-
-              background:
-                "white",
-
-              boxShadow:
-                "0 28px 80px rgba(0,0,0,.45)",
-            }}
-          />
+          {isVideoWork(selectedWork) ? (
+            <video
+              src={cloudinaryVideoUrl(selectedWork.fileUrl, 720)}
+              controls
+              playsInline
+              preload="none"
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                display: "block",
+                maxWidth: "94vw",
+                maxHeight: "88vh",
+                width: "auto",
+                height: "auto",
+                borderRadius: 22,
+                background: "#000",
+                boxShadow: "0 28px 80px rgba(0,0,0,.45)",
+              }}
+            />
+          ) : (
+            <img
+              src={cloudinaryImageUrl(getDriveImageUrl(selectedWork.fileUrl), 1200)}
+              alt={selectedWork.title || "العمل المختار"}
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                display: "block",
+                maxWidth: "94vw",
+                maxHeight: "88vh",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+                borderRadius: 22,
+                background: "white",
+                boxShadow: "0 28px 80px rgba(0,0,0,.45)",
+              }}
+            />
+          )}
         </div>
       )}
     </main>

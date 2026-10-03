@@ -12,6 +12,8 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../../lib/cloudinaryDelivery";
+
 type Status = "pending" | "approved" | "revision_requested";
 type Tab = "voice" | "reader" | "art" | "celebrate" | "family";
 
@@ -778,7 +780,7 @@ function VoiceCard({
     <article style={cardStyle}>
       {item.fileUrl && (
         <video
-          src={item.fileUrl}
+          src={cloudinaryVideoUrl(item.fileUrl, 720)}
           controls
           preload="metadata"
           style={{ width: "100%", height: 250, background: "#000" }}
@@ -966,7 +968,7 @@ function ArtCard({
       {item.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={item.imageUrl}
+          src={cloudinaryImageUrl(item.imageUrl, 1000)}
           alt={item.title || "عمل فني وطني"}
           style={{
             width: "100%",
@@ -1069,10 +1071,10 @@ function CelebrateCard({
     <article style={cardStyle}>
       {item.mediaUrl ? (
         item.mediaType === "video" ? (
-          <video src={item.mediaUrl} controls playsInline preload="metadata" style={{ width: "100%", height: 320, objectFit: "contain", background: "#0b1712" }} />
+          <video src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls playsInline preload="none" style={{ width: "100%", height: 320, objectFit: "contain", background: "#0b1712" }} />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.mediaUrl} alt={item.title || "مشاركة وطنية"} style={{ width: "100%", height: 320, objectFit: "contain", background: "#f8faf9", display: "block" }} />
+          <img src={cloudinaryImageUrl(item.mediaUrl, 1000)} alt={item.title || "مشاركة وطنية"} style={{ width: "100%", height: 320, objectFit: "contain", background: "#f8faf9", display: "block" }} />
         )
       ) : (
         <div style={readerHeadStyle}><div style={{ fontSize: 42 }}>✨</div><strong>نحن نحتفل</strong></div>

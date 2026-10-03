@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../../lib/cloudinaryDelivery";
 
 type GalleryWork = {
   id: string;
@@ -934,9 +935,7 @@ useEffect(() => {
                         work
                       ) ? (
                         <img
-                          src={
-                            workUrl
-                          }
+                          src={isVideoWork(work) ? cloudinaryVideoUrl(workUrl, 720) : cloudinaryImageUrl(workUrl, 900)}
                           alt={
                             work.title ||
                             work.studentName ||
@@ -988,9 +987,7 @@ useEffect(() => {
 
                           {workUrl ? (
                             <audio
-                              src={
-                                workUrl
-                              }
+                              src={isVideoWork(work) ? cloudinaryVideoUrl(workUrl, 720) : cloudinaryImageUrl(workUrl, 900)}
                               controls
                               style={{
                                 width:
@@ -1004,10 +1001,10 @@ useEffect(() => {
                         ) ? (
                         workUrl ? (
                           <video
-                            src={
-                              workUrl
-                            }
+                            src={isVideoWork(work) ? cloudinaryVideoUrl(workUrl, 720) : cloudinaryImageUrl(workUrl, 900)}
                             controls
+                            preload="none"
+                            playsInline
                             style={{
                               width:
                                 "100%",

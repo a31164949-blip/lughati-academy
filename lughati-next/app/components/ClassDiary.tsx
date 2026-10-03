@@ -1,5 +1,7 @@
 "use client";
 
+
+import { cloudinaryImageUrl } from "../lib/cloudinaryDelivery";
 import Link from "next/link";
 import {
   useEffect,
@@ -403,7 +405,7 @@ export default function ClassDiary() {
               <div className="classDiary__starAvatar">
                 {star.personalPhotoUrl ? (
                   <img
-                    src={star.personalPhotoUrl}
+                    src={cloudinaryImageUrl(star.personalPhotoUrl, 160)}
                     alt={star.studentName}
                   />
                 ) : (
