@@ -20,49 +20,49 @@ const activities = [
     title: "خَمِّن كلمة الوطن",
     description: "ألغاز وطنية سريعة بتعليقات طريفة وتحدٍ فردي أو جماعي.",
     href: "/national-day/guess-the-word",
-    status: "متاحة الآن",
+    status: "مؤرشفة",
   },
   {
     icon: "🧺",
     title: "سلة حروف الوطن",
     description: "التقط الحروف الصحيحة، واجمع كلمات الوطن قبل انتهاء الوقت.",
     href: "/national-day/letter-basket",
-    status: "متاحة الآن",
+    status: "مؤرشفة",
   },
   {
     icon: "🎙️",
     title: "صوت الوطن",
     description: "إلقاء قصير يعبّر فيه الطالب عن حبه للمملكة.",
     href: "/national-day/voice-of-nation",
-    status: "تفتح 20 سبتمبر",
+    status: "مؤرشفة",
   },
  {
   icon: "📖",
   title: "قارئ الوطن",
   description: "قراءة نص وطني بصوت واضح وأداء جميل.",
   href: "/national-day/reader-of-nation",
-  status: "متاحة الآن",
+  status: "مؤرشفة",
 },
   {
   icon: "🎨",
   title: "وطني بريشتي",
   description: "رسمة أو تصميم إبداعي يحكي قصة الوطن.",
   href: "/national-day/my-country-with-my-brush",
-  status: "متاحة الآن",
+  status: "مؤرشفة",
 },
   {
     icon: "🧠",
     title: "تحدي أعرف وطني",
     description: "أسئلة ممتعة ومعلومات مبسطة عن المملكة.",
     href: "/national-day/know-my-country",
-    status: "متاحة الآن",
+    status: "مؤرشفة",
   },
  {
   icon: "🇸🇦",
   title: "نحن نحتفل",
   description: "شارك فرحتك بالوطن بصورة أو فيديو قصير، ودعنا نحتفل معًا 💚",
   href: "/national-day/we-celebrate",
-  status: "متاحة الآن",
+  status: "مؤرشفة",
 },
 ];
 
@@ -235,7 +235,7 @@ export default function NationalDayPage() {
           <div style={{ textAlign: "center" }}>
             <span style={{ color: "#b58400", fontWeight: 900 }}>اللمسات الأولى</span>
             <h2 style={{ margin: "5px 0", fontSize: "clamp(25px, 4vw, 36px)" }}>مسابقات أسبوع الوطن</h2>
-            <p style={{ margin: 0, color: "#647b73" }}>سنفتح كل مسابقة في موعدها، وترقّبوا تفاصيل المشاركة قريبًا.</p>
+            <p style={{ margin: 0, color: "#647b73" }}>انتهت فعاليات أسبوع الوطن لعام 2026، ونحتفظ بهذه الصفحة أرشيفًا لإنجازات طلابنا.</p>
           </div>
 
           <div className="activity-grid">
@@ -249,7 +249,7 @@ export default function NationalDayPage() {
                 </div>
                 <h3 style={{ margin: "14px 0 7px", color: "#086447", fontSize: 21 }}>{activity.title}</h3>
                 <p style={{ margin: 0, color: "#657b74", lineHeight: 1.8 }}>{activity.description}</p>
-                {activity.href ? (
+                {false && activity.href ? (
                   <Link
                     href={activity.href}
                     style={{
@@ -273,8 +273,8 @@ export default function NationalDayPage() {
         </section>
 
         <section style={{ marginTop: 25, padding: 22, borderRadius: 24, textAlign: "center", color: "#075f46", background: "#fff8d8", border: "1px solid #f1d36c" }}>
-          <strong style={{ display: "block", fontSize: 21, marginBottom: 5 }}>✨ البداية تقترب</strong>
-          <span style={{ lineHeight: 1.8 }}>سيتم قريبًا تفعيل التسجيل ورفع المشاركات وإعلان برنامج كل يوم.</span>
+          <strong style={{ display: "block", fontSize: 21, marginBottom: 5 }}>🇸🇦 شكرًا لأبطال أسبوع الوطن</strong>
+          <span style={{ lineHeight: 1.8 }}>أُغلقت الفعاليات والمشاركات الجديدة، وحُفظت الأعمال والنتائج السابقة في أرشيف الأكاديمية.</span>
         </section>
       </div>
     </main>
