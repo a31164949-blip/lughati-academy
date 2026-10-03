@@ -2,7 +2,7 @@ export type CloudinaryAssetKind = "image" | "video";
 
 export function optimizeCloudinaryUrl(
   value: string,
-  kind: CloudinaryAssetKind,
+  _kind: CloudinaryAssetKind,
   width?: number
 ) {
   if (!value) return value;
