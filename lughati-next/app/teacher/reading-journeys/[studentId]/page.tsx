@@ -903,7 +903,7 @@ export default function StudentReadingJourneyPage() {
                       >
                         <audio
                           controls
-                          preload="metadata"
+                          preload="none"
                           src={
                             record.audioUrl
                           }

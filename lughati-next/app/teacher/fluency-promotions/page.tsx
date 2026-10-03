@@ -1328,7 +1328,7 @@ export default function FluencyPromotionsPage() {
                                 item.audioUrl
                               }
                               controls
-                              preload="metadata"
+                              preload="none"
                               playsInline
                               onLoadStart={() =>
                                 setAudioStatus(

@@ -1026,7 +1026,7 @@ export default function ReadingRecoveryPage() {
 
                   <audio
                     controls
-                    preload="metadata"
+                    preload="none"
                     src={
                       resource.secureUrl
                     }
