@@ -1419,8 +1419,9 @@ useEffect(() => {
                           {submission.workType ===
                             "audio" && (
                             <audio
-                              src={submission.workType === "video" ? cloudinaryVideoUrl(submission.fileUrl, 720) : cloudinaryImageUrl(submission.fileUrl, 900)}
+                              src={submission.fileUrl}
                               controls
+                              preload="none"
                               style={{
                                 width:
                                   "100%",
@@ -1431,7 +1432,7 @@ useEffect(() => {
                           {submission.workType ===
                             "video" && (
                             <video
-                              src={submission.workType === "video" ? cloudinaryVideoUrl(submission.fileUrl, 720) : cloudinaryImageUrl(submission.fileUrl, 900)}
+                              src={cloudinaryVideoUrl(submission.fileUrl, 720)}
                               controls
                               preload="none"
                               playsInline
