@@ -15,6 +15,14 @@ import {
 
 import { db } from "../../../firebase";
 
+type WeeklyHero = {
+  name: string;
+  grade: string;
+  praise: string;
+  photoUrl: string;
+  revealed: boolean;
+};
+
 type WeeklyWord = {
   word: string;
   vocalizedWord: string;
@@ -54,6 +62,14 @@ type WeeklyVideo = {
   videoUrl: string;
   question: string;
   published: boolean;
+};
+
+const defaultHero: WeeklyHero = {
+  name: "",
+  grade: "الصف الثاني",
+  praise: "نفخر بك وبجهدك الجميل. استمر في التعلّم والمثابرة؛ فكل خطوة تصنع إنجازًا جديدًا.",
+  photoUrl: "",
+  revealed: false,
 };
 
 const defaultWord: WeeklyWord = {
@@ -120,6 +136,8 @@ const defaultVideo: WeeklyVideo = {
 };
 
 export default function TeacherWeeklyPicksPage() {
+  const [hero, setHero] = useState<WeeklyHero>(defaultHero);
+  const [uploadingHeroPhoto, setUploadingHeroPhoto] = useState(false);
   const [
     word,
     setWord,
@@ -191,6 +209,10 @@ export default function TeacherWeeklyPicksPage() {
           const data =
             snapshot.data();
 
+          if (data.hero) {
+            setHero({ ...defaultHero, ...data.hero });
+          }
+
           if (data.word) {
             setWord({
               ...defaultWord,
@@ -261,6 +283,7 @@ export default function TeacherWeeklyPicksPage() {
       await setDoc(
         ref,
         {
+          hero,
           story,
           word,
           didYouKnow,
@@ -344,6 +367,47 @@ export default function TeacherWeeklyPicksPage() {
             </Link>
           </div>
         </header>
+
+        {/* قصة بطل هذا الأسبوع */}
+        <SectionCard
+          icon="🏆"
+          title="قصة بطل هذا الأسبوع"
+          description="جهّز بيانات البطل والصورة، ثم اكشف هويته في الوقت المناسب."
+          active={hero.revealed}
+          onToggle={() => setHero((current) => ({ ...current, revealed: !current.revealed }))}
+        >
+          <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold leading-7 text-amber-900">
+            {hero.revealed ? "🏆 الهوية مكشوفة الآن في واجهة الأكاديمية." : "🔒 وضع التشويق مفعل: لن يظهر الاسم أو الصورة حتى تكشف البطل."}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="اسم الطالب" value={hero.name} onChange={(value) => setHero({ ...hero, name: value })} />
+            <Field label="الصف" value={hero.grade} onChange={(value) => setHero({ ...hero, grade: value })} />
+          </div>
+          <TextAreaField label="كلمات الإشادة" value={hero.praise} onChange={(value) => setHero({ ...hero, praise: value })} />
+          <label className="block">
+            <span className="mb-2 block text-sm font-black text-slate-700">📷 صورة البطل</span>
+            <input type="file" accept="image/*" disabled={uploadingHeroPhoto} onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              try {
+                setUploadingHeroPhoto(true);
+                setMessage("");
+                const form = new FormData();
+                form.append("file", file);
+                form.append("upload_preset", "lughati_homework_upload");
+                const response = await fetch("https://api.cloudinary.com/v1_1/ffv5igmg/image/upload", { method: "POST", body: form });
+                if (!response.ok) throw new Error("upload failed");
+                const data = await response.json();
+                setHero((current) => ({ ...current, photoUrl: String(data.secure_url || "") }));
+                setMessage("✅ تم تجهيز صورة البطل. اضغط حفظ مختارات الأسبوع.");
+              } catch (error) {
+                console.error("تعذر رفع صورة البطل:", error);
+                setMessage("❌ تعذر رفع الصورة. حاول مرة أخرى.");
+              } finally { setUploadingHeroPhoto(false); event.target.value = ""; }
+            }} className="w-full rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50 px-4 py-4 font-bold text-slate-700" />
+          </label>
+          {hero.photoUrl && <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-3"><img src={hero.photoUrl} alt="معاينة صورة البطل" className="h-24 w-24 rounded-full object-cover ring-4 ring-amber-300" /><span className="font-bold text-slate-600">الصورة جاهزة ولن تظهر للطلاب ما دام وضع التشويق مفعّلًا.</span></div>}
+        </SectionCard>
 
         {/* قصة الأسبوع */}
 

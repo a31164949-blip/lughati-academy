@@ -44,6 +44,11 @@ function getNotificationTime(value: unknown) {
 
 const sections = [
   {
+    title: "🌟 إدارة مختارات الأسبوع",
+    description: "إدارة قصة بطل هذا الأسبوع، صورة البطل وكلمات الإشادة، وقصة الأسبوع وبقية المختارات.",
+    href: "/teacher/weekly-picks",
+  },
+  {
     title: "🤝 نتعاون من أجل تقدّمه",
     description:
       "متابعة ردود الأسر، تحديد خطوة هذا الأسبوع، وتسجيل موعد المراجعة.",
