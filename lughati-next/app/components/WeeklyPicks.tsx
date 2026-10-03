@@ -144,6 +144,27 @@ export default function WeeklyPicks() {
         </Link>
       </div>
 
+      {/* بطلنا هذا الأسبوع */}
+      <div
+        style={{
+          position: "relative", overflow: "hidden", marginBottom: "15px", padding: "18px 22px",
+          borderRadius: "28px", background: "linear-gradient(135deg,#fff9df 0%,#fff 48%,#eefaf4 100%)",
+          border: "1px solid #f1d675", boxShadow: "0 12px 30px rgba(122,91,0,.10)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "18px", flexWrap: "wrap"
+        }}
+      >
+        <div style={{ position: "absolute", left: "-24px", top: "-30px", fontSize: "110px", opacity: .07 }}>🏆</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "15px", position: "relative" }}>
+          <div style={{ width: "72px", height: "72px", borderRadius: "22px", display: "grid", placeItems: "center", fontSize: "40px", background: "linear-gradient(135deg,#fff1a8,#facc15)", boxShadow: "0 8px 20px rgba(180,130,0,.18)" }}>🏆</div>
+          <div>
+            <span style={{ color: "#a16d00", fontSize: "13px", fontWeight: 950 }}>نحتفي بالاجتهاد والتطور</span>
+            <h3 style={{ margin: "3px 0", color: "#174c3b", fontSize: "clamp(23px,3vw,31px)", lineHeight: 1.35 }}>بطلنا هذا الأسبوع</h3>
+            <p style={{ margin: 0, color: "#718078", fontWeight: 700, lineHeight: 1.7 }}>قريبًا نعلن اسم بطل الأسبوع ونحتفي بجهده وتميزه 🌟</p>
+          </div>
+        </div>
+        <div style={{ padding: "9px 14px", borderRadius: "999px", background: "#eaf9f2", color: "#14704b", fontWeight: 900, whiteSpace: "nowrap" }}>⭐ لكل مجتهد فرصة</div>
+      </div>
+
       {/* البطاقة الرئيسية */}
 
       <div
