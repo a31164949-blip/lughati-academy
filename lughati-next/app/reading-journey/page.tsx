@@ -336,7 +336,7 @@ export default function ReadingJourneyPage() {
         setRecordingSeconds((current) => {
           const next = current + 1;
 
-          if (next >= 60) {
+          if (next >= 30) {
             if (
               mediaRecorderRef.current &&
               mediaRecorderRef.current.state !==
@@ -354,7 +354,7 @@ export default function ReadingJourneyPage() {
 
             setIsRecording(false);
 
-            return 60;
+            return 30;
           }
 
           return next;
@@ -692,7 +692,7 @@ export default function ReadingJourneyPage() {
               opacity: 0.95,
             }}
           >
-            اقرأ كل يوم لمدة دقيقة،
+            اقرأ كل يوم لمدة 30 ثانية،
             وسجّل صوتك، ثم أرسل قراءتك
             إلى معلمك للمراجعة.
           </p>
