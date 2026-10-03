@@ -13,7 +13,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 
 type GalleryWork = {
   id: string;
@@ -22,6 +22,7 @@ type GalleryWork = {
   title?: string;
   type?: string;
   fileUrl?: string;
+  cloudinaryPublicId?: string;
   imageUrl?: string;
   classroom?: string;
   note?: string;
@@ -509,6 +510,46 @@ useEffect(() => {
   }
 
   /*
+   * Safari على iPad قد لا يشغّل بعض فيديوهات Cloudinary بصيغتها الأصلية
+   * (مثل webm). نطلب MP4 للمعاينة فقط، مع إبقاء رابط التنزيل الأصلي.
+   */
+  function getVideoPreviewUrl(
+    work: GalleryWork
+  ) {
+    const originalUrl = getWorkUrl(work);
+    const publicId =
+      typeof work.cloudinaryPublicId === "string"
+        ? work.cloudinaryPublicId.trim()
+        : "";
+
+    if (
+      publicId &&
+      originalUrl.includes("res.cloudinary.com")
+    ) {
+      try {
+        const parsed = new URL(originalUrl);
+        const pathParts = parsed.pathname.split("/");
+        const cloudName = pathParts[1];
+
+        if (cloudName) {
+          const encodedPublicId = publicId
+            .split("/")
+            .map((part) => encodeURIComponent(part))
+            .join("/");
+
+          return `https://res.cloudinary.com/${encodeURIComponent(
+            cloudName
+          )}/video/upload/vc_h264:baseline,q_auto/${encodedPublicId}.mp4`;
+        }
+      } catch {
+        // نعود إلى الرابط الأصلي أدناه.
+      }
+    }
+
+    return originalUrl;
+  }
+
+  /*
    * تجهيز رابط تنزيل مباشر للفيديو.
    * يدعم Cloudinary وGoogle Drive،
    * ويُبقي بقية الروابط كما هي.
@@ -550,6 +591,56 @@ useEffect(() => {
     }
 
     return url;
+  }
+
+  async function diagnoseVideo(work: GalleryWork) {
+    const publicId =
+      typeof work.cloudinaryPublicId === "string"
+        ? work.cloudinaryPublicId.trim()
+        : "";
+
+    if (!publicId) {
+      alert("لا يوجد Cloudinary Public ID لهذا المقطع.");
+      return;
+    }
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        alert("يرجى تسجيل الدخول كمعلم أولًا.");
+        return;
+      }
+
+      const token = await currentUser.getIdToken();
+      const response = await fetch(
+        `/api/teacher/video-diagnostics?publicId=${encodeURIComponent(publicId)}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        alert(`تعذر فحص الفيديو: ${data.message || response.status}`);
+        return;
+      }
+
+      const resource = data.resource || {};
+      const video = resource.video || {};
+      const audio = resource.audio || {};
+      alert(
+        [
+          `الطالب: ${work.studentName || "غير معروف"}`,
+          `Public ID: ${resource.public_id || publicId}`,
+          `الصيغة: ${resource.format || "غير محددة"}`,
+          `المدة: ${resource.duration ?? "غير محددة"} ثانية`,
+          `الفيديو: ${video.codec || video.codec_name || "غير محدد"}`,
+          `الصوت: ${audio.codec || audio.codec_name || "غير محدد"}`,
+          `الأبعاد: ${resource.width || "?"} × ${resource.height || "?"}`,
+          `النسخ المشتقة: ${Array.isArray(resource.derived) ? resource.derived.length : 0}`,
+        ].join("\n")
+      );
+    } catch (error) {
+      console.error("Video diagnostics error:", error);
+      alert("تعذر فحص الفيديو حاليًا.");
+    }
   }
 
   return (
@@ -1004,10 +1095,9 @@ useEffect(() => {
                         ) ? (
                         workUrl ? (
                           <video
-                            src={
-                              workUrl
-                            }
                             controls
+                            playsInline
+                            preload="metadata"
                             style={{
                               width:
                                 "100%",
@@ -1021,7 +1111,16 @@ useEffect(() => {
                               background:
                                 "#000000",
                             }}
-                          />
+                          >
+                            <source
+                              src={getVideoPreviewUrl(work)}
+                              type="video/mp4"
+                            />
+                            <source
+                              src={workUrl}
+                            />
+                            متصفحك لا يدعم تشغيل هذا الفيديو.
+                          </video>
                         ) : (
                           <div
                             style={{
@@ -1263,6 +1362,25 @@ useEffect(() => {
                           >
                             ⬇️ تنزيل الفيديو
                           </a>
+                        ) : null}
+
+                        {isVideoWork(work) ? (
+                          <button
+                            type="button"
+                            onClick={() => void diagnoseVideo(work)}
+                            style={{
+                              width: "100%",
+                              border: "1px dashed #6b8f83",
+                              background: "#f5faf8",
+                              color: "#174f3c",
+                              borderRadius: "14px",
+                              padding: "12px",
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            🔍 فحص الفيديو
+                          </button>
                         ) : null}
 
                         {/* تمييز */}

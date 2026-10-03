@@ -9,6 +9,7 @@ type StudentWork = {
   title: string;
   type: string;
   fileUrl: string;
+  cloudinaryPublicId: string;
   note: string;
   status: string;
   publishedToGallery: boolean;
@@ -86,6 +87,11 @@ export async function GET() {
             fileUrl:
               typeof data.fileUrl === "string"
                 ? data.fileUrl
+                : "",
+
+            cloudinaryPublicId:
+              typeof data.cloudinaryPublicId === "string"
+                ? data.cloudinaryPublicId
                 : "",
 
             note:
@@ -296,6 +302,9 @@ published:
 
           fileUrl:
             submission.fileUrl,
+
+          cloudinaryPublicId:
+            submission.cloudinaryPublicId,
 
           note:
             submission.note,
