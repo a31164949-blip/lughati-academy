@@ -144,195 +144,25 @@ export default function WeeklyPicks() {
         </Link>
       </div>
 
-      {/* بطلنا هذا الأسبوع */}
+      {/* واجهة مختارات الأسبوع: بطلنا هذا الأسبوع */}
       <div
-        style={{
-          position: "relative", overflow: "hidden", marginBottom: "15px", padding: "22px",
-          borderRadius: "30px", background: "linear-gradient(135deg,#fff9df 0%,#fff 50%,#eefaf4 100%)",
-          border: "1px solid #f1d675", boxShadow: "0 14px 34px rgba(122,91,0,.11)",
-          display: "grid", gridTemplateColumns: "110px minmax(0,1fr) auto", alignItems: "center", gap: "20px"
-        }}
-        className="weekly-hero-card"
+        style={{ position: "relative", overflow: "hidden", padding: "28px", marginBottom: "15px", borderRadius: "30px", background: "linear-gradient(135deg,#0f7654 0%,#168a63 55%,#29a77a 100%)", color: "white", boxShadow: "0 15px 35px rgba(20,112,75,.18)" }}
       >
-        <div style={{ position: "absolute", left: "-25px", top: "-35px", fontSize: "125px", opacity: .06 }}>🏆</div>
-        <div style={{ position: "relative", width: "104px", height: "104px", borderRadius: "50%", padding: "5px", background: "linear-gradient(135deg,#facc15,#fff3a4,#15966b)", boxShadow: "0 9px 24px rgba(140,100,0,.18)" }}>
-          <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "grid", placeItems: "center", background: "#fff", fontSize: "48px", overflow: "hidden" }}>👦🏻</div>
-          <span style={{ position: "absolute", left: "-4px", bottom: "-2px", width: "34px", height: "34px", borderRadius: "50%", display: "grid", placeItems: "center", background: "#facc15", border: "3px solid white", fontSize: "18px" }}>🏆</span>
-        </div>
-        <div style={{ position: "relative" }}>
-          <span style={{ color: "#a16d00", fontSize: "13px", fontWeight: 950 }}>🌟 نحتفي بالاجتهاد والتطور</span>
-          <h3 style={{ margin: "4px 0 2px", color: "#174c3b", fontSize: "clamp(23px,3vw,31px)", lineHeight: 1.35 }}>بطلنا هذا الأسبوع</h3>
-          <strong style={{ display: "block", color: "#126846", fontSize: "20px", marginTop: "7px" }}>سيُعلن اسم البطل هنا</strong>
-          <div style={{ display: "flex", gap: "7px", flexWrap: "wrap", marginTop: "9px" }}>
-            <span className="hero-chip">📚 الصف الثاني</span><span className="hero-chip">⭐ متميز هذا الأسبوع</span>
-          </div>
-          <p style={{ margin: "11px 0 0", color: "#65766e", fontWeight: 700, lineHeight: 1.8, maxWidth: "650px" }}>
-            نفخر بك وبجهدك الجميل، استمر في التعلّم والمثابرة؛ فكل خطوة تصنع إنجازًا جديدًا. 👏
-          </p>
-        </div>
-        <div style={{ position: "relative", textAlign: "center", padding: "13px 16px", borderRadius: "20px", background: "#fff7cc", color: "#8a6200", fontWeight: 950, minWidth: "125px" }}>
-          <div style={{ fontSize: "32px" }}>🥇</div><div>بطل الأسبوع</div>
-        </div>
-      </div>
-
-      {/* البطاقة الرئيسية */}
-
-      <div
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          padding: "24px",
-          marginBottom: "15px",
-          borderRadius: "30px",
-          background:
-            "linear-gradient(135deg,#0f7654 0%,#168a63 55%,#29a77a 100%)",
-          color: "white",
-          boxShadow:
-            "0 15px 35px rgba(20,112,75,.18)",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            width: "190px",
-            height: "190px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,.07)",
-            left: "-60px",
-            top: "-80px",
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            width: "130px",
-            height: "130px",
-            borderRadius: "50%",
-            background: "rgba(255,224,112,.10)",
-            right: "30%",
-            bottom: "-70px",
-          }}
-        />
-
-        <div
-          className="picks-featured"
-          style={{
-            position: "relative",
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(0,1.5fr) minmax(190px,.55fr)",
-            alignItems: "center",
-            gap: "20px",
-          }}
-        >
+        <div style={{ position: "absolute", width: "210px", height: "210px", borderRadius: "50%", background: "rgba(255,255,255,.07)", left: "-65px", top: "-85px" }} />
+        <div className="picks-featured weekly-hero-featured" style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(220px,.55fr)", alignItems: "center", gap: "24px" }}>
           <div>
-            <span
-              style={{
-                display: "inline-flex",
-                padding: "7px 12px",
-                borderRadius: "999px",
-                background: "#fff0a8",
-                color: "#765800",
-                fontSize: "13px",
-                fontWeight: 900,
-              }}
-            >
-              🌟 اختيار هذا الأسبوع
-            </span>
-
-            <h3
-              style={{
-                margin: "12px 0 4px",
-                fontSize: "clamp(27px,4vw,39px)",
-                lineHeight: 1.4,
-              }}
-            >
-              📖 قصة الأسبوع
-            </h3>
-
-            <p
-              style={{
-                maxWidth: "650px",
-                margin: "8px 0 0",
-                color: "rgba(255,255,255,.92)",
-                lineHeight: 1.9,
-                fontWeight: 700,
-              }}
-            >
-              قصة قصيرة نقرأها للمتعة،
-              ونبحث بين كلماتها عن فكرة
-              جميلة ومهارة لغوية جديدة.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "9px",
-                flexWrap: "wrap",
-                marginTop: "15px",
-              }}
-            >
-              <span className="pick-chip">
-                📚 قراءة
-              </span>
-
-              <span className="pick-chip">
-                🧠 فهم
-              </span>
-
-              <span className="pick-chip">
-                💭 تفكير
-              </span>
-            </div>
-
-            <Link
-  href="/reading/stories/relatives"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "7px",
-                marginTop: "19px",
-                padding: "13px 19px",
-                borderRadius: "16px",
-                background: "white",
-                color: "#126846",
-                textDecoration: "none",
-                fontWeight: 900,
-                boxShadow:
-                  "0 8px 20px rgba(0,0,0,.12)",
-              }}
-            >
-              📖 افتح قصة الأسبوع
-              <span>←</span>
-            </Link>
+            <span style={{ display: "inline-flex", padding: "7px 12px", borderRadius: "999px", background: "#fff0a8", color: "#765800", fontSize: "13px", fontWeight: 900 }}>🏆 نجم أكاديمية لغتي</span>
+            <h3 style={{ margin: "12px 0 4px", fontSize: "clamp(30px,4vw,43px)", lineHeight: 1.35 }}>بطلنا هذا الأسبوع</h3>
+            <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>سيُعلن اسم البطل هنا</strong>
+            <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}><span className="pick-chip">📚 الصف الثاني</span><span className="pick-chip">⭐ تميز ومثابرة</span><span className="pick-chip">👏 تطور ملحوظ</span></div>
+            <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>نفخر بك وبجهدك الجميل. استمر في التعلّم والمثابرة؛ فكل خطوة تصنع إنجازًا جديدًا، وأنت اليوم قدوة جميلة لزملائك. 🌟</p>
           </div>
-
-          {/* الرسم */}
-
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <div className="pick-book">
-              <span className="pick-book__main">
-                📖
-              </span>
-
-              <span className="pick-book__star pick-book__star--one">
-                ✨
-              </span>
-
-              <span className="pick-book__star pick-book__star--two">
-                ⭐
-              </span>
-
-              <span className="pick-book__star pick-book__star--three">
-                💡
-              </span>
+          <div style={{ display: "grid", placeItems: "center" }}>
+            <div className="weekly-hero-photo" style={{ position: "relative", width: "190px", height: "190px", borderRadius: "50%", padding: "7px", background: "linear-gradient(135deg,#facc15,#fff2a3,#facc15)", boxShadow: "0 14px 34px rgba(0,0,0,.18)" }}>
+              <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "grid", placeItems: "center", overflow: "hidden", background: "rgba(255,255,255,.96)", fontSize: "86px" }}>👦🏻</div>
+              <span style={{ position: "absolute", left: "2px", bottom: "5px", width: "52px", height: "52px", borderRadius: "50%", display: "grid", placeItems: "center", background: "#facc15", border: "4px solid white", fontSize: "27px" }}>🏆</span>
             </div>
+            <span style={{ marginTop: "13px", padding: "8px 14px", borderRadius: "999px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.2)", fontWeight: 900 }}>🥇 بطل الأسبوع</span>
           </div>
         </div>
       </div>
@@ -434,7 +264,7 @@ export default function WeeklyPicks() {
       </div>
 
       <style jsx>{`
-        .hero-chip { padding: 6px 10px; border-radius: 999px; background: #eaf9f2; color: #14704b; font-size: 12px; font-weight: 900; }\n\n        .pick-chip {
+.pick-chip {
           padding: 7px 11px;
           border-radius: 999px;
           background: rgba(255, 255, 255, 0.14);
@@ -504,7 +334,7 @@ export default function WeeklyPicks() {
           }
         }
 
-        @media (max-width: 760px) {\n          .weekly-hero-card { grid-template-columns: 82px 1fr !important; }\n          .weekly-hero-card > div:last-child { grid-column: 1 / -1; }
+        @media (max-width: 760px) {\n          .weekly-hero-photo { width: 150px !important; height: 150px !important; }
           .picks-featured {
             grid-template-columns: 1fr !important;
           }
