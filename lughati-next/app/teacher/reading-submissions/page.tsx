@@ -1206,7 +1206,7 @@ export default function ReadingSubmissionsPage() {
                       }
                       controls
                       playsInline
-                      preload="metadata"
+                      preload="none"
                       src={
                         submission.audioUrl
                       }
