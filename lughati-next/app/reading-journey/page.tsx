@@ -105,8 +105,11 @@ export default function ReadingJourneyPage() {
   const isReadingWeekOpen =
     isSchoolReadingDay(getRiyadhDateKey());
 
+  // إيقاف مؤقت لرفع تسجيلات القراءة حتى اكتمال تحسينات الاستهلاك.
+  const isReadingUploadPaused = true;
+
   const canSubmitReading =
-    submissionWindow.isOpen && isReadingWeekOpen;
+    !isReadingUploadPaused && submissionWindow.isOpen && isReadingWeekOpen;
 
   useEffect(() => {
     function refreshSubmissionWindow() {
@@ -241,6 +244,13 @@ export default function ReadingJourneyPage() {
   }, [audioPreviewUrl]);
 
   async function startRecording() {
+    if (isReadingUploadPaused) {
+      setSendMessage(
+        "🛠️ رفع تسجيلات القراءة متوقف مؤقتًا لإجراء تحسينات على الأكاديمية. سنعيد فتحه بعد اكتمال التحسينات بإذن الله."
+      );
+      return;
+    }
+
     if (!isReadingWeekOpen) {
       setSendMessage(
         "✅ انتهت رحلة القراءة لهذا الأسبوع. نبدأ رحلة جديدة يوم الأحد بإذن الله 🌟"
@@ -429,6 +439,13 @@ export default function ReadingJourneyPage() {
   }
 
   async function sendReading() {
+    if (isReadingUploadPaused) {
+      setSendMessage(
+        "🛠️ رفع تسجيلات القراءة متوقف مؤقتًا لإجراء تحسينات على الأكاديمية. سنعيد فتحه بعد اكتمال التحسينات بإذن الله."
+      );
+      return;
+    }
+
     if (!isReadingWeekOpen) {
       setSendMessage(
         "✅ انتهت رحلة القراءة لهذا الأسبوع. نبدأ رحلة جديدة يوم الأحد بإذن الله 🌟"
@@ -925,19 +942,27 @@ export default function ReadingJourneyPage() {
                 marginBottom: "4px",
               }}
             >
-              {canSubmitReading
-                ? "🟢 استقبال القراءة متاح الآن"
-                : isReadingWeekOpen
-                  ? "🌙 استقبال القراءة مغلق الآن"
-                  : "✅ انتهت رحلة هذا الأسبوع"}
+              {isReadingUploadPaused
+                ? "🛠️ رفع تسجيلات القراءة متوقف مؤقتًا"
+                : canSubmitReading
+                  ? "🟢 استقبال القراءة متاح الآن"
+                  : isReadingWeekOpen
+                    ? "🌙 استقبال القراءة مغلق الآن"
+                    : "✅ انتهت رحلة هذا الأسبوع"}
             </div>
 
             <div>
-              تستقبل الأكاديمية قراءات الطلاب من الأحد إلى الخميس، من{" "}
-              <strong>{STUDENT_SUBMISSION_OPEN_TEXT}</strong>{" "}
-              حتى{" "}
-              <strong>{STUDENT_SUBMISSION_CLOSE_TEXT}</strong>{" "}
-              بتوقيت الرياض.
+              {isReadingUploadPaused ? (
+                <>نعمل حاليًا على تحسين رحلة القراءة. لن يتم رفع أي تسجيل جديد خلال فترة التحسين.</>
+              ) : (
+                <>
+                  تستقبل الأكاديمية قراءات الطلاب من الأحد إلى الخميس، من{" "}
+                  <strong>{STUDENT_SUBMISSION_OPEN_TEXT}</strong>{" "}
+                  حتى{" "}
+                  <strong>{STUDENT_SUBMISSION_CLOSE_TEXT}</strong>{" "}
+                  بتوقيت الرياض.
+                </>
+              )}
             </div>
           </div>
 
