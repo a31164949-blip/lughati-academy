@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase";
+import { cloudinaryImageUrl } from "../lib/cloudinaryDelivery";
 
 type PickItem = {
   id: string;
@@ -65,7 +69,17 @@ const picks: PickItem[] = [
   },
 ];
 
+type WeeklyHero = { name: string; grade: string; praise: string; photoUrl: string; revealed: boolean };
+const defaultHero: WeeklyHero = { name: "", grade: "الصف الثاني", praise: "نفخر بك وبجهدك الجميل. استمر في التعلّم والمثابرة؛ فكل خطوة تصنع إنجازًا جديدًا.", photoUrl: "", revealed: false };
+
 export default function WeeklyPicks() {
+  const [hero, setHero] = useState<WeeklyHero>(defaultHero);
+  useEffect(() => {
+    void getDoc(doc(db, "weeklyPicks", "current")).then((snapshot) => {
+      if (snapshot.exists() && snapshot.data().hero) setHero({ ...defaultHero, ...snapshot.data().hero });
+    }).catch((error) => console.error("تعذر تحميل بطل الأسبوع:", error));
+  }, []);
+  const revealed = hero.revealed && Boolean(hero.name.trim());
   return (
     <section
       dir="rtl"
@@ -144,164 +158,25 @@ export default function WeeklyPicks() {
         </Link>
       </div>
 
-      {/* البطاقة الرئيسية */}
-
+      {/* واجهة مختارات الأسبوع: بطلنا هذا الأسبوع */}
       <div
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          padding: "24px",
-          marginBottom: "15px",
-          borderRadius: "30px",
-          background:
-            "linear-gradient(135deg,#0f7654 0%,#168a63 55%,#29a77a 100%)",
-          color: "white",
-          boxShadow:
-            "0 15px 35px rgba(20,112,75,.18)",
-        }}
+        style={{ position: "relative", overflow: "hidden", padding: "28px", marginBottom: "15px", borderRadius: "30px", background: "linear-gradient(135deg,#0f7654 0%,#168a63 55%,#29a77a 100%)", color: "white", boxShadow: "0 15px 35px rgba(20,112,75,.18)" }}
       >
-        <div
-          style={{
-            position: "absolute",
-            width: "190px",
-            height: "190px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,.07)",
-            left: "-60px",
-            top: "-80px",
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            width: "130px",
-            height: "130px",
-            borderRadius: "50%",
-            background: "rgba(255,224,112,.10)",
-            right: "30%",
-            bottom: "-70px",
-          }}
-        />
-
-        <div
-          className="picks-featured"
-          style={{
-            position: "relative",
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(0,1.5fr) minmax(190px,.55fr)",
-            alignItems: "center",
-            gap: "20px",
-          }}
-        >
+        <div style={{ position: "absolute", width: "210px", height: "210px", borderRadius: "50%", background: "rgba(255,255,255,.07)", left: "-65px", top: "-85px" }} />
+        <div className="picks-featured weekly-hero-featured" style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(220px,.55fr)", alignItems: "center", gap: "24px" }}>
           <div>
-            <span
-              style={{
-                display: "inline-flex",
-                padding: "7px 12px",
-                borderRadius: "999px",
-                background: "#fff0a8",
-                color: "#765800",
-                fontSize: "13px",
-                fontWeight: 900,
-              }}
-            >
-              🌟 اختيار هذا الأسبوع
-            </span>
-
-            <h3
-              style={{
-                margin: "12px 0 4px",
-                fontSize: "clamp(27px,4vw,39px)",
-                lineHeight: 1.4,
-              }}
-            >
-              📖 قصة الأسبوع
-            </h3>
-
-            <p
-              style={{
-                maxWidth: "650px",
-                margin: "8px 0 0",
-                color: "rgba(255,255,255,.92)",
-                lineHeight: 1.9,
-                fontWeight: 700,
-              }}
-            >
-              قصة قصيرة نقرأها للمتعة،
-              ونبحث بين كلماتها عن فكرة
-              جميلة ومهارة لغوية جديدة.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "9px",
-                flexWrap: "wrap",
-                marginTop: "15px",
-              }}
-            >
-              <span className="pick-chip">
-                📚 قراءة
-              </span>
-
-              <span className="pick-chip">
-                🧠 فهم
-              </span>
-
-              <span className="pick-chip">
-                💭 تفكير
-              </span>
-            </div>
-
-            <Link
-  href="/reading/stories/relatives"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "7px",
-                marginTop: "19px",
-                padding: "13px 19px",
-                borderRadius: "16px",
-                background: "white",
-                color: "#126846",
-                textDecoration: "none",
-                fontWeight: 900,
-                boxShadow:
-                  "0 8px 20px rgba(0,0,0,.12)",
-              }}
-            >
-              📖 افتح قصة الأسبوع
-              <span>←</span>
-            </Link>
+            <span style={{ display: "inline-flex", padding: "7px 12px", borderRadius: "999px", background: "#fff0a8", color: "#765800", fontSize: "13px", fontWeight: 900 }}>🏆 نجم أكاديمية لغتي</span>
+            <h3 style={{ margin: "12px 0 4px", fontSize: "clamp(30px,4vw,43px)", lineHeight: 1.35 }}>{revealed ? "🏆 بطلنا هذا الأسبوع" : "🌟 قصة بطل هذا الأسبوع"}</h3>
+            <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>{revealed ? hero.name : "شخصية قصتنا ما زالت سرًّا 🤫"}</strong>
+            <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}>{revealed ? <><span className="pick-chip">📚 {hero.grade}</span><span className="pick-chip">⭐ تميز ومثابرة</span><span className="pick-chip">👏 تطور ملحوظ</span></> : <><span className="pick-chip">🌱 بدأ متأخرًا</span><span className="pick-chip">💪 لم يستسلم</span><span className="pick-chip">🏆 ينافس على الصدارة</span></>}</div>
+            <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>{revealed ? hero.praise : "في بداية الرحلة كان بعيدًا عن المقدمة، لكنه قرر أن يبدأ. قرأ، وأنجز، وشارك، وحاول مرة بعد مرة. ومع الأيام اقترب أكثر فأكثر، واليوم أصبح ينافس بقوة على الصدارة. فمن يكون هذا البطل؟ 🤔"}</p>
           </div>
-
-          {/* الرسم */}
-
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            <div className="pick-book">
-              <span className="pick-book__main">
-                📖
-              </span>
-
-              <span className="pick-book__star pick-book__star--one">
-                ✨
-              </span>
-
-              <span className="pick-book__star pick-book__star--two">
-                ⭐
-              </span>
-
-              <span className="pick-book__star pick-book__star--three">
-                💡
-              </span>
+          <div style={{ display: "grid", placeItems: "center" }}>
+            <div className="weekly-hero-photo" style={{ position: "relative", width: "190px", height: "190px", borderRadius: "50%", padding: "7px", background: "linear-gradient(135deg,#facc15,#fff2a3,#facc15)", boxShadow: "0 14px 34px rgba(0,0,0,.18)" }}>
+              <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "grid", placeItems: "center", overflow: "hidden", background: "rgba(255,255,255,.96)", fontSize: "86px", color: "#14704b", fontWeight: 950 }}>{revealed && hero.photoUrl ? <img src={cloudinaryImageUrl(hero.photoUrl, 420)} alt={hero.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "❓"}</div>
+              <span style={{ position: "absolute", left: "2px", bottom: "5px", width: "52px", height: "52px", borderRadius: "50%", display: "grid", placeItems: "center", background: "#facc15", border: "4px solid white", fontSize: "27px" }}>🏆</span>
             </div>
+            <span style={{ marginTop: "13px", padding: "8px 14px", borderRadius: "999px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.2)", fontWeight: 900 }}>{revealed ? "🥇 بطل الأسبوع" : "🔒 سنكشف عنه قريبًا"}</span>
           </div>
         </div>
       </div>
@@ -403,7 +278,7 @@ export default function WeeklyPicks() {
       </div>
 
       <style jsx>{`
-        .pick-chip {
+.pick-chip {
           padding: 7px 11px;
           border-radius: 999px;
           background: rgba(255, 255, 255, 0.14);
@@ -473,7 +348,7 @@ export default function WeeklyPicks() {
           }
         }
 
-        @media (max-width: 760px) {
+        @media (max-width: 760px) {\n          .weekly-hero-photo { width: 150px !important; height: 150px !important; }
           .picks-featured {
             grid-template-columns: 1fr !important;
           }
