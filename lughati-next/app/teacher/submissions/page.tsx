@@ -21,6 +21,8 @@ import {
 
 import { db } from "../../../firebase";
 
+import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../../lib/cloudinaryDelivery";
+
 type WorkStatus =
   | "pending"
   | "approved"
@@ -1228,9 +1230,7 @@ useEffect(() => {
                         "image" &&
                       submission.fileUrl ? (
                         <img
-                          src={
-                            submission.fileUrl
-                          }
+                          src={submission.workType === "video" ? cloudinaryVideoUrl(submission.fileUrl, 720) : cloudinaryImageUrl(submission.fileUrl, 900)}
                           alt={
                             submission.title
                           }
@@ -1417,9 +1417,7 @@ useEffect(() => {
                           {submission.workType ===
                             "audio" && (
                             <audio
-                              src={
-                                submission.fileUrl
-                              }
+                              src={submission.workType === "video" ? cloudinaryVideoUrl(submission.fileUrl, 720) : cloudinaryImageUrl(submission.fileUrl, 900)}
                               controls
                               style={{
                                 width:
@@ -1431,10 +1429,10 @@ useEffect(() => {
                           {submission.workType ===
                             "video" && (
                             <video
-                              src={
-                                submission.fileUrl
-                              }
+                              src={submission.workType === "video" ? cloudinaryVideoUrl(submission.fileUrl, 720) : cloudinaryImageUrl(submission.fileUrl, 900)}
                               controls
+                              preload="none"
+                              playsInline
                               style={
                                 styles.videoPreview
                               }
