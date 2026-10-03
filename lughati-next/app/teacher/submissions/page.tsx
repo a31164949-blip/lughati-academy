@@ -1226,17 +1226,19 @@ useEffect(() => {
                         styles.previewBox
                       }
                     >
-                      {submission.workType ===
-                        "image" &&
-                      submission.fileUrl ? (
+                      {submission.workType === "image" && submission.fileUrl ? (
                         <img
-                          src={submission.workType === "video" ? cloudinaryVideoUrl(submission.fileUrl, 720) : cloudinaryImageUrl(submission.fileUrl, 900)}
-                          alt={
-                            submission.title
-                          }
-                          style={
-                            styles.previewImage
-                          }
+                          src={cloudinaryImageUrl(submission.fileUrl, 900)}
+                          alt={submission.title}
+                          style={styles.previewImage}
+                        />
+                      ) : submission.workType === "video" && submission.fileUrl ? (
+                        <video
+                          src={cloudinaryVideoUrl(submission.fileUrl, 720)}
+                          controls
+                          playsInline
+                          preload="none"
+                          style={styles.previewImage}
                         />
                       ) : (
                         <span
