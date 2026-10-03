@@ -153,16 +153,16 @@ export default function WeeklyPicks() {
           <div>
             <span style={{ display: "inline-flex", padding: "7px 12px", borderRadius: "999px", background: "#fff0a8", color: "#765800", fontSize: "13px", fontWeight: 900 }}>🏆 نجم أكاديمية لغتي</span>
             <h3 style={{ margin: "12px 0 4px", fontSize: "clamp(30px,4vw,43px)", lineHeight: 1.35 }}>بطلنا هذا الأسبوع</h3>
-            <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>سيُعلن اسم البطل هنا</strong>
-            <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}><span className="pick-chip">📚 الصف الثاني</span><span className="pick-chip">⭐ تميز ومثابرة</span><span className="pick-chip">👏 تطور ملحوظ</span></div>
-            <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>نفخر بك وبجهدك الجميل. استمر في التعلّم والمثابرة؛ فكل خطوة تصنع إنجازًا جديدًا، وأنت اليوم قدوة جميلة لزملائك. 🌟</p>
+            <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>شخصية قصتنا ما زالت سرًّا 🤫</strong>
+            <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}><span className="pick-chip">🌱 بدأ متأخرًا</span><span className="pick-chip">💪 لم يستسلم</span><span className="pick-chip">🏆 ينافس على الصدارة</span></div>
+            <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>في بداية الرحلة كان بعيدًا عن المقدمة، لكنه قرر أن يبدأ. قرأ، وأنجز، وشارك، وحاول مرة بعد مرة. ومع الأيام اقترب أكثر فأكثر، واليوم أصبح ينافس بقوة على الصدارة. فمن يكون هذا البطل؟ 🤔</p>
           </div>
           <div style={{ display: "grid", placeItems: "center" }}>
             <div className="weekly-hero-photo" style={{ position: "relative", width: "190px", height: "190px", borderRadius: "50%", padding: "7px", background: "linear-gradient(135deg,#facc15,#fff2a3,#facc15)", boxShadow: "0 14px 34px rgba(0,0,0,.18)" }}>
-              <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "grid", placeItems: "center", overflow: "hidden", background: "rgba(255,255,255,.96)", fontSize: "86px" }}>👦🏻</div>
+              <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "grid", placeItems: "center", overflow: "hidden", background: "rgba(255,255,255,.96)", fontSize: "86px", color: "#14704b", fontWeight: 950 }}>❓</div>
               <span style={{ position: "absolute", left: "2px", bottom: "5px", width: "52px", height: "52px", borderRadius: "50%", display: "grid", placeItems: "center", background: "#facc15", border: "4px solid white", fontSize: "27px" }}>🏆</span>
             </div>
-            <span style={{ marginTop: "13px", padding: "8px 14px", borderRadius: "999px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.2)", fontWeight: 900 }}>🥇 بطل الأسبوع</span>
+            <span style={{ marginTop: "13px", padding: "8px 14px", borderRadius: "999px", background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.2)", fontWeight: 900 }}>🔒 سنكشف عنه قريبًا</span>
           </div>
         </div>
       </div>
