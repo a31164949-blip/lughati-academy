@@ -12,10 +12,9 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
-
-type User,
+  type User,
 } from "firebase/auth";
+import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import {
   collection,
   getDocs,
