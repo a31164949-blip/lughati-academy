@@ -2,47 +2,11 @@ import { NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 
+import { requireClubMember } from "../../../lib/clubMember";
+import { verifyVideoObject } from "../../../lib/r2Video";
+
 export const runtime = "nodejs";
 
-async function requireClubMember(request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
-
-  const { adminAuth, adminDb } = getFirebaseAdmin();
-  const token = await adminAuth.verifyIdToken(authorization.slice(7));
-  if (token.role !== "student") throw new Error("FORBIDDEN");
-
-  const studentId =
-    typeof token.studentDocId === "string" ? token.studentDocId : "";
-  if (!studentId) throw new Error("STUDENT_NOT_FOUND");
-
-  const studentSnapshot = await adminDb.collection("students").doc(studentId).get();
-  if (!studentSnapshot.exists) throw new Error("STUDENT_NOT_FOUND");
-
-  const studentData = studentSnapshot.data() ?? {};
-  const membership = studentData.academyClubMembership;
-  const expiry = membership?.expiresAt instanceof Timestamp
-    ? membership.expiresAt.toDate()
-    : null;
-
-  if (
-    !membership ||
-    membership.active !== true ||
-    (expiry && expiry.getTime() < Date.now())
-  ) {
-    throw new Error("MEMBERSHIP_REQUIRED");
-  }
-
-  return {
-    studentId,
-    studentName:
-      typeof studentData.studentName === "string"
-        ? studentData.studentName
-        : "طالب الأكاديمية",
-    classroom:
-      typeof studentData.classroom === "string" ? studentData.classroom : "",
-  };
-}
 
 function toIso(value: unknown) {
   return value instanceof Timestamp ? value.toDate().toISOString() : "";
@@ -142,7 +106,8 @@ export async function POST(request: Request) {
       typeof body.cloudinaryPublicId === "string" ? body.cloudinaryPublicId.trim() : "";
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : "";
 
-    if (!challengeId || !fileUrl.startsWith("https://")) {
+    const r2Key = typeof body.r2Key === "string" ? body.r2Key : "";
+    if (!challengeId || challengeId.includes("/") || (workType === "video" ? !r2Key : !fileUrl.startsWith("https://"))) {
       return NextResponse.json(
         { success: false, message: "بيانات المشاركة غير مكتملة." },
         { status: 400 }
@@ -154,6 +119,20 @@ export async function POST(request: Request) {
     const submissionRef = adminDb
       .collection("academyClubChallengeSubmissions")
       .doc(`${challengeId}_${student.studentId}`);
+
+    const reservationRef = adminDb.collection("r2VideoReservations").doc(`${challengeId}_${student.studentId}`);
+    if (r2Key) {
+      if (workType !== "video") throw new Error("INVALID_VIDEO");
+      const reservation = (await reservationRef.get()).data();
+      if (!reservation || reservation.key !== r2Key || reservation.studentId !== student.studentId) throw new Error("INVALID_VIDEO");
+      // Authorize bounded HEAD verification attempts before contacting R2.
+      await adminDb.runTransaction(async tx => {
+        const current = (await tx.get(reservationRef)).data();
+        if (!current || Number(current.verifyAttempts || 0) >= 5) throw new Error("INVALID_VIDEO");
+        tx.update(reservationRef, { verifyAttempts: Number(current.verifyAttempts || 0) + 1 });
+      });
+      await verifyVideoObject(r2Key, reservation.size, reservation.contentType);
+    }
 
     await adminDb.runTransaction(async (transaction) => {
       const [challengeSnapshot, submissionSnapshot] = await Promise.all([
@@ -190,8 +169,10 @@ export async function POST(request: Request) {
         studentName: student.studentName,
         classroom: student.classroom,
         workType,
-        fileUrl,
-        cloudinaryPublicId,
+        fileUrl: r2Key ? "" : fileUrl,
+        r2Key,
+        storageProvider: r2Key ? "r2" : "cloudinary",
+        cloudinaryPublicId: r2Key ? "" : cloudinaryPublicId,
         note,
         status: "pending",
         teacherNote: "",

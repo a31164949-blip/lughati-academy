@@ -50,6 +50,7 @@ export async function GET(request: Request) {
               classroom: data.classroom ?? "",
               workType: data.workType ?? "image",
               fileUrl: data.fileUrl ?? "",
+              r2Key: data.r2Key ?? "",
               note: data.note ?? "",
               status: data.status ?? "pending",
               teacherNote: data.teacherNote ?? "",
