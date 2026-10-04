@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../firebase";
 
@@ -12,6 +12,7 @@ type Submission = {
   classroom: string;
   workType: WorkType;
   fileUrl: string;
+  r2Key?: string;
   note: string;
   status: "pending" | "approved" | "returned";
   teacherNote: string;
@@ -32,9 +33,7 @@ export default function TeacherAcademyClubPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
-
-  async function loadData(currentUser: User) {
+  const loadData = useCallback(async (currentUser: User) => {
     try {
       setLoading(true);
       const token = await currentUser.getIdToken();
@@ -51,12 +50,13 @@ export default function TeacherAcademyClubPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => {
-    if (user) void loadData(user);
+  useEffect(() => onAuthStateChanged(auth, current => {
+    setUser(current);
+    if (current) void loadData(current);
     else setLoading(false);
-  }, [user]);
+  }), [loadData]);
 
   function toggleType(type: WorkType) {
     setAllowedTypes((current) =>
@@ -130,6 +130,27 @@ export default function TeacherAcademyClubPage() {
       await loadData(user);
     } catch (caught) {
       window.alert(caught instanceof Error ? caught.message : "تعذر مراجعة المشاركة.");
+    }
+  }
+
+  async function viewVideo(submission: Submission) {
+    const current = auth.currentUser;
+    if (!current) return;
+    const viewer = window.open("about:blank", "_blank");
+    if (viewer) viewer.opener = null;
+    try {
+      const token = await current.getIdToken();
+      const response = await fetch("/api/academy-club/video", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "play", submissionId: submission.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "تعذر عرض الفيديو.");
+      if (viewer) viewer.location.href = result.url;
+      else throw new Error("اسمح بفتح نافذة الفيديو في المتصفح ثم أعد المحاولة.");
+    } catch (error) {
+      viewer?.close();
+      setError(error instanceof Error ? error.message : "تعذر عرض الفيديو.");
     }
   }
 
@@ -234,7 +255,7 @@ export default function TeacherAcademyClubPage() {
                     {submission.note && <p>{submission.note}</p>}
                   </div>
                   <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-                    <a href={submission.fileUrl} target="_blank" rel="noreferrer" style={viewStyle}>عرض الملف</a>
+                    {submission.r2Key ? <button type="button" onClick={() => void viewVideo(submission)} style={viewStyle}>عرض الفيديو</button> : <a href={submission.fileUrl} target="_blank" rel="noreferrer" style={viewStyle}>عرض الملف</a>}
                     <button type="button" onClick={() => void reviewSubmission(submission, "approved")} style={approveStyle}>✅ اعتماد</button>
                     <button type="button" onClick={() => void reviewSubmission(submission, "returned")} style={returnStyle}>↩️ إعادة</button>
                   </div>
