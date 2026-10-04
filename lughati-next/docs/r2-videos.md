@@ -29,3 +29,13 @@ and `npm run build`. Tests use fake credentials and do not upload paid media.
 Production acceptance still needs one small valid MP4 submitted by a current
 club member, then opened by the teacher; verify one object and expected CORS.
 Do not approve the sample for points unless it is a real challenge submission.
+
+## Phase 2: academy stories and student works
+
+New videos uploaded through Academy Stories (student and teacher) and the student work upload page use R2. Images and audio still use Cloudinary. National Day uploads belong to a closed event and are unchanged; external video URLs and existing stored media are unchanged.
+
+`/api/media/video` reserves authenticated uploads. A 20 MiB file ceiling, signed size/type, three daily student attempts (ten for teacher), idempotent file retries, bounded HEAD verification, and shared `r2VideoUsage/storage` and daily-byte counters protect the budget. Club and phase-2 uploads share the same 8 GiB lifetime and 200 MiB daily byte ceilings. Failed reservations count conservatively and are not refunded.
+
+Final submission verifies owner, purpose, object size and MIME, and uses the reservation ID as a unique submission document ID. Video URLs stored in Firestore point to the application resolver, never an expiring R2 URL. Public playback requires teacher approval/publication (and unexpired stories); pending files require teacher or owner authentication. The resolver also checks that the recorded object matches its original reservation. DeferredMedia resolves a 30-minute signed URL only when the user clicks play; gallery open/download links resolve it with authentication too.
+
+These are application guardrails, not a provider billing hard cap. Manual uploads and replaying a valid signed URL are outside the counters. Public approved playback is not capped by visitor count. Nothing deletes or migrates old Cloudinary originals. Actual authenticated PUT/HEAD/playback verification remains pending while Firestore's daily free quota is exhausted; local mocked permission/budget tests do not establish production credential validity.
