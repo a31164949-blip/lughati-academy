@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { auth } from "../../firebase";
+import { uploadR2Video } from "../lib/uploadR2Video";
 import { useState } from "react";
 
 import {
@@ -16,6 +18,7 @@ type WorkType =
 
 type UploadResult = {
   secure_url?: string;
+  reservationId?: string;
   resource_type?: string;
   public_id?: string;
   duration?: number;
@@ -337,10 +340,10 @@ export default function UploadWorkPage() {
       /*
         رفع الملف أولًا إلى Cloudinary.
       */
-      const uploaded =
-        await uploadToCloudinary(
-          file
-        );
+      const uploaded = workType === "video"
+        ? await uploadR2Video(file, "works")
+        : await uploadToCloudinary(file);
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
 
       if (
         !uploaded.secure_url
@@ -366,6 +369,7 @@ export default function UploadWorkPage() {
               "POST",
 
             headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
               "Content-Type":
                 "application/json",
             },
@@ -388,6 +392,7 @@ export default function UploadWorkPage() {
                   note.trim(),
 
                 workType,
+                reservationId: uploaded.reservationId,
 
                 fileUrl:
                   uploaded.secure_url,

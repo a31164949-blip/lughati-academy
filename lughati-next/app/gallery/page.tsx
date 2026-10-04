@@ -1,5 +1,6 @@
 "use client";
 
+import { openR2Video } from "../lib/uploadR2Video";
 import DeferredMedia from "../components/DeferredMedia";
 
 import {
@@ -1531,6 +1532,7 @@ function GalleryPageContent() {
                             )}
 
                             <a
+                              onClick={(event) => { if (work.fileUrl.startsWith("/api/media/video?")) { event.preventDefault(); void openR2Video(work.fileUrl); } }}
                               href={
                                 work.fileUrl
                               }

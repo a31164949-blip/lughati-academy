@@ -1,4 +1,5 @@
 "use client";
+import { uploadR2Video } from "../../lib/uploadR2Video";
 
 import DeferredMedia from "../../components/DeferredMedia";
 
@@ -33,6 +34,7 @@ export default function TeacherAcademyStoriesPage() {
   const [caption, setCaption] = useState("");
   const [durationHours, setDurationHours] = useState("24");
   const [publishing, setPublishing] = useState(false);
+  const [now, setNow] = useState(Date.now);
 
   async function load() {
     const user = auth.currentUser;
@@ -43,6 +45,7 @@ export default function TeacherAcademyStoriesPage() {
       cache: "no-store",
     });
     const body = await response.json();
+    setNow(Date.now());
     if (response.ok) setItems(Array.isArray(body.items) ? body.items : []);
     else setMessage(body.message || "تعذر تحميل الحالات.");
     setLoading(false);
@@ -81,23 +84,28 @@ export default function TeacherAcademyStoriesPage() {
       const duration = mediaType === "video" ? await getVideoDuration(file) : 0;
       if (mediaType === "video" && duration > 30) throw new Error("اختر فيديو مدته 30 ثانية أو أقل.");
 
-      const form = new FormData();
-      form.append("file", file);
-      form.append("upload_preset", UPLOAD_PRESET);
-      const upload = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${mediaType}/upload`, {
-        method: "POST",
-        body: form,
-      });
-      const uploaded = await upload.json();
-      if (!upload.ok || !uploaded.secure_url) throw new Error("تعذر رفع الملف.");
-
+      const user = auth.currentUser;
+      if (!user) throw new Error("سجّل الدخول من جديد.");
       const token = await user.getIdToken();
+      let uploaded: { secure_url: string; public_id?: string; reservationId?: string };
+      if (mediaType === "video") {
+        uploaded = await uploadR2Video(file, "stories");
+      } else {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("upload_preset", UPLOAD_PRESET);
+        const upload = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: form });
+        uploaded = await upload.json();
+        if (!upload.ok || !uploaded.secure_url) throw new Error("تعذر رفع الملف.");
+      }
+
       const response = await fetch("/api/teacher/academy-stories", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           mediaType,
           mediaUrl: uploaded.secure_url,
+          reservationId: uploaded.reservationId,
           publicId: uploaded.public_id || "",
           duration,
           caption,
@@ -141,7 +149,7 @@ export default function TeacherAcademyStoriesPage() {
   }
 
   const pending = items.filter((item) => item.status === "pending");
-  const published = items.filter((item) => item.status === "approved" && item.expiresAt > Date.now());
+  const published = items.filter((item) => item.status === "approved" && item.expiresAt > now);
 
   return (
     <main dir="rtl" style={{ minHeight: "100vh", background: "linear-gradient(180deg,#eefaf4,#fffaf0)", padding: "24px 16px 50px", color: "#17352a" }}>

@@ -1,3 +1,4 @@
+import { verifyMediaVideo } from "../../../lib/r2Media";
 import { NextResponse } from "next/server";
 import {
   FieldValue,
@@ -22,6 +23,7 @@ type CreateStudentWorkRequest = {
   workType?: string;
 
   fileUrl?: string;
+  reservationId?: string;
 
   cloudinaryPublicId?: string;
 
@@ -158,7 +160,7 @@ export async function POST(
       );
     }
 
-    if (!fileUrl) {
+    if (!fileUrl && !body.reservationId) {
       return NextResponse.json(
         {
           success: false,
@@ -192,18 +194,22 @@ export async function POST(
       adminDb,
     } = getFirebaseAdmin();
 
+    const r2 = workType === "video" && body.reservationId ? await verifyMediaVideo(request, body.reservationId, "works") : null;
+    if (body.reservationId && !r2) throw new Error("INVALID_VIDEO");
+    if (r2) {
+      const { adminAuth } = getFirebaseAdmin();
+      const decoded = await adminAuth.verifyIdToken(request.headers.get("authorization")!.slice(7));
+      if (decoded.studentDocId !== studentId) throw new Error("FORBIDDEN");
+    }
+
     /*
       إنشاء سجل العمل من الخادم.
 
       الطالب لا ينشر مباشرة في المعرض،
       بل ينتظر مراجعة المعلم.
     */
-    const workReference =
-      await adminDb
-        .collection(
-          "studentWorks"
-        )
-        .add({
+    const workReference = r2 ? adminDb.collection("studentWorks").doc(r2.id) : adminDb.collection("studentWorks").doc();
+    await workReference.create({
           studentId,
 
           studentName,
@@ -219,7 +225,9 @@ export async function POST(
           type:
             workType,
 
-          fileUrl,
+          fileUrl: r2?.url || fileUrl,
+          r2Key: r2?.key || "",
+          storageProvider: r2 ? "r2" : "cloudinary",
 
           cloudinaryPublicId,
 

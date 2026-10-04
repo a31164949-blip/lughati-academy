@@ -1,3 +1,4 @@
+import { verifyMediaVideo } from "../../../lib/r2Media";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
@@ -75,7 +76,8 @@ export async function POST(request: Request) {
     const duration = typeof body?.duration === "number" ? body.duration : 0;
     const durationHours = [24, 48, 72].includes(Number(body?.durationHours)) ? Number(body.durationHours) : 24;
 
-    if (!validCloudinaryUrl(mediaUrl, mediaType)) {
+    const reservationId = typeof body.reservationId === "string" ? body.reservationId : "";
+    if (!reservationId && !validCloudinaryUrl(mediaUrl, mediaType)) {
       return NextResponse.json({ success: false, message: "رابط الملف غير صالح." }, { status: 400 });
     }
     if (mediaType === "video" && (duration <= 0 || duration > 30)) {
@@ -83,15 +85,20 @@ export async function POST(request: Request) {
     }
 
     const { adminDb } = getFirebaseAdmin();
+    if (reservationId && mediaType !== "video") throw new Error("INVALID_VIDEO");
+    const r2 = reservationId ? await verifyMediaVideo(request, reservationId, "stories") : null;
     const now = new Date();
-    const reference = await adminDb.collection("academyStories").add({
+    const reference = r2 ? adminDb.collection("academyStories").doc(r2.id) : adminDb.collection("academyStories").doc();
+    await reference.create({
       studentId: "",
       studentName: "أكاديمية لغتي",
       classroom: "",
       authorType: "teacher",
       mediaType,
-      mediaUrl,
-      publicId,
+      mediaUrl: r2?.url || mediaUrl,
+      r2Key: r2?.key || "",
+      storageProvider: r2 ? "r2" : "cloudinary",
+      publicId: r2 ? "" : publicId,
       caption,
       duration: mediaType === "video" ? duration : null,
       status: "approved",

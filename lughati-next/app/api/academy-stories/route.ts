@@ -1,3 +1,4 @@
+import { verifyMediaVideo } from "../../lib/r2Media";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
@@ -112,7 +113,8 @@ export async function POST(request: Request) {
     const caption = typeof body?.caption === "string" ? body.caption.trim().slice(0, 120) : "";
     const duration = typeof body?.duration === "number" ? body.duration : 0;
 
-    if (!validCloudinaryUrl(mediaUrl, mediaType)) {
+    const reservationId = typeof body.reservationId === "string" ? body.reservationId : "";
+    if (!reservationId && !validCloudinaryUrl(mediaUrl, mediaType)) {
       return NextResponse.json({ success: false, message: "رابط الملف غير صالح." }, { status: 400 });
     }
     if (mediaType === "video" && (duration <= 0 || duration > 30)) {
@@ -120,20 +122,25 @@ export async function POST(request: Request) {
     }
 
     const { adminDb } = getFirebaseAdmin();
+    if (reservationId && mediaType !== "video") throw new Error("INVALID_VIDEO");
+    const r2 = reservationId ? await verifyMediaVideo(request, reservationId, "stories") : null;
     const pendingSnapshot = await adminDb.collection("academyStories").where("studentId", "==", studentId).limit(10).get();
     const hasPending = pendingSnapshot.docs.some((doc) => doc.data()?.status === "pending");
     if (hasPending) {
       return NextResponse.json({ success: false, message: "لديك حالة بانتظار موافقة المعلّم." }, { status: 409 });
     }
 
-    const reference = await adminDb.collection("academyStories").add({
+    const reference = r2 ? adminDb.collection("academyStories").doc(r2.id) : adminDb.collection("academyStories").doc();
+    await reference.create({
       studentId,
       studentName: typeof data.studentName === "string" ? data.studentName : typeof data.name === "string" ? data.name : "طالب الأكاديمية",
       classroom: typeof data.classroom === "string" ? data.classroom : "",
       authorType: "student",
       mediaType,
-      mediaUrl,
-      publicId,
+      mediaUrl: r2?.url || mediaUrl,
+      r2Key: r2?.key || "",
+      storageProvider: r2 ? "r2" : "cloudinary",
+      publicId: r2 ? "" : publicId,
       caption,
       duration: mediaType === "video" ? duration : null,
       status: "pending",

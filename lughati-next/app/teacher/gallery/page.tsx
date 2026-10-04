@@ -1,5 +1,6 @@
 "use client";
 
+import { openR2Video } from "../../lib/uploadR2Video";
 import DeferredMedia from "../../components/DeferredMedia";
 
 import { useEffect, useMemo, useState } from "react";
@@ -1238,6 +1239,10 @@ useEffect(() => {
                             href={getVideoDownloadUrl(
                               work
                             )}
+                            onClick={(event) => {
+                              const url = getVideoDownloadUrl(work);
+                              if (url.startsWith("/api/media/video?")) { event.preventDefault(); void openR2Video(url); }
+                            }}
                             download
                             target="_blank"
                             rel="noreferrer"
