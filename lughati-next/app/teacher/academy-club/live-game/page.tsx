@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useLiveGamePolling } from "../../../hooks/useLiveGamePolling";
+import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../../firebase";
 
@@ -20,8 +21,11 @@ export default function TeacherLiveGamePage() {
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
+  const requestVersion = useRef(0);
+
   async function call(action?: string) {
     if (!user) return;
+    const version = ++requestVersion.current;
     setBusy(true);
     try {
       const token = await user.getIdToken();
@@ -36,19 +40,16 @@ export default function TeacherLiveGamePage() {
             cache: "no-store",
           });
       const data = await response.json();
+      if (version !== requestVersion.current) return;
       if (!response.ok || !data.success) throw new Error(data.message || "تعذر تنفيذ العملية.");
       setRoom(data.room);
       if (action === "create") setMessage("الغرفة جاهزة؛ اطلب من الطلاب إدخال الرمز.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "تعذر تنفيذ العملية.");
-    } finally { setBusy(false); }
+      if (version === requestVersion.current) setMessage(error instanceof Error ? error.message : "تعذر تنفيذ العملية.");
+    } finally { if (version === requestVersion.current) setBusy(false); }
   }
 
-  useEffect(() => {
-    if (!user || !room?.code) return;
-    const timer = window.setInterval(() => void call(), 10000);
-    return () => window.clearInterval(timer);
-  }, [user, room?.code]);
+  useLiveGamePolling(() => call(), !!user && !!room && room.status !== "finished", room?.code);
 
   return <main dir="rtl" style={page}>
     <header style={header}>

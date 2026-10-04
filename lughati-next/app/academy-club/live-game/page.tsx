@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useLiveGamePolling } from "../../hooks/useLiveGamePolling";
+import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../firebase";
 
 type Room = {
+  answered: boolean;
   code: string; status: "waiting" | "active" | "finished";
   question: { index: number; total: number; prompt: string; options: string[] } | null;
   participants: Array<{ id: string; name: string; score: number; answered: boolean }>;
@@ -22,8 +24,11 @@ export default function LiveGamePage() {
 
   useEffect(()=>onAuthStateChanged(auth,current=>{setUser(current);setAuthReady(true);}),[]);
 
+  const requestVersion = useRef(0);
+
   async function request(action?:string,option?:number) {
     if(!user)return;
+    const version = ++requestVersion.current;
     setBusy(true);
     try{
       const token=await user.getIdToken();
@@ -31,19 +36,17 @@ export default function LiveGamePage() {
         ? await fetch("/api/academy-club/live-game",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({action,code,option})})
         : await fetch(`/api/academy-club/live-game?code=${code}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
       const data=await response.json();
+      if (version !== requestVersion.current) return;
       if(!response.ok||!data.success)throw new Error(data.message||"تعذر الاتصال بالغرفة.");
       setRoom(data.room);
+      if (data.room.answered && data.room.question) setAnswered(data.room.question.index);
       if(action==="join")setMessage("انضممت بنجاح؛ انتظر بدء المعلم 🚀");
       if(action==="answer"){setAnswered(data.room.question?.index??-1);setMessage(data.result.correct?`إجابة صحيحة! +${data.result.points} نقطة ⭐`:"محاولة جميلة؛ استعد للسؤال التالي 💪");}
-    }catch(error){setMessage(error instanceof Error?error.message:"تعذر الاتصال بالغرفة.");}
-    finally{setBusy(false);}
+    }catch(error){if (version === requestVersion.current) setMessage(error instanceof Error?error.message:"تعذر الاتصال بالغرفة.");}
+    finally{if (version === requestVersion.current) setBusy(false);}
   }
 
-  useEffect(()=>{
-    if(!user||!room?.code)return;
-    const timer=window.setInterval(()=>void request(),10000);
-    return()=>window.clearInterval(timer);
-  },[user,room?.code,code]);
+  useLiveGamePolling(() => request(), !!user && !!room && room.status !== "finished", room?.code);
 
   useEffect(()=>{ if(room?.question && room.question.index!==answered) setMessage("اختر الإجابة الصحيحة قبل منافسيك!"); },[room?.question?.index]);
 
