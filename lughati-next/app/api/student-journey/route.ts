@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
@@ -315,7 +316,7 @@ async function getHomeworkStatusForDate(
       )
       .get();
 
-  let todayRows =
+  const todayRows =
     todaySnapshot.docs
       .map((document) => ({
         id: document.id,
@@ -341,57 +342,24 @@ async function getHomeworkStatusForDate(
    * نستخدم الطريقة القديمة مؤقتًا.
    */
   if (todayRows.length === 0) {
-    const legacySnapshot =
-      await adminDb
-        .collection(
-          "homeworkCompletions"
-        )
-        .where(
-          "studentId",
-          "==",
-          studentDocId
-        )
-        .get();
-
-    todayRows =
-      legacySnapshot.docs
-        .map((document) => ({
-          id: document.id,
-
-          data:
-            document.data() ?? {},
-        }))
-        .filter(({ data }) => {
-          /*
-           * إذا كان السجل يحتوي أصلًا
-           * على date فلا نعيد معالجته
-           * بالطريقة القديمة.
-           */
-          if (
-            typeof data.date ===
-              "string" &&
-            data.date
-          ) {
-            return false;
-          }
-
-          const completedDateKey =
-            getFirestoreDateKey(
-              data.completedAt
-            ) ||
-            getFirestoreDateKey(
-              data.createdAt
-            );
-
-          return (
-            completedDateKey ===
-              dateKey &&
-            typeof data.solutionUrl ===
-              "string" &&
-            data.solutionUrl.trim() !==
-              ""
-          );
-        });
+    const loadLegacyStatus = unstable_cache(
+      async (studentId: string, day: string) => {
+        const snapshot = await adminDb.collection("homeworkCompletions")
+          .where("studentId", "==", studentId).get();
+        const rows = snapshot.docs.map(document => document.data() ?? {})
+          .filter(data => !data.date &&
+            (getFirestoreDateKey(data.completedAt) || getFirestoreDateKey(data.createdAt)) === day &&
+            typeof data.solutionUrl === "string" && data.solutionUrl.trim() !== "");
+        rows.sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0));
+        if (!rows.length) return "none" as DailyProofStatus;
+        return rows[0].solutionStatus === "approved" ? "approved" as DailyProofStatus
+          : rows[0].solutionStatus === "rejected" ? "rejected" as DailyProofStatus
+          : "pending" as DailyProofStatus;
+      },
+      ["legacy-homework-status-v1"],
+      { revalidate: 600 }
+    );
+    return loadLegacyStatus(studentDocId, dateKey);
   }
 
   if (

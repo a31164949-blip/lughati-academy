@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import {
   FieldValue,
 } from "firebase-admin/firestore";
@@ -101,6 +102,8 @@ async function getTopScores(
   );
 }
 
+const getCachedTopScores = unstable_cache(getTopScores, ["game-top-scores-v1"], { revalidate: 30 });
+
 export async function GET(
   request: NextRequest
 ) {
@@ -126,7 +129,7 @@ export async function GET(
     }
 
     const scores =
-      await getTopScores(
+      await getCachedTopScores(
         gameId
       );
 

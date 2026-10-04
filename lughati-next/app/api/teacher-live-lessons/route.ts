@@ -70,8 +70,9 @@ export async function GET(request: Request) {
     const { adminDb } = getFirebaseAdmin();
     const lessonSnapshot = await adminDb.collection("liveLessons").doc(ACTIVE_LESSON_ID).get();
 
-    const studentsSnapshot = await adminDb.collection("students").limit(300).get();
-    const students = studentsSnapshot.docs
+    const includeStudents = new URL(request.url).searchParams.get("includeStudents") !== "0";
+    const studentsSnapshot = includeStudents ? await adminDb.collection("students").limit(300).get() : null;
+    const students = studentsSnapshot?.docs
       .map((document) => {
         const data = document.data() ?? {};
         return {
@@ -84,7 +85,7 @@ export async function GET(request: Request) {
 
     if (!lessonSnapshot.exists) {
       return NextResponse.json(
-        { success: true, lesson: null, attendance: [], students },
+        { success: true, lesson: null, attendance: [], ...(includeStudents ? { students } : {}) },
         { headers: { "Cache-Control": "no-store" } }
       );
     }
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(
-      { success: true, lesson: serializeLesson(lessonSnapshot.id, lessonData), attendance, students },
+      { success: true, lesson: serializeLesson(lessonSnapshot.id, lessonData), attendance, ...(includeStudents ? { students } : {}) },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {

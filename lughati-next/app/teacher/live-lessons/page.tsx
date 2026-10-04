@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { auth } from "../../../firebase";
 
@@ -71,17 +71,24 @@ export default function TeacherLiveLessonsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function getToken() {
+  const getToken = useCallback(async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error("يجب تسجيل الدخول بحساب المعلم أولًا.");
     return currentUser.getIdToken();
-  }
+  }, []);
 
-  async function loadLesson(silent = false) {
+  const requestInFlight = useRef(false);
+  const studentsLoaded = useRef(false);
+
+  const [now, setNow] = useState(Date.now);
+
+  const loadLesson = useCallback(async (silent = false) => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     if (!silent) setLoading(true);
     try {
       const token = await getToken();
-      const response = await fetch("/api/teacher-live-lessons", {
+      const response = await fetch(`/api/teacher-live-lessons?includeStudents=${studentsLoaded.current ? "0" : "1"}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
@@ -89,21 +96,28 @@ export default function TeacherLiveLessonsPage() {
       if (!response.ok || data.success !== true) {
         throw new Error(data.message || "تعذر تحميل الدرس المباشر.");
       }
+      setNow(Date.now());
       setLesson(data.lesson ?? null);
       setAttendance(Array.isArray(data.attendance) ? data.attendance : []);
-      setStudents(Array.isArray(data.students) ? data.students : []);
+      if (Array.isArray(data.students)) {
+        setStudents(data.students);
+        studentsLoaded.current = true;
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "تعذر تحميل الدرس.");
     } finally {
+      requestInFlight.current = false;
       if (!silent) setLoading(false);
     }
-  }
+  }, [getToken]);
 
   useEffect(() => {
-    void loadLesson();
-    const timer = window.setInterval(() => void loadLesson(true), 30000);
-    return () => window.clearInterval(timer);
-  }, []);
+    const initial = window.setTimeout(() => void loadLesson(), 0);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadLesson(true);
+    }, 60000);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
+  }, [loadLesson]);
 
   async function createLesson() {
     if (!title.trim()) return setMessage("اكتب عنوان الدرس.");
@@ -120,7 +134,7 @@ export default function TeacherLiveLessonsPage() {
     setMessage("");
     try {
       const token = await getToken();
-      const response = await fetch("/api/teacher-live-lessons", {
+      const response = await fetch(`/api/teacher-live-lessons?includeStudents=${studentsLoaded.current ? "0" : "1"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -155,7 +169,7 @@ export default function TeacherLiveLessonsPage() {
     setMessage("");
     try {
       const token = await getToken();
-      const response = await fetch("/api/teacher-live-lessons", {
+      const response = await fetch(`/api/teacher-live-lessons?includeStudents=${studentsLoaded.current ? "0" : "1"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -178,11 +192,10 @@ export default function TeacherLiveLessonsPage() {
 
   const lessonState = useMemo(() => {
     if (!lesson?.active) return "closed";
-    const now = Date.now();
     if (now < new Date(lesson.startAt).getTime()) return "upcoming";
     if (now <= new Date(lesson.endAt).getTime()) return "live";
     return "ended";
-  }, [lesson]);
+  }, [lesson, now]);
 
   return (
     <main dir="rtl" style={pageStyle}>
