@@ -1,5 +1,7 @@
 "use client";
 
+import { createSpeechRecorder } from "../../lib/speechRecording";
+
 import Link from "next/link";
 import { useRef, useState } from "react";
 
@@ -45,7 +47,7 @@ export default function ReaderOfNationPage() {
         setAudioUrl(null);
       }
 
-      const recorder = new MediaRecorder(stream);
+      const recorder = createSpeechRecorder(stream);
       recorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {

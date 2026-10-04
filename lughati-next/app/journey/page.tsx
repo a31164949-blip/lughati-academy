@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../components/DeferredMedia";
+
 import InstallAppButton from "../components/InstallAppButton";
 import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
@@ -2299,7 +2301,7 @@ try {
               </p>
 
               {tiktokConsentRequest.fileUrl && (
-                <video
+                <DeferredMedia kind="video"
                   src={cloudinaryVideoUrl(tiktokConsentRequest.fileUrl, 720)}
                   controls
                   preload="none"

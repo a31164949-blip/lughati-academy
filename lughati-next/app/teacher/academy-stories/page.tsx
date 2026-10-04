@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
@@ -191,7 +193,7 @@ export default function TeacherAcademyStoriesPage() {
                   {item.mediaType === "image" ? (
                     <img src={cloudinaryImageUrl(item.mediaUrl, 1000)} alt="" style={mediaStyle} />
                   ) : (
-                    <video src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls preload="none" playsInline style={mediaStyle} />
+                    <DeferredMedia kind="video" src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls preload="none" playsInline style={mediaStyle} />
                   )}
                   <strong style={{ fontSize: 18 }}>{item.studentName}</strong>
                   <span style={{ color: "#6b7a72" }}>{item.classroom || "دون فصل محدد"}</span>
@@ -216,7 +218,7 @@ export default function TeacherAcademyStoriesPage() {
             <div style={gridStyle}>
               {published.map((item) => (
                 <article key={item.id} style={cardStyle}>
-                  {item.mediaType === "image" ? <img src={cloudinaryImageUrl(item.mediaUrl, 1000)} alt="" style={mediaStyle} /> : <video src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls preload="none" playsInline style={mediaStyle} />}
+                  {item.mediaType === "image" ? <img src={cloudinaryImageUrl(item.mediaUrl, 1000)} alt="" style={mediaStyle} /> : <DeferredMedia kind="video" src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls preload="none" playsInline style={mediaStyle} />}
                   <strong>{item.studentName}</strong>
                   <span style={{ color: "#158052", fontWeight: 900 }}>منشورة الآن</span>
                 </article>

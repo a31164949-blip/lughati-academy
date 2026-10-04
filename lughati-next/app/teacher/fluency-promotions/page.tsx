@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import Link from "next/link";
 import {
   useEffect,
@@ -1320,7 +1322,7 @@ export default function FluencyPromotionsPage() {
 
                         {item.audioUrl ? (
                           <>
-                            <audio
+                            <DeferredMedia kind="audio"
                               key={
                                 item.audioUrl
                               }

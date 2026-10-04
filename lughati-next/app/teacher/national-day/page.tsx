@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -779,7 +781,7 @@ function VoiceCard({
   return (
     <article style={cardStyle}>
       {item.fileUrl && (
-        <video
+        <DeferredMedia kind="video"
           src={cloudinaryVideoUrl(item.fileUrl, 720)}
           controls
           preload="metadata"
@@ -888,7 +890,7 @@ function ReaderCard({
         {item.audioUrl ? (
           <div style={audioBoxStyle}>
             <strong>🎧 استمع إلى قراءة الطالب</strong>
-            <audio
+            <DeferredMedia kind="audio"
               src={item.audioUrl}
               controls
               preload="metadata"
@@ -1071,7 +1073,7 @@ function CelebrateCard({
     <article style={cardStyle}>
       {item.mediaUrl ? (
         item.mediaType === "video" ? (
-          <video src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls playsInline preload="none" style={{ width: "100%", height: 320, objectFit: "contain", background: "#0b1712" }} />
+          <DeferredMedia kind="video" src={cloudinaryVideoUrl(item.mediaUrl, 720)} controls playsInline preload="none" style={{ width: "100%", height: 320, objectFit: "contain", background: "#0b1712" }} />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={cloudinaryImageUrl(item.mediaUrl, 1000)} alt={item.title || "مشاركة وطنية"} style={{ width: "100%", height: 320, objectFit: "contain", background: "#f8faf9", display: "block" }} />

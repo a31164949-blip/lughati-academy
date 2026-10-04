@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -986,8 +988,8 @@ useEffect(() => {
                           </div>
 
                           {workUrl ? (
-                            <audio
-                              src={isVideoWork(work) ? cloudinaryVideoUrl(workUrl, 720) : cloudinaryImageUrl(workUrl, 900)}
+                            <DeferredMedia kind="audio"
+                              src={workUrl}
                               controls
                               style={{
                                 width:
@@ -1000,7 +1002,7 @@ useEffect(() => {
                           work
                         ) ? (
                         workUrl ? (
-                          <video
+                          <DeferredMedia kind="video"
                             src={isVideoWork(work) ? cloudinaryVideoUrl(workUrl, 720) : cloudinaryImageUrl(workUrl, 900)}
                             controls
                             preload="none"
