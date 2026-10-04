@@ -41,4 +41,3 @@ export async function requireClubMember(request: Request) {
       typeof studentData.classroom === "string" ? studentData.classroom : "",
   };
 }
-
