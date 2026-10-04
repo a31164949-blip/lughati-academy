@@ -1,5 +1,7 @@
 "use client";
 
+import { createSpeechRecorder } from "../lib/speechRecording";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -842,7 +844,7 @@ async function startAudioRecording() {
       audio: true,
     });
 
-    const recorder = new MediaRecorder(stream);
+    const recorder = createSpeechRecorder(stream);
     const audioChunks: BlobPart[] = [];
 
     recorder.ondataavailable = (event) => {

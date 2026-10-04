@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import {
   useEffect,
   useMemo,
@@ -1024,7 +1026,7 @@ export default function ReadingRecoveryPage() {
                     </span>
                   </div>
 
-                  <audio
+                  <DeferredMedia kind="audio"
                     controls
                     preload="none"
                     src={

@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../../components/DeferredMedia";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -901,7 +903,7 @@ export default function StudentReadingJourneyPage() {
                           marginTop: 16,
                         }}
                       >
-                        <audio
+                        <DeferredMedia kind="audio"
                           controls
                           preload="none"
                           src={
@@ -913,7 +915,7 @@ export default function StudentReadingJourneyPage() {
                         >
                           متصفحك لا يدعم تشغيل
                           التسجيل الصوتي.
-                        </audio>
+                        </DeferredMedia>
                       </div>
 
                       <div

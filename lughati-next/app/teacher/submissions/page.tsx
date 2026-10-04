@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import Link from "next/link";
 import {
   useCallback,
@@ -1233,7 +1235,7 @@ useEffect(() => {
                           style={styles.previewImage}
                         />
                       ) : submission.workType === "video" && submission.fileUrl ? (
-                        <video
+                        <DeferredMedia kind="video"
                           src={cloudinaryVideoUrl(submission.fileUrl, 720)}
                           controls
                           playsInline
@@ -1418,7 +1420,7 @@ useEffect(() => {
                         >
                           {submission.workType ===
                             "audio" && (
-                            <audio
+                            <DeferredMedia kind="audio"
                               src={submission.fileUrl}
                               controls
                               preload="none"
@@ -1431,7 +1433,7 @@ useEffect(() => {
 
                           {submission.workType ===
                             "video" && (
-                            <video
+                            <DeferredMedia kind="video"
                               src={cloudinaryVideoUrl(submission.fileUrl, 720)}
                               controls
                               preload="none"

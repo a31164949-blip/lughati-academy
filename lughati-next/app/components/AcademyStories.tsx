@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "./DeferredMedia";
+
 
 import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import { useEffect, useState } from "react";
@@ -217,7 +219,7 @@ export default function AcademyStories() {
             {activeStory.mediaType === "image" ? (
               <img src={cloudinaryImageUrl(activeStory.mediaUrl, 1200)} alt="" style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 20 }} />
             ) : (
-              <video src={cloudinaryVideoUrl(activeStory.mediaUrl, 720)} controls autoPlay playsInline preload="metadata" style={{ width: "100%", maxHeight: "70vh", borderRadius: 20 }} />
+              <DeferredMedia kind="video" src={cloudinaryVideoUrl(activeStory.mediaUrl, 720)} controls autoPlay playsInline preload="metadata" style={{ width: "100%", maxHeight: "70vh", borderRadius: 20 }} />
             )}
             {activeStory.caption && <p style={{ lineHeight: 1.7 }}>{activeStory.caption}</p>}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>

@@ -1,5 +1,7 @@
 "use client";
 
+import { createSpeechRecorder } from "../../lib/speechRecording";
+
 import Link from "next/link";
 
 import {
@@ -897,18 +899,7 @@ export default function FluencyLevelsPage() {
           ? "audio/webm"
           : "";
 
-      const recorder =
-        supportedType
-          ? new MediaRecorder(
-              stream,
-              {
-                mimeType:
-                  supportedType,
-              }
-            )
-          : new MediaRecorder(
-              stream
-            );
+      const recorder = createSpeechRecorder(stream, supportedType || undefined);
 
       streamRef.current =
         stream;

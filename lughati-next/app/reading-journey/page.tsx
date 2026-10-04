@@ -1,5 +1,7 @@
 "use client";
 
+import { createSpeechRecorder } from "../lib/speechRecording";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -283,7 +285,7 @@ export default function ReadingJourneyPage() {
           audio: true,
         });
 
-      const recorder = new MediaRecorder(stream);
+      const recorder = createSpeechRecorder(stream);
 
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];

@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../../components/DeferredMedia";
+
 import { useEffect, useState } from "react";
 import {
   arrayUnion,
@@ -1202,7 +1204,7 @@ export default function ReadingSubmissionsPage() {
                         "1px solid #e2e8f0",
                     }}
                   >
-                    <audio
+                    <DeferredMedia kind="audio"
                       key={
                         submission.audioUrl
                       }

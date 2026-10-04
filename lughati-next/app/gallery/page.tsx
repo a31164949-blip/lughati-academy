@@ -1,5 +1,7 @@
 "use client";
 
+import DeferredMedia from "../components/DeferredMedia";
+
 import {
   Suspense,
   useEffect,
@@ -1395,7 +1397,7 @@ function GalleryPageContent() {
                             }}
                           >
                             {isVideo ? (
-                              <video
+                              <DeferredMedia kind="video"
                                 src={mediaUrl}
                                 controls
                                 playsInline
@@ -2180,7 +2182,7 @@ function GalleryPageContent() {
           </button>
 
           {isVideoWork(selectedWork) ? (
-            <video
+            <DeferredMedia kind="video"
               src={cloudinaryVideoUrl(selectedWork.fileUrl, 720)}
               controls
               playsInline
