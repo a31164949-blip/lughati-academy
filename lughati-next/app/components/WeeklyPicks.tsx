@@ -69,17 +69,28 @@ const picks: PickItem[] = [
   },
 ];
 
+type WeeklyStory = { title: string; description: string; href: string; published: boolean };
+
 type WeeklyHero = { name: string; grade: string; praise: string; photoUrl: string; revealed: boolean };
 const defaultHero: WeeklyHero = { name: "", grade: "الصف الثاني", praise: "نفخر بك وبجهدك الجميل. استمر في التعلّم والمثابرة؛ فكل خطوة تصنع إنجازًا جديدًا.", photoUrl: "", revealed: false };
 
 export default function WeeklyPicks() {
   const [hero, setHero] = useState<WeeklyHero>(defaultHero);
+  const [story, setStory] = useState<Partial<WeeklyStory> | null>(null);
   useEffect(() => {
     void getDoc(doc(db, "weeklyPicks", "current")).then((snapshot) => {
-      if (snapshot.exists() && snapshot.data().hero) setHero({ ...defaultHero, ...snapshot.data().hero });
+      if (!snapshot.exists()) return;
+      const data = snapshot.data();
+      if (data.hero) setHero({ ...defaultHero, ...data.hero });
+      if (data.story) setStory(data.story);
     }).catch((error) => console.error("تعذر تحميل بطل الأسبوع:", error));
   }, []);
   const revealed = hero.revealed && Boolean(hero.name.trim());
+  const currentPicks = picks.flatMap((item) => {
+    if (item.id !== "story" || !story) return [item];
+    if (story.published === false) return [];
+    return [{ ...item, title: story.title || item.title, description: story.description || item.description, href: story.href || item.href }];
+  });
   return (
     <section
       dir="rtl"
@@ -191,7 +202,7 @@ export default function WeeklyPicks() {
           gap: "14px",
         }}
       >
-        {picks.map((item) => (
+        {currentPicks.map((item) => (
           <article
             key={item.id}
             className="pick-card"
