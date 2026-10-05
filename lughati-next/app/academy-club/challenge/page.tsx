@@ -1,4 +1,5 @@
 "use client";
+import { prepareVideo } from "../../lib/compressVideo";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -76,7 +77,6 @@ export default function AcademyClubChallengePage(){
     if(selected.size>MAX_FILE_SIZE){event.target.value="";setFile(null);setError("حجم الملف كبير؛ الحد الأعلى 100 ميجابايت.");return;}
     const detected:WorkType=selected.type.startsWith("audio/")?"audio":selected.type.startsWith("video/")?"video":"image";
     if(!challenge?.allowedTypes.includes(detected)){event.target.value="";setFile(null);setError("نوع الملف غير متاح في هذا التحدي.");return;}
-    if(detected === "video" && selected.size > 20 * 1024 * 1024){event.target.value="";setFile(null);setError("الحد الأعلى للفيديو 20 ميجابايت.");return;}
     setWorkType(detected);setFile(selected);
   }
 
@@ -84,13 +84,14 @@ export default function AcademyClubChallengePage(){
     if(!user||!challenge||!file||challenge.isClosed||submission)return;
     try{
       setSending(true);setError("");setMessage("جارٍ رفع مشاركتك…");
+      const videoFile = workType === "video" ? await prepareVideo(file, setMessage) : file;
       const token=await user.getIdToken();
       let fileUrl="", cloudinaryPublicId="", r2Key="";
       if(workType === "video"){
-        const reservation=await fetch("/api/academy-club/video",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({challengeId:challenge.challengeId,size:file.size,contentType:file.type})});
+        const reservation=await fetch("/api/academy-club/video",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({challengeId:challenge.challengeId,size:videoFile.size,contentType:videoFile.type})});
         const signed=await reservation.json();
         if(!reservation.ok)throw new Error(signed.message || "تعذر تجهيز رفع الفيديو.");
-        const upload=await fetch(signed.uploadUrl,{method:"PUT",headers:{"Content-Type":file.type},body:file});
+        const upload=await fetch(signed.uploadUrl,{method:"PUT",headers:{"Content-Type":videoFile.type},body:videoFile});
         if(!upload.ok)throw new Error("تعذر رفع الفيديو. أعد المحاولة بالملف نفسه.");
         r2Key=signed.key;
       }else{
@@ -112,7 +113,7 @@ export default function AcademyClubChallengePage(){
 
   return <main dir="rtl" className="page"><style>{styles}</style><div className="shell"><header><Link href={teacherPreview?"/academy-club?teacherPreview=1":"/academy-club"}>→ نادي الأكاديمية</Link><b>تحديات الأعضاء 🎯</b></header>
     {loading?<section className="card center">⏳ جارٍ تحميل التحدي…</section>:!user?<section className="card center"><h2>سجّل دخولك أولًا</h2><Link className="btn" href="/login">تسجيل الدخول</Link></section>:error&&!challenge?<section className="card center"><h2>تعذر فتح التحدي</h2><p>{error}</p></section>:!challenge?<section className="card center"><div className="big">🌱</div><h2>لا يوجد تحدٍ منشور الآن</h2><p>ترقّب التحدي القادم؛ ففرص التميز تتجدد دائمًا.</p></section>:<><section className="hero"><span className="tag">تحدي أعضاء النادي</span><h1>{challenge.title}</h1><p>{challenge.instructions}</p><div className="meta"><b>⭐ {challenge.points} نقطة</b><b>📎 {challenge.allowedTypes.map(typeLabel).join(" • ")}</b><b>⏳ {challenge.isClosed?"انتهى التحدي":new Date(challenge.closesAt).toLocaleDateString("ar-SA")}</b></div></section>
-    {teacherPreview?<section className="card center"><div className="big">👁️</div><h2>معاينة المعلم</h2><p>هذه هي تفاصيل التحدي كما ستظهر للعضو. رفع المشاركات متاح للطلاب الأعضاء فقط.</p></section>:submission?<section className="card center"><div className="big">{submission.status==="approved"?"🏆":submission.status==="returned"?"🔄":"⏳"}</div><h2>{submission.status==="approved"?"تم اعتماد مشاركتك":submission.status==="returned"?"تحتاج مشاركتك إلى مراجعة":"مشاركتك بانتظار المعلم"}</h2>{submission.teacherNote&&<p className="notice">ملاحظة المعلم: {submission.teacherNote}</p>}<p>لا يمكن إرسال أكثر من مشاركة في التحدي نفسه.</p></section>:<section className="card"><h2>ارفع مشاركتك</h2><p>الحد الأعلى للفيديو 20 ميجابايت؛ ثلاث محاولات رفع يوميًا.</p><p>الأنواع المتاحة: {challenge.allowedTypes.map(typeLabel).join("، ")}</p><input className="file" type="file" accept={acceptTypes(challenge.allowedTypes)} disabled={challenge.isClosed||sending} onChange={chooseFile}/>{file&&<div className="selected">✅ {file.name} — {typeLabel(workType)}</div>}<label>رسالة قصيرة مع المشاركة<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} placeholder="اكتب وصفًا بسيطًا لعملك…"/></label>{message&&<p className="notice ok">{message}</p>}{error&&<p className="notice bad">{error}</p>}<button className="btn full" disabled={!file||sending||challenge.isClosed} onClick={submit}>{sending?"جارٍ الإرسال…":"إرسال المشاركة 🚀"}</button></section>}</>}
+    {teacherPreview?<section className="card center"><div className="big">👁️</div><h2>معاينة المعلم</h2><p>هذه هي تفاصيل التحدي كما ستظهر للعضو. رفع المشاركات متاح للطلاب الأعضاء فقط.</p></section>:submission?<section className="card center"><div className="big">{submission.status==="approved"?"🏆":submission.status==="returned"?"🔄":"⏳"}</div><h2>{submission.status==="approved"?"تم اعتماد مشاركتك":submission.status==="returned"?"تحتاج مشاركتك إلى مراجعة":"مشاركتك بانتظار المعلم"}</h2>{submission.teacherNote&&<p className="notice">ملاحظة المعلم: {submission.teacherNote}</p>}<p>لا يمكن إرسال أكثر من مشاركة في التحدي نفسه.</p></section>:<section className="card"><h2>ارفع مشاركتك</h2><p>يُضغط الفيديو تلقائيًا قبل الرفع؛ الحد بعد الضغط 20 ميجابايت. ثلاث محاولات رفع يوميًا.</p><p>الأنواع المتاحة: {challenge.allowedTypes.map(typeLabel).join("، ")}</p><input className="file" type="file" accept={acceptTypes(challenge.allowedTypes)} disabled={challenge.isClosed||sending} onChange={chooseFile}/>{file&&<div className="selected">✅ {file.name} — {typeLabel(workType)}</div>}<label>رسالة قصيرة مع المشاركة<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} placeholder="اكتب وصفًا بسيطًا لعملك…"/></label>{message&&<p className="notice ok">{message}</p>}{error&&<p className="notice bad">{error}</p>}<button className="btn full" disabled={!file||sending||challenge.isClosed} onClick={submit}>{sending?"جارٍ الإرسال…":"إرسال المشاركة 🚀"}</button></section>}</>}
   </div></main>;
 }
 

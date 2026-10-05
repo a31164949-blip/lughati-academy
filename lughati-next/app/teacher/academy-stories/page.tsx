@@ -1,4 +1,5 @@
 "use client";
+import { prepareVideo } from "../../lib/compressVideo";
 import { uploadR2Video } from "../../lib/uploadR2Video";
 
 import DeferredMedia from "../../components/DeferredMedia";
@@ -80,7 +81,8 @@ export default function TeacherAcademyStoriesPage() {
     setPublishing(true);
     setMessage("");
     try {
-      if (file.size > 30 * 1024 * 1024) throw new Error("حجم الملف كبير؛ الحد الأقصى 30 ميجابايت.");
+      if (mediaType === "image" && file.size > 30 * 1024 * 1024) throw new Error("حجم الملف كبير؛ الحد الأقصى 30 ميجابايت.");
+      if (mediaType === "video") await prepareVideo(file, setMessage, 30);
       const duration = mediaType === "video" ? await getVideoDuration(file) : 0;
       if (mediaType === "video" && duration > 30) throw new Error("اختر فيديو مدته 30 ثانية أو أقل.");
 
@@ -89,7 +91,7 @@ export default function TeacherAcademyStoriesPage() {
       const token = await user.getIdToken();
       let uploaded: { secure_url: string; public_id?: string; reservationId?: string };
       if (mediaType === "video") {
-        uploaded = await uploadR2Video(file, "stories");
+        uploaded = await uploadR2Video(file, "stories", setMessage);
       } else {
         const form = new FormData();
         form.append("file", file);

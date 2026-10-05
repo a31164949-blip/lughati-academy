@@ -1,9 +1,10 @@
+import { prepareVideo, type VideoProgress } from "./compressVideo";
 import { auth } from "../../firebase";
 const requests = new WeakMap<File, string>();
-export async function uploadR2Video(file: File, purpose: "stories" | "works") {
+export async function uploadR2Video(file: File, purpose: "stories" | "works", progress?: VideoProgress) {
   const user = auth.currentUser;
   if (!user) throw new Error("سجّل الدخول من جديد.");
-  if (file.size > 20 * 1024 * 1024) throw new Error("الحد الأقصى للفيديو 20 ميجابايت.");
+  file = await prepareVideo(file, progress);
   const token = await user.getIdToken();
   const requestId = requests.get(file) || crypto.randomUUID();
   requests.set(file, requestId);
