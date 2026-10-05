@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { getFirebaseAdmin } from "../../../firebase-admin";
 
@@ -34,8 +35,7 @@ type StudentIdentity = {
   selectedAvatarIcon: string;
 };
 
-export async function GET() {
-  try {
+async function loadGallery() {
     const { adminDb } = getFirebaseAdmin();
 
     /*
@@ -360,13 +360,20 @@ published:
       }
     );
 
-    return NextResponse.json({
+    return {
       success: true,
       count: works.length,
       notebookCount: notebooks.length,
       works,
       notebooks,
-    });
+    };
+}
+
+const getCachedGallery = unstable_cache(loadGallery, ["public-gallery-budget-v1"], { revalidate: 30 });
+
+export async function GET() {
+  try {
+    return NextResponse.json(await getCachedGallery(), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error(
       "Gallery API error:",

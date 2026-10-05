@@ -1,5 +1,6 @@
 "use client";
 
+import { openR2Video } from "../../lib/uploadR2Video";
 import DeferredMedia from "../../components/DeferredMedia";
 
 import Link from "next/link";
@@ -17,6 +18,11 @@ import {
   getDocs,
   orderBy,
   query,
+  where,
+  limit,
+  startAfter,
+  type QueryDocumentSnapshot,
+  type DocumentData,
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
@@ -60,6 +66,11 @@ const APPROVED_STATUS = "approved";
 const REJECTED_STATUS = "rejected";
 
 export default function SubmissionsPage() {
+  const [view, setView] = useState<"pending" | "archive">("pending");
+  const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [
     submissions,
     setSubmissions,
@@ -87,18 +98,16 @@ export default function SubmissionsPage() {
    * من Firestore.
    */
  const fetchSubmissions =
-  useCallback(async () => {
-    const submissionsQuery =
-      query(
-        collection(
-          db,
-          "studentWorks"
-        ),
-        orderBy(
-          "createdAt",
-          "desc"
-        )
-      );
+  useCallback(async (after?: QueryDocumentSnapshot<DocumentData>) => {
+    const constraints = view === "pending"
+      ? [where("status", "==", PENDING_STATUS)]
+      : [orderBy("createdAt", "desc")];
+    const submissionsQuery = query(
+      collection(db, "studentWorks"),
+      ...constraints,
+      ...(after ? [startAfter(after)] : []),
+      limit(25)
+    );
 
     const snapshot =
       await getDocs(
@@ -225,8 +234,8 @@ export default function SubmissionsPage() {
         }
       );
 
-    return loaded;
-  }, []);
+    return { items: loaded, cursor: snapshot.docs.at(-1) ?? null, hasMore: snapshot.size === 25 };
+  }, [view]);
 
 const loadSubmissions =
   useCallback(async () => {
@@ -237,7 +246,9 @@ const loadSubmissions =
       const loaded =
         await fetchSubmissions();
 
-      setSubmissions(loaded);
+      setSubmissions(loaded.items);
+      setCursor(loaded.cursor);
+      setHasMore(loaded.hasMore);
     } catch (error) {
       console.error(
         "تعذر تحميل أعمال الطلاب:",
@@ -258,12 +269,16 @@ useEffect(() => {
   let active = true;
 
   async function loadInitialSubmissions() {
+    setLoading(true);
+    setLoadError("");
     try {
       const loaded =
         await fetchSubmissions();
 
       if (active) {
-        setSubmissions(loaded);
+        setSubmissions(loaded.items);
+        setCursor(loaded.cursor);
+        setHasMore(loaded.hasMore);
       }
     } catch (error) {
       console.error(
@@ -291,6 +306,24 @@ useEffect(() => {
     active = false;
   };
 }, [fetchSubmissions]);
+
+  async function loadMore() {
+    if (!cursor || loadingMore || updatingId) return;
+    setLoadingMore(true);
+    try {
+      const next = await fetchSubmissions(cursor);
+      setSubmissions(current => {
+        const ids = new Set(current.map(item => item.id));
+        return [...current, ...next.items.filter(item => !ids.has(item.id))];
+      });
+      setCursor(next.cursor);
+      setHasMore(next.hasMore);
+    } catch {
+      window.alert("تعذر تحميل الدفعة التالية. حاول مجددًا.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   /*
    * إحصائيات الحالات.
@@ -884,7 +917,7 @@ useEffect(() => {
             onClick={() =>
               void loadSubmissions()
             }
-            disabled={loading}
+            disabled={loading || loadingMore || updatingId !== null}
             style={{
               ...styles.refreshButton,
 
@@ -1078,6 +1111,13 @@ useEffect(() => {
         </div>
       </section>
 
+      <section style={styles.messageCard}>
+        <p>تُحمّل الأعمال على دفعات من 25 عملًا. الإحصاءات تخص الأعمال المحمّلة فقط. الأعمال المعتمدة محفوظة في الأرشيف والمعرض.</p>
+        <button type="button" disabled={loading || loadingMore || updatingId !== null || view === "pending"} onClick={() => setView("pending")} style={styles.retryButton}>بانتظار المراجعة</button>{" "}
+        <button type="button" disabled={loading || loadingMore || updatingId !== null || view === "archive"} onClick={() => setView("archive")} style={styles.retryButton}>الأرشيف وجميع الأعمال</button>
+        {hasMore && !loading && <button type="button" disabled={loadingMore || updatingId !== null} onClick={() => void loadMore()} style={styles.retryButton}>{loadingMore ? "جارٍ التحميل…" : "تحميل 25 عملًا إضافيًا"}</button>}
+      </section>
+
       {/* التحميل */}
 
       {loading && (
@@ -1141,6 +1181,7 @@ useEffect(() => {
 
             <button
               type="button"
+              disabled={loading || loadingMore || updatingId !== null}
               onClick={() =>
                 void loadSubmissions()
               }
@@ -1460,6 +1501,12 @@ useEffect(() => {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={event => {
+                              if (submission.fileUrl.startsWith("/api/media/video?")) {
+                                event.preventDefault();
+                                void openR2Video(submission.fileUrl);
+                              }
+                            }}
                             style={
                               styles.previewButton
                             }

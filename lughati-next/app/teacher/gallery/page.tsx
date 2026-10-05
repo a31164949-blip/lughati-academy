@@ -1182,6 +1182,12 @@ useEffect(() => {
                             }
                             target="_blank"
                             rel="noreferrer"
+                            onClick={event => {
+                              if (workUrl.startsWith("/api/media/video?")) {
+                                event.preventDefault();
+                                void openR2Video(workUrl);
+                              }
+                            }}
                             style={{
                               display:
                                 "block",
