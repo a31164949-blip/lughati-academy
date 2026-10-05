@@ -341,7 +341,7 @@ export default function UploadWorkPage() {
         رفع الملف أولًا إلى Cloudinary.
       */
       const uploaded = workType === "video"
-        ? await uploadR2Video(file, "works")
+        ? await uploadR2Video(file, "works", setSuccessMessage)
         : await uploadToCloudinary(file);
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
 
