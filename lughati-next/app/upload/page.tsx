@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import Link from "next/link";
 import { auth } from "../../firebase";
 import { uploadR2Video } from "../lib/uploadR2Video";
@@ -257,7 +259,7 @@ export default function UploadWorkPage() {
         : "video";
 
     const response =
-      await fetch(
+      await uploadCloudinary(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
         {
           method:

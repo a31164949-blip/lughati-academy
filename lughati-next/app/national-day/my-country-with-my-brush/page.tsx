@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import Link from "next/link";
 import {
   ChangeEvent,
@@ -150,7 +152,7 @@ export default function MyCountryWithMyBrushPage() {
       "lughati_homework_upload"
     );
 
-    const response = await fetch(
+    const response = await uploadCloudinary(
       "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
       {
         method: "POST",

@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import { useEffect, useState } from "react";
 import { auth } from "../../../firebase";
 
@@ -61,7 +63,7 @@ export default function FamilyResourcesManager() {
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("upload_preset", UPLOAD_PRESET);
-    const response = await fetch(
+    const response = await uploadCloudinary(
       `${CLOUDINARY_URL}/${isPdf ? "raw" : "image"}/upload`,
       { method: "POST", body: formData }
     );

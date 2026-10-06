@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import { createSpeechRecorder } from "../lib/speechRecording";
 
 import Link from "next/link";
@@ -404,7 +406,7 @@ export default function ReadingJourneyPage() {
       "lughati_reading_upload"
     );
 
-    const response = await fetch(
+    const response = await uploadCloudinary(
       "https://api.cloudinary.com/v1_1/ffv5igmg/video/upload",
       {
         method: "POST",

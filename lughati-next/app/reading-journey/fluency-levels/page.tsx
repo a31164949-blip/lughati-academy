@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import { createSpeechRecorder } from "../../lib/speechRecording";
 
 import Link from "next/link";
@@ -1122,7 +1124,7 @@ export default function FluencyLevelsPage() {
       );
 
       const cloudinaryResponse =
-        await fetch(
+        await uploadCloudinary(
           "https://api.cloudinary.com/v1_1/ffv5igmg/video/upload",
           {
             method:

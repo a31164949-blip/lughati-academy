@@ -1,4 +1,6 @@
 "use client";
+
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 import { prepareVideo } from "../lib/compressVideo";
 import { uploadR2Video } from "../lib/uploadR2Video";
 
@@ -113,7 +115,7 @@ export default function AcademyStories() {
         const form = new FormData();
         form.append("file", file);
         form.append("upload_preset", UPLOAD_PRESET);
-        const upload = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: form });
+        const upload = await uploadCloudinary(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: form });
         uploaded = await upload.json();
         if (!upload.ok || !uploaded.secure_url) throw new Error("تعذر رفع الملف.");
       }

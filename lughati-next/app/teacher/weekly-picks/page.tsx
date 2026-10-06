@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import Link from "next/link";
 import {
   useEffect,
@@ -395,7 +397,7 @@ export default function TeacherWeeklyPicksPage() {
                 const form = new FormData();
                 form.append("file", file);
                 form.append("upload_preset", "lughati_homework_upload");
-                const response = await fetch("https://api.cloudinary.com/v1_1/ffv5igmg/image/upload", { method: "POST", body: form });
+                const response = await uploadCloudinary("https://api.cloudinary.com/v1_1/ffv5igmg/image/upload", { method: "POST", body: form });
                 if (!response.ok) throw new Error("upload failed");
                 const data = await response.json();
                 setHero((current) => ({ ...current, photoUrl: String(data.secure_url || "") }));
