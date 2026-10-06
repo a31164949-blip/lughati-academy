@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { unstable_cache, revalidateTag } from "next/cache";
 import {
   NextResponse,
 } from "next/server";
@@ -67,15 +69,11 @@ async function getStudentFromRequest(
   return studentDocId;
 }
 
-export async function GET(
-  request: Request
-) {
-  try {
-    const studentDocId =
-      await getStudentFromRequest(
-        request
-      );
+function notificationCacheTag(studentDocId: string) {
+  return "student-notifications:" + createHash("sha256").update(studentDocId).digest("hex");
+}
 
+async function loadStudentNotifications(studentDocId: string) {
     const {
       adminDb,
     } =
@@ -194,10 +192,28 @@ export async function GET(
         }
       );
 
+    return notifications;
+}
+
+export async function GET(
+  request: Request
+) {
+  try {
+    const studentDocId =
+      await getStudentFromRequest(
+        request
+      );
+
+    const notifications = await unstable_cache(
+      () => loadStudentNotifications(studentDocId),
+      ["student-notifications-v1", studentDocId],
+      { revalidate: 60, tags: [notificationCacheTag(studentDocId)] }
+    )();
+
     return NextResponse.json({
       success: true,
       notifications,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error(
       "Student notifications GET error:",
@@ -212,6 +228,7 @@ export async function GET(
       },
       {
         status: 500,
+        headers: { "Cache-Control": "private, no-store" },
       }
     );
   }
@@ -340,6 +357,8 @@ export async function POST(
       }
     );
 
+    revalidateTag(notificationCacheTag(studentDocId), { expire: 0 });
+
     return NextResponse.json({
       success: true,
     });
@@ -357,6 +376,7 @@ export async function POST(
       },
       {
         status: 500,
+        headers: { "Cache-Control": "private, no-store" },
       }
     );
   }
