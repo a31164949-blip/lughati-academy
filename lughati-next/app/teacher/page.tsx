@@ -44,6 +44,11 @@ function getNotificationTime(value: unknown) {
 
 const sections = [
   {
+    title: "💾 إدارة مساحة التخزين",
+    description: "مراجعة الملفات الكبيرة والمرفوضات القديمة، مع الحفاظ على أعمال الطلاب المميزة.",
+    href: "/teacher/storage-review",
+  },
+  {
     title: "🌟 إدارة مختارات الأسبوع",
     description: "إدارة قصة بطل هذا الأسبوع، صورة البطل وكلمات الإشادة، وقصة الأسبوع وبقية المختارات.",
     href: "/teacher/weekly-picks",

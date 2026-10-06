@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import Link from "next/link";
 import {
   ChangeEvent,
@@ -300,7 +302,7 @@ export default function WeCelebratePage() {
       preset
     );
 
-    const response = await fetch(
+    const response = await uploadCloudinary(
       `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
       {
         method: "POST",

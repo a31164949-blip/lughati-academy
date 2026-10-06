@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import { useEffect, useState } from "react";
 
 import {
@@ -872,7 +874,7 @@ export default function NotebookGalleryTeacherPage() {
     );
 
     const response =
-      await fetch(
+      await uploadCloudinary(
         "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
         {
           method: "POST",

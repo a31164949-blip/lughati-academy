@@ -1,5 +1,5 @@
 import "server-only";
-import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
@@ -39,4 +39,17 @@ export async function videoPlaybackUrl(key: string) {
   return getSignedUrl(client, new GetObjectCommand({
     Bucket: bucket, Key: key, ResponseContentDisposition: "inline",
   }), { expiresIn: 1800 });
+}
+
+// One bounded metadata page. Never downloads videos or scans the whole bucket.
+export async function listVideoStorage(cursor?: string) {
+  const { client, bucket } = configuration();
+  const page = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: "media/", MaxKeys: 50, ContinuationToken: cursor }));
+  return {
+    nextCursor: page.IsTruncated ? page.NextContinuationToken || "" : "",
+    items: (page.Contents || []).filter(item => item.Key).map(item => ({
+      id: item.Key!, name: item.Key!, bytes: item.Size || 0,
+      kind: "video", createdAt: item.LastModified?.toISOString() || "", duplicate: false,
+    })).sort((a, b) => b.bytes - a.bytes),
+  };
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
@@ -954,7 +956,7 @@ setReadingDays(
     );
 
     const response =
-      await fetch(
+      await uploadCloudinary(
         "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
         {
           method: "POST",

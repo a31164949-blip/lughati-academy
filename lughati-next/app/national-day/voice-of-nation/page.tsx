@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -155,7 +157,7 @@ export default function VoiceOfNationPage() {
       formData.append("file", file);
       formData.append("upload_preset", UPLOAD_PRESET);
 
-      const uploadResponse = await fetch(
+      const uploadResponse = await uploadCloudinary(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`,
         { method: "POST", body: formData }
       );

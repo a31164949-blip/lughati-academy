@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import { createSpeechRecorder } from "../lib/speechRecording";
 
 import { useEffect, useMemo, useState } from "react";
@@ -588,7 +590,7 @@ async function uploadImageToCloudinary(file: File) {
   formData.append("file", file);
   formData.append("upload_preset", "lughati_homework_upload");
 
-  const response = await fetch(
+  const response = await uploadCloudinary(
     "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
     {
       method: "POST",
@@ -615,7 +617,7 @@ async function uploadCreativeFileToCloudinary(file: File) {
     ? "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload"
     : "https://api.cloudinary.com/v1_1/ffv5igmg/raw/upload";
     
-      const response = await fetch(uploadEndpoint, {
+      const response = await uploadCloudinary(uploadEndpoint, {
   method: "POST",
   body: formData,
 });
@@ -643,7 +645,7 @@ async function uploadAudioToCloudinary(audioFile: Blob) {
     "lughati_homework_upload"
   );
 
-  const response = await fetch(
+  const response = await uploadCloudinary(
     "https://api.cloudinary.com/v1_1/ffv5igmg/video/upload",
     {
       method: "POST",

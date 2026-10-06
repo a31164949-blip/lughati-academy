@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import Link from "next/link";
 import {
   ChangeEvent,
@@ -754,7 +756,7 @@ export default function NotebookExcellencePage() {
     );
 
     const response =
-      await fetch(
+      await uploadCloudinary(
         "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
         {
           method:

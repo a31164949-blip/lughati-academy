@@ -1,5 +1,10 @@
 export type CloudinaryAssetKind = "image" | "video";
 
+export function imageDeliveryWidth(width: number) {
+  if (!Number.isFinite(width) || width <= 0) return 1200;
+  return [160, 420, 900, 1000, 1200].find(size => size >= width) || 1200;
+}
+
 export function optimizeCloudinaryUrl(
   value: string,
   _kind: CloudinaryAssetKind,
@@ -26,7 +31,7 @@ export function optimizeCloudinaryUrl(
     const transformations = [
       "f_auto",
       "q_auto",
-      width ? `w_${width}` : "",
+      width ? `w_${_kind === "image" ? imageDeliveryWidth(width) : width}` : "",
       width ? "c_limit" : "",
     ].filter(Boolean).join(",");
 

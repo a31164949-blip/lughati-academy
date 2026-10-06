@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
+
 import {
   useEffect,
   useMemo,
@@ -453,7 +455,7 @@ useEffect(() => {
         );
 
         const response =
-          await fetch(
+          await uploadCloudinary(
             "https://api.cloudinary.com/v1_1/ffv5igmg/image/upload",
             {
               method: "POST",
