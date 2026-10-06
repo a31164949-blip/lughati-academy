@@ -31,7 +31,7 @@ export async function reserveMediaVideo(request: Request, body: Record<string, u
   if (purpose === "works" && (actor.teacher || !getStudentSubmissionWindow().isOpen)) throw new Error("SUBMISSION_CLOSED");
   const { adminDb } = getFirebaseAdmin();
   if (purpose === "stories" && !actor.teacher) {
-    const pending = await adminDb.collection("academyStories").where("studentId", "==", actor.studentId).limit(10).get();
+    const pending = await adminDb.collection("academyStories").where("studentId", "==", actor.studentId).where("status", "==", "pending").limit(1).get();
     if (pending.docs.some(doc => doc.data().status === "pending")) throw new Error("PENDING_STORY");
   }
   const proposedKey = `media/${randomUUID()}.${VIDEO_TYPES[contentType]}`;

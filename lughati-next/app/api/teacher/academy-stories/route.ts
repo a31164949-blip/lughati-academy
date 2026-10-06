@@ -1,4 +1,5 @@
 import { verifyMediaVideo } from "../../../lib/r2Media";
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
       expiresAt: Timestamp.fromDate(new Date(now.getTime() + durationHours * 60 * 60 * 1000)),
     });
 
+    revalidateTag("academy-stories-public", { expire: 0 });
     return NextResponse.json({ success: true, id: reference.id, message: "تم نشر حالة الأكاديمية مباشرة ✅" });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
@@ -147,11 +149,13 @@ export async function PATCH(request: Request) {
         transaction.update(reference, {
           status: "rejected",
           approved: false,
+          expiresAt: FieldValue.delete(),
           rejectedAt: FieldValue.serverTimestamp(),
           reviewedAt: FieldValue.serverTimestamp(),
         });
       }
     });
+    revalidateTag("academy-stories-public", { expire: 0 });
     return NextResponse.json({ success: true, message: action === "approve" ? "تم نشر الحالة في نبض الأكاديمية ✅" : "تم رفض الحالة." });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
