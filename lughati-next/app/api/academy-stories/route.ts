@@ -1,6 +1,7 @@
 import { verifyMediaVideo } from "../../lib/r2Media";
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
 
 export const runtime = "nodejs";
@@ -42,64 +43,52 @@ function millis(value: unknown) {
   return 0;
 }
 
+// Cache only public fields. Private pending status is fetched separately per verified student.
+const getPublicStories = unstable_cache(async () => {
+  const { adminDb } = getFirebaseAdmin();
+  // Single-field expiry query avoids a new composite index. Only approved stories
+  // receive expiresAt; rejected legacy rows are still filtered before display.
+  const snapshot = await adminDb.collection("academyStories")
+    .where("expiresAt", ">", Timestamp.now()).limit(60).get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(raw => (raw as Record<string, unknown>).status === "approved")
+    .map(raw => {
+      const item = raw as Record<string, unknown>;
+      return {
+        id: String(item.id), mediaType: item.mediaType === "video" ? "video" : "image",
+        mediaUrl: typeof item.mediaUrl === "string" ? item.mediaUrl : "",
+        caption: typeof item.caption === "string" ? item.caption : "",
+        authorLabel: item.authorType === "teacher" ? "الأكاديمية" : "بطل الأكاديمية",
+        approvedAt: millis(item.approvedAt), expiresAt: millis(item.expiresAt),
+      };
+    }).sort((a, b) => a.approvedAt - b.approvedAt);
+}, ["academy-stories-public-budget-v1"], { revalidate: 30, tags: ["academy-stories-public"] });
+
 export async function GET(request: Request) {
   try {
     const { adminAuth, adminDb } = getFirebaseAdmin();
     let studentId = "";
     const authorization = request.headers.get("authorization");
-
     if (authorization?.startsWith("Bearer ")) {
       try {
         const decoded = await adminAuth.verifyIdToken(authorization.slice(7));
-        if (decoded.role === "student" && typeof decoded.studentDocId === "string") {
-          studentId = decoded.studentDocId;
-        }
-      } catch {
-        // عرض الحالات المعتمدة عام، وتعطل الرمز لا يمنع مشاهدة النبض.
-      }
+        if (decoded.role === "student" && typeof decoded.studentDocId === "string") studentId = decoded.studentDocId;
+      } catch { /* Invalid tokens may view public stories only. */ }
     }
-
-    const approvedSnapshot = await adminDb
-      .collection("academyStories")
-      .where("status", "==", "approved")
-      .limit(60)
-      .get();
-    const ownSnapshot = studentId
-      ? await adminDb.collection("academyStories").where("studentId", "==", studentId).limit(10).get()
-      : null;
-
-    const now = Date.now();
-    const stories = approvedSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((story) => millis((story as {expiresAt?: unknown}).expiresAt) > now)
-      .sort((a, b) => millis((a as {approvedAt?: unknown}).approvedAt) - millis((b as {approvedAt?: unknown}).approvedAt))
-      .map((story) => {
-        const item = story as Record<string, unknown>;
-        return {
-          id: String(item.id),
-          mediaType: item.mediaType === "video" ? "video" : "image",
-          mediaUrl: typeof item.mediaUrl === "string" ? item.mediaUrl : "",
-          caption: typeof item.caption === "string" ? item.caption : "",
-          authorLabel: item.authorType === "teacher" ? "الأكاديمية" : "بطل الأكاديمية",
-          approvedAt: millis(item.approvedAt),
-          expiresAt: millis(item.expiresAt),
-        };
-      });
-
-    const ownPending = ownSnapshot
-      ? ownSnapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((story) => (story as {status?: unknown}).status === "pending")
-          .sort((a, b) => millis((b as {createdAt?: unknown}).createdAt) - millis((a as {createdAt?: unknown}).createdAt))[0] ?? null
-      : null;
-
-    return NextResponse.json({
-      success: true,
-      stories,
+    const [publicStories, ownSnapshot] = await Promise.all([
+      getPublicStories(),
+      studentId ? adminDb.collection("academyStories").where("studentId", "==", studentId)
+        .where("status", "==", "pending").limit(1).get() : Promise.resolve(null),
+    ]);
+    // Check expiry for every response, including cache hits.
+    const stories = publicStories.filter(story => story.expiresAt > Date.now());
+    const ownPending = ownSnapshot?.docs[0];
+    return NextResponse.json({ success: true, stories,
       ownPending: ownPending ? { id: ownPending.id, status: "pending" } : null,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
-    return NextResponse.json({ success: false, message: "تعذر تحميل نبض الأكاديمية." }, { status: 500 });
+    return NextResponse.json({ success: false, message: "تعذر تحميل نبض الأكاديمية." },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } });
   }
 }
 
@@ -124,8 +113,8 @@ export async function POST(request: Request) {
     const { adminDb } = getFirebaseAdmin();
     if (reservationId && mediaType !== "video") throw new Error("INVALID_VIDEO");
     const r2 = reservationId ? await verifyMediaVideo(request, reservationId, "stories") : null;
-    const pendingSnapshot = await adminDb.collection("academyStories").where("studentId", "==", studentId).limit(10).get();
-    const hasPending = pendingSnapshot.docs.some((doc) => doc.data()?.status === "pending");
+    const pendingSnapshot = await adminDb.collection("academyStories").where("studentId", "==", studentId).where("status", "==", "pending").limit(1).get();
+    const hasPending = !pendingSnapshot.empty;
     if (hasPending) {
       return NextResponse.json({ success: false, message: "لديك حالة بانتظار موافقة المعلّم." }, { status: 409 });
     }
