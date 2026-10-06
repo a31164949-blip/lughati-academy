@@ -369,7 +369,7 @@ published:
     };
 }
 
-const getCachedGallery = unstable_cache(loadGallery, ["public-gallery-budget-v1"], { revalidate: 30 });
+const getCachedGallery = unstable_cache(loadGallery, ["public-gallery-budget-v1"], { revalidate: 30, tags: ["public-gallery"] });
 
 export async function GET() {
   try {

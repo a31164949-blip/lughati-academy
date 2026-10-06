@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 import {
   collection,
-  deleteDoc,
   doc,
   getDocs,
   orderBy,
@@ -826,46 +825,31 @@ export default function NotebookGalleryTeacherPage() {
     }
   }
 
-  async function deleteNotebookItem(
-    item: NotebookItem
-  ) {
-    const confirmed =
-      window.confirm(
-        `هل تريد حذف عمل ${item.studentName} نهائيًا؟\n\nلا يمكن التراجع عن الحذف.`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
+  async function deleteNotebookItem(item: NotebookItem) {
+    if (!window.confirm("فحص حذف صورة دفتر واحدة من التخزين؟\n\nالفحص محدود بـ500 سجل لحماية الميزانية، وسيتكرر قبل الحذف. لا تُحذف الصورة إلا بعد تأكيد ثانٍ.")) return;
     try {
       setUpdatingId(item.id);
-
-      await deleteDoc(
-        doc(
-          db,
-          "notebookGallery",
-          item.id
-        )
-      );
-
-      setItems((current) =>
-        current.filter(
-          (currentItem) =>
-            currentItem.id !==
-            item.id
-        )
-      );
-
-      window.alert(
-        "✅ تم حذف العمل."
-      );
+      const user = auth.currentUser;
+      if (!user) throw new Error("يلزم تسجيل الدخول بحساب المعلم.");
+      const token = await user.getIdToken();
+      async function request(action: string, confirmationToken?: string) {
+        const response = await fetch("/api/teacher/notebook-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action, id: item.id, token: confirmationToken }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "تعذر إكمال العملية.");
+        return result;
+      }
+      const preview = await request("preview");
+      const size = (preview.bytes / (1024 * 1024)).toFixed(2);
+      if (!window.confirm(`حذف دفتر ${item.studentName} نهائيًا؟\n\nعدد الصور: 1\nحجم الصورة الأصلية: ${size} ميجابايت\nالسجلات المفحوصة: ${preview.auditReads}\n\nلم يظهر استخدام آخر للصورة وقت الفحص. سيعاد التحقق ثم تُحذف الصورة من Cloudinary وسجل الدفتر. لا يمكن التراجع. تظل النسخ الاحتياطية إن كانت مفعلة لدى Cloudinary.`)) return;
+      await request("delete", preview.token);
+      setItems(current => current.filter(currentItem => currentItem.id !== item.id));
+      window.alert("✅ تم حذف الصورة من Cloudinary وسجل الدفتر.");
     } catch (error) {
-      console.error(error);
-
-      window.alert(
-        "تعذر حذف العمل."
-      );
+      window.alert(error instanceof Error ? error.message : "تعذر حذف العمل.");
     } finally {
       setUpdatingId(null);
     }
@@ -2397,7 +2381,7 @@ export default function NotebookGalleryTeacherPage() {
                                 "pointer",
                             }}
                           >
-                            🗑️ حذف
+                            🗑️ حذف الصورة والسجل
                           </button>
                         </div>
                       </div>
