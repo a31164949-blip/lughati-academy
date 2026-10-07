@@ -22,7 +22,7 @@ const WEIGHTS = {
   gallery: 20,
 } as const;
 
-const SUMMARY_VERSION = "learning-v2";
+const SUMMARY_VERSION = "learning-v3-earned-points";
 
 type RankingItem = {
   rank: number;
@@ -268,6 +268,32 @@ function getPublicStudentName(fullName: string) {
     .join(" ");
 }
 
+// Teacher gifts remain in the balance but do not determine the weekly points champion.
+function getRecognitionPoints(
+  data: Record<string, unknown>,
+  startDate: string,
+  endDate: string
+) {
+  const balance = Number(data.points ?? 0);
+  const total = Number.isFinite(balance) ? Math.max(0, balance) : 0;
+  const history = Array.isArray(data.pointsHistory) ? data.pointsHistory : [];
+  let gifts = 0;
+  for (const value of history) {
+    if (!value || typeof value !== "object") continue;
+    const entry = value as Record<string, unknown>;
+    const isGift = entry.type === "teacherGift" ||
+      entry.source === "teacherGift" ||
+      entry.category === "هدية من المعلم" ||
+      (typeof entry.reason === "string" && entry.reason.startsWith("🎁 هدية من المعلم:"));
+    if (!isGift) continue;
+    const date = toDateKey(entry.createdAt) || toDateKey(entry.date);
+    if (!isInsideWeek(date, startDate, endDate)) continue;
+    const points = Number(entry.points);
+    if (Number.isFinite(points) && points > 0) gifts += points;
+  }
+  return Math.max(0, total - gifts);
+}
+
 export async function GET(request: Request) {
   try {
     const now = Date.now();
@@ -293,7 +319,8 @@ export async function GET(request: Request) {
       );
     }
 
-    if (cachedPayload && cachedWeekStart === startDate) {
+    const cacheKey = `${startDate}:${teacherPreview ? "preview" : "public"}`;
+    if (cachedPayload && cachedWeekStart === cacheKey) {
       return NextResponse.json(cachedPayload, {
         headers: {
           "Cache-Control":
@@ -315,7 +342,7 @@ export async function GET(request: Request) {
     const storedSummary = await readReadySummary(summaryRef);
     if (storedSummary && storedSummary.weekStart === startDate) {
       cachedPayload = storedSummary;
-      cachedWeekStart = startDate;
+      cachedWeekStart = cacheKey;
       return NextResponse.json(storedSummary, {
         headers: {
           "Cache-Control":
@@ -339,7 +366,7 @@ export async function GET(request: Request) {
       }
 
       cachedPayload = concurrentSummary;
-      cachedWeekStart = startDate;
+      cachedWeekStart = cacheKey;
       return NextResponse.json(concurrentSummary, {
         headers: {
           "Cache-Control":
@@ -404,10 +431,7 @@ export async function GET(request: Request) {
 
       const logicalId = getStudentDocumentId(data, studentDoc.id);
       const publicStudentName = getPublicStudentName(getStudentName(data));
-      const studentPoints =
-        typeof data.points === "number" && Number.isFinite(data.points)
-          ? data.points
-          : Number(data.points ?? 0) || 0;
+      const studentPoints = getRecognitionPoints(data, startDate, endDate);
 
       if (
         !pointsChampion ||
@@ -665,7 +689,7 @@ export async function GET(request: Request) {
     await batch.commit();
 
     cachedPayload = payload;
-    cachedWeekStart = startDate;
+    cachedWeekStart = cacheKey;
 
     return NextResponse.json(
       payload,
