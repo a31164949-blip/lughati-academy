@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ClubImportantNotice from "../components/ClubImportantNotice";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -324,6 +325,7 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
           </section>
         ) : (
           <>
+            {user && <ClubImportantNotice key={user.uid} user={user} teacherPreview={teacherPreview} />}
             <section
               style={{
                 borderRadius: "28px",

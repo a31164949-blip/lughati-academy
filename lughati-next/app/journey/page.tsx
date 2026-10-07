@@ -2201,6 +2201,8 @@ try {
     }
   }
 
+  const importantClubNotice = notifications.find(item => item.type === "clubImportantNotice" && !item.read);
+
   return (
     <main
       dir="rtl"
@@ -3971,6 +3973,13 @@ try {
         </div>
       </header>
 
+      {importantClubNotice && (
+        <section role="status" aria-live="polite" style={{ maxWidth: 1068, margin: "20px auto", padding: "20px 16px", background: "#fff8dc", border: "2px solid #dcaa35", borderRadius: 20 }}>
+          <h2 style={{ margin: "0 0 8px", color: "#805500" }}>{importantClubNotice.title}</h2>
+          <p style={{ lineHeight: 1.8 }}>{importantClubNotice.message}</p>
+          <button onClick={() => void openNotification(importantClubNotice)} style={{ padding: "12px 18px", background: "#176c46", color: "white", border: 0, borderRadius: 12, font: "inherit", fontWeight: 800 }}>افتح الرسالة المهمة والرد ←</button>
+        </section>
+      )}
       <LiveLessonCard />
 
       <div
