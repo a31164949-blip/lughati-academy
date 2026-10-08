@@ -22,7 +22,7 @@ const WEIGHTS = {
   gallery: 20,
 } as const;
 
-const SUMMARY_VERSION = "learning-v3-earned-points";
+const SUMMARY_VERSION = "learning-v4-week-history";
 
 type RankingItem = {
   rank: number;
@@ -133,8 +133,7 @@ function toDateKey(value: unknown): string {
   if (!value) return "";
 
   if (typeof value === "string") {
-    const match = value.match(/^\d{4}-\d{2}-\d{2}/);
-    if (match) return match[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
 
     const parsed = new Date(value);
     if (!Number.isNaN(parsed.getTime())) return getRiyadhDateKey(parsed);
@@ -274,10 +273,8 @@ function getRecognitionPoints(
   startDate: string,
   endDate: string
 ) {
-  const balance = Number(data.points ?? 0);
-  const total = Number.isFinite(balance) ? Math.max(0, balance) : 0;
   const history = Array.isArray(data.pointsHistory) ? data.pointsHistory : [];
-  let gifts = 0;
+  let earned = 0;
   for (const value of history) {
     if (!value || typeof value !== "object") continue;
     const entry = value as Record<string, unknown>;
@@ -285,13 +282,13 @@ function getRecognitionPoints(
       entry.source === "teacherGift" ||
       entry.category === "هدية من المعلم" ||
       (typeof entry.reason === "string" && entry.reason.startsWith("🎁 هدية من المعلم:"));
-    if (!isGift) continue;
-    const date = toDateKey(entry.createdAt) || toDateKey(entry.date);
+    if (isGift) continue;
+    const date = toDateKey(entry.date) || toDateKey(entry.createdAt);
     if (!isInsideWeek(date, startDate, endDate)) continue;
     const points = Number(entry.points);
-    if (Number.isFinite(points) && points > 0) gifts += points;
+    if (Number.isFinite(points)) earned += points;
   }
-  return Math.max(0, total - gifts);
+  return Math.max(0, earned);
 }
 
 export async function GET(request: Request) {
@@ -433,12 +430,12 @@ export async function GET(request: Request) {
       const publicStudentName = getPublicStudentName(getStudentName(data));
       const studentPoints = getRecognitionPoints(data, startDate, endDate);
 
-      if (
+      if (studentPoints > 0 && (
         !pointsChampion ||
         studentPoints > pointsChampion.points ||
         (studentPoints === pointsChampion.points &&
           publicStudentName.localeCompare(pointsChampion.studentName, "ar") < 0)
-      ) {
+      )) {
         pointsChampion = {
           studentId: studentDoc.id,
           studentName: publicStudentName,
