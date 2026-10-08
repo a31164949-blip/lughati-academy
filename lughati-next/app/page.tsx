@@ -412,7 +412,7 @@ const ACADEMY_BOARD_CACHE_KEY =
   "academy-home-public-board-v1";
 
 const WEEKLY_ENGAGEMENT_CACHE_KEY =
-  "academy-home-weekly-engagement-v2-earned-points";
+  "academy-home-weekly-engagement-v3-week-history";
 
 export default function Home() {
   const [points] = useState(0);
@@ -2182,7 +2182,7 @@ useEffect(() => {
                     marginBottom: "4px",
                   }}
                 >
-                  بطل النقاط المكتسبة
+                  بطل نقاط هذا الأسبوع
                 </span>
 
                 <strong
