@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadClubAttachment } from "../../lib/uploadClubAttachment";
+import { CLUB_ATTACHMENT_TYPES, MAX_CLUB_ATTACHMENTS, type ClubAttachment } from "../../lib/clubAttachments";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -26,6 +28,8 @@ export default function TeacherAcademyClubPage() {
   const [points, setPoints] = useState("10");
   const [durationDays, setDurationDays] = useState("7");
   const [allowedTypes, setAllowedTypes] = useState<WorkType[]>(["image"]);
+  const [attachments, setAttachments] = useState<ClubAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [currentTitle, setCurrentTitle] = useState("");
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,8 +80,20 @@ export default function TeacherAcademyClubPage() {
     setError("");
   }
 
+  async function addAttachments(files: File[]) {
+    if (files.length + attachments.length > MAX_CLUB_ATTACHMENTS) { setError("يمكن إرفاق 6 ملفات في التحدي."); return; }
+    setUploading(true); setError("");
+    try {
+      for (const file of files) {
+        const attachment = await uploadClubAttachment(file);
+        setAttachments(current => [...current, attachment]);
+      }
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "تعذر رفع المرفق."); }
+    finally { setUploading(false); }
+  }
+
   async function publishChallenge() {
-    if (!user) return;
+    if (!user || uploading) return;
     try {
       setSaving(true);
       setError("");
@@ -92,11 +108,13 @@ export default function TeacherAcademyClubPage() {
           points: Number(points),
           durationDays: Number(durationDays),
           allowedTypes,
+          attachments,
         }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || "تعذر نشر التحدي.");
       setMessage("تم نشر تحدي النادي بنجاح 🎯");
+      setAttachments([]);
       setTitle("");
       setInstructions("");
       await loadData(user);
@@ -232,7 +250,13 @@ export default function TeacherAcademyClubPage() {
             </label>
           </div>
           <label style={{ ...labelStyle, marginTop: 15 }}>تعليمات المهمة<textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={5} style={inputStyle} /></label>
-          <div style={{ marginTop: 15, fontWeight: 900 }}>أنواع الملفات المسموحة</div>
+          <label style={{ ...labelStyle, marginTop: 15 }}>📎 مرفقات المعلم للأعضاء
+            <span>صور، PDF، Word، PowerPoint أو فيديو. حتى 6 مرفقات، 20 ميجابايت لكل مرفق بعد الضغط.</span>
+            <input type="file" multiple accept={Object.keys(CLUB_ATTACHMENT_TYPES).join(",")} disabled={saving || uploading} style={inputStyle} onChange={e => { const files = Array.from(e.target.files || []); e.target.value = ""; void addAttachments(files); }} />
+          </label>
+          {uploading && <p role="status">جارٍ تجهيز المرفقات ورفعها…</p>}
+          {attachments.map(attachment => <div key={attachment.id} style={noticeStyle}>{attachment.name} <button type="button" disabled={saving || uploading} onClick={() => setAttachments(current => current.filter(item => item.id !== attachment.id))}>إزالة من التحدي</button></div>)}
+          <div style={{ marginTop: 15, fontWeight: 900 }}>أنواع ملفات إجابات الطلاب المسموحة</div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 9 }}>
             {(["image", "audio", "video"] as WorkType[]).map((type) => (
               <button key={type} type="button" onClick={() => toggleType(type)} style={{ ...typeButtonStyle, background: allowedTypes.includes(type) ? "#176c46" : "white", color: allowedTypes.includes(type) ? "white" : "#176c46" }}>
@@ -242,7 +266,7 @@ export default function TeacherAcademyClubPage() {
           </div>
           {error && <div style={errorStyle}>{error}</div>}
           {message && <div style={successStyle}>{message}</div>}
-          <button type="button" disabled={saving} onClick={() => void publishChallenge()} style={publishStyle}>
+          <button type="button" disabled={saving || uploading} onClick={() => void publishChallenge()} style={publishStyle}>
             {saving ? "جارٍ النشر..." : "🚀 نشر التحدي للأعضاء"}
           </button>
         </section>

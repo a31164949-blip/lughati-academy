@@ -3,6 +3,8 @@
 import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 import { prepareVideo } from "../../lib/compressVideo";
 
+import { openClubAttachment } from "../../lib/uploadClubAttachment";
+import type { ClubAttachment } from "../../lib/clubAttachments";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -15,6 +17,7 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 type WorkType = "image" | "audio" | "video";
 type Challenge = {
+  attachments?: ClubAttachment[];
   challengeId: string;
   title: string;
   instructions: string;
@@ -115,6 +118,7 @@ export default function AcademyClubChallengePage(){
 
   return <main dir="rtl" className="page"><style>{styles}</style><div className="shell"><header><Link href={teacherPreview?"/academy-club?teacherPreview=1":"/academy-club"}>→ نادي الأكاديمية</Link><b>تحديات الأعضاء 🎯</b></header>
     {loading?<section className="card center">⏳ جارٍ تحميل التحدي…</section>:!user?<section className="card center"><h2>سجّل دخولك أولًا</h2><Link className="btn" href="/login">تسجيل الدخول</Link></section>:error&&!challenge?<section className="card center"><h2>تعذر فتح التحدي</h2><p>{error}</p></section>:!challenge?<section className="card center"><div className="big">🌱</div><h2>لا يوجد تحدٍ منشور الآن</h2><p>ترقّب التحدي القادم؛ ففرص التميز تتجدد دائمًا.</p></section>:<><section className="hero"><span className="tag">تحدي أعضاء النادي</span><h1>{challenge.title}</h1><p>{challenge.instructions}</p><div className="meta"><b>⭐ {challenge.points} نقطة</b><b>📎 {challenge.allowedTypes.map(typeLabel).join(" • ")}</b><b>⏳ {challenge.isClosed?"انتهى التحدي":new Date(challenge.closesAt).toLocaleDateString("ar-SA")}</b></div></section>
+    {challenge.attachments && challenge.attachments.length > 0 && <section className="card"><h2>📎 مرفقات المعلم</h2><p>افتح ورقة العمل أو شاهد الفيديو قبل المشاركة.</p><div className="meta">{challenge.attachments.map(attachment => <button className="btn" type="button" key={attachment.id} onClick={() => void openClubAttachment(attachment.id)}>{attachment.contentType.startsWith("video/") ? "🎥" : attachment.contentType.startsWith("image/") ? "🖼️" : "📄"} {attachment.name}</button>)}</div></section>}
     {teacherPreview?<section className="card center"><div className="big">👁️</div><h2>معاينة المعلم</h2><p>هذه هي تفاصيل التحدي كما ستظهر للعضو. رفع المشاركات متاح للطلاب الأعضاء فقط.</p></section>:submission?<section className="card center"><div className="big">{submission.status==="approved"?"🏆":submission.status==="returned"?"🔄":"⏳"}</div><h2>{submission.status==="approved"?"تم اعتماد مشاركتك":submission.status==="returned"?"تحتاج مشاركتك إلى مراجعة":"مشاركتك بانتظار المعلم"}</h2>{submission.teacherNote&&<p className="notice">ملاحظة المعلم: {submission.teacherNote}</p>}<p>لا يمكن إرسال أكثر من مشاركة في التحدي نفسه.</p></section>:<section className="card"><h2>ارفع مشاركتك</h2><p>يُضغط الفيديو تلقائيًا قبل الرفع؛ الحد بعد الضغط 20 ميجابايت. ثلاث محاولات رفع يوميًا.</p><p>الأنواع المتاحة: {challenge.allowedTypes.map(typeLabel).join("، ")}</p><input className="file" type="file" accept={acceptTypes(challenge.allowedTypes)} disabled={challenge.isClosed||sending} onChange={chooseFile}/>{file&&<div className="selected">✅ {file.name} — {typeLabel(workType)}</div>}<label>رسالة قصيرة مع المشاركة<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)} placeholder="اكتب وصفًا بسيطًا لعملك…"/></label>{message&&<p className="notice ok">{message}</p>}{error&&<p className="notice bad">{error}</p>}<button className="btn full" disabled={!file||sending||challenge.isClosed} onClick={submit}>{sending?"جارٍ الإرسال…":"إرسال المشاركة 🚀"}</button></section>}</>}
   </div></main>;
 }

@@ -1,3 +1,4 @@
+import { verifyClubAttachments } from "../../../../lib/clubAttachmentsServer";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../../firebase-admin";
@@ -69,6 +70,7 @@ export async function GET(request: Request) {
             title: challenge.title ?? "",
             instructions: challenge.instructions ?? "",
             points: typeof challenge.points === "number" ? challenge.points : 0,
+            attachments: Array.isArray(challenge.attachments) ? challenge.attachments : [],
             allowedTypes: Array.isArray(challenge.allowedTypes) ? challenge.allowedTypes : ["image"],
             active: challenge.active === true,
             closesAt: toIso(challenge.closesAt),
@@ -103,6 +105,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "أكمل بيانات التحدي." }, { status: 400 });
     }
 
+    const attachments = await verifyClubAttachments(teacherUid, body.attachments);
     const { adminDb } = getFirebaseAdmin();
     const now = new Date();
     const closesAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
@@ -114,6 +117,7 @@ export async function POST(request: Request) {
       instructions,
       points,
       allowedTypes,
+      attachments,
       active: true,
       opensAt: Timestamp.fromDate(now),
       closesAt: Timestamp.fromDate(closesAt),

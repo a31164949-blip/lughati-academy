@@ -56,6 +56,7 @@ export async function GET(request: Request) {
         allowedTypes: Array.isArray(challengeData.allowedTypes)
           ? challengeData.allowedTypes
           : ["image"],
+        attachments: Array.isArray(challengeData.attachments) ? challengeData.attachments : [],
         closesAt,
         isClosed,
       },
