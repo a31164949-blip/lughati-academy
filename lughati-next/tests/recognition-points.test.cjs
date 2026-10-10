@@ -2,7 +2,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
 const source=fs.readFileSync('app/api/public-weekly-engagement/route.ts','utf8');
 const moduleMock={exports:{}};
-vm.runInNewContext(ts.transpileModule(source+'\nexports.recognition = getRecognitionPoints;',{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:moduleMock,exports:moduleMock.exports,require:()=>({}),Date,Intl,URL,console,setTimeout});
+vm.runInNewContext(ts.transpileModule(source+'\nexports.recognition = getRecognitionPoints;',{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:moduleMock,exports:moduleMock.exports,require:n=>n==='next/cache'?{unstable_cache:fn=>fn}:({}),Date,Intl,URL,console,setTimeout});
 const score=data=>moduleMock.exports.recognition(data,'2026-10-04','2026-10-10');
 const entry=(points,date='2026-10-06')=>({points,date});
 const gift=points=>({...entry(points),type:'teacherGift'});
@@ -20,7 +20,7 @@ test('GET selects the weekly-history champion and writes a new summary without n
  const snapshot={exists:false,data:()=>undefined};
  const db={collection:name=>{const ref={name,doc:id=>({id,get:async()=>snapshot}),where:()=>ref,get:async()=>{collections.push(name);return {docs:name==='students'?students:[]};}};return ref;},runTransaction:async fn=>fn({get:async()=>snapshot,set:()=>{}}),batch:()=>({set:(ref,data)=>summaries.push({id:ref.id,data}),update:()=>{},commit:async()=>{}})};
  class FixedDate extends Date{constructor(...args){super(...(args.length?args:['2026-10-08T09:05:00Z']));}static now(){return Date.parse('2026-10-08T09:05:00Z');}}
- const mocks={'next/server':{NextResponse:{json:(body,options)=>({body,options})}},'firebase-admin/firestore':{FieldValue:{arrayUnion:x=>x}},'../../../firebase-admin':{getFirebaseAdmin:()=>({adminDb:db})}};
+ const mocks={'next/cache':{unstable_cache:fn=>fn},'next/server':{NextResponse:{json:(body,options)=>({body,options})}},'firebase-admin/firestore':{FieldValue:{arrayUnion:x=>x}},'../../../firebase-admin':{getFirebaseAdmin:()=>({adminDb:db})}};
  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports,require:n=>mocks[n],Date:FixedDate,Intl,URL,console,setTimeout});
  const result=await module.exports.GET({url:'https://example.com/api/public-weekly-engagement'});
  assert.equal(result.body.pointsChampion.studentId,'new');assert.equal(result.body.pointsChampion.points,60);assert.equal(collections.length,8);assert.equal(summaries[0].id,'2026-10-04-learning-v4-week-history');assert.equal(result.body.rankings.length,0);

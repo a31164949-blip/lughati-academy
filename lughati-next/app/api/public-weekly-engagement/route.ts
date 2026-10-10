@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
@@ -224,6 +225,19 @@ async function readReadySummary(summaryRef: FirebaseFirestore.DocumentReference)
   return data as WeeklyEngagementPayload;
 }
 
+const readCachedSummary = unstable_cache(async (id: string) => {
+  const summary = await readReadySummary(getFirebaseAdmin().adminDb.collection("weeklyEngagementSummaries").doc(id));
+  if (!summary) throw new Error("SUMMARY_NOT_READY");
+  return summary;
+}, ["weekly-engagement-ready-v1"], { revalidate: 3600 });
+async function getStoredSummary(id: string) {
+  try { return await readCachedSummary(id); }
+  catch (error) {
+    if (error instanceof Error && error.message === "SUMMARY_NOT_READY") return null;
+    throw error;
+  }
+}
+
 async function waitForReadySummary(
   summaryRef: FirebaseFirestore.DocumentReference,
   attempts = 4
@@ -298,6 +312,13 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const teacherPreview = url.searchParams.get("teacherPreview") === "1";
 
+    if (teacherPreview) {
+      const authorization = request.headers.get("authorization");
+      if (!authorization?.startsWith("Bearer ")) return NextResponse.json({ success: false }, { status: 401, headers: { "Cache-Control": "no-store" } });
+      const token = await getFirebaseAdmin().adminAuth.verifyIdToken(authorization.slice(7));
+      if (token.role !== "teacher" && token.role !== "admin" && token.email?.toLowerCase() !== "a31164949@gmail.com") return NextResponse.json({ success: false }, { status: 403, headers: { "Cache-Control": "no-store" } });
+    }
+
     /*
       خارج نافذة التكريم لا نقرأ Firestore إطلاقًا.
       العرض المعتمد:
@@ -321,7 +342,7 @@ export async function GET(request: Request) {
       return NextResponse.json(cachedPayload, {
         headers: {
           "Cache-Control":
-            "public, s-maxage=3600, stale-while-revalidate=300",
+            teacherPreview ? "private, no-store" : "public, s-maxage=3600, stale-while-revalidate=300",
           "X-Engagement-Cache": "HIT",
         },
       });
@@ -336,14 +357,14 @@ export async function GET(request: Request) {
           : `${startDate}-${SUMMARY_VERSION}`
       );
 
-    const storedSummary = await readReadySummary(summaryRef);
+    const storedSummary = await getStoredSummary(summaryRef.id);
     if (storedSummary && storedSummary.weekStart === startDate) {
       cachedPayload = storedSummary;
       cachedWeekStart = cacheKey;
       return NextResponse.json(storedSummary, {
         headers: {
           "Cache-Control":
-            "public, s-maxage=3600, stale-while-revalidate=300",
+            teacherPreview ? "private, no-store" : "public, s-maxage=3600, stale-while-revalidate=300",
           "X-Engagement-Cache": "SUMMARY-HIT",
         },
       });
@@ -367,7 +388,7 @@ export async function GET(request: Request) {
       return NextResponse.json(concurrentSummary, {
         headers: {
           "Cache-Control":
-            "public, s-maxage=3600, stale-while-revalidate=300",
+            teacherPreview ? "private, no-store" : "public, s-maxage=3600, stale-while-revalidate=300",
           "X-Engagement-Cache": "SUMMARY-HIT",
         },
       });
@@ -693,7 +714,7 @@ export async function GET(request: Request) {
       {
         headers: {
           "Cache-Control":
-            "public, s-maxage=3600, stale-while-revalidate=300",
+            teacherPreview ? "private, no-store" : "public, s-maxage=3600, stale-while-revalidate=300",
           "X-Engagement-Cache": "MISS",
         },
       }

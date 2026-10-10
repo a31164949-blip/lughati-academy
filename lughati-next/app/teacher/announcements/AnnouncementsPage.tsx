@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
@@ -97,6 +99,7 @@ export default function AnnouncementsPage() {
     priority,
     published,
   });
+      await invalidatePublicContent();
 
   setEditingId(null);
   setStatusMessage("تم تحديث الإعلان بنجاح ✅");
@@ -109,6 +112,7 @@ export default function AnnouncementsPage() {
     published,
     createdAt: serverTimestamp(),
   });
+      await invalidatePublicContent();
 
   setStatusMessage("تم حفظ الإعلان بنجاح ✅");
   await loadAnnouncements();
@@ -144,6 +148,7 @@ function startEditing(item: Announcement) {
       await updateDoc(doc(db, "announcements", item.id), {
         published: !item.published,
       });
+      await invalidatePublicContent();
       await loadAnnouncements();
     } catch (error) {
       console.error(error);
@@ -155,6 +160,7 @@ function startEditing(item: Announcement) {
     await updateDoc(doc(db, "announcements", item.id), {
       pinned: !item.pinned,
     });
+      await invalidatePublicContent();
 
     await loadAnnouncements();
 
@@ -168,7 +174,7 @@ function startEditing(item: Announcement) {
     setStatusMessage("تعذر تغيير حالة التثبيتت");
   }
 }
-    
+
 async function removeAnnouncement(id: string) {
     const confirmed = window.confirm("هل تريد حذف هذا الإعلان نهائيًا؟");
 
@@ -176,6 +182,7 @@ async function removeAnnouncement(id: string) {
 
     try {
       await deleteDoc(doc(db, "announcements", id));
+      await invalidatePublicContent();
       await loadAnnouncements();
       setStatusMessage("تم حذف الإعلان.");
     } catch (error) {

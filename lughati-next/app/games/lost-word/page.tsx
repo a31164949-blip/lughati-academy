@@ -1,4 +1,5 @@
 "use client";
+import { startVisibleSubscription } from "../../lib/visibleSubscription";
 
 import Link from "next/link";
 import {
@@ -526,7 +527,7 @@ export default function LostWordPage() {
       "lughati-lost-word"
     );
 
-    const unsubscribe = onSnapshot(
+    const unsubscribe = startVisibleSubscription(() => onSnapshot(
       recordRef,
       (snapshot) => {
         if (!snapshot.exists()) {
@@ -548,7 +549,7 @@ export default function LostWordPage() {
           error
         );
       }
-    );
+    ), document);
 
     return () => {
       unsubscribe();

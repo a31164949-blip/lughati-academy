@@ -1,3 +1,4 @@
+import { FieldPath, Timestamp } from "firebase-admin/firestore";
 import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { getFirebaseAdmin } from "../../../firebase-admin";
@@ -35,7 +36,28 @@ type StudentIdentity = {
   selectedAvatarIcon: string;
 };
 
-async function loadGallery() {
+const PAGE_SIZE = 30;
+type Cursor = { seconds: number; nanoseconds: number; id: string } | null;
+function parseCursor(value: string): Cursor {
+  if (!value || value === "done") return null;
+  const cursor = JSON.parse(value);
+  if (!Number.isInteger(cursor.seconds) || !Number.isInteger(cursor.nanoseconds) || cursor.nanoseconds < 0 || cursor.nanoseconds >= 1000000000 || typeof cursor.id !== "string" || !cursor.id || cursor.id.includes("/") || cursor.id.length > 1500) throw new Error("INVALID_CURSOR");
+  return { seconds: cursor.seconds, nanoseconds: cursor.nanoseconds, id: cursor.id };
+}
+function nextCursor(snapshot: FirebaseFirestore.QuerySnapshot | null, field: string) {
+  if (!snapshot || snapshot.size < PAGE_SIZE) return "done";
+  const last = snapshot.docs.at(-1)!;
+  return JSON.stringify({ seconds: last.get(field).seconds, nanoseconds: last.get(field).nanoseconds, id: last.id });
+}
+async function page(collection: string, field: string, value: string) {
+  if (value === "done") return null;
+  const { adminDb } = getFirebaseAdmin();
+  let query = adminDb.collection(collection).orderBy(field, "desc").orderBy(FieldPath.documentId(), "desc");
+  const cursor = parseCursor(value);
+  if (cursor) query = query.startAfter(new Timestamp(cursor.seconds, cursor.nanoseconds), cursor.id);
+  return query.limit(PAGE_SIZE).get();
+}
+async function loadGallery(worksCursor: string, notebooksCursor: string) {
     const { adminDb } = getFirebaseAdmin();
 
     /*
@@ -43,13 +65,13 @@ async function loadGallery() {
      * تحميل أعمال الطلاب
      * مباشرة من studentWorks
      */
-    const worksSnapshot = await adminDb
-      .collection("studentWorks")
-      .orderBy("createdAt", "desc")
-      .get();
+    const [worksSnapshot, notebookSnapshot] = await Promise.all([
+      page("studentWorks", "createdAt", worksCursor),
+      page("notebookGallery", "publishedAt", notebooksCursor),
+    ]);
 
     const approvedSubmissions: StudentWork[] =
-      worksSnapshot.docs
+      (worksSnapshot?.docs ?? [])
         .map((docSnapshot) => {
           const data = docSnapshot.data();
 
@@ -132,13 +154,9 @@ published:
      * ثانيًا:
      * تحميل جماليات الدفاتر
      */
-    const notebookSnapshot = await adminDb
-      .collection("notebookGallery")
-      .orderBy("publishedAt", "desc")
-      .get();
 
     const notebookItems: NotebookGalleryItem[] =
-      notebookSnapshot.docs
+      (notebookSnapshot?.docs ?? [])
         .map((docSnapshot) => {
           const notebookData = docSnapshot.data();
 
@@ -362,6 +380,7 @@ published:
 
     return {
       success: true,
+      cursors: { works: nextCursor(worksSnapshot, "createdAt"), notebooks: nextCursor(notebookSnapshot, "publishedAt") },
       count: works.length,
       notebookCount: notebooks.length,
       works,
@@ -369,11 +388,16 @@ published:
     };
 }
 
-const getCachedGallery = unstable_cache(loadGallery, ["public-gallery-budget-v1"], { revalidate: 30, tags: ["public-gallery"] });
+const getCachedGallery = unstable_cache(loadGallery, ["public-gallery-pages-v2"], { revalidate: 300, tags: ["public-gallery"] });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    return NextResponse.json(await getCachedGallery(), { headers: { "Cache-Control": "no-store" } });
+    const params = new URL(request.url).searchParams;
+    const worksCursor = params.get("worksCursor") || "";
+    const notebooksCursor = params.get("notebooksCursor") || "";
+    if (worksCursor.length > 2000 || notebooksCursor.length > 2000) throw new Error("INVALID_CURSOR");
+    parseCursor(worksCursor); parseCursor(notebooksCursor);
+    return NextResponse.json(await getCachedGallery(worksCursor, notebooksCursor), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error(
       "Gallery API error:",
@@ -389,7 +413,7 @@ export async function GET() {
         notebooks: [],
       },
       {
-        status: 500,
+        status: error instanceof Error && (error.message === "INVALID_CURSOR" || error instanceof SyntaxError) ? 400 : 503,
       }
     );
   }

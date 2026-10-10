@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 
@@ -802,6 +804,7 @@ export default function NotebookGalleryTeacherPage() {
             newValue,
         }
       );
+      await invalidatePublicContent();
 
       setItems((current) =>
         current.map(
@@ -950,6 +953,7 @@ export default function NotebookGalleryTeacherPage() {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       setPublishMessage(
         "✅ تم النشر في جماليات الدفاتر ✨"

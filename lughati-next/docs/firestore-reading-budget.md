@@ -55,3 +55,14 @@ window in Query Insights. Verify new homework submission, reading submission,
 approval/retry, manual freeze/unfreeze, expiring freezes, and weekly summaries with
 real signed-in accounts. Local verification uses mocked Firestore; it does not
 measure production read savings or prove that cloud indexes are deployed.
+
+## Shared content and archive reads (second release)
+
+- The Next data cache shares public announcements, academy board, published weekly plan, class diary, heroes and gallery highlights across visitors for up to five minutes. Private/student data is excluded from these public responses. Successful teacher publication/edit/delete invalidates the public cache; failed invalidation falls back to the TTL. Direct Firebase console edits also use the TTL.
+- Class diary archive uses 20 published records per page, preserving its createdAt ordering. The latest diary card reads only one record. Gallery scans no more than 30 source records per collection per page, retains legacy approval/publication spellings and filters non-public records before returning them. Even an empty visible page can offer the next page when its scanned records were unpublished. Gallery cursors retain full timestamp precision, with document IDs as tie breakers; finished collections are skipped.
+- Parent quiz results use 20 records per page with snapshot cursors. Their existing implicit document-ID order is preserved; the button is “more results,” not a claim of global chronological order.
+- The journey notification inbox loads when opened, including point gifts and milestone notices. Messages remain available, and the unread count comes from the existing journey response instead of a second 30-document query. The quiz/parent material notices remain automatic so targeted teacher materials remain visible.
+- Five game scoreboard listeners detach when hidden and resume when visible. Student manual-access security listener stays live. Live lessons retain one-minute updates while visible, without a hidden polling timer or overlapping requests.
+- Weekly recognition still uses its existing persisted once-per-week summary and excludes gifted/old points. Ready summary reads now share a one-hour data cache; anonymous teacherPreview requests cannot start an out-of-window ranking calculation. The recognition policy and weekly snapshot are unchanged.
+
+Validation: production build, pagination/privacy/invalidation/subscription tests, existing notification and recognition tests. No additional Firestore indexes required. Production savings need a new usage window; these changes do not reset exhausted daily quotas.

@@ -1,4 +1,5 @@
 "use client";
+import { startVisibleSubscription } from "../../lib/visibleSubscription";
 import {
   doc,
   getDoc,
@@ -453,7 +454,7 @@ const questions = useMemo<Question[]>(() => {
     "lughati-maze"
   );
 
-  const unsubscribe = onSnapshot(
+  const unsubscribe = startVisibleSubscription(() => onSnapshot(
     recordRef,
     (snapshot) => {
       if (!snapshot.exists()) {
@@ -475,7 +476,7 @@ const questions = useMemo<Question[]>(() => {
         error
       );
     }
-  );
+  ), document);
 
   return () => {
     unsubscribe();

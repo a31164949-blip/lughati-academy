@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import Link from "next/link";
 import {
@@ -1220,6 +1222,7 @@ export default function TeacherHeroesPage() {
 
     if (hasChanges) {
       await batch.commit();
+      await invalidatePublicContent();
     }
   }
 
@@ -1322,6 +1325,7 @@ export default function TeacherHeroesPage() {
           merge: true,
         }
       );
+      await invalidatePublicContent();
 
       await loadSavedHeroes();
 

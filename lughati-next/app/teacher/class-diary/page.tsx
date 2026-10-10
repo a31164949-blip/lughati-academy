@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 
@@ -617,6 +619,7 @@ useEffect(() => {
               serverTimestamp(),
           }
         );
+      await invalidatePublicContent();
 
         setTitle("");
         setDescription("");
@@ -673,6 +676,7 @@ useEffect(() => {
               !post.isPublished,
           }
         );
+      await invalidatePublicContent();
 
         await loadPosts();
       } catch (error) {
@@ -704,6 +708,7 @@ useEffect(() => {
             id
           )
         );
+      await invalidatePublicContent();
 
         await loadPosts();
       } catch (error) {

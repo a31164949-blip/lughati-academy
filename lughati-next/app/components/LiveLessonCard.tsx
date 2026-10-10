@@ -1,4 +1,5 @@
 "use client";
+import { startVisiblePolling } from "../lib/visiblePolling";
 
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -80,18 +81,10 @@ export default function LiveLessonCard() {
       }
     }
 
-    void loadLesson();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadLesson();
-    }, 60000);
-    const onFocus = () => void loadLesson();
-    window.addEventListener("focus", onFocus);
+    if (!document.hidden) void loadLesson();
+    const stopPolling = startVisiblePolling(loadLesson, document, window, 60000);
+    return () => { active = false; stopPolling(); };
 
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-    };
   }, [user]);
 
   useEffect(() => {

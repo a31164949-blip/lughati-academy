@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { getFirebaseAdmin } from "../../../firebase-admin";
 
@@ -71,11 +72,6 @@ const defaultAcademyBoardSettings: PublicAcademyBoardSettings = {
     "🌟 كل إنجاز جديد يكتب اسمًا جديدًا في تاريخ أكاديمية لغتي",
 };
 
-const CACHE_TTL_MS = 60 * 1000;
-
-let cachedPayload: PublicAcademyBoardPayload | null = null;
-let cachedAt = 0;
-
 function toMillis(value: unknown): number {
   if (
     value &&
@@ -111,26 +107,13 @@ function jsonWithCache(
     headers: {
       // اللوحة عامة؛ يسمح هذا لكاش CDN بتقليل استدعاءات الـ API في الإنتاج.
       "Cache-Control":
-        "public, s-maxage=60, stale-while-revalidate=60",
+        "no-store",
       "X-Academy-Board-Cache": cacheState,
     },
   });
 }
 
-export async function GET() {
-  const now = Date.now();
-
-  if (
-    cachedPayload &&
-    now - cachedAt < CACHE_TTL_MS
-  ) {
-    return jsonWithCache(
-      cachedPayload,
-      "HIT"
-    );
-  }
-
-  try {
+async function loadPublicContent(): Promise<PublicAcademyBoardPayload> {
     const { adminDb } = getFirebaseAdmin();
 
     const [
@@ -150,6 +133,7 @@ export async function GET() {
       // قراءة واحدة خفيفة للأبطال المنشورين بدل قراءة سجلات الطلاب.
       adminDb
         .collection("academyHeroes")
+        .where("published", "==", true)
         .get(),
     ]);
 
@@ -331,27 +315,16 @@ export async function GET() {
       heroes,
     };
 
-    cachedPayload = payload;
-    cachedAt = now;
+    return payload;
+}
 
-    return jsonWithCache(
-      payload,
-      "MISS"
-    );
+const getCachedContent = unstable_cache(loadPublicContent, ["public-academy-board-v2"], { revalidate: 300, tags: ["public-academy-board"] });
+
+export async function GET() {
+  try {
+    return jsonWithCache(await getCachedContent(), "HIT");
   } catch (error) {
-    console.error(
-      "Public academy board error:",
-      error
-    );
-
-    // إذا تعطل Firestore مؤقتًا نعرض آخر نسخة ناجحة بدل إسقاط اللوحة.
-    if (cachedPayload) {
-      return jsonWithCache(
-        cachedPayload,
-        "STALE"
-      );
-    }
-
+    console.error("Public content error:", error);
     return NextResponse.json(
       {
         success: false,

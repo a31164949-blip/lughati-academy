@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import { useEffect, useState } from "react";
 import {
@@ -700,6 +702,7 @@ export default function WeeklyPlanPage() {
           merge: true,
         }
       );
+      await invalidatePublicContent();
 
       return;
     }
@@ -719,6 +722,7 @@ export default function WeeklyPlanPage() {
           merge: true,
         }
       );
+      await invalidatePublicContent();
     }
   }
 
@@ -788,6 +792,7 @@ export default function WeeklyPlanPage() {
 
     if (notificationCount > 0) {
       await batch.commit();
+      await invalidatePublicContent();
     }
   }
 
@@ -939,6 +944,7 @@ export default function WeeklyPlanPage() {
           merge: true,
         }
       );
+      await invalidatePublicContent();
 
       /*
        * مزامنة إعلان الخطة الأسبوعية.

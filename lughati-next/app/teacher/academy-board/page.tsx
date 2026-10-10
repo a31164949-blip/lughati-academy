@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import Link from "next/link";
 import {
@@ -376,6 +378,7 @@ export default function TeacherAcademyBoardPage() {
         },
         { merge: true }
       );
+      await invalidatePublicContent();
 
       setMessage(
         "✅ تم حفظ إعدادات اللوحة."
@@ -452,6 +455,7 @@ export default function TeacherAcademyBoardPage() {
           ),
           slideData
         );
+      await invalidatePublicContent();
       } else {
         await addDoc(
           collection(
@@ -465,6 +469,7 @@ export default function TeacherAcademyBoardPage() {
               serverTimestamp(),
           }
         );
+      await invalidatePublicContent();
       }
 
       setTitle("");
@@ -544,6 +549,7 @@ export default function TeacherAcademyBoardPage() {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       setMilestones((current) =>
         current.map((item) =>
@@ -601,6 +607,7 @@ export default function TeacherAcademyBoardPage() {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       setMilestones((current) =>
         current.map((item) =>
@@ -648,6 +655,7 @@ export default function TeacherAcademyBoardPage() {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       setManualSlides(
         (current) =>
@@ -694,6 +702,7 @@ export default function TeacherAcademyBoardPage() {
           slideId
         )
       );
+      await invalidatePublicContent();
 
       setManualSlides(
         (current) =>
