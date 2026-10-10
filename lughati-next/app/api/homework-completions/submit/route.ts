@@ -101,6 +101,7 @@ export async function POST(request: Request) {
 
     await requireSubmissionIdentity(request, studentId);
     const { adminDb } = getFirebaseAdmin();
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const completionId = `${studentId}_${homeworkId}`;
     const completionRef = adminDb.collection("homeworkCompletions").doc(completionId);
 
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
           readingDurationSeconds,
           readingReviewed: false,
           readingStatus: "pending",
+          readingDate: today,
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
@@ -130,6 +132,7 @@ export async function POST(request: Request) {
 
     const completionData: Record<string, unknown> = {
       homeworkId,
+      date: today,
       homeworkTitle,
       studentId,
       studentName,

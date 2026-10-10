@@ -1,10 +1,11 @@
 "use client";
 
+import { getDocsOnce as getDocs } from "../../lib/firestoreReadOnce";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
-  getDocs,
   query,
   where,
   serverTimestamp,
@@ -12,7 +13,7 @@ import {
   runTransaction,
   arrayUnion,
 } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 import { checkAndRegisterPointMilestones } from "../../lib/academyMilestones";
 type ClassroomFilter = "الكل" | "الثاني أ" | "الثاني ب";
 type StatusFilter = "الكل" | "لم يؤكد" | "بانتظار المراجعة" | "تمت المراجعة";
@@ -144,6 +145,8 @@ const fetchTrackingData = useCallback(
 
           if (
             cacheIsFresh &&
+            cached.uid === auth.currentUser?.uid &&
+            cached.day === new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()) &&
             Array.isArray(
               cached.loadedStudents
             ) &&
@@ -177,17 +180,7 @@ const fetchTrackingData = useCallback(
     /*
       نحتاج من dailyCompletions سجلات اليوم فقط.
     */
-    const today = new Date();
-
-    const todayDateKey = [
-      today.getFullYear(),
-      String(
-        today.getMonth() + 1
-      ).padStart(2, "0"),
-      String(
-        today.getDate()
-      ).padStart(2, "0"),
-    ].join("-");
+    const todayDateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
     /*
       لم نعد نقرأ homeworkCompletions هنا.
@@ -393,6 +386,8 @@ const fetchTrackingData = useCallback(
           TRACKING_CACHE_KEY,
           JSON.stringify({
             ...result,
+            uid: auth.currentUser?.uid,
+            day: todayDateKey,
             cachedAt:
               Date.now(),
           })

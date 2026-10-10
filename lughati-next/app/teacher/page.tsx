@@ -7,7 +7,9 @@ import AcademyLogo from "../components/AcademyLogo";
 import { useEffect, useState } from "react";
 import {
   collection,
-  getDocs,
+  getCountFromServer,
+  query,
+  where,
 } from "firebase/firestore";
 
 import { db } from "../../firebase";
@@ -15,32 +17,6 @@ import { db } from "../../firebase";
 const TEACHER_NOTIFICATIONS_LAST_SEEN_KEY =
   "teacher-notifications-last-seen-at";
 
-function getNotificationTime(value: unknown) {
-  if (
-    value &&
-    typeof value === "object" &&
-    "toMillis" in value &&
-    typeof (value as { toMillis?: unknown }).toMillis === "function"
-  ) {
-    return (value as { toMillis: () => number }).toMillis();
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "seconds" in value &&
-    typeof (value as { seconds?: unknown }).seconds === "number"
-  ) {
-    return (value as { seconds: number }).seconds * 1000;
-  }
-
-  if (typeof value === "string" || typeof value === "number") {
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-
-  return 0;
-}
 
 const sections = [
   {
@@ -276,144 +252,40 @@ const notificationCount =
 
 useEffect(() => {
   let active = true;
-
   async function loadNotificationCount() {
     try {
-      const storedLastSeen = window.localStorage.getItem(
-        TEACHER_NOTIFICATIONS_LAST_SEEN_KEY
-      );
-
-      const lastSeenAt = storedLastSeen
-        ? Number(storedLastSeen)
-        : 0;
-
-      const [
-        homeworkSnapshot,
-        messagesSnapshot,
-      ] = await Promise.all([
-        getDocs(
-          collection(
-            db,
-            "homeworkCompletions"
-          )
-        ),
-
-        getDocs(
-          collection(
-            db,
-            "studentTeacherMessages"
-          )
-        ),
+      const stored = Number(window.localStorage.getItem(TEACHER_NOTIFICATIONS_LAST_SEEN_KEY) || 0);
+      const lastSeenAt = Number.isFinite(stored) && stored > 0 ? stored : 0;
+      const count = async (name: string, field: string, value: string) => {
+        const base = collection(db, name);
+        const conditions = [where(field, "==", value),
+          ...(lastSeenAt ? [where("updatedAt", ">", new Date(lastSeenAt))] : [])];
+        try { return (await getCountFromServer(query(base, ...conditions))).data().count; }
+        catch (error) {
+          // During index rollout, use only the relevant pending queue, never the full history.
+          if ((error as { code?: string }).code !== "failed-precondition") throw error;
+          console.warn("Notification count index is not ready:", name, field);
+          const { getDocs } = await import("firebase/firestore");
+          const snapshot = await getDocs(query(base, where(field, "==", value)));
+          return snapshot.docs.filter(item => {
+            const time = item.data().updatedAt ?? item.data().createdAt ?? item.data().completedAt;
+            return !lastSeenAt || (time?.toMillis?.() ?? (typeof time === "string" ? Date.parse(time) : 0)) > lastSeenAt;
+          }).length;
+        }
+      };
+      const [readings, solutions, journeys, messages] = await Promise.all([
+        count("homeworkCompletions", "readingStatus", "pending"),
+        count("homeworkCompletions", "solutionStatus", "pending"),
+        count("reading-submissions", "status", "pending"),
+        count("studentTeacherMessages", "teacherReply", ""),
       ]);
-
-      if (!active) {
-        return;
-      }
-
-      let homeworkCount = 0;
-
-      homeworkSnapshot.docs.forEach(
-        (completionDoc) => {
-          const data =
-            completionDoc.data();
-
-          const hasReadingAudio =
-            typeof data.readingAudioUrl ===
-              "string" &&
-            data.readingAudioUrl.trim() !== "";
-
-          const readingNeedsReview =
-            hasReadingAudio &&
-            data.readingStatus !==
-              "approved" &&
-            data.readingStatus !==
-              "rejected";
-
-          const notificationTime =
-            getNotificationTime(data.updatedAt) ||
-            getNotificationTime(data.completedAt) ||
-            getNotificationTime(data.createdAt);
-
-          const isNewNotification =
-            lastSeenAt === 0 ||
-            notificationTime > lastSeenAt;
-
-          if (
-            readingNeedsReview &&
-            isNewNotification
-          ) {
-            homeworkCount += 1;
-          }
-
-          const hasSolution =
-            typeof data.solutionUrl ===
-              "string" &&
-            data.solutionUrl.trim() !== "";
-
-          const solutionNeedsReview =
-            hasSolution &&
-            data.solutionStatus !==
-              "approved" &&
-            data.solutionStatus !==
-              "rejected";
-
-          if (
-            solutionNeedsReview &&
-            isNewNotification
-          ) {
-            homeworkCount += 1;
-          }
-        }
-      );
-
-      let messagesCount = 0;
-
-      messagesSnapshot.docs.forEach(
-        (messageDoc) => {
-          const data =
-            messageDoc.data();
-
-          const teacherReply =
-            typeof data.teacherReply ===
-              "string"
-              ? data.teacherReply.trim()
-              : "";
-
-          const messageTime =
-            getNotificationTime(data.updatedAt) ||
-            getNotificationTime(data.createdAt) ||
-            getNotificationTime(data.sentAt);
-
-          const isNewMessage =
-            lastSeenAt === 0 ||
-            messageTime > lastSeenAt;
-
-          if (!teacherReply && isNewMessage) {
-            messagesCount += 1;
-          }
-        }
-      );
-
-      setHomeworkNotificationCount(
-        homeworkCount
-      );
-
-      setMessageNotificationCount(
-        messagesCount
-      );
-    } catch (error) {
-      console.error(
-        "تعذر تحميل عداد الإشعارات:",
-        error
-      );
-    }
+      if (!active) return;
+      setHomeworkNotificationCount(readings + solutions + journeys);
+      setMessageNotificationCount(messages);
+    } catch (error) { console.error("تعذر تحميل عداد الإشعارات:", error); }
   }
-
   void loadNotificationCount();
-
-  return () => {
-    active = false;
-  };
+  return () => { active = false; };
 }, []);
 
   return (

@@ -1,17 +1,15 @@
 "use client";
 
+import { readReadingReviewPage, type ReviewCursor } from "../../lib/readingReviewPages";
+
 import DeferredMedia from "../../components/DeferredMedia";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   arrayUnion,
-  collection,
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
-  query,
-  where,
   increment,
   runTransaction,
   serverTimestamp,
@@ -140,6 +138,12 @@ type AudioStatus =
 export default function ReadingSubmissionsPage() {
   const [submissions, setSubmissions] = useState<ReadingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewScope, setReviewScope] = useState<"pending" | "all">("pending");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const cursors = useRef<ReviewCursor>({ journeyDone: false, homeworkDone: false });
+  const loadGeneration = useRef(0);
+  const classroomCache = useRef(new Map<string, string>());
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
   const [cleanupMessage, setCleanupMessage] = useState("");
@@ -161,25 +165,27 @@ export default function ReadingSubmissionsPage() {
     );
   }
 
-  async function fetchSubmissions() {
-    /*
-     * لا نستخدم orderBy داخل Firestore هنا؛ لأن orderBy يستبعد
-     * أي قراءة قديمة أو جديدة لا تحتوي على createdAt.
-     * نجلب جميع القراءات ثم نرتبها محليًا، مع دعم submittedAt أيضًا.
-     */
-    const [journeySnapshot, homeworkSnapshot] = await Promise.all([
-      getDocs(collection(db, "reading-submissions")),
-      getDocs(query(collection(db, "homeworkCompletions"), where("readingAudioUrl", "!=", ""))),
-    ]);
+  async function fetchSubmissions(reset = true) {
+    if (reset) {
+      loadGeneration.current += 1;
+      cursors.current = { journeyDone: false, homeworkDone: false };
+    }
+    const generation = loadGeneration.current;
+    const cursor = { ...cursors.current };
+    const page = await readReadingReviewPage(reviewScope, cursor);
+    if (generation !== loadGeneration.current) return [];
+    const { journeySnapshot, homeworkSnapshot } = page;
+    cursors.current = page.cursor;
+    setHasMore(page.hasMore);
 
-    const journeyRows = journeySnapshot.docs.map((item) => ({
+    const journeyRows = (journeySnapshot?.docs ?? []).map((item) => ({
       id: `journey-${item.id}`,
       sourceCollection: "reading-submissions" as const,
       sourceDocumentId: item.id,
       ...item.data(),
     })) as ReadingSubmission[];
 
-    const homeworkRows = homeworkSnapshot.docs
+    const homeworkRows = (homeworkSnapshot?.docs ?? [])
       .map((item) => {
         const data = item.data();
         const readingAudioUrl =
@@ -266,6 +272,7 @@ export default function ReadingSubmissionsPage() {
             .filter(
               (item) =>
                 !item.studentClassroom?.trim() &&
+                !classroomCache.current.has(item.studentId ?? "") &&
                 Boolean(item.studentId?.trim())
             )
             .map(
@@ -278,7 +285,7 @@ export default function ReadingSubmissionsPage() {
     if (
       missingClassroomStudentIds.length === 0
     ) {
-      return rows;
+      return rows.map(item => ({ ...item, studentClassroom: item.studentClassroom?.trim() || classroomCache.current.get(item.studentId ?? "") || "" }));
     }
 
     const classroomEntries =
@@ -313,6 +320,7 @@ export default function ReadingSubmissionsPage() {
                   ? studentData.classroom.trim()
                   : "";
 
+              classroomCache.current.set(studentId, classroom);
               return [
                 studentId,
                 classroom,
@@ -332,10 +340,7 @@ export default function ReadingSubmissionsPage() {
         )
       );
 
-    const classroomByStudentId =
-      new Map<string, string>(
-        classroomEntries
-      );
+    classroomEntries.forEach(([id, classroom]) => classroomCache.current.set(id, classroom));
 
     return rows.map(
       (item) => ({
@@ -345,7 +350,7 @@ export default function ReadingSubmissionsPage() {
           item.studentClassroom?.trim() ||
           (
             item.studentId
-              ? classroomByStudentId.get(
+              ? classroomCache.current.get(
                   item.studentId.trim()
                 )
               : ""
@@ -355,13 +360,20 @@ export default function ReadingSubmissionsPage() {
     );
   }
 
-  async function loadSubmissions() {
+  async function loadSubmissions(reset = true) {
+    const previousGeneration = loadGeneration.current;
+    const expectedGeneration = previousGeneration + (reset ? 1 : 0);
     try {
       setLoading(true);
 
-      const rows = await fetchSubmissions();
-
-      setSubmissions(rows);
+      setLoadError("");
+      const rows = await fetchSubmissions(reset);
+      if (loadGeneration.current !== expectedGeneration) return;
+      setSubmissions(current => {
+        const combined = new Map((reset ? [] : current).map(item => [item.id, item]));
+        rows.forEach(item => combined.set(item.id, item));
+        return [...combined.values()].sort((a, b) => (getTimestampMillis(b.createdAt) || getTimestampMillis(b.submittedAt)) - (getTimestampMillis(a.createdAt) || getTimestampMillis(a.submittedAt)));
+      });
 
       setAudioStatuses(
         (current) => {
@@ -390,62 +402,19 @@ export default function ReadingSubmissionsPage() {
       );
     } catch (error) {
       console.error("فشل تحميل القراءات:", error);
+      if (loadGeneration.current === expectedGeneration) setLoadError("تعذر تحميل القراءات. حاول التحديث مرة أخرى.");
     } finally {
-      setLoading(false);
+      if (loadGeneration.current === expectedGeneration) setLoading(false);
     }
   }
 
   useEffect(() => {
     let active = true;
-
-    async function loadInitialSubmissions() {
-      try {
-        const rows = await fetchSubmissions();
-
-        if (active) {
-          setSubmissions(rows);
-
-          setAudioStatuses(
-            (current) => {
-              const next = {
-                ...current,
-              };
-
-              rows.forEach(
-                (item) => {
-                  if (
-                    !item.audioUrl?.trim()
-                  ) {
-                    next[item.id] =
-                      "error";
-                  } else if (
-                    !next[item.id]
-                  ) {
-                    next[item.id] =
-                      "idle";
-                  }
-                }
-              );
-
-              return next;
-            }
-          );
-        }
-      } catch (error) {
-        console.error("فشل تحميل القراءات:", error);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadInitialSubmissions();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+    queueMicrotask(() => { if (active) void loadSubmissions(); });
+    return () => { active = false; loadGeneration.current += 1; };
+    // The loader captures this scope; cursors reset whenever it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewScope]);
 
   async function grantCompletedReadingWeek(
     studentId: string,
@@ -615,13 +584,14 @@ export default function ReadingSubmissionsPage() {
   }
 
   async function deleteDuplicateReadings() {
-    if (cleaningDuplicates) {
+    if (cleaningDuplicates || reviewScope !== "all" || hasMore) {
       return;
     }
 
     const groups = new Map<string, ReadingSubmission[]>();
 
     for (const submission of submissions) {
+      if (submission.sourceCollection !== "reading-submissions") continue;
       const studentId =
         submission.studentId?.trim() || "";
 
@@ -710,7 +680,7 @@ export default function ReadingSubmissionsPage() {
               doc(
                 db,
                 "reading-submissions",
-                submissionId
+                submissions.find(item => item.id === submissionId)!.sourceDocumentId!
               )
             )
           )
@@ -721,7 +691,7 @@ export default function ReadingSubmissionsPage() {
         `✅ تم حذف ${duplicateIds.length} قراءة متكررة بنجاح.`
       );
 
-      await loadSubmissions();
+      setSubmissions(current => current.filter(item => !duplicateIds.includes(item.id)));
     } catch (error) {
       console.error(
         "فشل حذف القراءات المتكررة:",
@@ -969,7 +939,7 @@ export default function ReadingSubmissionsPage() {
         );
       }
 
-      await loadSubmissions();
+      setSubmissions(current => current.map(item => item.id === submissionId ? { ...item, status } : item));
     } catch (error) {
       console.error(
         "فشل تحديث حالة القراءة:",
@@ -1028,7 +998,7 @@ export default function ReadingSubmissionsPage() {
             onClick={() =>
               void deleteDuplicateReadings()
             }
-            disabled={cleaningDuplicates}
+            disabled={cleaningDuplicates || reviewScope !== "all" || hasMore || loading}
             style={{
               marginTop: "16px",
               border: "1px solid rgba(255,255,255,0.55)",
@@ -1049,9 +1019,20 @@ export default function ReadingSubmissionsPage() {
           >
             {cleaningDuplicates
               ? "⏳ جارٍ تنظيف التكرارات..."
-              : "🧹 حذف القراءات المتكررة"}
+              : "🧹 حذف التكرارات بعد تحميل جميع السجلات"}
           </button>
         </div>
+
+        <section style={{ marginBottom: 16, lineHeight: 1.8 }}>
+          <label htmlFor="reading-review-scope">عرض القراءات: </label>
+          <select id="reading-review-scope" value={reviewScope} disabled={loading || updatingId !== null} onChange={event => { setSubmissions([]); setHasMore(false); setReviewScope(event.target.value as "pending" | "all"); }}>
+            <option value="pending">بانتظار المراجعة</option>
+            <option value="all">جميع السجلات — بما فيها القديمة</option>
+          </select>
+          <button type="button" disabled={loading || updatingId !== null} onClick={() => void loadSubmissions()}>تحديث القراءات</button>
+          <p>تظهر السجلات على دفعات. للاطلاع على القراءات المعتمدة أو سجلات قديمة لا تظهر في قائمة الانتظار، اختر «جميع السجلات».</p>
+          {loadError && <p role="alert">{loadError}</p>}
+        </section>
 
         {cleanupMessage && (
           <div
@@ -1093,9 +1074,11 @@ export default function ReadingSubmissionsPage() {
                 textAlign: "center",
               }}
             >
-              لا توجد قراءات مرسلة حتى الآن.
+              {hasMore ? "لا توجد قراءات في هذه الدفعة. اضغط تحميل المزيد للاطلاع على بقية السجلات." : "لا توجد قراءات ضمن العرض المحدد."}
             </div>
           )}
+
+        {hasMore && <button type="button" disabled={loading || updatingId !== null} onClick={() => void loadSubmissions(false)}>تحميل المزيد من القراءات</button>}
 
         <div
           style={{

@@ -1,10 +1,11 @@
 "use client";
 
+import { getDocsOnce as getDocs } from "../../lib/firestoreReadOnce";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
-  getDocs,
   query,
   where,
 } from "firebase/firestore";
@@ -122,6 +123,11 @@ export default function ReadingJourneysPage() {
         setLoading(true);
         setError("");
 
+        const weekStart = getWeekKey(getSaudiDateKey());
+        const startAt = new Date(weekStart + "T00:00:00+03:00");
+        const merge = (snapshots: Awaited<ReturnType<typeof getDocs>>[]) => ({
+          docs: [...new Map(snapshots.flatMap(snapshot => snapshot.docs).map(doc => [doc.id, doc])).values()],
+        });
         const [
           studentsSnapshot,
           completionsSnapshot,
@@ -135,13 +141,16 @@ export default function ReadingJourneysPage() {
             )
           ),
 
-          getDocs(
-            query(
-              collection(db, "homeworkCompletions"),
-              where("readingAudioUrl", "!=", "")
-            )
-          ),
-          getDocs(collection(db, "reading-submissions")),
+          Promise.all([
+            getDocs(query(collection(db, "homeworkCompletions"), where("completedAt", ">=", startAt))),
+            getDocs(query(collection(db, "homeworkCompletions"), where("readingDate", ">=", weekStart))),
+            getDocs(query(collection(db, "homeworkCompletions"), where("updatedAt", ">=", startAt))),
+          ]).then(merge),
+          Promise.all([
+            getDocs(query(collection(db, "reading-submissions"), where("readingDate", ">=", weekStart))),
+            getDocs(query(collection(db, "reading-submissions"), where("createdAt", ">=", startAt))),
+            getDocs(query(collection(db, "reading-submissions"), where("submittedAt", ">=", startAt))),
+          ]).then(merge),
           getDocs(collection(db, "reading-progress")),
         ]);
 
@@ -391,6 +400,7 @@ export default function ReadingJourneysPage() {
 
             weekDays,
 
+            // The overview is weekly; complete history remains in the student detail.
             latestReading:
               latestRecord?.date ||
               null,

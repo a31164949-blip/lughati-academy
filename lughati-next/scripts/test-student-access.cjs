@@ -44,12 +44,30 @@ const { getFirebaseAdmin } = load('firebase-admin.ts', {
   assert.equal(getFirebaseAdmin().adminAuth.createCustomToken(), 'custom');
   let homework = [{ status: 'completed', completedAt: { toMillis: () => now } }];
   let readings = [];
-  const activityDb = { collection: name => ({ where: () => ({ select: () => ({ get: async () => ({ docs: (name === 'homeworkCompletions' ? homework : readings).map(data => ({ data: () => data })) }) }) }) }) };
+  const bounds = [];
+  let activityFailure = null;
+  const activityDb = { collection: name => {
+    function makeQuery(filters = []) {
+      const query = {
+        where(field, op, value) {
+          if (op === '>=') bounds.push([name, field, value]);
+          return makeQuery([...filters, [field, op, value]]);
+        },
+        select() { return query; },
+        async get() {
+          if (activityFailure && filters.some(([,op]) => op === '>=')) throw activityFailure;
+          return { docs: (name === 'homeworkCompletions' ? homework : readings)
+            .filter(data => filters.every(([field, op, value]) => op !== '>=' || (data[field]?.toMillis?.() ?? 0) >= value.getTime()))
+            .map(data => ({ data: () => data })) };
+        },
+      }; return query;
+    } return makeQuery();
+  } };
   const server = load('app/lib/studentAccess.ts', {
     'server-only': {},
     'next/cache': { unstable_cache: callback => callback, revalidateTag: () => {} },
     '../../firebase-admin': { getFirebaseAdmin: () => ({ adminDb: activityDb, adminAuth: { verifyIdToken: async () => ({ role: 'student', studentDocId: 'own' }) } }) },
-    './studentAccessPolicy': { evaluateAccess },
+    './studentAccessPolicy': { evaluateAccess, INACTIVITY_DAYS: 14 },
   });
   const student = { createdAt: { toMillis: () => now - 30 * day } };
   assert.equal((await server.studentAccess('own', student)).extrasSuspended, false);
@@ -60,8 +78,22 @@ const { getFirebaseAdmin } = load('firebase-admin.ts', {
   readings[0].status = 'rejected';
   assert.equal((await server.studentAccess('own', student)).extrasSuspended, true);
   await assert.rejects(server.requireStudentExtras('own', student), /FORBIDDEN/);
+  assert.ok(bounds.some(([name, field]) => name === 'homeworkCompletions' && field === 'completedAt'));
+  assert.ok(bounds.some(([name, field]) => name === 'reading-submissions' && field === 'createdAt'));
+  readings = [{ status: 'approved', createdAt: { toMillis: () => now - 20 * day } }];
+  assert.equal((await server.studentAccess('own', student)).extrasSuspended, true);
+  readings.push({ status: 'approved', createdAt: { toMillis: () => now - day } });
+  assert.equal((await server.studentAccess('own', student)).extrasSuspended, false);
+  activityFailure = Object.assign(new Error('index building'), { code: 9 });
+  assert.equal((await server.studentAccess('own', student)).extrasSuspended, false, 'index rollout preserves active student access');
+  activityFailure = Object.assign(new Error('permission denied'), { code: 7 });
+  await assert.rejects(server.studentAccess('own', student), /permission denied/);
+  const beforeManual = bounds.length;
+  assert.equal((await server.studentAccess('own', { ...student, accessControl: { mode: 'account' } })).accountSuspended, true);
+  assert.equal(bounds.length, beforeManual, 'manual freezing must not scan activity');
+  activityFailure = null;
   await server.requireSubmissionIdentity(new Request('https://example.com', { headers: { Authorization: 'Bearer token' } }), 'own');
   await assert.rejects(server.requireSubmissionIdentity(new Request('https://example.com', { headers: { Authorization: 'Bearer token' } }), 'other'), /FORBIDDEN/);
   await assert.rejects(server.requireSubmissionIdentity(new Request('https://example.com'), 'own'), /UNAUTHORIZED/);
-  console.log('25 student access policy, activity and authentication checks passed.');
+  console.log('Student access policy, bounded activity and authentication checks passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
