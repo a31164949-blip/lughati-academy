@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -15,6 +15,14 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const loginRoute = path === "/login" || path === "/teacher-login";
+  async function leaveAccount() {
+    setSigningOut(true); setSignOutError("");
+    try { await signOut(auth); window.location.assign("/teacher-login"); }
+    catch { setSignOutError("تعذر تسجيل الخروج. حاول مرة أخرى."); setSigningOut(false); }
+  }
   useEffect(() => onAuthStateChanged(auth, value => { setUser(value); setAuthReady(true); setState(null); setChecked(false); }), []);
   useEffect(() => {
     if (!user) return;
@@ -52,7 +60,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   useEffect(() => {
     let alive = true;
     setChecked(false); setError(false);
-    if (!user || path === "/login") { setChecked(true); return; }
+    if (!user || loginRoute) { setChecked(true); return; }
     async function check() {
       try {
         const token = await user!.getIdTokenResult();
@@ -65,7 +73,8 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     }
     void check();
     return () => { alive = false; };
-  }, [user, path, retry]);
+  }, [user, path, retry, loginRoute]);
+  if (loginRoute) return <>{children}</>;
   if (!authReady && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من الدخول…</main>;
   const protectedRoute = extras.some(prefix => path === prefix || path.startsWith(prefix + "/"));
   if (user && !checked && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من حالة الحساب…</main>;
@@ -79,6 +88,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
       {state.automatic && <p>يعود تفعيل المزايا بعد إرسال واجب أو قراءة مقبولة، أو بقرار المعلم.</p>}
       {state.accountSuspended && path !== "/student-contact" && <Link href="/student-contact" className="mt-5 block rounded-2xl bg-emerald-700 p-5 text-center font-bold text-white">💬 تواصل مع معلمي — للدعم والاستفسار</Link>}
       {state.accountSuspended && !state.until && <p>يبقى الحساب مجمّدًا حتى يعيد المعلم تفعيله.</p>}
+      {state.accountSuspended && <div className="mt-4"><button type="button" disabled={signingOut} onClick={() => void leaveAccount()} className="rounded-xl border border-amber-700 px-4 py-2 font-bold">{signingOut ? "جارٍ تسجيل الخروج…" : "تسجيل الخروج / الدخول بحساب المعلم"}</button>{signOutError && <p role="status">{signOutError}</p>}</div>}
       {!state.accountSuspended && <div className="flex flex-wrap gap-4"><Link href="/homeworks">الواجبات</Link><Link href="/reading-journey">القراءة</Link><Link href="/parent/support">طلب مساعدة</Link></div>}
     </section>}
     {!blocked && children}
