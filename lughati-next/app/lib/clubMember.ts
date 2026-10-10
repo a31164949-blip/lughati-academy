@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "./studentAccess";
 import "server-only";
 import { Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../firebase-admin";
@@ -18,6 +19,7 @@ export async function requireClubMember(request: Request) {
   if (!studentSnapshot.exists) throw new Error("STUDENT_NOT_FOUND");
 
   const studentData = studentSnapshot.data() ?? {};
+  await requireStudentExtras(studentId, studentData);
   const membership = studentData.academyClubMembership;
   const expiry = membership?.expiresAt instanceof Timestamp
     ? membership.expiresAt.toDate()

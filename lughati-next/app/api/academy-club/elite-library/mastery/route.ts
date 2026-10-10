@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "../../../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../../firebase-admin";
@@ -17,6 +18,7 @@ async function getStudentId(request: Request) {
   const decoded = await adminAuth.verifyIdToken(authorization.slice(7));
   if (decoded.role !== "student") throw new Error("FORBIDDEN");
   if (typeof decoded.studentDocId !== "string" || !decoded.studentDocId) throw new Error("STUDENT_NOT_FOUND");
+  await requireStudentExtras(decoded.studentDocId);
   return decoded.studentDocId;
 }
 

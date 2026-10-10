@@ -1,3 +1,4 @@
+import { invalidateStudentAccess, requireSubmissionIdentity } from "../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import {
   FieldValue,
@@ -467,6 +468,7 @@ export async function POST(
      * قراءة قديمة للطالب
      * في اليوم نفسه.
      */
+    await requireSubmissionIdentity(request, studentId);
     const existingOldSubmission =
       await adminDb
         .collection(
@@ -599,6 +601,8 @@ export async function POST(
       }
     );
 
+    invalidateStudentAccess(studentId);
+
     /*
       إذا كان طلب ثانٍ وصل
       بعد إنشاء الطلب الأول.
@@ -643,6 +647,7 @@ export async function POST(
       }
     );
   } catch (error) {
+    if (error instanceof Error && ["UNAUTHORIZED", "FORBIDDEN"].includes(error.message)) return NextResponse.json({ success: false, message: "الحساب معلّق مؤقتًا أو تعذر التحقق من الدخول. تواصل مع المعلم." }, { status: error.message === "UNAUTHORIZED" ? 401 : 403 });
     /*
      * transaction.create
      * يمكن أن يفشل إذا سبق

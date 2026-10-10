@@ -12,9 +12,20 @@ service cloud.firestore {
         && request.auth.uid == "ftT1AsqL7sZhdKiULp9oMMrCRnY2";
     }
 
+    function isStudentIdentity() {
+      return isSignedIn() && request.auth.token.role == "student";
+    }
+
     function isStudent() {
       return isSignedIn()
-        && request.auth.token.role == "student";
+        && request.auth.token.role == "student"
+        && studentAccountAvailable();
+    }
+
+    function studentAccountAvailable() {
+      let control = get(/databases/$(database)/documents/students/$(request.auth.token.studentDocId)).data.get('accessControl', {});
+      return control.get('mode', '') != 'account'
+        || (control.get('until', null) != null && control.until <= request.time);
     }
 
     function isOwnStudentDocument(studentDocId) {
@@ -336,11 +347,11 @@ match /studentTeacherMessages/{messageId} {
 
   allow read: if isTeacher()
     || (
-      isStudent()
+      isStudentIdentity()
       && resource.data.studentId
         == request.auth.token.studentDocId
     );
-allow create: if isStudent()
+allow create: if isStudentIdentity()
   && request.resource.data.studentId
     == request.auth.token.studentDocId
 
@@ -361,7 +372,7 @@ allow create: if isStudent()
 
   allow update: if isTeacher()
     || (
-      isStudent()
+      isStudentIdentity()
       && resource.data.studentId
         == request.auth.token.studentDocId
       && request.resource.data.studentId
