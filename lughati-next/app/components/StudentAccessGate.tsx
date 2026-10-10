@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
 import type { AccessState } from "../lib/studentAccessPolicy";
 const extras = ["/academy-club", "/weekly-challenge", "/notebook-excellence", "/student-avatar"];
 export default function StudentAccessGate({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,39 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => onAuthStateChanged(auth, value => { setUser(value); setAuthReady(true); setState(null); setChecked(false); }), []);
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    let unsubscribe: (() => void) | undefined;
+    const refresh = () => {
+      if (!alive || document.visibilityState === "hidden") return;
+      setChecked(false);
+      setRetry(value => value + 1);
+    };
+    void user.getIdTokenResult().then(token => {
+      if (!alive || token.claims.role !== "student" || typeof token.claims.studentDocId !== "string") return;
+      let previous: string | undefined;
+      unsubscribe = onSnapshot(doc(db, "students", token.claims.studentDocId), snapshot => {
+        const current = JSON.stringify(snapshot.data()?.accessControl ?? {});
+        if (current !== previous) { previous = current; refresh(); }
+      }, () => refresh());
+    }).catch(() => refresh());
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      alive = false;
+      unsubscribe?.();
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user]);
+  useEffect(() => {
+    if (!state?.accountSuspended) return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") setRetry(value => value + 1);
+    }, 60000);
+    return () => window.clearInterval(interval);
+  }, [state?.accountSuspended]);
   useEffect(() => {
     let alive = true;
     setChecked(false); setError(false);
