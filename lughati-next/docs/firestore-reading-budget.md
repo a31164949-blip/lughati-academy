@@ -8,11 +8,8 @@ Approval/retry updates the displayed row without re-fetching either collection.
 Classroom lookups are reused within the screen. Duplicate cleanup requires loading
 the whole archive and only deletes real journey document IDs.
 
-The teacher bell uses four count aggregations for pending homework audio,
-solutions, daily reading, and unanswered messages. After the bell is opened, the
-`updatedAt` threshold preserves the new-notification behavior. These queues rely
-on the fields written by current submission/message handlers. Undated or
-unnormalized legacy reading records remain available in the review archive.
+The teacher bell and all automatic counter queries have been removed. A static
+link keeps the notification center accessible; its requests run only when opened.
 
 The weekly reading overview fetches this week's date/timestamp ranges; student
 detail pages retain complete history. Activity-based access checks use the recent
@@ -40,13 +37,11 @@ firebase deploy --only firestore:indexes --project lughati-academy
 
 Wait until the new indexes are READY in Firebase:
 - `homeworkCompletions`: `studentId/completedAt`, `studentId/createdAt`,
-  `readingStatus/updatedAt`, `solutionStatus/updatedAt`.
-- `reading-submissions`: `studentId/createdAt`, `status/updatedAt`.
-- `studentTeacherMessages`: `teacherReply/updatedAt`.
+  both used for bounded activity and legacy daily lookups.
+- `reading-submissions`: `studentId/createdAt`.
 
 Only missing-index errors fall back to compatible reads. Activity checks retain
-per-student history as a rollout fallback; notification counts fall back to the
-relevant pending queue. Network/permission errors are not silently converted to
+per-student history as a rollout fallback. Network/permission errors are not silently converted to
 empty activity. Vercel deployment alone does not publish Firebase indexes.
 
 ## Validation

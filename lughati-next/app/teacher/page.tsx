@@ -4,21 +4,12 @@
 
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
-import { useEffect, useState } from "react";
-import {
-  collection,
-  getCountFromServer,
-  query,
-  where,
-} from "firebase/firestore";
-
-import { db } from "../../firebase";
-
-const TEACHER_NOTIFICATIONS_LAST_SEEN_KEY =
-  "teacher-notifications-last-seen-at";
-
-
 const sections = [
+  {
+    title: "📨 مركز الإشعارات",
+    description: "فتح طلبات المراجعة عند الحاجة.",
+    href: "/teacher/notifications",
+  },
   {
     title: "💾 إدارة مساحة التخزين",
     description: "مراجعة الملفات الكبيرة والمرفوضات القديمة، مع الحفاظ على أعمال الطلاب المميزة.",
@@ -236,57 +227,6 @@ const sections = [
 ];
 
 export default function TeacherDashboardPage() {
-const [
-  homeworkNotificationCount,
-  setHomeworkNotificationCount,
-] = useState(0);
-
-const [
-  messageNotificationCount,
-  setMessageNotificationCount,
-] = useState(0);
-
-const notificationCount =
-  homeworkNotificationCount +
-  messageNotificationCount;
-
-useEffect(() => {
-  let active = true;
-  async function loadNotificationCount() {
-    try {
-      const stored = Number(window.localStorage.getItem(TEACHER_NOTIFICATIONS_LAST_SEEN_KEY) || 0);
-      const lastSeenAt = Number.isFinite(stored) && stored > 0 ? stored : 0;
-      const count = async (name: string, field: string, value: string) => {
-        const base = collection(db, name);
-        const conditions = [where(field, "==", value),
-          ...(lastSeenAt ? [where("updatedAt", ">", new Date(lastSeenAt))] : [])];
-        try { return (await getCountFromServer(query(base, ...conditions))).data().count; }
-        catch (error) {
-          // During index rollout, use only the relevant pending queue, never the full history.
-          if ((error as { code?: string }).code !== "failed-precondition") throw error;
-          console.warn("Notification count index is not ready:", name, field);
-          const { getDocs } = await import("firebase/firestore");
-          const snapshot = await getDocs(query(base, where(field, "==", value)));
-          return snapshot.docs.filter(item => {
-            const time = item.data().updatedAt ?? item.data().createdAt ?? item.data().completedAt;
-            return !lastSeenAt || (time?.toMillis?.() ?? (typeof time === "string" ? Date.parse(time) : 0)) > lastSeenAt;
-          }).length;
-        }
-      };
-      const [readings, solutions, journeys, messages] = await Promise.all([
-        count("homeworkCompletions", "readingStatus", "pending"),
-        count("homeworkCompletions", "solutionStatus", "pending"),
-        count("reading-submissions", "status", "pending"),
-        count("studentTeacherMessages", "teacherReply", ""),
-      ]);
-      if (!active) return;
-      setHomeworkNotificationCount(readings + solutions + journeys);
-      setMessageNotificationCount(messages);
-    } catch (error) { console.error("تعذر تحميل عداد الإشعارات:", error); }
-  }
-  void loadNotificationCount();
-  return () => { active = false; };
-}, []);
 
   return (
     <main
@@ -342,46 +282,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* 🔔 جرس الإشعارات */}
-        <Link
-          href="/teacher/notifications"
-          onClick={() => {
-            window.localStorage.setItem(
-              TEACHER_NOTIFICATIONS_LAST_SEEN_KEY,
-              String(Date.now())
-            );
-
-            setHomeworkNotificationCount(0);
-            setMessageNotificationCount(0);
-          }}
-          style={styles.notificationBell}
-          title="مركز الإشعارات"
-          aria-label={`مركز الإشعارات - ${notificationCount} إشعار`}
-        >
-          <span style={styles.bellIcon}>
-            🔔
-          </span>
-
-          {notificationCount > 0 && (
-            <span
-              style={
-                styles.notificationBadge
-              }
-            >
-              {notificationCount > 99
-                ? "99+"
-                : notificationCount}
-            </span>
-          )}
-
-          <span
-            style={
-              styles.notificationText
-            }
-          >
-            الإشعارات
-          </span>
-        </Link>
       </section>
 
       {/* الإحصاءات */}
@@ -844,89 +744,6 @@ const styles: Record<
       "18px",
     lineHeight:
       1.8,
-  },
-
-  /* 🔔 جرس الإشعارات */
-  notificationBell: {
-    position:
-      "relative",
-    marginRight:
-      "auto",
-    minWidth:
-      "105px",
-    padding:
-      "12px 15px",
-    display:
-      "flex",
-    flexDirection:
-      "column",
-    alignItems:
-      "center",
-    justifyContent:
-      "center",
-    gap:
-      "4px",
-    borderRadius:
-      "20px",
-    background:
-      "linear-gradient(180deg, #ffffff 0%, #f2fbf7 100%)",
-    border:
-      "1px solid #c9e7d9",
-    color:
-      "#174d3b",
-    textDecoration:
-      "none",
-    boxShadow:
-      "0 7px 20px rgba(23, 77, 59, 0.07)",
-  },
-
-  bellIcon: {
-    fontSize:
-      "31px",
-    lineHeight:
-      1,
-  },
-
-  notificationBadge: {
-    position:
-      "absolute",
-    top:
-      "-8px",
-    right:
-      "-8px",
-    minWidth:
-      "27px",
-    height:
-      "27px",
-    padding:
-      "0 6px",
-    borderRadius:
-      "999px",
-    display:
-      "grid",
-    placeItems:
-      "center",
-    background:
-      "#dc2626",
-    color:
-      "#ffffff",
-    border:
-      "3px solid #ffffff",
-    fontSize:
-      "13px",
-    fontWeight:
-      900,
-    boxSizing:
-      "border-box",
-  },
-
-  notificationText: {
-    fontSize:
-      "13px",
-    fontWeight:
-      900,
-    color:
-      "#176b4d",
   },
 
   stats: {
