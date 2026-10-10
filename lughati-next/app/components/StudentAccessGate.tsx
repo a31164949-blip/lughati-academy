@@ -74,7 +74,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   return <>
     {state?.extrasSuspended && <section role="alert" className="m-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 leading-8">
       <h2 className="font-bold">{state.accountSuspended ? "الحساب معلّق مؤقتًا بقرار المعلم" : "تنبيه للأسرة: المزايا الإضافية متوقفة مؤقتًا"}</h2>
-      <p>{state.accountSuspended ? "عُلّق الدخول إلى خدمات الأكاديمية مؤقتًا. ستستمر متابعة الطالب داخل الفصل. نرجو التواصل مع المعلم لمساندة ابنكم وتمكينه من الاستفادة من الأكاديمية. وعند استمرار تأخر الواجبات ستتم إحالة الطالب إلى الموجّه الطلابي بالتنسيق مع الأسرة لتقديم الدعم المناسب." : state.message}</p>
+      <p>{state.accountSuspended ? "الحساب معلّق نظرًا لعدم استفادة ابنكم من خدمات الأكاديمية. ستستمر متابعة الطالب داخل الفصل. نرجو التواصل مع المعلم لمساندة ابنكم وتمكينه من الاستفادة من الأكاديمية. وعند استمرار تأخر الواجبات ستتم إحالة الطالب إلى الموجّه الطلابي بالتنسيق مع الأسرة لتقديم الدعم المناسب." : state.message}</p>
       {state.until && <p>حتى {new Date(state.until).toLocaleDateString("ar-SA", { timeZone: "Asia/Riyadh" })}، ويمكن للمعلم إعادة التفعيل قبل ذلك.</p>}
       {state.automatic && <p>يعود تفعيل المزايا بعد إرسال واجب أو قراءة مقبولة، أو بقرار المعلم.</p>}
       {state.accountSuspended && path !== "/student-contact" && <Link href="/student-contact" className="mt-5 block rounded-2xl bg-emerald-700 p-5 text-center font-bold text-white">💬 تواصل مع معلمي — للدعم والاستفسار</Link>}
