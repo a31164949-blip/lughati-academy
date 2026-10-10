@@ -344,9 +344,22 @@ async function getHomeworkStatusForDate(
   if (todayRows.length === 0) {
     const loadLegacyStatus = unstable_cache(
       async (studentId: string, day: string) => {
-        const snapshot = await adminDb.collection("homeworkCompletions")
-          .where("studentId", "==", studentId).get();
-        const rows = snapshot.docs.map(document => document.data() ?? {})
+        const base = adminDb.collection("homeworkCompletions").where("studentId", "==", studentId);
+        const start = new Date(day + "T00:00:00+03:00");
+        const end = new Date(day + "T23:59:59.999+03:00");
+        let documents: FirebaseFirestore.QueryDocumentSnapshot[];
+        try {
+          const snapshots = await Promise.all([
+            base.where("completedAt", ">=", start).where("completedAt", "<=", end).get(),
+            base.where("createdAt", ">=", start).where("createdAt", "<=", end).get(),
+          ]);
+          documents = [...new Map(snapshots.flatMap(snapshot => snapshot.docs).map(doc => [doc.id, doc])).values()];
+        } catch (error) {
+          if ((error as { code?: unknown }).code !== 9 && (error as { code?: unknown }).code !== "failed-precondition") throw error;
+          console.warn("Legacy homework date indexes are not ready");
+          documents = (await base.get()).docs;
+        }
+        const rows = documents.map(document => document.data() ?? {})
           .filter(data => !data.date &&
             (getFirestoreDateKey(data.completedAt) || getFirestoreDateKey(data.createdAt)) === day &&
             typeof data.solutionUrl === "string" && data.solutionUrl.trim() !== "");
@@ -356,8 +369,8 @@ async function getHomeworkStatusForDate(
           : rows[0].solutionStatus === "rejected" ? "rejected" as DailyProofStatus
           : "pending" as DailyProofStatus;
       },
-      ["legacy-homework-status-v1"],
-      { revalidate: 600 }
+      ["legacy-homework-status-v2"],
+      { revalidate: 600, tags: ["student-access:" + studentDocId] }
     );
     return loadLegacyStatus(studentDocId, dateKey);
   }

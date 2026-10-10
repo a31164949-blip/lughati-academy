@@ -1,5 +1,7 @@
 "use client";
 
+import { getDocsOnce as getDocs } from "../lib/firestoreReadOnce";
+
 import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 
 import { createSpeechRecorder } from "../lib/speechRecording";
@@ -8,7 +10,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   collection,
-  getDocs,
   limit,
   orderBy,
   query,

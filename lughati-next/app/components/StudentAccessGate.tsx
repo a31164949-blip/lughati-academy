@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { usePathname } from "next/navigation";
@@ -9,6 +9,7 @@ import type { AccessState } from "../lib/studentAccessPolicy";
 const extras = ["/academy-club", "/weekly-challenge", "/notebook-excellence", "/student-avatar"];
 export default function StudentAccessGate({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const lastFocusCheck = useRef(0);
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AccessState | null>(null);
@@ -23,13 +24,15 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     try { await signOut(auth); window.location.assign("/teacher-login"); }
     catch { setSignOutError("تعذر تسجيل الخروج. حاول مرة أخرى."); setSigningOut(false); }
   }
-  useEffect(() => onAuthStateChanged(auth, value => { setUser(value); setAuthReady(true); setState(null); setChecked(false); }), []);
+  useEffect(() => onAuthStateChanged(auth, value => { setUser(value); setAuthReady(true); setState(null); setChecked(false); setError(false); lastFocusCheck.current = 0; }), []);
   useEffect(() => {
     if (!user) return;
     let alive = true;
     let unsubscribe: (() => void) | undefined;
-    const refresh = () => {
+    const refresh = (force = false) => {
       if (!alive || document.visibilityState === "hidden") return;
+      if (!force && Date.now() - lastFocusCheck.current < 15000) return;
+      lastFocusCheck.current = Date.now();
       setRetry(value => value + 1);
     };
     void user.getIdTokenResult().then(token => {
@@ -37,35 +40,44 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
       let previous: string | undefined;
       unsubscribe = onSnapshot(doc(db, "students", token.claims.studentDocId), snapshot => {
         const current = JSON.stringify(snapshot.data()?.accessControl ?? {});
-        if (previous !== undefined && current !== previous) { setChecked(false); refresh(); }
+        if (previous !== undefined && current !== previous) { setChecked(false); refresh(true); }
         previous = current;
-      }, () => { setChecked(false); refresh(); });
+      }, () => { setChecked(false); refresh(true); });
     }).catch(() => refresh());
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
     return () => {
       alive = false;
       unsubscribe?.();
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
     };
   }, [user]);
   useEffect(() => {
-    if (!state?.accountSuspended) return;
-    const interval = window.setInterval(() => {
-      if (document.visibilityState !== "hidden") setRetry(value => value + 1);
-    }, 60000);
-    return () => window.clearInterval(interval);
-  }, [state?.accountSuspended]);
+    if (!state?.accountSuspended || !state.until) return;
+    const until = state.until;
+    let timer: number | undefined;
+    const waitForExpiry = () => {
+      const remaining = until - Date.now();
+      if (remaining <= 0) {
+        if (document.visibilityState !== "hidden") setRetry(value => value + 1);
+        return;
+      }
+      timer = window.setTimeout(waitForExpiry, Math.min(remaining + 100, 2147483647));
+    };
+    waitForExpiry();
+    return () => window.clearTimeout(timer);
+  }, [state?.accountSuspended, state?.until]);
   useEffect(() => {
     let alive = true;
     // Recheck in the background: replacing children on focus clears file inputs
     // and unsaved forms when Safari returns from its native file picker.
-    setError(false);
-    if (!user || loginRoute) { setChecked(true); return; }
+    if (!user || loginRoute) return;
     async function check() {
       try {
         const token = await user!.getIdTokenResult();
+        if (alive) setError(false);
         if (token.claims.role !== "student") { if (alive) setChecked(true); return; }
         const response = await fetch("/api/student-access", { headers: { Authorization: "Bearer " + token.token }, cache: "no-store" });
         if (!response.ok) throw new Error("ACCESS_CHECK_FAILED");
@@ -75,7 +87,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     }
     void check();
     return () => { alive = false; };
-  }, [user, path, retry, loginRoute]);
+  }, [user, retry, loginRoute]);
   if (loginRoute) return <>{children}</>;
   if (!authReady && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من الدخول…</main>;
   const protectedRoute = extras.some(prefix => path === prefix || path.startsWith(prefix + "/"));

@@ -1,10 +1,11 @@
 "use client";
 
+import { getDocsOnce as getDocs } from "../../lib/firestoreReadOnce";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
-  getDocs,
   limit,
   orderBy,
   query,
