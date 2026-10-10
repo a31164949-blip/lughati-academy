@@ -1,17 +1,14 @@
 "use client";
+import { readSharedContent } from "../lib/sharedPublicContent";
+
 
 import Link from "next/link";
-import {
-  collection,
-  getDocs,
-} from "firebase/firestore";
+
 import {
   useEffect,
   useMemo,
   useState,
 } from "react";
-
-import { db } from "../../firebase";
 
 type AcademyHero = {
   id: string;
@@ -152,12 +149,7 @@ export default function HeroesPage() {
         setErrorMessage("");
 
         const snapshot =
-          await getDocs(
-            collection(
-              db,
-              "academyHeroes"
-            )
-          );
+          await readSharedContent("heroes");
 
         const allHeroRecords =
           snapshot.docs.map(

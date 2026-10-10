@@ -17,18 +17,7 @@ import {
   type User,
 } from "firebase/auth";
 import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-import {
-  auth,
-  db,
-} from "../../firebase";
+import { auth } from "../../firebase";
 
 const journeyCards = [
   {
@@ -608,7 +597,7 @@ const [
     savingTaskId,
     setSavingTaskId,
   ] =
-  
+
     useState<number | null>(null);
 
   const [
@@ -660,7 +649,7 @@ const [
   useState<CrownAssessmentPreview | null>(
     null
   );
-  
+
   useEffect(() => {
     let active = true;
 
@@ -781,8 +770,14 @@ const [
     };
   }, []);
 
+  useEffect(() => onAuthStateChanged(auth, () => {
+    setNotifications([]);
+    setNotificationsOpen(false);
+    setCelebrationNotification(null);
+  }), []);
+
   useEffect(() => {
-    if (!user) {
+    if (!user || !notificationsOpen) {
       return;
     }
 
@@ -874,60 +869,8 @@ const [
     return () => {
       active = false;
     };
-  }, [user]);
- 
+  }, [user, notificationsOpen]);
 
-  useEffect(() => {
-    if (!user) {
-      setUnreadMessageCount(0);
-      return;
-    }
-
-    const currentUser = user;
-    let active = true;
-
-    async function loadUnreadMessageCount() {
-      try {
-        const tokenResult = await currentUser.getIdTokenResult();
-        const studentDocId =
-          typeof tokenResult.claims.studentDocId === "string"
-            ? tokenResult.claims.studentDocId
-            : "";
-
-        if (!studentDocId || !active) return;
-
-        const snapshot = await getDocs(
-          query(
-            collection(db, "studentTeacherMessages"),
-            where("studentId", "==", studentDocId),
-            orderBy("createdAt", "desc"),
-            limit(30)
-          )
-        );
-
-        if (!active) return;
-
-        const unreadCount = snapshot.docs.filter((messageDocument) => {
-          const data = messageDocument.data();
-          return (
-            typeof data.teacherReply === "string" &&
-            data.teacherReply.trim().length > 0 &&
-            data.studentViewedReply !== true
-          );
-        }).length;
-
-        setUnreadMessageCount(unreadCount);
-      } catch (error) {
-        console.error("تعذر تحميل عداد رسائل الطالب:", error);
-      }
-    }
-
-    void loadUnreadMessageCount();
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
 
   async function openNotification(
     notification: StudentNotification
@@ -4057,7 +4000,7 @@ try {
                 جديدًا.
               </p>
             </div>
-          </div> 
+          </div>
         </section>
 
         {/* مدينة الإنجاز - بطاقة مصغرة أعلى صفحة الطالب */}

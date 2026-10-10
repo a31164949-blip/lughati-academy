@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import { openR2Video } from "../../lib/uploadR2Video";
 import DeferredMedia from "../../components/DeferredMedia";
@@ -55,7 +57,7 @@ export default function TeacherGalleryPage() {
    * نعتمد الآن على workId
    * بدل row القديم الخاص بـ Google Sheets.
    */
-  
+
 
   /*
    * تحميل الأعمال المنشورة
@@ -307,6 +309,7 @@ useEffect(() => {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       /*
        * إذا كان العمل مميزًا،
@@ -324,6 +327,7 @@ useEffect(() => {
             workId
           )
         );
+      await invalidatePublicContent();
 
         setFeaturedIds(
           (current) =>
@@ -414,6 +418,7 @@ useEffect(() => {
         await deleteDoc(
           highlightRef
         );
+      await invalidatePublicContent();
 
         setFeaturedIds(
           (current) =>
@@ -453,6 +458,7 @@ useEffect(() => {
               serverTimestamp(),
           }
         );
+      await invalidatePublicContent();
 
         setFeaturedIds(
           (current) =>

@@ -1,4 +1,6 @@
 "use client";
+import { readSharedContent } from "../lib/sharedPublicContent";
+
 
 import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 
@@ -10,6 +12,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  startAfter,
+  type QueryDocumentSnapshot,
   getCountFromServer,
   query,
   serverTimestamp,
@@ -467,22 +472,16 @@ setReadingDays(
     async function loadTomorrowSpellingWords() {
       try {
         const weeklyPlanSnapshot =
-          await getDoc(
-            doc(
-              db,
-              "weeklyPlans",
-              "current"
-            )
-          );
+          await readSharedContent("plan");
 
-        if (!weeklyPlanSnapshot.exists()) {
+        if (weeklyPlanSnapshot.empty) {
           setTomorrowSpellingWords([]);
           setTomorrowSpellingDay("");
           return;
         }
 
         const data =
-          weeklyPlanSnapshot.data();
+          weeklyPlanSnapshot.docs[0].data();
 
         const days = Array.isArray(data.days)
           ? data.days
@@ -562,6 +561,9 @@ setReadingDays(
      نتائج الاختبارات
   ========================== */
 
+  const [resultsCursor, setResultsCursor] = useState<QueryDocumentSnapshot | null>(null);
+  const [nextResultsCursor, setNextResultsCursor] = useState<QueryDocumentSnapshot | null>(null);
+  const [resultsRetry, setResultsRetry] = useState(0);
   useEffect(() => {
     async function loadParentQuizResults() {
       try {
@@ -581,11 +583,9 @@ setReadingDays(
 
         const resultsQuery = query(
           collection(db, "quizResults"),
-          where(
-            "studentId",
-            "==",
-            studentId
-          )
+          where("studentId", "==", studentId),
+          ...(resultsCursor ? [startAfter(resultsCursor)] : []),
+          limit(20)
         );
 
         const snapshot =
@@ -669,19 +669,13 @@ setReadingDays(
             }
           );
 
-        setQuizResults(
-          loadedResults.filter(
-            (result) =>
-              result.totalScore > 0
-          )
-        );
+        setQuizResults(previous => resultsCursor ? [...previous, ...loadedResults.filter(result => result.totalScore > 0)] : loadedResults.filter(result => result.totalScore > 0));
+        setNextResultsCursor(snapshot.size === 20 ? snapshot.docs.at(-1)! : null);
       } catch (error) {
         console.error(
           "تعذر تحميل نتائج الاختبارات لولي الأمر:",
           error
         );
-
-        setQuizResults([]);
 
         setQuizResultsError(
           "تعذر تحميل نتائج الاختبارات حاليًا."
@@ -692,7 +686,7 @@ setReadingDays(
     }
 
     void loadParentQuizResults();
-  }, []);
+  }, [resultsCursor, resultsRetry]);
 
   /* =========================
      إنجاز الطالب الحقيقي
@@ -1324,6 +1318,8 @@ setReadingDays(
             وملاحظات المعلم.
           </p>
 
+          {nextResultsCursor && <button disabled={quizResultsLoading} onClick={() => setResultsCursor(nextResultsCursor)}>عرض المزيد من النتائج</button>}
+          {quizResultsError && <button disabled={quizResultsLoading} onClick={() => setResultsRetry(value => value + 1)}>إعادة المحاولة</button>}
           {quizResultsLoading ? (
             <p>جارٍ تحميل النتائج...</p>
           ) : quizResultsError ? (
@@ -1584,7 +1580,7 @@ setReadingDays(
         {/* بطاقة الطالب */}
 
         <section style={cardStyle}>
-          
+
           <div
             style={{
               display: "flex",
@@ -1736,7 +1732,7 @@ setReadingDays(
                       totalDailyTasks -
                       completedCount
                     } من المهام لإكمال رحلته اليومية. 🌟`}
-                    
+
             </p>
           </div>
         </section>

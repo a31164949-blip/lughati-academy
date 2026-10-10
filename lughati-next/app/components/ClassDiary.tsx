@@ -1,5 +1,5 @@
 "use client";
-
+import { readSharedContent } from "../lib/sharedPublicContent";
 
 import { cloudinaryImageUrl } from "../lib/cloudinaryDelivery";
 import Link from "next/link";
@@ -8,17 +8,6 @@ import {
   useMemo,
   useState,
 } from "react";
-
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-
-import { db } from "../../firebase";
 
 type StarStudentSnapshot = {
   studentId: string;
@@ -73,28 +62,10 @@ export default function ClassDiary() {
   useEffect(() => {
     async function loadLatestDiary() {
       try {
-        const diaryQuery =
-          query(
-            collection(
-              db,
-              "classDiary"
-            ),
-            where(
-              "isPublished",
-              "==",
-              true
-            ),
-            orderBy(
-              "createdAt",
-              "desc"
-            ),
-            limit(1)
-          );
+
 
         const snapshot =
-          await getDocs(
-            diaryQuery
-          );
+          await readSharedContent("latestDiary");
 
         if (
           snapshot.empty

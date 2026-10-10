@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 import { getFirebaseAdmin } from "../../../firebase-admin";
 
@@ -19,11 +20,6 @@ type PublicAnnouncementsPayload = {
   success: true;
   announcements: PublicAnnouncement[];
 };
-
-const CACHE_TTL_MS = 10 * 60 * 1000;
-
-let cachedPayload: PublicAnnouncementsPayload | null = null;
-let cachedAt = 0;
 
 function toMillis(value: unknown): number {
   if (
@@ -50,26 +46,13 @@ function jsonWithCache(
     status: 200,
     headers: {
       "Cache-Control":
-        "public, s-maxage=600, stale-while-revalidate=120",
+        "no-store",
       "X-Announcements-Cache": cacheState,
     },
   });
 }
 
-export async function GET() {
-  const now = Date.now();
-
-  if (
-    cachedPayload &&
-    now - cachedAt < CACHE_TTL_MS
-  ) {
-    return jsonWithCache(
-      cachedPayload,
-      "HIT"
-    );
-  }
-
-  try {
+async function loadPublicContent(): Promise<PublicAnnouncementsPayload> {
     const { adminDb } = getFirebaseAdmin();
 
     /*
@@ -149,26 +132,16 @@ export async function GET() {
       announcements,
     };
 
-    cachedPayload = payload;
-    cachedAt = now;
+    return payload;
+}
 
-    return jsonWithCache(
-      payload,
-      "MISS"
-    );
+const getCachedContent = unstable_cache(loadPublicContent, ["public-announcements-v2"], { revalidate: 300, tags: ["public-announcements"] });
+
+export async function GET() {
+  try {
+    return jsonWithCache(await getCachedContent(), "HIT");
   } catch (error) {
-    console.error(
-      "Public announcements error:",
-      error
-    );
-
-    if (cachedPayload) {
-      return jsonWithCache(
-        cachedPayload,
-        "STALE"
-      );
-    }
-
+    console.error("Public content error:", error);
     return NextResponse.json(
       {
         success: false,

@@ -1,4 +1,5 @@
 "use client";
+import { auth } from "../firebase";
 
 import WeeklyGames from "./components/WeeklyGames";
 import { useEffect, useRef, useState } from "react";
@@ -481,7 +482,7 @@ export default function Home() {
   const boardTouchStartX =
     useRef<number | null>(null);
 
-  
+
 
   /*
    * رسالة الوقت الذكية.
@@ -599,7 +600,6 @@ useEffect(() => {
         if (active) {
           setAnnouncements(cached);
         }
-        return;
       }
 
       const response = await fetch(
@@ -975,11 +975,14 @@ useEffect(() => {
         typeof window !== "undefined" &&
         new URLSearchParams(window.location.search).get("teacherPreview") === "1";
 
+      if (teacherPreview) await auth.authStateReady();
+      const previewToken = teacherPreview ? await auth.currentUser?.getIdToken() : undefined;
       const response = await fetch(
         teacherPreview
           ? "/api/public-weekly-engagement?teacherPreview=1"
           : "/api/public-weekly-engagement",
         {
+          headers: previewToken ? { Authorization: `Bearer ${previewToken}` } : undefined,
           method: "GET",
           cache: "default",
         }

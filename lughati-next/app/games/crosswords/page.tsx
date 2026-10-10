@@ -1,4 +1,5 @@
 "use client";
+import { startVisibleSubscription } from "../../lib/visibleSubscription";
 
 import Link from "next/link";
 
@@ -521,7 +522,7 @@ useEffect(() => {
     "lughati-crossword"
   );
 
-  const unsubscribe = onSnapshot(
+  const unsubscribe = startVisibleSubscription(() => onSnapshot(
     recordRef,
     (snapshot) => {
       if (!snapshot.exists()) {
@@ -543,7 +544,7 @@ useEffect(() => {
         error
       );
     }
-  );
+  ), document);
 
   return () => {
     unsubscribe();
@@ -1142,7 +1143,7 @@ async function saveBestTime(
                                   "#334155",
                                 borderRadius:
                                   "5px",
-                                  
+
                               }}
                             />
                           );

@@ -1,4 +1,6 @@
 "use client";
+import { invalidatePublicContent } from "../../lib/invalidatePublicContent";
+
 
 import { openR2Video } from "../../lib/uploadR2Video";
 import DeferredMedia from "../../components/DeferredMedia";
@@ -434,6 +436,7 @@ useEffect(() => {
             false,
         }
       );
+      await invalidatePublicContent();
 
       setSubmissions(
         (current) =>
@@ -523,6 +526,7 @@ useEffect(() => {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       alert(
         "💬 تم حفظ ملاحظة المعلم."
@@ -593,6 +597,7 @@ useEffect(() => {
             serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       setSubmissions(
         (current) =>
@@ -681,6 +686,7 @@ useEffect(() => {
           submissionId
         )
       );
+      await invalidatePublicContent();
 
       setSubmissions(
         (current) =>
@@ -751,6 +757,7 @@ useEffect(() => {
           updatedAt: serverTimestamp(),
         }
       );
+      await invalidatePublicContent();
 
       setSubmissions((current) =>
         current.map((submission) =>
@@ -1577,7 +1584,7 @@ useEffect(() => {
                             </button>
                           )}
 
-                        
+
                         {submission.workType === "video" &&
                           submission.status === APPROVED_STATUS &&
                           submission.tiktokConsentStatus !== "approved" && (

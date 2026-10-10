@@ -1,4 +1,6 @@
 "use client";
+import { readSharedContent } from "../lib/sharedPublicContent";
+
 
 import Link from "next/link";
 import {
@@ -6,15 +8,6 @@ import {
   useState,
 } from "react";
 
-import {
-  collection,
-  getDocs,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-
-import { db } from "../../firebase";
 import { cloudinaryImageUrl } from "../lib/cloudinaryDelivery";
 
 type DiaryPost = {
@@ -29,6 +22,10 @@ type DiaryPost = {
 export default function ClassDiaryPage() {
   const [posts, setPosts] =
     useState<DiaryPost[]>([]);
+
+  const [cursor, setCursor] = useState("");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const [loading, setLoading] =
     useState(true);
@@ -55,7 +52,7 @@ export default function ClassDiaryPage() {
    * نقرأ الرابط من المتصفح فقط
    * حتى لا يتعطل npm run build.
    */
-  
+
   /*
    * تحميل اليوميات المنشورة.
    */
@@ -66,26 +63,8 @@ export default function ClassDiaryPage() {
       try {
         setLoading(true);
 
-        const diaryQuery = query(
-          collection(
-            db,
-            "classDiary"
-          ),
-          where(
-            "isPublished",
-            "==",
-            true
-          ),
-          orderBy(
-            "createdAt",
-            "desc"
-          )
-        );
-
         const snapshot =
-          await getDocs(
-            diaryQuery
-          );
+          await readSharedContent("diary", cursor);
 
         const items: DiaryPost[] =
           snapshot.docs.map(
@@ -128,7 +107,9 @@ export default function ClassDiaryPage() {
           );
 
         if (isMounted) {
-          setPosts(items);
+          setPosts(previous => cursor ? [...previous, ...items] : items);
+          setNextCursor(snapshot.nextCursor);
+          setLoadError(false);
         }
       } catch (error) {
         console.error(
@@ -137,7 +118,7 @@ export default function ClassDiaryPage() {
         );
 
         if (isMounted) {
-          setPosts([]);
+          setLoadError(true);
         }
       } finally {
         if (isMounted) {
@@ -151,11 +132,13 @@ export default function ClassDiaryPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [cursor]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-emerald-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
+        {loadError && <p role="alert">تعذر تحميل اليوميات. أعد المحاولة بتحديث الصفحة.</p>}
+        {nextCursor && <button disabled={loading} onClick={() => setCursor(nextCursor)} className="mb-4 rounded-xl bg-emerald-700 px-5 py-3 text-white">{loading ? "جارٍ التحميل…" : "عرض يوميات أقدم"}</button>}
         {/* رأس الصفحة */}
 
         <div className="mb-7 flex flex-wrap items-center justify-between gap-4">

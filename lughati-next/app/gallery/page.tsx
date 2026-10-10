@@ -1,4 +1,6 @@
 "use client";
+import { readSharedContent } from "../lib/sharedPublicContent";
+
 
 import { openR2Video } from "../lib/uploadR2Video";
 import DeferredMedia from "../components/DeferredMedia";
@@ -14,12 +16,6 @@ import {
   useSearchParams,
 } from "next/navigation";
 
-import {
-  collection,
-  getDocs,
-} from "firebase/firestore";
-
-import { db } from "../../firebase";
 import { cloudinaryImageUrl, cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 
 type GalleryWork = {
@@ -60,6 +56,7 @@ type NotebookGalleryItem = {
 
 type GalleryResponse = {
   success: boolean;
+  cursors?: { works: string; notebooks: string };
 
   count?: number;
   notebookCount?: number;
@@ -381,12 +378,7 @@ function GalleryPageContent() {
     async function loadGalleryHighlights() {
       try {
         const snapshot =
-          await getDocs(
-            collection(
-              db,
-              "galleryHighlights"
-            )
-          );
+          await readSharedContent("highlights");
 
         const rows =
           snapshot.docs
@@ -429,77 +421,35 @@ function GalleryPageContent() {
     void loadGalleryHighlights();
   }, []);
 
+ const [nextCursors, setNextCursors] = useState({ works: "done", notebooks: "done" });
+ const [cursors, setCursors] = useState({ works: "", notebooks: "" });
+ const [moreAvailable, setMoreAvailable] = useState(false);
+ const [pageLoading, setPageLoading] = useState(false);
+ const [retry, setRetry] = useState(0);
  useEffect(() => {
-  let active = true;
-
-  fetch("/api/gallery", {
-    cache: "no-store",
-  })
-    .then(async (response) => {
-      const data =
-        (await response.json()) as GalleryResponse;
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "تعذر تحميل المعرض"
-        );
-      }
-
-      return data;
-    })
-    .then((data) => {
-      if (!active) {
-        return;
-      }
-
-      setWorks(
-        Array.isArray(data.works)
-          ? data.works
-          : []
-      );
-
-      setNotebookItems(
-        Array.isArray(data.notebooks)
-          ? data.notebooks
-          : []
-      );
-
-      setError("");
-    })
-    .catch((error) => {
-      console.error(
-        "تعذر تحميل المعرض:",
-        error
-      );
-
-      if (!active) {
-        return;
-      }
-
-      setWorks([]);
-      setNotebookItems([]);
-
-      setError(
-        "تعذر تحميل أعمال الطلاب حاليًا."
-      );
-    })
-    .finally(() => {
-      if (!active) {
-        return;
-      }
-
-      setLoading(false);
-      setNotebookLoading(false);
-    });
-
-  return () => {
-    active = false;
-  };
-}, []);
+   let active = true;
+   async function load() {
+     setPageLoading(true);
+     try {
+       const params = new URLSearchParams({ worksCursor: cursors.works, notebooksCursor: cursors.notebooks });
+       const response = await fetch(`/api/gallery?${params}`, { cache: "no-store" });
+       const data = await response.json() as GalleryResponse;
+       if (!response.ok || !data.success) throw new Error("GALLERY_FAILED");
+       if (!active) return;
+       setWorks(previous => cursors.works ? [...previous, ...(data.works || [])] : data.works || []);
+       setNotebookItems(previous => cursors.notebooks ? [...previous, ...(data.notebooks || [])] : data.notebooks || []);
+       setMoreAvailable(Boolean(data.cursors && (data.cursors.works !== "done" || data.cursors.notebooks !== "done")));
+       setNextCursors(data.cursors || { works: "done", notebooks: "done" });
+       setError("");
+     } catch {
+       if (active) setError("تعذر تحميل أعمال الطلاب حاليًا. أعد المحاولة.");
+     } finally {
+       if (active) { setLoading(false); setNotebookLoading(false); setPageLoading(false); }
+     }
+   }
+   void load();
+   return () => { active = false; };
+ }, [cursors, retry]);
 
   const approvedWorks =
     useMemo(
@@ -2221,7 +2171,11 @@ function GalleryPageContent() {
           )}
         </div>
       )}
-    </main>
+    <div className="my-6 flex justify-center gap-3">
+        {moreAvailable && <button type="button" disabled={pageLoading} onClick={() => setCursors(nextCursors)} className="rounded-xl bg-emerald-700 px-6 py-3 font-bold text-white">{pageLoading ? "جارٍ التحميل…" : "عرض أعمال أقدم"}</button>}
+        {error && <button type="button" disabled={pageLoading} onClick={() => setRetry(value => value + 1)}>إعادة المحاولة</button>}
+      </div>
+      </main>
   );
 }
 

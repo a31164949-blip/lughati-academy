@@ -1,4 +1,6 @@
 "use client";
+import { readSharedContent } from "../lib/sharedPublicContent";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -147,15 +149,15 @@ useEffect(() => {
   useEffect(() => {
     async function loadPlan() {
       try {
-        const planReference = doc(db, "weeklyPlans", "current");
-        const planSnapshot = await getDoc(planReference);
 
-        if (!planSnapshot.exists()) {
+        const planSnapshot = await readSharedContent("plan");
+
+        if (planSnapshot.empty) {
           setErrorMessage("لم تُنشر خطة أسبوعية حتى الآن.");
           return;
         }
 
-        const data = planSnapshot.data();
+        const data = planSnapshot.docs[0].data();
 
         if (data.published !== true) {
           setErrorMessage("الخطة الأسبوعية غير متاحة حاليًا.");
@@ -171,7 +173,7 @@ const savedDays: DayPlan[] = Array.isArray(data.days)
         typeof item.homework === "string" ? item.homework : "",
       readingTask:
         typeof item.readingTask === "string" ? item.readingTask : "",
-    
+
 
 spellingWords:
   typeof item.spellingWords === "string"
@@ -187,10 +189,10 @@ teacherNote:
   typeof item.teacherNote === "string"
     ? item.teacherNote
     : "",
-   
+
     }))
   : [];
-        
+
 
         setPlan({
           weeklyChallenge:
