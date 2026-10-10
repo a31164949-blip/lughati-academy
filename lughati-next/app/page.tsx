@@ -186,14 +186,6 @@ function getMilestoneIcon(pointsReached: number) {
 
 const sections: AcademySection[] = [
   {
-    icon: "📚",
-    title: "دروسي",
-    description:
-      "الدروس والأنشطة التعليمية الممتعة",
-    href: "/lessons",
-    className: "blue-card",
-  },
-  {
     icon: "🌱",
     title: "رحلة الدعم",
     description:
