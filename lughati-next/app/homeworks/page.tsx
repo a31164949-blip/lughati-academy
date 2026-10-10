@@ -14,7 +14,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import {
   getStudentSubmissionWindow,
   STUDENT_SUBMISSION_OPEN_TEXT,
@@ -547,6 +547,7 @@ useEffect(() => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: "Bearer " + await auth.currentUser?.getIdToken(),
         },
         body: JSON.stringify({
           mode: payload.mode,

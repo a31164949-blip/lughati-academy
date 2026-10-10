@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "../../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
@@ -29,6 +30,7 @@ async function identify(request: Request) {
   const snap = await adminDb.collection("students").doc(studentId).get();
   if (!snap.exists) throw new Error("FORBIDDEN");
   const data = snap.data() ?? {};
+  await requireStudentExtras(studentId, data);
   const membership = data.academyClubMembership;
   const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
   if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {

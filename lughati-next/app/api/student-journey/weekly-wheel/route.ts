@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "../../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
@@ -140,6 +141,7 @@ async function getStudentId(request: Request) {
   const studentDocId =
     typeof decoded.studentDocId === "string" ? decoded.studentDocId : "";
   if (!studentDocId) throw new Error("STUDENT_NOT_FOUND");
+  await requireStudentExtras(studentDocId);
   return studentDocId;
 }
 
@@ -173,7 +175,7 @@ export async function GET(request: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : code === "STUDENT_NOT_FOUND" ? 404 : 500;
-    return NextResponse.json({ success: false, message: status === 500 ? "تعذر تحميل عجلة المكافآت." : "تعذر التحقق من حساب الطالب." }, { status });
+    return NextResponse.json({ success: false, message: status === 500 ? "تعذر تحميل عجلة المكافآت." : "المزايا الإضافية متوقفة مؤقتًا أو تعذر التحقق من الحساب. راجع التنبيه أعلى الصفحة." }, { status });
   }
 }
 
@@ -247,7 +249,7 @@ export async function POST(request: Request) {
         ? "واصل إنجازاتك؛ لم تصل بعد إلى نقاط فتح هذه العجلة."
         : status === 500
           ? "تعذر تشغيل العجلة الآن. حاول مرة أخرى."
-          : "تعذر التحقق من حساب الطالب.";
+          : "المزايا الإضافية متوقفة مؤقتًا أو تعذر التحقق من الحساب. راجع التنبيه أعلى الصفحة.";
     return NextResponse.json({ success: false, message }, { status });
   }
 }

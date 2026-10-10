@@ -1,3 +1,4 @@
+import { invalidateStudentAccess, requireSubmissionIdentity } from "../../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
       );
     }
 
+    await requireSubmissionIdentity(request, studentId);
     const { adminDb } = getFirebaseAdmin();
     const completionId = `${studentId}_${homeworkId}`;
     const completionRef = adminDb.collection("homeworkCompletions").doc(completionId);
@@ -158,12 +160,14 @@ export async function POST(request: Request) {
 
     await completionRef.set(completionData, { merge: true });
 
+    invalidateStudentAccess(studentId);
     return NextResponse.json({
       success: true,
       id: completionId,
       message: `أحسنت يا ${studentName} 🌟 سجّل فارس إنجازك بنجاح.`,
     });
   } catch (error) {
+    if (error instanceof Error && ["UNAUTHORIZED", "FORBIDDEN"].includes(error.message)) return NextResponse.json({ success: false, message: "الحساب معلّق مؤقتًا أو تعذر التحقق من الدخول. تواصل مع المعلم." }, { status: error.message === "UNAUTHORIZED" ? 401 : 403 });
     console.error("HOMEWORK SUBMISSION ERROR:", error);
 
     return NextResponse.json(

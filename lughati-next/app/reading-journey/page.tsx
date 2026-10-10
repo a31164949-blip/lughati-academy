@@ -11,7 +11,7 @@ import {
   getDoc,
 } from "firebase/firestore";
 
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import {
   getStudentSubmissionWindow,
   STUDENT_SUBMISSION_OPEN_TEXT,
@@ -559,6 +559,7 @@ export default function ReadingJourneyPage() {
         {
           method: "POST",
           headers: {
+            Authorization: "Bearer " + await auth.currentUser?.getIdToken(),
             "Content-Type":
               "application/json",
           },

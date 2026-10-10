@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
@@ -112,6 +113,7 @@ async function getStudentFromRequest(
     );
   }
 
+  await requireStudentExtras(studentDocId);
   return studentDocId;
 }
 

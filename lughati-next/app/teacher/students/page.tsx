@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 
+import StudentAccessControl from "../../components/StudentAccessControl";
 import { auth, db } from "../../../firebase";
 
 const STUDENTS_PAGE_CACHE_KEY =
@@ -1458,7 +1459,7 @@ useEffect(() => {
     <p style={styles.subtitle}>
       متابعة الطلاب والفصول
       والنقاط وملفات الطالب
-      والأسرة.
+      والأسرة. التعليق التلقائي للمزايا بعد أسبوعين دون واجب أو قراءة؛ التعليق الكامل بقرار المعلم فقط.
     </p>
   </div>
 
@@ -1917,6 +1918,7 @@ useEffect(() => {
                         </span>
                       </div>
 
+                      <StudentAccessControl studentId={student.id} />
                       <button
                         type="button"
                         onClick={() =>

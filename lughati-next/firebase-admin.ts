@@ -95,11 +95,27 @@ function getAdminApp(): App {
   return cachedAdminApp;
 }
 
-export function getFirebaseAdmin() {
+// Status checks must remain accessible so a suspended student can see the family notice.
+export function getFirebaseAdmin(options: { allowSuspended?: boolean } = {}) {
   const adminApp = getAdminApp();
 
-  return {
-    adminAuth: getAuth(adminApp),
-    adminDb: getFirestore(adminApp),
-  };
+  const adminDb = getFirestore(adminApp);
+  const rawAuth = getAuth(adminApp);
+  const adminAuth = options.allowSuspended ? rawAuth : new Proxy(rawAuth, {
+    get(target, property) {
+      if (property === "verifyIdToken") return async (...args: Parameters<typeof rawAuth.verifyIdToken>) => {
+        const token = await rawAuth.verifyIdToken(...args);
+        if (token.role === "student" && typeof token.studentDocId === "string") {
+          const student = await adminDb.collection("students").doc(token.studentDocId).get();
+          const control = student.data()?.accessControl;
+          const until = control?.until?.toMillis?.();
+          if (control?.mode === "account" && (until == null || until > Date.now())) throw new Error("FORBIDDEN");
+        }
+        return token;
+      };
+      const value = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  return { adminAuth, adminDb };
 }

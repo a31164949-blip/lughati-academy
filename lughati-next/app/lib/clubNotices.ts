@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "./studentAccess";
 import "server-only";
 import { createHash } from "node:crypto";
 import { unstable_cache, revalidateTag } from "next/cache";
@@ -38,6 +39,7 @@ export async function noticeIdentity(request: Request, teacherOnly = false) {
   const snapshot = await adminDb.collection("students").doc(token.studentDocId).get();
   const data = snapshot.data();
   if (!data || !isActiveClubStudent(data)) throw new Error("FORBIDDEN");
+  await requireStudentExtras(token.studentDocId, data);
   return { db: adminDb, uid: token.uid, studentId: token.studentDocId, studentName: String(data.studentName || "طالب الأكاديمية"), preview: false };
 }
 export function noticeView(data: FirebaseFirestore.DocumentData | undefined) {

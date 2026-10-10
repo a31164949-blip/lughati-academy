@@ -1,3 +1,4 @@
+import { requireStudentExtras } from "../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
@@ -115,6 +116,7 @@ async function getStudentFromRequest(request: Request) {
     throw new Error("STUDENT_NOT_FOUND");
   }
 
+  await requireStudentExtras(studentDocId, studentSnapshot.data());
   const data = studentSnapshot.data() || {};
 
   return {
