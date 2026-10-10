@@ -10,6 +10,7 @@ import {
 updateDoc,
 serverTimestamp,
 } from "firebase/firestore";
+import FamilyLearningResources from "../parent/components/FamilyLearningResources";
 import { db } from "../../firebase";
 
 type QuizResult = {
@@ -173,7 +174,8 @@ async function markResultAsViewed(resultId: string) {
 >
   ← العودة إلى رحلتي
 </a>
-        <section
+        <FamilyLearningResources />
+      <section
           style={{
             background: "white",
             borderRadius: "28px",

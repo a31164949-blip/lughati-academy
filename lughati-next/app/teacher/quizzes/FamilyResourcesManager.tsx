@@ -11,6 +11,8 @@ type Resource = {
   description: string;
   category: "worksheet" | "test" | "review";
   classroom: string;
+  audience?: "student" | "classroom";
+  targetStudentName?: string;
   fileUrl: string;
   fileName: string;
   fileKind: "image" | "pdf";
@@ -31,6 +33,9 @@ export default function FamilyResourcesManager() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Resource["category"]>("worksheet");
   const [classroom, setClassroom] = useState("جميع طلاب الصف الثاني");
+  const [students, setStudents] = useState<Array<{ id: string; studentName: string; classroom: string }>>([]);
+  const [targetStudentId, setTargetStudentId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,9 +47,10 @@ export default function FamilyResourcesManager() {
       setLoading(true);
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("UNAUTHORIZED");
-      const response = await fetch("/api/family-learning-resources", { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch("/api/family-learning-resources?includeStudents=1", { headers: { Authorization: `Bearer ${token}` } });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "LOAD_FAILED");
+      setStudents(Array.isArray(result.students) ? result.students : []);
       setItems(Array.isArray(result.items) ? result.items : []);
     } catch (error) {
       console.error("تعذر تحميل مواد الأسرة:", error);
@@ -75,6 +81,7 @@ export default function FamilyResourcesManager() {
 
   async function publishResource() {
     if (!title.trim()) return setMessage("اكتب عنوان المادة أولًا.");
+    if (classroom === "student" && !students.some(student => student.id === targetStudentId)) return setMessage("اختر الطالب المستهدف أولًا.");
     if (!file) return setMessage("اختر ملف PDF أو صورة أولًا.");
     if (file.size > 10 * 1024 * 1024) return setMessage("حجم الملف يجب ألا يتجاوز 10 ميجابايت.");
     if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
@@ -91,20 +98,23 @@ export default function FamilyResourcesManager() {
         title: title.trim(),
         description: description.trim(),
         category,
-        classroom,
+        classroom: classroom === "student" ? "" : classroom,
+        audience: classroom === "student" ? "student" : "classroom",
+        targetStudentId: classroom === "student" ? targetStudentId : "",
         fileUrl: uploaded.fileUrl,
         fileName: file.name.slice(0, 160),
         fileKind: uploaded.fileKind,
       }) });
-      if (!response.ok) throw new Error("SAVE_FAILED");
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "SAVE_FAILED");
       setTitle("");
       setDescription("");
       setFile(null);
-      setMessage("تم النشر لولي الأمر بنجاح ✅");
+      setMessage(result.message || "تم النشر بنجاح ✅");
       await loadItems();
     } catch (error) {
       console.error("تعذر نشر المادة:", error);
-      setMessage("تعذر رفع الملف أو نشره. حاول مرة أخرى.");
+      setMessage(error instanceof Error && !["UNAUTHORIZED", "UPLOAD_FAILED", "MISSING_URL", "SAVE_FAILED"].includes(error.message) ? error.message : "تعذر رفع الملف أو نشره. حاول مرة أخرى.");
     } finally {
       setSaving(false);
     }
@@ -144,14 +154,15 @@ export default function FamilyResourcesManager() {
 
       <div style={formGridStyle}>
         <label style={fieldStyle}><b>نوع المادة</b><select value={category} onChange={(e) => setCategory(e.target.value as Resource["category"])} style={inputStyle}><option value="worksheet">ورقة عمل</option><option value="test">اختبار</option><option value="review">مراجعة وتدريب</option></select></label>
-        <label style={fieldStyle}><b>الفصل المستهدف</b><select value={classroom} onChange={(e) => setClassroom(e.target.value)} style={inputStyle}><option>جميع طلاب الصف الثاني</option><option>الصف الثاني أ</option><option>الصف الثاني ب</option></select></label>
+        <label style={fieldStyle}><b>الإرسال إلى</b><select value={classroom} onChange={(e) => setClassroom(e.target.value)} style={inputStyle}><option>جميع طلاب الصف الثاني</option><option>الصف الثاني أ</option><option>الصف الثاني ب</option><option value="student">طالب محدد</option></select></label>
+        {classroom === "student" && <label style={fieldStyle}><b>الطالب المستهدف</b><input aria-label="البحث عن الطالب" value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="ابحث بالاسم أو الفصل" style={inputStyle} /><select value={targetStudentId} onChange={event => setTargetStudentId(event.target.value)} style={inputStyle} disabled={loading || saving}><option value="">اختر الطالب</option>{students.filter(student => student.id === targetStudentId || `${student.studentName} ${student.classroom}`.includes(studentSearch.trim())).map(student => <option key={student.id} value={student.id}>{student.studentName} — {student.classroom}</option>)}</select><small>تظهر المادة للطالب المختار وأسرته، ويصله إشعار.</small></label>}
         <label style={fieldStyle}><b>عنوان المادة</b><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثال: ورقة عمل درس آداب التعامل" style={inputStyle} /></label>
         <label style={fieldStyle}><b>الملف</b><input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={fileStyle} /></label>
       </div>
       <label style={fieldStyle}><b>تعليمات لولي الأمر — اختياري</b><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="مثال: تُحل الورقة بعد مراجعة الدرس" style={{ ...inputStyle, minHeight: 78, resize: "vertical" }} /></label>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <button type="button" onClick={publishResource} disabled={saving} style={{ ...publishStyle, opacity: saving ? .65 : 1 }}>{saving ? "جارٍ النشر..." : "نشر لولي الأمر ←"}</button>
+        <button type="button" onClick={publishResource} disabled={saving} style={{ ...publishStyle, opacity: saving ? .65 : 1 }}>{saving ? "جارٍ النشر..." : classroom === "student" ? "إرسال للطالب وولي الأمر ←" : "نشر لولي الأمر ←"}</button>
         {message && <span style={{ color: message.includes("✅") ? "#147a5b" : "#9a6700", fontWeight: 700 }}>{message}</span>}
       </div>
 
@@ -160,7 +171,7 @@ export default function FamilyResourcesManager() {
         {loading ? <p>جارٍ التحميل...</p> : items.length === 0 ? <p style={emptyStyle}>لم تُرفع أي مادة حتى الآن.</p> : (
           <div style={{ display: "grid", gap: 10 }}>
             {items.map((item) => <article key={item.id} style={itemStyle}>
-              <div><strong>{item.fileKind === "pdf" ? "📕" : "🖼️"} {item.title}</strong><div style={{ color: "#64748b", marginTop: 5, fontSize: 14 }}>{labelForCategory(item.category)} • {item.classroom} • {item.published ? "منشور" : "مخفي"}</div></div>
+              <div><strong>{item.fileKind === "pdf" ? "📕" : "🖼️"} {item.title}</strong><div style={{ color: "#64748b", marginTop: 5, fontSize: 14 }}>{labelForCategory(item.category)} • {item.audience === "student" ? `خاص: ${item.targetStudentName || "طالب محدد"}` : item.classroom} • {item.published ? "منشور" : "مخفي"}</div></div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><a href={item.fileUrl} target="_blank" rel="noreferrer" style={smallLinkStyle}>معاينة</a><button onClick={() => void togglePublished(item)} style={smallButtonStyle}>{item.published ? "إخفاء" : "إعادة النشر"}</button><button onClick={() => void removeItem(item)} style={{ ...smallButtonStyle, color: "#b42318" }}>حذف</button></div>
             </article>)}
           </div>

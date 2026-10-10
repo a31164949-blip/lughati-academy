@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../firebase";
 
-type Resource = { id: string; title: string; description: string; category: string; classroom: string; fileUrl: string; fileName: string; fileKind: "image" | "pdf"; createdAt: Date | null };
+type Resource = { id: string; title: string; description: string; category: string; classroom: string; audience?: string; fileUrl: string; fileName: string; fileKind: "image" | "pdf"; createdAt: Date | null };
 
 function categoryLabel(value: string) {
   if (value === "test") return "اختبار";
@@ -35,16 +35,21 @@ export default function FamilyLearningResources() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (!items.length || !/^#learning-resource-[A-Za-z0-9_-]+$/.test(window.location.hash)) return;
+    document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, [items]);
+
   return (
-    <section style={cardStyle}>
+    <section id="family-learning-resources" style={cardStyle}>
       <div style={headingStyle}>
         <div><span style={badgeStyle}>من المعلم مباشرة</span><h2 style={{ margin: "9px 0 5px", color: "#173f34", fontSize: 22 }}>📚 أوراق العمل والاختبارات</h2><p style={{ margin: 0, color: "#64748b" }}>اطّلع على المواد المنشورة لابنك وحمّلها بسهولة.</p></div>
         <span style={folderStyle}>🗂️</span>
       </div>
       {loading ? <p style={emptyStyle}>جارٍ تحميل المواد...</p> : items.length === 0 ? <p style={emptyStyle}>لا توجد أوراق عمل أو اختبارات منشورة حاليًا.</p> : (
         <div style={{ display: "grid", gap: 12 }}>
-          {items.map((item) => <article key={item.id} style={resourceStyle}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}><span style={fileIconStyle}>{item.fileKind === "pdf" ? "📕" : "🖼️"}</span><div><strong style={{ color: "#173f34", fontSize: 17 }}>{item.title}</strong><div style={{ color: "#687d75", marginTop: 5, fontSize: 13 }}>{categoryLabel(item.category)}{item.createdAt ? ` • ${item.createdAt.toLocaleDateString("ar-SA")}` : ""}</div>{item.description && <p style={{ margin: "7px 0 0", color: "#52665f", lineHeight: 1.7 }}>{item.description}</p>}</div></div>
+          {items.map((item) => <article id={`learning-resource-${item.id}`} key={item.id} style={{ ...resourceStyle, scrollMarginTop: 24 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}><span style={fileIconStyle}>{item.fileKind === "pdf" ? "📕" : "🖼️"}</span><div><strong style={{ color: "#173f34", fontSize: 17 }}>{item.title}</strong><div style={{ color: "#687d75", marginTop: 5, fontSize: 13 }}>{item.audience === "student" ? "🔔 مادة مخصصة لك • " : ""}{categoryLabel(item.category)}{item.createdAt ? ` • ${item.createdAt.toLocaleDateString("ar-SA")}` : ""}</div>{item.description && <p style={{ margin: "7px 0 0", color: "#52665f", lineHeight: 1.7 }}>{item.description}</p>}</div></div>
             <a href={item.fileUrl} target="_blank" rel="noreferrer" style={openStyle}>عرض وتحميل الملف ←</a>
           </article>)}
         </div>
