@@ -30,7 +30,6 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     let unsubscribe: (() => void) | undefined;
     const refresh = () => {
       if (!alive || document.visibilityState === "hidden") return;
-      setChecked(false);
       setRetry(value => value + 1);
     };
     void user.getIdTokenResult().then(token => {
@@ -38,8 +37,9 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
       let previous: string | undefined;
       unsubscribe = onSnapshot(doc(db, "students", token.claims.studentDocId), snapshot => {
         const current = JSON.stringify(snapshot.data()?.accessControl ?? {});
-        if (current !== previous) { previous = current; refresh(); }
-      }, () => refresh());
+        if (previous !== undefined && current !== previous) { setChecked(false); refresh(); }
+        previous = current;
+      }, () => { setChecked(false); refresh(); });
     }).catch(() => refresh());
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -59,7 +59,9 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   }, [state?.accountSuspended]);
   useEffect(() => {
     let alive = true;
-    setChecked(false); setError(false);
+    // Recheck in the background: replacing children on focus clears file inputs
+    // and unsaved forms when Safari returns from its native file picker.
+    setError(false);
     if (!user || loginRoute) { setChecked(true); return; }
     async function check() {
       try {
