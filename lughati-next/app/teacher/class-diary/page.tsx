@@ -1183,7 +1183,7 @@ useEffect(() => {
                       imageUrl
                     }
                     alt="معاينة اليومية"
-                    className="max-h-80 w-full rounded-2xl object-cover shadow"
+                    className="max-h-80 w-full rounded-2xl object-contain shadow"
                   />
                 </div>
               )}
@@ -1297,7 +1297,7 @@ useEffect(() => {
                           alt={
                             post.title
                           }
-                          className="h-56 w-full object-cover"
+                          className="h-56 w-full bg-slate-50 object-contain"
                         />
                       ) : (
                         <div className="flex h-56 items-center justify-center bg-gradient-to-br from-emerald-100 to-amber-100 text-7xl">
