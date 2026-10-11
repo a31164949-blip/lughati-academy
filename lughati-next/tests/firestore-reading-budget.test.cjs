@@ -62,3 +62,19 @@ test('archive preserves approved and undated legacy documents without offsets or
   }
   assert.equal(count,187);assert.ok(f.reads.every(r=>r.size<=50));
 });
+
+test('recent view queries this Riyadh school week newest first with bounded reads',async()=>{
+  const queries=[];
+  const firebase={collection:(_,name)=>name,where:(field,op,value)=>({field,op,value}),orderBy:(field,direction)=>({order:field,direction}),limit:cap=>({cap}),query:(name,...filters)=>({name,filters})};
+  const api=load('app/lib/readingReviewPages.ts',{'../../firebase':{db:{}},'firebase/firestore':firebase,'./firestoreReadOnce':{async getDocsOnce(q){queries.push(q);return {docs:[],size:0};}}});
+  const boundary=new Date('2026-10-10T21:00:00Z');
+  const page=await api.readReadingReviewPage('recent',{journeyDone:false,homeworkDone:false,weekStart:boundary});
+  assert.equal(queries.length,2);
+  for(const q of queries){
+    assert.ok(q.filters.some(f=>f.field==='createdAt'&&f.op==='>='&&f.value===boundary));
+    assert.ok(q.filters.some(f=>f.order==='createdAt'&&f.direction==='desc'));
+    assert.ok(q.filters.some(f=>f.cap===50));
+    assert.ok(!q.filters.some(f=>f.op==='=='));
+  }
+  assert.equal(page.cursor.weekStart,boundary);
+});

@@ -138,7 +138,7 @@ type AudioStatus =
 export default function ReadingSubmissionsPage() {
   const [submissions, setSubmissions] = useState<ReadingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [reviewScope, setReviewScope] = useState<"pending" | "all">("pending");
+  const [reviewScope, setReviewScope] = useState<"recent" | "pending" | "all">("recent");
   const [hasMore, setHasMore] = useState(false);
   const [loadError, setLoadError] = useState("");
   const cursors = useRef<ReviewCursor>({ journeyDone: false, homeworkDone: false });
@@ -1025,12 +1025,13 @@ export default function ReadingSubmissionsPage() {
 
         <section style={{ marginBottom: 16, lineHeight: 1.8 }}>
           <label htmlFor="reading-review-scope">عرض القراءات: </label>
-          <select id="reading-review-scope" value={reviewScope} disabled={loading || updatingId !== null} onChange={event => { setSubmissions([]); setHasMore(false); setReviewScope(event.target.value as "pending" | "all"); }}>
-            <option value="pending">بانتظار المراجعة</option>
+          <select id="reading-review-scope" value={reviewScope} disabled={loading || updatingId !== null} onChange={event => { setSubmissions([]); setHasMore(false); setReviewScope(event.target.value as "recent" | "pending" | "all"); }}>
+            <option value="recent">قراءات الأسبوع الحالي — الأحدث أولًا</option>
+            <option value="pending">بانتظار المراجعة — بما فيها القديمة</option>
             <option value="all">جميع السجلات — بما فيها القديمة</option>
           </select>
           <button type="button" disabled={loading || updatingId !== null} onClick={() => void loadSubmissions()}>تحديث القراءات</button>
-          <p>تظهر السجلات على دفعات. للاطلاع على القراءات المعتمدة أو سجلات قديمة لا تظهر في قائمة الانتظار، اختر «جميع السجلات».</p>
+          <p>تظهر قراءات الأسبوع الحالي أولًا وعلى دفعات. لمراجعة تسجيلات سابقة اختر «بانتظار المراجعة»، وللاطلاع على الأرشيف اختر «جميع السجلات».</p>
           {loadError && <p role="alert">{loadError}</p>}
         </section>
 
