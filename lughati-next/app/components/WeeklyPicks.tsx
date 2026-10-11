@@ -86,6 +86,9 @@ export default function WeeklyPicks() {
     }).catch((error) => console.error("تعذر تحميل بطل الأسبوع:", error));
   }, []);
   const revealed = hero.revealed && Boolean(hero.name.trim());
+  const publishedStory = story?.published !== false ? story : null;
+  const teaserTitle = publishedStory?.title?.trim() || "شخصية قصتنا ما زالت سرًّا 🤫";
+  const teaserDescription = publishedStory?.description?.trim() || "لكل بطل حكاية من الاجتهاد والمثابرة. سنكشف قريبًا عن بطلنا لهذا الأسبوع. فمن يكون؟ 🌟";
   const currentPicks = picks.flatMap((item) => {
     if (item.id !== "story" || !story) return [item];
     if (story.published === false) return [];
@@ -178,9 +181,9 @@ export default function WeeklyPicks() {
           <div>
             <span style={{ display: "inline-flex", padding: "7px 12px", borderRadius: "999px", background: "#fff0a8", color: "#765800", fontSize: "13px", fontWeight: 900 }}>🏆 نجم أكاديمية لغتي</span>
             <h3 style={{ margin: "12px 0 4px", fontSize: "clamp(30px,4vw,43px)", lineHeight: 1.35 }}>{revealed ? "🏆 بطلنا هذا الأسبوع" : "🌟 قصة بطل هذا الأسبوع"}</h3>
-            <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>{revealed ? hero.name : "شخصية قصتنا ما زالت سرًّا 🤫"}</strong>
-            <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}>{revealed ? <><span className="pick-chip">📚 {hero.grade}</span><span className="pick-chip">⭐ تميز ومثابرة</span><span className="pick-chip">👏 تطور ملحوظ</span></> : <><span className="pick-chip">🌱 بدأ متأخرًا</span><span className="pick-chip">💪 لم يستسلم</span><span className="pick-chip">🏆 ينافس على الصدارة</span></>}</div>
-            <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>{revealed ? hero.praise : "في بداية الرحلة كان بعيدًا عن المقدمة، لكنه قرر أن يبدأ. قرأ، وأنجز، وشارك، وحاول مرة بعد مرة. ومع الأيام اقترب أكثر فأكثر، واليوم أصبح ينافس بقوة على الصدارة. فمن يكون هذا البطل؟ 🤔"}</p>
+            <strong style={{ display: "block", marginTop: "8px", fontSize: "clamp(21px,3vw,28px)", color: "#fff4b8" }}>{revealed ? hero.name : teaserTitle}</strong>
+            <div style={{ display: "flex", gap: "9px", flexWrap: "wrap", marginTop: "14px" }}>{revealed ? <><span className="pick-chip">📚 {hero.grade}</span><span className="pick-chip">⭐ تميز ومثابرة</span><span className="pick-chip">👏 تطور ملحوظ</span></> : <><span className="pick-chip">⭐ تميّز</span><span className="pick-chip">💪 مثابرة</span><span className="pick-chip">🔒 بطلنا سرّ حتى الإعلان</span></>}</div>
+            <p style={{ maxWidth: "690px", margin: "16px 0 0", color: "rgba(255,255,255,.94)", lineHeight: 1.95, fontWeight: 800, fontSize: "16px" }}>{revealed ? hero.praise : teaserDescription}</p>
           </div>
           <div style={{ display: "grid", placeItems: "center" }}>
             <div className="weekly-hero-photo" style={{ position: "relative", width: "190px", height: "190px", borderRadius: "50%", padding: "7px", background: "linear-gradient(135deg,#facc15,#fff2a3,#facc15)", boxShadow: "0 14px 34px rgba(0,0,0,.18)" }}>
