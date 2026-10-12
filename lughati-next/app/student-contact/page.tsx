@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MessageImage } from "../components/MessageImage";
 import { useEffect, useState } from "react";
 import {
   addDoc,
@@ -32,6 +33,7 @@ type StudentMessage = {
   category: string;
   message: string;
   teacherReply?: string;
+  teacherImageUrl?: string;
   status?: string;
   studentViewedReply?: boolean;
   createdAt?: {
@@ -560,6 +562,7 @@ await loadMessages(claimedStudentId);
                           ? item.teacherReply
                           : "لم يصل الرد بعد."}
                       </p>
+                      <MessageImage url={item.teacherImageUrl} />
                     </div>
                   </article>
                 )

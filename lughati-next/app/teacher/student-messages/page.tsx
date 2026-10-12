@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { MessageImage, MessageImagePicker } from "../../components/MessageImage";
+import { uploadMessageImage } from "../../lib/uploadMessageImage";
 import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
@@ -26,6 +28,7 @@ type StudentMessage = {
   categoryLabel?: string;
   message: string;
   teacherReply?: string;
+  teacherImageUrl?: string;
   status?: string;
   studentViewedReply?: boolean;
 
@@ -88,6 +91,9 @@ export default function TeacherStudentMessagesPage() {
   const [sendingDirectMessage, setSendingDirectMessage] =
     useState(false);
 
+  const [directImage, setDirectImage] = useState<File | null>(null);
+  const [replyImages, setReplyImages] = useState<Record<string, File | null>>({});
+
   const classrooms = useMemo(
     () =>
       Array.from(
@@ -112,9 +118,10 @@ export default function TeacherStudentMessagesPage() {
     [selectedClassroom, students]
   );
 
+  const [activityCheckedAt] = useState(() => Date.now());
   const INACTIVE_DAYS = 3;
   const inactiveThreshold =
-    Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
+    activityCheckedAt - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
 
   const inactiveStudents = useMemo(
     () =>
@@ -139,7 +146,7 @@ export default function TeacherStudentMessagesPage() {
     return Math.max(
       INACTIVE_DAYS,
       Math.floor(
-        (Date.now() - student.lastLoginAt.getTime()) /
+        (activityCheckedAt - student.lastLoginAt.getTime()) /
           (24 * 60 * 60 * 1000)
       )
     );
@@ -362,6 +369,7 @@ useEffect(() => {
       setSendingDirectMessage(true);
       setFeedback("");
 
+      const teacherImageUrl = directImage ? await uploadMessageImage(directImage) : "";
       await addDoc(
         collection(
           db,
@@ -375,6 +383,7 @@ useEffect(() => {
           categoryLabel: "✉️ رسالة من المعلم",
           message: subject,
           teacherReply: body,
+          teacherImageUrl,
           status: "replied",
           studentViewedReply: false,
           sender: "teacher",
@@ -391,6 +400,7 @@ useEffect(() => {
       setSelectedStudentId("");
       setDirectSubject("");
       setDirectBody("");
+      setDirectImage(null);
       setDirectMessageOpen(false);
 
       await loadMessages();
@@ -401,7 +411,7 @@ useEffect(() => {
       );
 
       setFeedback(
-        "❌ تعذر إرسال الرسالة حاليًا."
+        error instanceof Error ? error.message : "❌ تعذر إرسال الرسالة حاليًا."
       );
     } finally {
       setSendingDirectMessage(false);
@@ -470,6 +480,8 @@ useEffect(() => {
     try {
       setSavingId(item.id);
       setFeedback("");
+      const image = replyImages[item.id];
+      const teacherImageUrl = image ? await uploadMessageImage(image) : item.teacherImageUrl || "";
 
       await updateDoc(
         doc(
@@ -479,6 +491,7 @@ useEffect(() => {
         ),
         {
           teacherReply: reply,
+          teacherImageUrl,
           status: "replied",
           studentViewedReply: false,
           repliedAt:
@@ -492,6 +505,7 @@ useEffect(() => {
         `✅ تم إرسال الرد إلى ${item.studentName || "الطالب"}.`
       );
 
+      setReplyImages(current => ({ ...current, [item.id]: null }));
       await loadMessages();
     } catch (error) {
       console.error(
@@ -500,7 +514,7 @@ useEffect(() => {
       );
 
       setFeedback(
-        "❌ تعذر حفظ الرد."
+        error instanceof Error ? error.message : "❌ تعذر حفظ الرد."
       );
     } finally {
       setSavingId(null);
@@ -715,6 +729,8 @@ useEffect(() => {
                 className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 font-bold leading-8 outline-none focus:border-emerald-500"
               />
             </label>
+
+            <MessageImagePicker file={directImage} onChange={setDirectImage} disabled={sendingDirectMessage} />
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <small className="font-bold text-slate-400">
@@ -1002,6 +1018,8 @@ useEffect(() => {
                         className="w-full resize-none rounded-2xl border border-emerald-100 px-4 py-3 font-bold leading-8 outline-none transition focus:border-emerald-500"
                       />
 
+                      <MessageImage url={item.teacherImageUrl} />
+                      <MessageImagePicker file={replyImages[item.id] || null} onChange={file => setReplyImages(current => ({ ...current, [item.id]: file }))} disabled={savingId === item.id || deletingId === item.id} />
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                         <small className="font-bold text-slate-400">
                           سيظهر الرد للطالب داخل
