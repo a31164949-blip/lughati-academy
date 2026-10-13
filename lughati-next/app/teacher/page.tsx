@@ -5,6 +5,7 @@
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 const sections = [
+  { title: "🗳️ تصويت الطلاب", description: "نشر تصويت يظهر أعلى صفحة الطالب ومتابعة النتائج.", href: "/teacher/polls" },
   {
     title: "📨 مركز الإشعارات",
     description: "فتح طلبات المراجعة عند الحاجة.",
