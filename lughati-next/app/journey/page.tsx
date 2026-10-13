@@ -3,6 +3,7 @@
 import DeferredMedia from "../components/DeferredMedia";
 
 import InstallAppButton from "../components/InstallAppButton";
+import StudentPollCard from "../components/StudentPollCard";
 import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
 import AcademyStories from "../components/AcademyStories";
@@ -3923,6 +3924,7 @@ try {
           <button onClick={() => void openNotification(importantClubNotice)} style={{ padding: "12px 18px", background: "#176c46", color: "white", border: 0, borderRadius: 12, font: "inherit", fontWeight: 800 }}>افتح الرسالة المهمة والرد ←</button>
         </section>
       )}
+      <StudentPollCard user={user} />
       <LiveLessonCard />
 
       <div
