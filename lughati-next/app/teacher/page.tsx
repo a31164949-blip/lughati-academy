@@ -5,6 +5,7 @@
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 const sections = [
+  { title: "🤝 نتحاور من أجل أبنائنا", description: "طرح موضوع للأسر واعتماد المشاركات العامة ومراجعة الردود الخاصة.", href: "/teacher/discussion" },
   { title: "🗳️ تصويت الطلاب", description: "نشر تصويت يظهر أعلى صفحة الطالب ومتابعة النتائج.", href: "/teacher/polls" },
   {
     title: "📨 مركز الإشعارات",

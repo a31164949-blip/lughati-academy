@@ -3925,6 +3925,7 @@ try {
         </section>
       )}
       <StudentPollCard user={user} />
+      <a href="/discussion" style={{display:"block",maxWidth:1068,margin:"16px auto",padding:18,borderRadius:18,background:"#eaf6ef",color:"#176c46",fontWeight:800,textDecoration:"none"}}>🤝 نتحاور من أجل أبنائنا — زاوية الحوار مع الأسرة ←</a>
       <LiveLessonCard />
 
       <div
