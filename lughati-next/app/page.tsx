@@ -1,6 +1,7 @@
 "use client";
 import { auth } from "../firebase";
 
+import NationalIdentity from "./components/NationalIdentity";
 import WeeklyGames from "./components/WeeklyGames";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -1194,6 +1195,7 @@ useEffect(() => {
       className="academy-page"
       dir="rtl"
     >
+      <NationalIdentity />
       <HomeworkReminder />
 
       {/* رسالة المساء الذكية */}
