@@ -23,6 +23,7 @@ import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import { auth } from "../../firebase";
 
 const journeyCards = [
+  { icon: "🧠", title: "أوراق التفكير", description: "ألاحظ وأرتّب وأستنتج… وأحل أوراقي إلكترونيًا", href: "/thinking-worksheets", background: "#f0f7df" },
   {
     icon: "🏡",
     title: "مدينة الإنجاز",
