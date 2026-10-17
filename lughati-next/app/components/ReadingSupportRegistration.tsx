@@ -1,5 +1,7 @@
 "use client";
 
+import ReadingSupportMeeting from "./ReadingSupportMeeting";
+
 import { useEffect, useState } from "react";
 
 type StudentDetails = {
@@ -160,6 +162,8 @@ export default function ReadingSupportRegistration() {
           سجّلني في الحصة
         </button>
       </div>
+
+      <ReadingSupportMeeting />
 
       {open && (
         <form onSubmit={submitRegistration} style={{ marginTop: "20px", paddingTop: "18px", borderTop: "1px solid #bfdbfe", display: "grid", gap: "12px" }}>

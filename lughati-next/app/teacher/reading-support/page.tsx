@@ -1,5 +1,6 @@
 "use client";
 
+import ReadingSupportMeeting from "../../components/ReadingSupportMeeting";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { auth } from "../../../firebase";
@@ -214,6 +215,8 @@ export default function ReadingSupportTeacherPage() {
             <p style={styles.subtitle}>اختيار المقبولين وتنظيم الحصص للطلاب المسجلين.</p>
           </div>
         </header>
+
+        <ReadingSupportMeeting manage />
 
         <section style={styles.panel}>
           <div style={styles.panelHeader}>
