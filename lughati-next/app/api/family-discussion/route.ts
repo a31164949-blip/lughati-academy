@@ -1,3 +1,4 @@
+import { FAMILY_DISCUSSION_TOPIC_MAX_LENGTH } from "../../lib/familyDiscussionPolicy";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { FieldPath, FieldValue } from "firebase-admin/firestore";
@@ -20,8 +21,8 @@ async function identity(req: Request) {
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } }); }
 function failure(error: unknown) {
   const code = error instanceof Error ? error.message : "";
-  const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : code === "INVALID" || code === "CLOSED" ? 400 : 500;
-  return json({ success: false, message: code === "CLOSED" ? "تغير الموضوع أو أُغلقت المشاركة. حدّث الصفحة." : status === 400 ? "تحقق من الموضوع والمشاركة (حتى 800 حرف)." : "تعذر إتمام الطلب. حاول مرة أخرى." }, status);
+  const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : code === "INVALID" || code === "TOPIC_TOO_LONG" || code === "CLOSED" ? 400 : 500;
+  return json({ success: false, message: code === "TOPIC_TOO_LONG" ? `يمكن أن يصل موضوع الحوار إلى ${FAMILY_DISCUSSION_TOPIC_MAX_LENGTH} حرف. اختصر النص ثم حاول مجددًا.` : code === "CLOSED" ? "تغير الموضوع أو أُغلقت المشاركة. حدّث الصفحة." : status === 400 ? "تحقق من الموضوع والمشاركة (حتى 800 حرف)." : "تعذر إتمام الطلب. حاول مرة أخرى." }, status);
 }
 const validId = (v: unknown): v is string => typeof v === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(v);
 export async function GET(req: Request) {
@@ -37,10 +38,10 @@ export async function GET(req: Request) {
     const [rows, own] = await Promise.all([query.get(), teacher ? Promise.resolve(null) : collection.doc(id).get()]);
     const replies = rows.docs.map(row => {
       const d = row.data();
-      return { id: row.id, text: d.text, status: d.status, visibility: d.visibility, name: teacher ? d.name : "مشاركة إحدى الأسر", revision: teacher ? d.revision : undefined };
+      return { id: row.id, text: d.text, status: d.status, visibility: d.visibility, name: teacher ? d.name : "مشاركة إحدى الأسر", teacherReply: typeof d.teacherReply === "string" ? d.teacherReply : "", revision: teacher ? d.revision : undefined };
     });
     const mine = own?.data();
-    return json({ success: true, topic: { topicId: topic.topicId, title: topic.title, active: topic.active === true }, replies, mine: mine ? { text: mine.text, visibility: mine.visibility, status: mine.status } : null, cursor: rows.size === 10 ? rows.docs[9].id : null });
+    return json({ success: true, topic: { topicId: topic.topicId, title: topic.title, active: topic.active === true }, replies, mine: mine ? { text: mine.text, visibility: mine.visibility, status: mine.status, teacherReply: typeof mine.teacherReply === "string" ? mine.teacherReply : "" } : null, cursor: rows.size === 10 ? rows.docs[9].id : null });
   } catch (error) { return failure(error); }
 }
 export async function POST(req: Request) {
@@ -49,7 +50,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     if (teacher) {
       const title = typeof body.title === "string" ? body.title.trim() : "";
-      if (!title || title.length > 220) throw new Error("INVALID");
+      if (!title) throw new Error("INVALID");
+      if (title.length > FAMILY_DISCUSSION_TOPIC_MAX_LENGTH) throw new Error("TOPIC_TOO_LONG");
       const topicId = randomUUID();
       const value = { topicId, title, active: true, createdAt: FieldValue.serverTimestamp(), createdBy: id };
       const batch = db.batch();
@@ -80,10 +82,16 @@ export async function PATCH(req: Request) {
       const current = await tx.get(currentRef);
       if (current.data()?.topicId !== body.topicId) throw new Error("CLOSED");
       if (typeof body.active === "boolean") { tx.update(currentRef, { active: body.active }); return; }
-      if (!validId(body.replyId) || !["publish", "hide"].includes(body.action)) throw new Error("INVALID");
+      if (!validId(body.replyId) || !["publish", "hide", "respond"].includes(body.action)) throw new Error("INVALID");
       const ref = db.collection("familyDiscussion").doc(body.topicId).collection("replies").doc(body.replyId);
       const reply = await tx.get(ref);
       if (!reply.exists || reply.data()?.revision !== body.revision || (body.action === "publish" && reply.data()?.visibility !== "public")) throw new Error("INVALID");
+      if (body.action === "respond") {
+        const teacherReply = typeof body.teacherReply === "string" ? body.teacherReply.trim() : "";
+        if (!teacherReply || teacherReply.length > 1500) throw new Error("INVALID");
+        tx.update(ref, { teacherReply, teacherRepliedAt: FieldValue.serverTimestamp() });
+        return;
+      }
       tx.update(ref, { status: body.action === "publish" ? "published" : "hidden", reviewedAt: FieldValue.serverTimestamp() });
     });
     return json({ success: true });
