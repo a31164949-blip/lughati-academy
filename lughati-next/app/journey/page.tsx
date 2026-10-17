@@ -1,5 +1,7 @@
 "use client";
 
+import TeacherWhatsAppCard from "../components/TeacherWhatsAppCard";
+
 import DeferredMedia from "../components/DeferredMedia";
 
 import InstallAppButton from "../components/InstallAppButton";
@@ -3916,6 +3918,8 @@ try {
           </div>
         </div>
       </header>
+
+      <TeacherWhatsAppCard />
 
       {importantClubNotice && (
         <section role="status" aria-live="polite" style={{ maxWidth: 1068, margin: "20px auto", padding: "20px 16px", background: "#fff8dc", border: "2px solid #dcaa35", borderRadius: 20 }}>

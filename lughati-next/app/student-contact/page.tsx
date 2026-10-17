@@ -1,5 +1,6 @@
 "use client";
 
+import TeacherWhatsAppCard from "../components/TeacherWhatsAppCard";
 import Link from "next/link";
 import { MessageImage } from "../components/MessageImage";
 import { useEffect, useState } from "react";
@@ -360,6 +361,7 @@ await loadMessages(claimedStudentId);
       dir="rtl"
       className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-blue-50 px-4 py-8"
     >
+      <TeacherWhatsAppCard />
       <div className="mx-auto max-w-4xl">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
           <div>
