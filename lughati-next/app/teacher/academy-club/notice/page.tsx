@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import NoticeArchive from "./NoticeArchive";
 import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../../firebase";
@@ -71,6 +72,7 @@ export default function ClubNoticeManager() {
         {notice.active && notice.allowReplies && <button style={button} disabled={busy} onClick={() => void action("closeReplies")}>إغلاق الردود</button>}
         <button style={button} disabled={busy} onClick={() => void action("refresh")}>تحديث الردود</button>
       </div><h3>💬 ردود الأعضاء ({replies.length} محمّلة)</h3>{!replies.length && <p>لم يصل رد بعد.</p>}{replies.map(reply => <article key={reply.id} style={{ background: "white", borderRadius: 14, padding: 16, marginTop: 12 }}><strong>{reply.studentName}</strong><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.8 }}>{reply.text}</p></article>)}{cursor && <button style={{ ...button, marginTop: 14 }} disabled={busy} onClick={() => void action("more")}>تحميل المزيد من الردود</button>}</section>}
+      <NoticeArchive user={user} />
     </>}{message && <p role="status" aria-live="polite" style={{ padding: 16, background: "#e6f3eb", borderRadius: 12 }}>{message}</p>}
   </div></main>;
 }

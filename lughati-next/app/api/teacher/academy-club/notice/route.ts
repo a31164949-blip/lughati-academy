@@ -7,7 +7,20 @@ export async function GET(request: Request) {
     const { db } = await noticeIdentity(request, true);
     const url = new URL(request.url), cursor = url.searchParams.get("cursor") || "";
     if (cursor.length > 150 || cursor.includes("/")) throw new Error("INVALID");
-    const current = await db.collection("academyClubNotices").doc("current").get();
+    const notices = db.collection("academyClubNotices");
+    if (url.searchParams.get("archive") === "1") {
+      let history = notices.orderBy("createdAt", "desc").orderBy(FieldPath.documentId(), "desc").limit(20);
+      if (cursor) {
+        const last = await notices.doc(cursor).get();
+        if (!last.exists || !last.get("createdAt")) throw new Error("INVALID");
+        history = history.startAfter(last.get("createdAt"), last.id);
+      }
+      const snapshot = await history.get();
+      return noticeJson({ success: true, notices: snapshot.docs.filter(doc => doc.id !== "current").map(doc => ({ ...noticeView(doc.data()), createdAt: doc.get("createdAt")?.toDate?.().toISOString() || "" })), nextCursor: snapshot.size === 20 ? snapshot.docs.at(-1)!.id : "" });
+    }
+    const selectedId = url.searchParams.get("noticeId") || "current";
+    if (selectedId !== "current" && !/^[a-f0-9-]{36}$/.test(selectedId)) throw new Error("INVALID");
+    const current = await notices.doc(selectedId).get();
     const notice = noticeView(current.data());
     if (!notice) return noticeJson({ success: true, notice: null, replies: [], nextCursor: "" });
     let query = db.collection("academyClubNotices").doc(notice.noticeId).collection("replies").orderBy(FieldPath.documentId()).limit(50);
