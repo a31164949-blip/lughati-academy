@@ -39,6 +39,11 @@ type GalleryWork = {
 export default function TeacherGalleryPage() {
   const [works, setWorks] = useState<GalleryWork[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showFeatured, setShowFeatured] = useState(false);
+  const [nextCursor, setNextCursor] = useState("done");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState("");
+
   const [error, setError] = useState("");
 
   const [updatingId, setUpdatingId] =
@@ -52,6 +57,8 @@ export default function TeacherGalleryPage() {
     setHighlightLoadingId,
   ] = useState<string | null>(null);
 
+  const visibleWorks = showFeatured ? works.filter((work) => featuredIds.includes(work.id)) : works;
+
   /*
    * تحميل الأعمال المميزة.
    * نعتمد الآن على workId
@@ -63,8 +70,9 @@ export default function TeacherGalleryPage() {
    * تحميل الأعمال المنشورة
    * من API المعرض.
    */
-async function fetchGalleryWorks() {
-  const response = await fetch("/api/gallery", {
+async function fetchGalleryWorks(cursor = "") {
+  const params = new URLSearchParams({ worksCursor: cursor, notebooksCursor: "done" });
+  const response = await fetch(`/api/gallery?${params}`, {
     cache: "no-store",
   });
 
@@ -86,11 +94,10 @@ async function fetchGalleryWorks() {
           ? data.items
           : [];
 
-  return incomingWorks.filter(
-    (work) =>
-      typeof work.id === "string" &&
-      work.id.trim() !== ""
-  );
+  return {
+    works: incomingWorks.filter((work) => typeof work.id === "string" && work.id.trim() !== ""),
+    nextCursor: typeof data.cursors?.works === "string" ? data.cursors.works : "done",
+  };
 }
 
 async function fetchHighlightIds() {
@@ -113,11 +120,13 @@ async function loadGallery() {
   try {
     setLoading(true);
     setError("");
+    setMoreError("");
 
     const incomingWorks =
       await fetchGalleryWorks();
 
-    setWorks(incomingWorks);
+    setWorks(incomingWorks.works);
+    setNextCursor(incomingWorks.nextCursor);
   } catch (loadError) {
     console.error(loadError);
 
@@ -128,6 +137,21 @@ async function loadGallery() {
     );
   } finally {
     setLoading(false);
+  }
+}
+
+async function loadMoreWorks() {
+  if (loadingMore || nextCursor === "done") return;
+  setLoadingMore(true);
+  setMoreError("");
+  try {
+    const page = await fetchGalleryWorks(nextCursor);
+    setWorks((current) => [...current, ...page.works.filter((work) => !current.some((item) => item.id === work.id))]);
+    setNextCursor(page.nextCursor);
+  } catch {
+    setMoreError("تعذر تحميل الأعمال الأقدم. حاول مرة أخرى.");
+  } finally {
+    setLoadingMore(false);
   }
 }
 
@@ -157,7 +181,8 @@ useEffect(() => {
         return;
       }
 
-      setWorks(incomingWorks);
+      setWorks(incomingWorks.works);
+      setNextCursor(incomingWorks.nextCursor);
       setFeaturedIds(ids);
       setError("");
     })
@@ -761,6 +786,8 @@ useEffect(() => {
           <StatCard
             icon="⭐"
             label="الأعمال المميزة"
+            onClick={() => setShowFeatured(true)}
+            active={showFeatured}
             value={
               featuredIds.length
             }
@@ -822,6 +849,11 @@ useEffect(() => {
           </button>
         </section>
 
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
+          <button type="button" aria-pressed={!showFeatured} onClick={() => setShowFeatured(false)} style={{ ...actionButtonStyle, cursor: "pointer", background: !showFeatured ? "#e4f5ed" : "#fff" }}>🖼️ جميع الأعمال</button>
+          <button type="button" aria-pressed={showFeatured} onClick={() => setShowFeatured(true)} style={{ ...actionButtonStyle, cursor: "pointer", background: showFeatured ? "#fff3c4" : "#fff" }}>⭐ عرض الأعمال المميزة</button>
+        </div>
+        <p aria-live="polite" style={{ color: "#17674d" }}>{showFeatured ? `الأعمال المميزة المحمّلة: ${visibleWorks.length}${nextCursor !== "done" ? " — حمّل الأعمال الأقدم للاطلاع على المزيد." : ""}` : "الأعمال المنشورة في المعرض"}</p>
         {/* حالة التحميل */}
 
         {loading ? (
@@ -849,14 +881,14 @@ useEffect(() => {
           >
             ⚠️ {error}
           </div>
-        ) : works.length ===
+        ) : visibleWorks.length ===
           0 ? (
           <div
             style={
               messageStyle
             }
           >
-            لا توجد أعمال منشورة في المعرض حاليًا.
+            {showFeatured ? (nextCursor !== "done" ? "لا توجد أعمال مميزة ضمن الأعمال المحمّلة حاليًا. يمكنك تحميل الأعمال الأقدم أدناه." : "لا توجد أعمال منشورة ومميزة ضمن المعرض.") : "لا توجد أعمال منشورة في المعرض حاليًا."}
           </div>
         ) : (
           <section
@@ -871,7 +903,7 @@ useEffect(() => {
                 "18px",
             }}
           >
-            {works.map(
+            {visibleWorks.map(
               (work) => {
                 const workUrl =
                   getWorkUrl(
@@ -1397,6 +1429,12 @@ useEffect(() => {
           </section>
         )}
 
+        {moreError && <p role="alert" style={{ color: "#a33a3a" }}>{moreError}</p>}
+        {!loading && !error && nextCursor !== "done" && (
+          <button type="button" disabled={loadingMore} onClick={() => void loadMoreWorks()} style={{ ...actionButtonStyle, width: "100%", marginTop: "20px", cursor: "pointer" }}>
+            {loadingMore ? "⏳ جارٍ تحميل الأعمال..." : "تحميل الأعمال الأقدم ↓"}
+          </button>
+        )}
         {/* ملاحظة الخصوصية */}
 
         <div
@@ -1440,14 +1478,25 @@ function StatCard({
   icon,
   label,
   value,
+  onClick,
+  active = false,
 }: {
   icon: string;
   label: string;
   value: string | number;
+  onClick?: () => void;
+  active?: boolean;
 }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      aria-pressed={onClick ? active : undefined}
       style={{
+        cursor: onClick ? "pointer" : undefined,
+        font: "inherit",
+        outline: active ? "3px solid #d9aa35" : undefined,
         background:
           "#ffffff",
 
@@ -1505,7 +1554,8 @@ function StatCard({
       >
         {value}
       </strong>
-    </div>
+      {onClick && <span style={{ display: "block", marginTop: "10px", color: "#17674d", fontSize: "14px" }}>اضغط لعرض الأعمال ←</span>}
+    </Tag>
   );
 }
 
