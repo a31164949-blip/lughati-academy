@@ -9,7 +9,8 @@ import { auth } from "../../../../firebase";
 type Room = {
   code: string;
   status: "waiting" | "active" | "finished";
-  question: { index: number; total: number; prompt: string; options: string[] } | null;
+  question: { index: number; total: number; prompt: string; options: string[]; guide?: string } | null;
+  voiceAnswers?: Array<{ studentId: string; name: string; question: number; audioUrl: string; points: number | null }>;
   participants: Array<{ id: string; name: string; score: number; answered: boolean }>;
 };
 
@@ -17,14 +18,17 @@ export default function TeacherLiveGamePage() {
   const [user, setUser] = useState<User | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [message, setMessage] = useState("أنشئ غرفة ثم اعرض رمزها للطلاب.");
+  const [resumeCode, setResumeCode] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   const requestVersion = useRef(0);
+  const mutationInFlight = useRef(false);
 
-  async function call(action?: string) {
-    if (!user) return;
+  async function call(action?: string, extra: Record<string, unknown> = {}) {
+    if (!user || mutationInFlight.current) return;
+    if (action) mutationInFlight.current = true;
     const version = ++requestVersion.current;
     setBusy(true);
     try {
@@ -33,9 +37,9 @@ export default function TeacherLiveGamePage() {
         ? await fetch("/api/academy-club/live-game", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ action, code: room?.code }),
+            body: JSON.stringify({ action, code: room?.code, ...extra }),
           })
-        : await fetch(`/api/academy-club/live-game?code=${room?.code}`, {
+        : await fetch(`/api/academy-club/live-game?code=${room?.code ?? resumeCode}`, {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
           });
@@ -43,10 +47,11 @@ export default function TeacherLiveGamePage() {
       if (version !== requestVersion.current) return;
       if (!response.ok || !data.success) throw new Error(data.message || "تعذر تنفيذ العملية.");
       setRoom(data.room);
+      if (action === "review") setMessage("تم اعتماد النقاط وتحديث الترتيب.");
       if (action === "create") setMessage("الغرفة جاهزة؛ اطلب من الطلاب إدخال الرمز.");
     } catch (error) {
       if (version === requestVersion.current) setMessage(error instanceof Error ? error.message : "تعذر تنفيذ العملية.");
-    } finally { if (version === requestVersion.current) setBusy(false); }
+    } finally { if (action) mutationInFlight.current = false; if (version === requestVersion.current) setBusy(false); }
   }
 
   useLiveGamePolling(() => call(), !!user && !!room && room.status !== "finished", room?.code);
@@ -60,8 +65,9 @@ export default function TeacherLiveGamePage() {
       {!room ? <section style={card}>
         <div style={{fontSize:64}}>🏟️</div>
         <h2>أنشئ ساحة منافسة جديدة</h2>
-        <p>تستوعب الغرفة حتى 30 طالبًا، ويبدأ الجميع في الوقت نفسه.</p>
+        <p>٦ أسئلة متدرجة. يجيب الطلاب بتسجيلات صوتية حتى ٣٠ ثانية، وتستمع إليها وتعتمد نقاطها. تستوعب الغرفة ٣٠ طالبًا.</p>
         <button style={primary} disabled={!user || busy} onClick={() => void call("create")}>إنشاء غرفة مباشرة</button>
+        <p>أو استعد غرفة موجودة برمزها:</p><input aria-label="رمز الغرفة الموجودة" inputMode="numeric" value={resumeCode} onChange={event => setResumeCode(event.target.value.replace(/\D/g, "").slice(0,6))} style={{padding:12,fontSize:22,width:180,textAlign:"center",margin:8}} /><button style={primary} disabled={!user || busy || resumeCode.length!==6} onClick={() => void call()}>فتح الغرفة</button>
       </section> : <>
         <section style={{...card,background:"linear-gradient(135deg,#fff7d6,#fff,#eaf8f0)"}}>
           <span>رمز دخول الطلاب</span><strong style={{display:"block",fontSize:56,letterSpacing:10,color:"#176c46"}}>{room.code}</strong>
@@ -75,8 +81,19 @@ export default function TeacherLiveGamePage() {
         {room.question && <section style={card}>
           <small>السؤال {room.question.index + 1} من {room.question.total}</small>
           <h2>{room.question.prompt}</h2>
-          <div style={grid}>{room.question.options.map((option) => <div key={option} style={optionStyle}>{option}</div>)}</div>
+          <p>🎙️ يجيب الطالب بصوته، ثم تُعتمد نقاطه من المعلم.</p><details><summary>دليل التقييم للمعلم</summary><p>{room.question.guide}</p></details>
         </section>}
+        <section style={card}><h2>🎙️ إجابات الطلاب الصوتية</h2>
+          <p>استمع ثم قيّم: ١٠ للإجابة المتقنة، ٥ للإجابة الجزئية، و٠ للمحاولة التي تحتاج إلى تدريب.</p>
+          <button style={primary} disabled={busy} onClick={() => void call()}>تحديث الإجابات والترتيب</button>
+          {!room.voiceAnswers?.length && <p>لم تصل تسجيلات بعد.</p>}
+          <div style={{display:"grid",gap:14,marginTop:16}}>{room.voiceAnswers?.map(answer => <article key={`${answer.studentId}-${answer.question}`} style={{padding:16,border:"1px solid #b9dec9",borderRadius:15}}>
+            <b>{answer.name} — السؤال {answer.question + 1}</b>
+            <p>{answer.points === null ? "بانتظار التقييم" : `تم اعتماد ${answer.points} نقطة ✅`}</p>
+            <audio controls preload="none" src={answer.audioUrl} aria-label={`إجابة ${answer.name} للسؤال ${answer.question+1}`} style={{maxWidth:"100%"}} />
+            {answer.points === null && <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginTop:12}}>{[10,5,0].map(points => <button key={points} style={primary} disabled={busy} onClick={() => void call("review", { studentId: answer.studentId, question: answer.question, points })}>اعتماد {points} نقطة</button>)}</div>}
+          </article>)}</div>
+        </section>
         <section style={card}><h2>لوحة المتصدرين المباشرة</h2>
           <div style={{display:"grid",gap:9}}>{room.participants.map((student,index) =>
             <div key={student.id} style={row}><b>{index + 1}. {student.name}</b><span>{student.answered ? "✅" : "⏳"} ⭐ {student.score}</span></div>
@@ -94,6 +111,4 @@ const shell: React.CSSProperties={maxWidth:950,margin:"0 auto",padding:"25px 16p
 const card: React.CSSProperties={padding:"clamp(22px,5vw,38px)",borderRadius:26,background:"#fff",border:"1px solid #d6e9df",boxShadow:"0 12px 32px rgba(20,80,50,.10)",textAlign:"center"};
 const primary: React.CSSProperties={border:0,borderRadius:15,padding:"13px 20px",background:"#16865d",color:"#fff",fontWeight:900,fontSize:17,cursor:"pointer"};
 const link: React.CSSProperties={color:"#fff",textDecoration:"none",fontWeight:900};
-const grid: React.CSSProperties={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10};
-const optionStyle: React.CSSProperties={padding:15,borderRadius:15,background:"#eef8f2",border:"1px solid #b9dec9",fontWeight:900};
 const row: React.CSSProperties={display:"flex",justifyContent:"space-between",gap:10,padding:"12px 15px",borderRadius:13,background:"#f5faf7",border:"1px solid #dcebe3"};

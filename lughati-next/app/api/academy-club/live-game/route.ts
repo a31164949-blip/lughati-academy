@@ -7,11 +7,14 @@ export const runtime = "nodejs";
 const TEACHER_EMAIL = "a31164949@gmail.com";
 const MAX_PARTICIPANTS = 30;
 type Player = { id: string; name: string; score: number; answeredQuestion: number };
+type VoiceAnswer = { studentId: string; name: string; question: number; audioUrl: string; points: number | null };
 const QUESTIONS = [
-  { prompt: "اختر الكلمة التي تبدأ بحرف «م»:", options: ["مدرسة", "كتاب", "قلم"], correct: 0 },
-  { prompt: "أي كلمة تحتوي على مد بالألف؟", options: ["كتب", "باب", "قلم"], correct: 1 },
-  { prompt: "أي الكلمات كُتبت كتابة صحيحة؟", options: ["هاذا", "هذا", "هذة"], correct: 1 },
-  { prompt: "ما عكس كلمة «كبير»؟", options: ["طويل", "جميل", "صغير"], correct: 2 },
+  { prompt: "اقرأ الكلمات الآتية بصوتك: بَابٌ ـ نُورٌ ـ فِيلٌ.", guide: "قراءة الكلمات الثلاث قراءة صحيحة مع نطق المدود." },
+  { prompt: "اقرأ بصوتك، ثم حدّد الكلمة التي تحتوي على لام شمسية: الْقَمَرُ ـ الشَّمْسُ ـ الْكِتَابُ.", guide: "قراءة الكلمات، ثم تحديد كلمة الشمس." },
+  { prompt: "ما جمع كلمة «قَلَمٌ»؟ قل الإجابة بصوتك، ثم ضع الجمع في جملة مفيدة.", guide: "أقلام؛ مع قبول أي جملة صحيحة مناسبة." },
+  { prompt: "رتّب الكلمات لتكوّن جملة، ثم اقرأها بصوتك: الْقِصَّةَ ـ يَقْرَأُ ـ خَالِدٌ.", guide: "يقرأ خالد القصة، أو خالد يقرأ القصة." },
+  { prompt: "اقرأ النص بصوتك، ثم أجب: زَارَ سَعْدٌ جَدَّهُ، وَسَاعَدَهُ فِي تَرْتِيبِ الْبَيْتِ. كيف ساعد سعد جدّه؟", guide: "قراءة النص، ثم الإجابة: ساعده في ترتيب البيت." },
+  { prompt: "اقرأ بصوتك، ثم فكّر وأجب: رَأَى عَلِيٌّ نَبْتَةً ذَابِلَةً، فَسَقَاهَا وَوَضَعَهَا قُرْبَ النَّافِذَةِ. لماذا فعل علي ذلك؟ وماذا تتوقع أن يحدث للنبتة؟", guide: "استنتاج حاجة النبتة للماء والضوء، وتوقع تحسنها ونموها؛ تقبل الإجابة الصحيحة بأسلوب الطالب." },
 ];
 
 async function identify(request: Request) {
@@ -47,7 +50,7 @@ function cleanCode(value: unknown) {
   return typeof value === "string" ? value.replace(/\D/g, "").slice(0, 6) : "";
 }
 
-async function roomPayload(code: string, actorId?: string) {
+async function roomPayload(code: string, actorId?: string, teacher = false) {
   const { adminDb } = getFirebaseAdmin();
   const ref = adminDb.collection("academyClubLiveRooms").doc(code);
   const snap = await ref.get();
@@ -64,9 +67,10 @@ async function roomPayload(code: string, actorId?: string) {
   }));
   const index = typeof data.currentQuestion === "number" ? data.currentQuestion : -1;
   const question = data.status === "active" && QUESTIONS[index]
-    ? { index, total: QUESTIONS.length, prompt: QUESTIONS[index].prompt, options: QUESTIONS[index].options }
+    ? { index, total: QUESTIONS.length, prompt: QUESTIONS[index].prompt, options: [], kind: "voice", ...(teacher ? { guide: QUESTIONS[index].guide } : {}) }
     : null;
   return { code, status: data.status ?? "waiting", question, participants,
+    ...(teacher ? { voiceAnswers: (data.voiceAnswers ?? []) as VoiceAnswer[] } : {}),
     answered: data.status === "active" && roster.some((player) => player.id === actorId && player.answeredQuestion === index),
   };
 }
@@ -83,7 +87,7 @@ export async function GET(request: Request) {
     const actor = await identify(request);
     const code = cleanCode(new URL(request.url).searchParams.get("code"));
     if (!code) return NextResponse.json({ success: false, message: "أدخل رمز الغرفة." }, { status: 400 });
-    return NextResponse.json({ success: true, room: await roomPayload(code, actor.id) });
+    return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     return NextResponse.json(
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
         status: "waiting", currentQuestion: -1, createdBy: actor.id, leaderboard: [],
         createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
       });
-      return NextResponse.json({ success: true, room: await roomPayload(code, actor.id) });
+      return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
     }
 
     const code = cleanCode(body.code);
@@ -150,44 +154,67 @@ export async function POST(request: Request) {
         questionStartedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
-      return NextResponse.json({ success: true, room: await roomPayload(code, actor.id) });
+      return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
+    }
+
+    if (action === "review") {
+      if (actor.kind !== "teacher" || roomSnap.data()?.createdBy !== actor.id) throw new Error("FORBIDDEN");
+      const studentId = typeof body.studentId === "string" ? body.studentId : "";
+      const question = body.question;
+      const points = body.points;
+      if (!Number.isInteger(question) || ![0, 5, 10].includes(points as number)) throw new Error("INVALID_ANSWER");
+      await adminDb.runTransaction(async (tx) => {
+        const participantRef = roomRef.collection("participants").doc(studentId);
+        const answerRef = roomRef.collection("answers").doc(`${studentId}_${question}`);
+        const [freshRoom, participantSnap, answerSnap] = await Promise.all([tx.get(roomRef), tx.get(participantRef), tx.get(answerRef)]);
+        if (!freshRoom.exists || !participantSnap.exists || !answerSnap.exists) throw new Error("JOIN_REQUIRED");
+        if (answerSnap.data()?.points !== null) throw new Error("ALREADY_REVIEWED");
+        const data = freshRoom.data() ?? {};
+        const roster = await transactionRoster(tx, roomRef, data);
+        const score = Number(participantSnap.data()?.score ?? 0) + (points as number);
+        tx.update(answerRef, { points, reviewedAt: FieldValue.serverTimestamp() });
+        tx.update(participantRef, { score });
+        tx.update(roomRef, {
+          leaderboard: roster.map(player => player.id === studentId ? { ...player, score } : player),
+          voiceAnswers: ((data.voiceAnswers ?? []) as VoiceAnswer[]).map(answer =>
+            answer.studentId === studentId && answer.question === question ? { ...answer, points: points as number } : answer),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+      return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, true) });
     }
 
     if (action === "answer") {
       if (actor.kind !== "student") throw new Error("FORBIDDEN");
-      const option = body.option;
-      if (typeof option !== "number" || !Number.isInteger(option) || option < 0 || option >= 3) {
-        throw new Error("INVALID_ANSWER");
-      }
+      const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl : "";
+      let validAudio = false;
+      try {
+        const url = new URL(audioUrl);
+        validAudio = audioUrl.length < 600 && url.protocol === "https:" && url.hostname === "res.cloudinary.com"
+          && url.pathname.startsWith("/ffv5igmg/video/upload/") && !url.search && !url.hash;
+      } catch { /* Invalid URL. */ }
+      if (!validAudio || !Number.isInteger(body.question)) throw new Error("INVALID_AUDIO");
       const participantRef = roomRef.collection("participants").doc(actor.id);
-      let result = { correct: false, points: 0 };
       await adminDb.runTransaction(async (tx) => {
         const [freshRoom, participantSnap] = await Promise.all([tx.get(roomRef), tx.get(participantRef)]);
         const data = freshRoom.data() ?? {};
         const index = Number(data.currentQuestion ?? -1);
         if (!freshRoom.exists || data.status !== "active" || !QUESTIONS[index]) throw new Error("NOT_ACTIVE");
+        if (body.question !== index) throw new Error("QUESTION_CHANGED");
         if (!participantSnap.exists) throw new Error("JOIN_REQUIRED");
         const answerRef = roomRef.collection("answers").doc(`${actor.id}_${index}`);
-        const [answerSnap, roster] = await Promise.all([
-          tx.get(answerRef), transactionRoster(tx, roomRef, data),
-        ]);
+        const [answerSnap, roster] = await Promise.all([tx.get(answerRef), transactionRoster(tx, roomRef, data)]);
         if (answerSnap.exists) throw new Error("ALREADY_ANSWERED");
-        const correct = option === QUESTIONS[index].correct;
-        const started = data.questionStartedAt instanceof Timestamp ? data.questionStartedAt.toMillis() : Date.now();
-        const elapsed = Math.max(0, Date.now() - started);
-        const speedBonus = correct ? Math.max(0, 5 - Math.floor(elapsed / 4000)) : 0;
-        const points = correct ? 10 + speedBonus : 0;
-        const score = Number(participantSnap.data()?.score ?? 0) + points;
-        result = { correct, points };
-        tx.set(answerRef, { studentId: actor.id, question: index, option, correct, points, answeredAt: FieldValue.serverTimestamp() });
-        tx.update(participantRef, { score, answeredQuestion: index, updatedAt: FieldValue.serverTimestamp() });
+        const answer: VoiceAnswer = { studentId: actor.id, name: actor.name, question: index, audioUrl, points: null };
+        tx.create(answerRef, { ...answer, answeredAt: FieldValue.serverTimestamp() });
+        tx.update(participantRef, { answeredQuestion: index, updatedAt: FieldValue.serverTimestamp() });
         tx.update(roomRef, {
-          leaderboard: roster.map((player) => player.id === actor.id
-            ? { ...player, score, answeredQuestion: index } : player),
+          leaderboard: roster.map(player => player.id === actor.id ? { ...player, answeredQuestion: index } : player),
+          voiceAnswers: [...((data.voiceAnswers ?? []) as VoiceAnswer[]), answer],
           updatedAt: FieldValue.serverTimestamp(),
         });
       });
-      return NextResponse.json({ success: true, result, room: await roomPayload(code, actor.id) });
+      return NextResponse.json({ success: true, room: await roomPayload(code, actor.id) });
     }
 
     return NextResponse.json({ success: false, message: "إجراء غير معروف." }, { status: 400 });
@@ -198,7 +225,10 @@ export async function POST(request: Request) {
       ROOM_FULL: "اكتملت الغرفة؛ الحد الأعلى 30 طالبًا.",
       ROOM_FINISHED: "انتهت هذه المسابقة؛ انتظر غرفة جديدة.",
       JOIN_REQUIRED: "انضم إلى الغرفة أولًا.",
-      INVALID_ANSWER: "اختر إجابة من الخيارات المعروضة.",
+      INVALID_ANSWER: "قيمة التقييم غير صحيحة.",
+      INVALID_AUDIO: "أرسل تسجيلًا صوتيًا صالحًا للإجابة.",
+      QUESTION_CHANGED: "انتقل المعلم إلى سؤال آخر؛ لم تُحتسب هذه الإجابة للسؤال الجديد.",
+      ALREADY_REVIEWED: "سبق اعتماد نقاط هذه الإجابة.",
       MEMBERSHIP_REQUIRED: "المشاركة خاصة بأعضاء النادي.",
       ALREADY_ANSWERED: "تم تسجيل إجابتك لهذه الجولة.",
       NOT_ACTIVE: "السؤال غير متاح الآن.",

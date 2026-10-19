@@ -10,16 +10,16 @@ function fixture(){
  const query=path=>({path,isQuery:true,doc:id=>ref(path+'/'+id),orderBy(){return this},limit(){return this},get:async()=>{queries++;const rows=[...docs.keys()].filter(p=>p.startsWith(path+'/')&&p.split('/').length===path.split('/').length+1);reads+=Math.max(rows.length,1);return {docs:rows.map(snapshot)}}});
  let lock=Promise.resolve();
  const db={collection:query,runTransaction:fn=>{const run=lock.then(async()=>{const writes=[];let wrote=false;const tx={get:async r=>{assert.equal(wrote,false,'reads precede writes');return r.get()},create:(r,d)=>{assert(!docs.has(r.path));wrote=true;writes.push(()=>docs.set(r.path,d))},set:(r,d)=>{wrote=true;writes.push(()=>docs.set(r.path,d))},update:(r,d)=>{wrote=true;writes.push(()=>docs.set(r.path,{...docs.get(r.path),...d}))}};const result=await fn(tx);writes.forEach(w=>w());return result});lock=run.catch(()=>{});return run}};
- const api=load('app/api/academy-club/live-game/route.ts',{'next/server':{NextResponse:{json:(data,options)=>({data,status:options?.status??200})}},'firebase-admin/firestore':{Timestamp:Stamp,FieldValue:{serverTimestamp:()=>new Stamp(Date.now())}},'../../../../firebase-admin':{getFirebaseAdmin:()=>({adminDb:db,adminAuth:{verifyIdToken:async id=>id==='teacher'?{uid:id,role:'teacher'}:{uid:id,role:'student',studentDocId:id}}})}});
+ const api=load('app/api/academy-club/live-game/route.ts',{'../../../lib/studentAccess':{requireStudentExtras:async()=>{}},'next/server':{NextResponse:{json:(data,options)=>({data,status:options?.status??200})}},'firebase-admin/firestore':{Timestamp:Stamp,FieldValue:{serverTimestamp:()=>new Stamp(Date.now())}},'../../../../firebase-admin':{getFirebaseAdmin:()=>({adminDb:db,adminAuth:{verifyIdToken:async id=>id==='teacher'?{uid:id,role:'teacher'}:{uid:id,role:'student',studentDocId:id}}})}});
  const roomPath='academyClubLiveRooms/123456';
- docs.set(roomPath,{status:'waiting',currentQuestion:-1,leaderboard:[]});
+ docs.set(roomPath,{status:'waiting',currentQuestion:-1,leaderboard:[],createdBy:'teacher'});
  const student=id=>docs.set('students/'+id,{studentName:id,academyClubMembership:{active:true}});
  const post=(id,action,extra={})=>api.POST({headers:{get:()=>`Bearer ${id}`},json:async()=>({code:'123456',action,...extra})});
  const get=id=>api.GET({headers:{get:()=>`Bearer ${id}`},url:'https://example.test/api?code=123456'});
  return {docs,student,post,get,roomPath,metrics:()=>({reads,queries}),reset:()=>{reads=queries=0}};
 }
 test('rejoin preserves score and prior answer, duplicate answer cannot earn points',async()=>{
- const f=fixture();f.student('s1');await f.post('s1','join');await f.post('teacher','start');const answer=await f.post('s1','answer',{option:0});assert.equal(answer.status,200);assert.equal(answer.data.result.correct,true);
+ const f=fixture();f.student('s1');await f.post('s1','join');await f.post('teacher','start');const answer=await f.post('s1','answer',{audioUrl:'https://res.cloudinary.com/ffv5igmg/video/upload/v1/test.m4a',question:0});assert.equal(answer.status,200);await f.post('teacher','review',{studentId:'s1',question:0,points:10});
  const score=f.docs.get(f.roomPath+'/participants/s1').score;assert(score>0);
  const rejoin=await f.post('s1','join');assert.equal(rejoin.data.room.answered,true);assert.equal(f.docs.get(f.roomPath+'/participants/s1').score,score);assert.equal((await f.post('s1','answer',{option:0})).status,400);assert.equal(f.docs.get(f.roomPath+'/participants/s1').score,score);
 });
@@ -30,7 +30,7 @@ test('new-room polling reads two documents for a student, one for teacher',async
  const f=fixture();for(let i=0;i<30;i++){f.student('s'+i);await f.post('s'+i,'join')}f.reset();assert.equal((await f.get('s0')).status,200);assert.deepEqual(f.metrics(),{reads:2,queries:0});f.reset();await f.get('teacher');assert.deepEqual(f.metrics(),{reads:1,queries:0});
 });
 test('unjoined answers and new entrants after finish are rejected',async()=>{
- const f=fixture();f.student('s1');await f.post('teacher','start');assert.equal((await f.post('s1','answer',{option:0})).status,400);assert.equal((await f.post('s1','answer',{option:99})).status,400);for(let i=0;i<4;i++)await f.post('teacher','next');assert.equal((await f.post('s1','join')).status,400);
+ const f=fixture();f.student('s1');await f.post('teacher','start');assert.equal((await f.post('s1','answer',{option:0})).status,400);assert.equal((await f.post('s1','answer',{option:99})).status,400);for(let i=0;i<6;i++)await f.post('teacher','next');assert.equal((await f.post('s1','join')).status,400);
 });
 test('older room roster is migrated on next join without resetting old scores',async()=>{
  const f=fixture();f.docs.set(f.roomPath,{status:'active',currentQuestion:0});f.docs.set(f.roomPath+'/participants/old',{name:'old',score:15,answeredQuestion:0});f.student('new');await f.post('new','join');assert.equal(f.docs.get(f.roomPath).leaderboard.find(p=>p.id==='old').score,15);f.reset();await f.get('teacher');assert.equal(f.metrics().queries,0);
@@ -43,4 +43,27 @@ test('polling pauses while hidden, resumes, avoids overlapping requests, and cle
  const tick=()=>{const [id,fn]=timers.entries().next().value;timers.delete(id);fn()};
  tick();assert.equal(calls,1);assert.equal(timers.size,0);visibility.hidden=true;listener();visibility.hidden=false;listener();assert.equal(calls,1);resolve();await new Promise(setImmediate);assert.equal(timers.size,1);
  visibility.hidden=true;listener();assert.equal(timers.size,0);visibility.hidden=false;listener();assert.equal(calls,2);stop();resolve();await new Promise(setImmediate);assert.equal(timers.size,0);assert.equal(listener,undefined);
+});
+
+const audioUrl='https://res.cloudinary.com/ffv5igmg/video/upload/v1/test.m4a';
+test('six oral questions; recordings remain private to teacher; grading is explicit and idempotent',async()=>{
+ const f=fixture();f.student('s1');await f.post('s1','join');const start=await f.post('teacher','start');
+ assert.equal(start.data.room.question.total,6);assert.equal(start.data.room.question.kind,'voice');
+ const sent=await f.post('s1','answer',{audioUrl,question:0});assert.equal(sent.status,200);assert.equal(sent.data.room.answered,true);
+ assert.equal(sent.data.room.voiceAnswers,undefined);assert.equal(sent.data.room.question.guide,undefined);assert.equal(sent.data.room.participants[0].score,0);
+ assert.equal((await f.post('s1','answer',{audioUrl,question:0})).status,400);
+ const teacher=await f.get('teacher');assert.equal(teacher.data.room.voiceAnswers.length,1);assert(teacher.data.room.question.guide);
+ assert.equal((await f.post('s1','review',{studentId:'s1',question:0,points:10})).status,403);
+ assert.equal((await f.post('teacher','review',{studentId:'s1',question:0,points:99})).status,400);
+ await f.post('teacher','next');assert.equal((await f.post('teacher','review',{studentId:'s1',question:0,points:10})).status,200);
+ assert.equal((await f.post('teacher','review',{studentId:'s1',question:0,points:10})).status,400);
+ assert.equal(f.docs.get(f.roomPath+'/participants/s1').score,10);
+ for(let i=1;i<6;i++)await f.post('teacher','next');assert.equal((await f.get('teacher')).data.room.status,'finished');
+});
+test('audio URLs and question identity are validated before storing or scoring',async()=>{
+ const f=fixture();f.student('s1');await f.post('s1','join');await f.post('teacher','start');
+ for(const url of ['https://evil.example/audio.mp3','javascript:alert(1)','https://res.cloudinary.com/another/video/upload/a.m4a']) assert.equal((await f.post('s1','answer',{audioUrl:url,question:0})).status,400);
+ await f.post('teacher','next');assert.equal((await f.post('s1','answer',{audioUrl,question:0})).status,400);
+ assert.equal(f.docs.get(f.roomPath+'/participants/s1').answeredQuestion,-1);
+ assert.equal((await f.post('s1','answer',{audioUrl,question:1})).status,200);
 });

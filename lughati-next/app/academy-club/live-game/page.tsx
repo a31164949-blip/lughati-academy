@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LiveVoiceAnswer from "../../components/LiveVoiceAnswer";
 import { useLiveGamePolling } from "../../hooks/useLiveGamePolling";
 import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -25,30 +26,36 @@ export default function LiveGamePage() {
   useEffect(()=>onAuthStateChanged(auth,current=>{setUser(current);setAuthReady(true);}),[]);
 
   const requestVersion = useRef(0);
+  const shownQuestion = useRef(-1);
+  const mutationInFlight = useRef(false);
 
-  async function request(action?:string,option?:number) {
-    if(!user)return;
+  async function request(action?:string,audioUrl?:string,question?:number) {
+    if(!user || mutationInFlight.current)return;
+    if(action) mutationInFlight.current = true;
     const version = ++requestVersion.current;
     setBusy(true);
     try{
       const token=await user.getIdToken();
       const response=action
-        ? await fetch("/api/academy-club/live-game",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({action,code,option})})
+        ? await fetch("/api/academy-club/live-game",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({action,code,audioUrl,question})})
         : await fetch(`/api/academy-club/live-game?code=${code}`,{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
       const data=await response.json();
       if (version !== requestVersion.current) return;
       if(!response.ok||!data.success)throw new Error(data.message||"تعذر الاتصال بالغرفة.");
+      if(data.room.question && data.room.question.index!==shownQuestion.current) {
+        shownQuestion.current=data.room.question.index;
+        setMessage("اقرأ السؤال ثم سجّل إجابتك بصوتك 🎙️");
+      }
       setRoom(data.room);
       if (data.room.answered && data.room.question) setAnswered(data.room.question.index);
       if(action==="join")setMessage("انضممت بنجاح؛ انتظر بدء المعلم 🚀");
-      if(action==="answer"){setAnswered(data.room.question?.index??-1);setMessage(data.result.correct?`إجابة صحيحة! +${data.result.points} نقطة ⭐`:"محاولة جميلة؛ استعد للسؤال التالي 💪");}
-    }catch(error){if (version === requestVersion.current) setMessage(error instanceof Error?error.message:"تعذر الاتصال بالغرفة.");}
-    finally{if (version === requestVersion.current) setBusy(false);}
+      if(action==="answer"){setAnswered(question??-1);setMessage("وصلت إجابتك الصوتية 🎙️ سيستمع المعلم إليها ويعتمد نقاطها.");}
+    }catch(error){if (version === requestVersion.current) setMessage(error instanceof Error?error.message:"تعذر الاتصال بالغرفة."); if(action==="answer") throw error;}
+    finally{if(action) mutationInFlight.current = false; if (version === requestVersion.current) setBusy(false);}
   }
 
   useLiveGamePolling(() => request(), !!user && !!room && room.status !== "finished", room?.code);
 
-  useEffect(()=>{ if(room?.question && room.question.index!==answered) setMessage("اختر الإجابة الصحيحة قبل منافسيك!"); },[room?.question?.index]);
 
   return <main dir="rtl" style={page}><header style={header}>
     <div><small style={{color:"#f5d66d",fontWeight:900}}>🏅 نادي الأكاديمية</small><h1 style={{margin:"5px 0"}}>تحدي مدينة لغتي المباشر</h1></div>
@@ -59,13 +66,13 @@ export default function LiveGamePage() {
       <button disabled={code.length!==6||busy} onClick={()=>void request("join")} style={primary}>انضم إلى التحدي</button></>}
     </section>:<>
       <section style={{...card,background:"linear-gradient(135deg,#fff8d8,#fff,#eaf8f0)"}}>
-        <b>الغرفة {room.code}</b><h2>{room.status==="waiting"?"بانتظار بدء المعلم… ⏳":room.status==="finished"?"انتهت المنافسة 🏆":"المنافسة مباشرة الآن 🔴"}</h2>
+        <b>الغرفة {room.code}</b><h2>{room.status==="waiting"?"بانتظار بدء المعلم… ⏳":room.status==="finished"?"انتهت الأسئلة؛ يعتمد المعلم نقاط التسجيلات 🏆":"المنافسة مباشرة الآن 🔴"}</h2>
         <p>{room.participants.length} متنافسًا في الساحة</p>
       </section>
       {room.question&&<section style={card}><small>السؤال {room.question.index+1} من {room.question.total}</small><h2>{room.question.prompt}</h2>
-        <div style={grid}>{room.question.options.map((option,index)=><button key={option} disabled={busy||answered===room.question?.index} onClick={()=>void request("answer",index)} style={choice}>{option}</button>)}</div>
+        {answered===room.question.index ? <p role="status">✅ أرسلت إجابتك الصوتية لهذا السؤال. انتظر السؤال التالي.</p> : <LiveVoiceAnswer key={`${room.code}-${room.question.index}`} disabled={busy} onSubmit={(audioUrl) => request("answer", audioUrl, room.question!.index)} />}
       </section>}
-      <section style={card}><h2>الترتيب المباشر</h2><div style={{display:"grid",gap:8}}>{room.participants.slice(0,10).map((student,index)=><div key={student.id} style={row}><b>{index+1}. {student.name}</b><span>⭐ {student.score}</span></div>)}</div></section>
+      <section style={card}><h2>الترتيب المباشر</h2>{room.status==="finished" && <button style={primary} disabled={busy} onClick={()=>void request()}>تحديث نقاطي بعد اعتماد المعلم</button>}<div style={{display:"grid",gap:8}}>{room.participants.slice(0,10).map((student,index)=><div key={student.id} style={row}><b>{index+1}. {student.name}</b><span>⭐ {student.score}</span></div>)}</div></section>
     </>}
     <div style={notice}>{message}</div>
   </div></main>;
@@ -77,7 +84,5 @@ const card:React.CSSProperties={padding:"clamp(22px,5vw,38px)",borderRadius:27,b
 const input:React.CSSProperties={display:"block",width:"min(100%,340px)",margin:"18px auto 12px",padding:16,borderRadius:14,border:"2px solid #9ed8b8",fontSize:27,textAlign:"center",letterSpacing:8};
 const primary:React.CSSProperties={border:0,borderRadius:15,padding:"14px 22px",background:"#16865d",color:"#fff",fontWeight:900,fontSize:18,cursor:"pointer"};
 const back:React.CSSProperties={color:"#fff",textDecoration:"none",fontWeight:900};
-const grid:React.CSSProperties={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:12,marginTop:18};
-const choice:React.CSSProperties={padding:17,borderRadius:16,border:"2px solid #a8d8bb",background:"#eef9f2",color:"#174c36",fontWeight:900,fontSize:18,cursor:"pointer"};
 const row:React.CSSProperties={display:"flex",justifyContent:"space-between",padding:"11px 14px",borderRadius:12,background:"#f4faf7"};
 const notice:React.CSSProperties={padding:14,borderRadius:14,background:"#fff4c4",color:"#79570b",textAlign:"center",fontWeight:900};
