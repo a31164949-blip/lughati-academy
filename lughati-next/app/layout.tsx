@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import AcademyAvailabilityGate from "./components/AcademyAvailabilityGate";
 import StudentAccessGate from "./components/StudentAccessGate";
 import ServiceWorkerRegister from "./service-worker-register";
 const geistSans = Geist({
@@ -58,7 +59,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
   <ServiceWorkerRegister />
-  <StudentAccessGate>{children}</StudentAccessGate>
+  <AcademyAvailabilityGate><StudentAccessGate>{children}</StudentAccessGate></AcademyAvailabilityGate>
 </body>
     </html>
   );

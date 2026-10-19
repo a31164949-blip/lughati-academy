@@ -1,3 +1,4 @@
+import { STUDENT_ACADEMY_PAUSED } from "./app/lib/academyAvailability";
 import "server-only";
 
 import {
@@ -105,6 +106,7 @@ export function getFirebaseAdmin(options: { allowSuspended?: boolean } = {}) {
     get(target, property) {
       if (property === "verifyIdToken") return async (...args: Parameters<typeof rawAuth.verifyIdToken>) => {
         const token = await rawAuth.verifyIdToken(...args);
+        if (STUDENT_ACADEMY_PAUSED && token.role === "student") throw new Error("FORBIDDEN");
         if (token.role === "student" && typeof token.studentDocId === "string") {
           const student = await adminDb.collection("students").doc(token.studentDocId).get();
           const control = student.data()?.accessControl;
