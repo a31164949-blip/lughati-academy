@@ -258,7 +258,7 @@ export default function TeacherDashboardPage() {
               </p>
             </div>
 
-            <h1 style={styles.title}>
+            <a href="/teacher/friends" style={{ display: "block", marginBottom: 14, color: "#17674d", fontWeight: 800 }}>🌿 إدارة لوحة شكر أصدقاء الأكاديمية والردود ←</a><h1 style={styles.title}>
               لوحة المعلم
             </h1>
 

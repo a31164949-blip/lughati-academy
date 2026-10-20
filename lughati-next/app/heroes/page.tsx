@@ -1,4 +1,6 @@
 "use client";
+import AcademyFriendsBoard from "../components/AcademyFriendsBoard";
+import { ACADEMY_FRIENDS_ACTIVE } from "../lib/academyFriends";
 import { readSharedContent } from "../lib/sharedPublicContent";
 
 
@@ -118,7 +120,8 @@ function getCurrentWeekInfo() {
   };
 }
 
-export default function HeroesPage() {
+export default function HeroesPage() { return ACADEMY_FRIENDS_ACTIVE ? <AcademyFriendsBoard /> : <WeeklyHeroesPage />; }
+function WeeklyHeroesPage() {
   const currentWeek =
     useMemo(
       () => getCurrentWeekInfo(),

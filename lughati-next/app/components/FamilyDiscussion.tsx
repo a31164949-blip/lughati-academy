@@ -6,7 +6,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../firebase";
 type Reply = { teacherReply?: string; revision?: string; id: string; text: string; visibility: string; status: string; name: string };
 type Topic = { topicId: string; title: string; active: boolean };
-export default function FamilyDiscussion({ teacher = false }: { teacher?: boolean }) {
+export default function FamilyDiscussion({ teacher = false, appreciation = false }: { teacher?: boolean; appreciation?: boolean }) {
   const [user, setUser] = useState<User | null>(null);
   const [topic, setTopic] = useState<Topic | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
@@ -23,7 +23,7 @@ export default function FamilyDiscussion({ teacher = false }: { teacher?: boolea
   const generation = useRef(0);
   async function request(u: User, method = "GET", body?: Record<string, unknown>, after?: string) {
     const token = await u.getIdToken();
-    const response = await fetch(`/api/family-discussion${after ? `?cursor=${encodeURIComponent(after)}` : ""}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
+    const response = await fetch(`/api/${appreciation ? "academy-friends" : "family-discussion"}${after ? `?cursor=${encodeURIComponent(after)}` : ""}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.message);
     return data;
@@ -60,12 +60,14 @@ export default function FamilyDiscussion({ teacher = false }: { teacher?: boolea
   const field = { width: "100%", padding: 12, border: "1px solid #bed8ca", borderRadius: 12, font: "inherit", boxSizing: "border-box" as const };
   const button = { padding: "12px 16px", border: 0, borderRadius: 12, background: "#176c46", color: "white", font: "inherit", cursor: "pointer" };
   const labels: Record<string, string> = { private: "للمعلم فقط", pending: "بانتظار اعتماد المعلم", published: "منشورة للجميع", hidden: "غير منشورة" };
-  return <main dir="rtl" style={{ minHeight: "100vh", padding: "100px 16px 40px", background: "#f4faf7", color: "#17352a", fontFamily: "Arial" }}><div style={{ maxWidth: 850, margin: "auto", display: "grid", gap: 18 }}>
-    <Link href={teacher ? "/teacher" : "/journey"}>العودة ←</Link>
-    <h1>🤝 نتحاور من أجل أبنائنا</h1><p>نتبادل الأفكار والتجارب التي تساعد أبناءنا على التعلّم. نرجو تجنّب الأسماء والتفاصيل الشخصية في المشاركات العامة.</p>
-    <p>يقرأ معلمك مشاركتك ويردّ عليها في هذه الزاوية؛ لنتعاون على تجاوز الصعوبات ودعم تعلّم ابنك. تبقى المشاركة الخاصة وردّ المعلم عليها بين الأسرة والمعلم.</p>
-    {!user ? <p>سجّل دخولك إلى الأكاديمية لفتح الزاوية.</p> : <>
-      {teacher && <section style={{ background: "white", padding: 20, borderRadius: 20 }}><h2>طرح موضوع جديد</h2><p>نشر موضوع جديد يستبدل الموضوع الحالي. تبقى مشاركات الموضوع السابق محفوظة.</p><label>موضوع الحوار<textarea style={{ ...field, minHeight: 220, lineHeight: 1.9, resize: "vertical" }} rows={8} maxLength={FAMILY_DISCUSSION_TOPIC_MAX_LENGTH} value={title} onChange={e => setTitle(e.target.value)} aria-describedby="topic-length" /></label><p id="topic-length">{title.length} / {FAMILY_DISCUSSION_TOPIC_MAX_LENGTH} حرف</p><button style={button} disabled={busy || !title.trim()} onClick={() => void act("POST", { title })}>نشر الموضوع</button></section>}
+  const Container = appreciation ? "section" : "main";
+  const Heading = appreciation ? "h3" : "h1";
+  return <Container dir="rtl" style={{ minHeight: appreciation ? undefined : "100vh", padding: appreciation ? "24px 0" : "100px 16px 40px", background: "#f4faf7", color: "#17352a", fontFamily: "Arial" }}><div style={{ maxWidth: 850, margin: "auto", display: "grid", gap: 18 }}>
+    {!appreciation && <Link href={teacher ? "/teacher" : "/journey"}>العودة ←</Link>}
+    <Heading>{appreciation ? "رسائلكم وذكرياتكم مع الأكاديمية" : "🤝 نتحاور من أجل أبنائنا"}</Heading><p>{appreciation ? "شاركونا كلمة أو ذكرى جميلة. نرجو تجنّب الأسماء والتفاصيل الشخصية في المشاركات العامة." : "نتبادل الأفكار والتجارب التي تساعد أبناءنا على التعلّم. نرجو تجنّب الأسماء والتفاصيل الشخصية في المشاركات العامة."}</p>
+    <p>{appreciation ? "ردّك الخاص يطّلع عليه المعلم وحده، ويظهر لك ردّه هنا. وإذا اخترت مشاركة عامة، فلن تُنشر إلا بعد اعتماده." : "يقرأ معلمك مشاركتك ويردّ عليها في هذه الزاوية؛ لنتعاون على تجاوز الصعوبات ودعم تعلّم ابنك. تبقى المشاركة الخاصة وردّ المعلم عليها بين الأسرة والمعلم."}</p>
+    {!user ? <p>سجّل دخولك إلى الأكاديمية لكتابة ردّك. {appreciation && <Link href="/login">دخول الطالب أو الأسرة ←</Link>}</p> : <>
+      {teacher && !appreciation && <section style={{ background: "white", padding: 20, borderRadius: 20 }}><h2>طرح موضوع جديد</h2><p>نشر موضوع جديد يستبدل الموضوع الحالي. تبقى مشاركات الموضوع السابق محفوظة.</p><label>موضوع الحوار<textarea style={{ ...field, minHeight: 220, lineHeight: 1.9, resize: "vertical" }} rows={8} maxLength={FAMILY_DISCUSSION_TOPIC_MAX_LENGTH} value={title} onChange={e => setTitle(e.target.value)} aria-describedby="topic-length" /></label><p id="topic-length">{title.length} / {FAMILY_DISCUSSION_TOPIC_MAX_LENGTH} حرف</p><button style={button} disabled={busy || !title.trim()} onClick={() => void act("POST", { title })}>نشر الموضوع</button></section>}
       <button style={button} disabled={busy} onClick={() => void act("GET")}>تحديث المشاركات</button>
       {topic ? <section style={{ background: "white", padding: 20, borderRadius: 20 }}><h2>موضوع الحوار</h2><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.95, fontSize: 18 }}>{topic.title}</p><p>{topic.active ? "المشاركة مفتوحة" : "المشاركة مغلقة"}</p>
         {teacher ? <button style={button} disabled={busy} onClick={() => void act("PATCH", { topicId: topic.topicId, active: !topic.active })}>{topic.active ? "إغلاق المشاركة" : "فتح المشاركة"}</button> : <><label>مشاركة الأسرة<textarea style={field} rows={5} maxLength={800} disabled={!topic.active || busy} value={text} onChange={e => setText(e.target.value)} /></label><p>{text.length} / 800</p><fieldset disabled={busy || !topic.active}><legend>من يمكنه رؤية مشاركتك؟</legend><label><input type="radio" name="visibility" checked={visibility === "private"} onChange={() => setVisibility("private")} /> المعلم فقط</label><br /><label><input type="radio" name="visibility" checked={visibility === "public"} onChange={() => setVisibility("public")} /> الجميع بعد اعتماد المعلم</label></fieldset><p>يمكنك تعديل مشاركتك. كل تعديل لمشاركة عامة يحتاج اعتمادًا جديدًا.</p><button style={button} disabled={busy || !topic.active || !text.trim()} onClick={() => void act("POST", { topicId: topic.topicId, text, visibility })}>حفظ المشاركة</button>{status && <p>حالة مشاركتك: {labels[status]}</p>}{mine?.teacherReply && <div style={{ background: "#eef8f2", padding: 16, borderRadius: 12, marginTop: 16 }}><h3>رد المعلم على مشاركتك</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.9 }}>{mine.teacherReply}</p></div>}</>}
@@ -76,5 +78,5 @@ export default function FamilyDiscussion({ teacher = false }: { teacher?: boolea
       {topic && replies.length === 0 && <p>لا توجد مشاركات للعرض بعد.</p>}
       {cursor && <button style={button} disabled={busy} onClick={() => void act("GET", undefined, cursor)}>عرض المزيد</button>}
     </>}
-  </div></main>;
+  </div></Container>;
 }
