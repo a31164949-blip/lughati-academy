@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
+import { isTrialStudent } from "../../lib/smartStudentReport";
+import StudentReportPanel from "./StudentReportPanel";
 import { db } from "../../../firebase";
 
 type ClassroomKey = "second-a" | "second-b";
@@ -12,6 +14,7 @@ type AwardLevel = "prince" | "hero" | "star" | "diligent" | "not-evaluated";
 type StudentRecord = {
   studentId: string;
   studentName: string;
+  isTrial?: boolean;
   classroom: ClassroomKey;
   attendance: AttendanceStatus;
   homeworkLevel: HomeworkLevel;
@@ -114,6 +117,7 @@ function oldSpellingToErrors(saved: Record<string, unknown>): number | null {
 }
 
 export default function SmartRecordPage() {
+  const [reportStudent, setReportStudent] = useState("");
   const [selectedClassroom, setSelectedClassroom] = useState<ClassroomKey>("second-a");
   const [selectedDate, setSelectedDate] = useState(getTodayKey());
   const [records, setRecords] = useState<StudentRecord[]>([]);
@@ -145,6 +149,7 @@ export default function SmartRecordPage() {
           classroomStudents.push({
             studentId: studentDoc.id,
             studentName: name,
+            isTrial: data.isTestAccount === true || data.isTest === true || data.isDemo === true || isTrialStudent(name),
             classroom: selectedClassroom,
             attendance: "present",
             homeworkLevel: "not-done",
@@ -437,6 +442,8 @@ export default function SmartRecordPage() {
           <article className="rounded-3xl border bg-white p-5 shadow-sm"><label className="mb-4 block text-xl font-black">📅 تاريخ السجل</label><input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full rounded-2xl border px-4 py-4 text-lg font-bold" /></article>
         </section>
 
+        <StudentReportPanel key={selectedClassroom} students={records} classroom={selectedClassroom} classroomLabel={currentClassroom.label} selectedDate={selectedDate} requestedStudent={reportStudent} onStudentChange={setReportStudent} />
+
         <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           <SummaryCard icon="👥" label="الطلاب" value={summary.total} /><SummaryCard icon="✅" label="حاضر" value={summary.present} /><SummaryCard icon="❌" label="غائب" value={summary.absent} /><SummaryCard icon="⏰" label="متأخر" value={summary.late} /><SummaryCard icon="📝" label="الواجب" value={summary.homework} /><SummaryCard icon="📖" label="القراءة" value={summary.reading} /><SummaryCard icon="✍️" label="الإملاء" value={summary.spelling} />
         </section>
@@ -530,7 +537,7 @@ export default function SmartRecordPage() {
 
         <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="🔎 ابحث باسم الطالب أو رقمه..." className="mb-4 w-full rounded-2xl border bg-white px-5 py-4 text-lg font-bold shadow-sm" />
 
-        <section className="overflow-hidden rounded-3xl border bg-white shadow-sm"><div className="border-b p-5"><h2 className="text-2xl font-black">👨‍🎓 طلاب {currentClassroom.label}</h2><p className="mt-2 text-slate-500">سجّل عدد الأخطاء فقط؛ اللقب يظهر تلقائيًا. التاج قرار المعلم.</p></div><div className="grid gap-3 p-4">{filteredRecords.map((student) => <StudentRow key={student.studentId} student={student} onUpdate={(changes) => updateStudent(student.studentId, changes)} />)}{!filteredRecords.length && <div className="p-8 text-center font-bold text-slate-500">لا توجد بيانات طلاب لهذا الفصل.</div>}</div></section>
+        <section className="overflow-hidden rounded-3xl border bg-white shadow-sm"><div className="border-b p-5"><h2 className="text-2xl font-black">👨‍🎓 طلاب {currentClassroom.label}</h2><p className="mt-2 text-slate-500">سجّل عدد الأخطاء فقط؛ اللقب يظهر تلقائيًا. التاج قرار المعلم.</p></div><div className="grid gap-3 p-4">{filteredRecords.map((student) => <StudentRow key={student.studentId} student={student} onReport={() => { setReportStudent(student.studentId); document.getElementById("student-smart-report")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onUpdate={(changes) => updateStudent(student.studentId, changes)} />)}{!filteredRecords.length && <div className="p-8 text-center font-bold text-slate-500">لا توجد بيانات طلاب لهذا الفصل.</div>}</div></section>
 
         <button type="button" onClick={handleSave} disabled={isSaving || !records.length} className="mt-6 w-full rounded-2xl bg-emerald-600 px-5 py-4 text-xl font-black text-white shadow-sm disabled:opacity-60">{isSaving ? "⏳ جارٍ حفظ السجل..." : `💾 حفظ سجل ${currentClassroom.label}`}</button>
         {statusMessage && <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-center font-black text-amber-800">{statusMessage}</p>}
@@ -552,7 +559,7 @@ function SummaryCard({ icon, label, value }: { icon: string; label: string; valu
   return <article className="rounded-2xl border bg-white p-4 text-center shadow-sm"><div className="text-2xl">{icon}</div><p className="mt-2 text-sm font-bold text-slate-500">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></article>;
 }
 
-function StudentRow({ student, onUpdate }: { student: StudentRecord; onUpdate: (changes: Partial<StudentRecord>) => void }) {
+function StudentRow({ student, onUpdate, onReport }: { student: StudentRecord; onReport: () => void; onUpdate: (changes: Partial<StudentRecord>) => void }) {
   const [showNote, setShowNote] = useState(Boolean(student.note));
 
   function setReadingErrors(value: string) {
@@ -575,6 +582,7 @@ function StudentRow({ student, onUpdate }: { student: StudentRecord; onUpdate: (
           <p dir="ltr" className="mt-0.5 truncate text-right text-[10px] font-bold text-slate-400">
             {student.studentId}
           </p>
+          {!student.isTrial && <button type="button" onClick={onReport} className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">تقرير الطالب</button>}
         </div>
 
         <AttendanceSelector
