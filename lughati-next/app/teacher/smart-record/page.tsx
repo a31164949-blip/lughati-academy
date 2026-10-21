@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
 import { isTrialStudent } from "../../lib/smartStudentReport";
 import StudentReportPanel from "./StudentReportPanel";
+import MonthlyClassReportPanel from "./MonthlyClassReportPanel";
 import { db } from "../../../firebase";
 
 type ClassroomKey = "second-a" | "second-b";
@@ -118,6 +119,7 @@ function oldSpellingToErrors(saved: Record<string, unknown>): number | null {
 
 export default function SmartRecordPage() {
   const [reportStudent, setReportStudent] = useState("");
+  const [reportRevision, setReportRevision] = useState(0);
   const [selectedClassroom, setSelectedClassroom] = useState<ClassroomKey>("second-a");
   const [selectedDate, setSelectedDate] = useState(getTodayKey());
   const [records, setRecords] = useState<StudentRecord[]>([]);
@@ -355,6 +357,7 @@ export default function SmartRecordPage() {
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
+      setReportRevision(value => value + 1);
       for (const student of records) {
         const studentReference = doc(db, "students", student.studentId);
         const snapshot = await getDoc(studentReference);
@@ -443,6 +446,8 @@ export default function SmartRecordPage() {
         </section>
 
         <StudentReportPanel key={selectedClassroom} students={records} classroom={selectedClassroom} classroomLabel={currentClassroom.label} selectedDate={selectedDate} requestedStudent={reportStudent} onStudentChange={setReportStudent} />
+
+        <MonthlyClassReportPanel key={`monthly-${selectedClassroom}`} students={records} classroom={selectedClassroom} classroomLabel={currentClassroom.label} selectedDate={selectedDate} revision={reportRevision} />
 
         <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           <SummaryCard icon="👥" label="الطلاب" value={summary.total} /><SummaryCard icon="✅" label="حاضر" value={summary.present} /><SummaryCard icon="❌" label="غائب" value={summary.absent} /><SummaryCard icon="⏰" label="متأخر" value={summary.late} /><SummaryCard icon="📝" label="الواجب" value={summary.homework} /><SummaryCard icon="📖" label="القراءة" value={summary.reading} /><SummaryCard icon="✍️" label="الإملاء" value={summary.spelling} />
