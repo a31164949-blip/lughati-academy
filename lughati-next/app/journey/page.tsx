@@ -3923,7 +3923,7 @@ try {
         </div>
       </header>
 
-      <AcademyWelcome />
+      <AcademyWelcome showCouncil />
       <FamilyDiscussionCard />
       <TeacherWhatsAppCard />
 

@@ -73,7 +73,7 @@ export default function AcademyCouncil({ teacher = false }: { teacher?: boolean 
   }
   const topic = detail?.topic;
   return <main dir="rtl" className={styles.page}>
-    <header className={styles.header}><Link href="/" aria-label="العودة إلى الأكاديمية"><AcademyLogo size={62} /></Link><div><span className={styles.eyebrow}>أكاديمية لغتي الرقمية</span><p>مجتمع يتعلّم… وأسرة تشارك</p></div><Link className={styles.back} href={isTeacher ? '/teacher' : '/'}>العودة {isTeacher ? 'للوحة المعلم' : 'للأكاديمية'} ←</Link></header>
+    <header className={styles.header}><Link href="/" aria-label="العودة إلى الأكاديمية"><AcademyLogo size={62} /></Link><div><span className={styles.eyebrow}>أكاديمية لغتي الرقمية</span><p>مجتمع يتعلّم… وأسرة تشارك</p></div><Link className={styles.back} href={isTeacher ? '/teacher' : user ? '/journey' : '/'}>العودة {isTeacher ? 'للوحة المعلم' : user ? 'لصفحة الطالب' : 'للأكاديمية'} ←</Link></header>
     <div className={styles.wrap}>
       <section className={styles.hero}><span className={styles.kicker}>مساحة للفكرة… وأثرها</span><h1>مجلس الأكاديمية<span aria-hidden="true">✦</span></h1><p>نتشارك الرأي، ونقترح الحلول، ونصنع لأبنائنا فرصًا أجمل للتعلّم.</p><div className={styles.pills}><span>مواضيع يعتمدها المعلم</span><span>خصوصية واضحة للردود</span><span>حوار يجمعنا على الخير</span></div></section>
       {!ready ? <p className={styles.notice}>جارٍ التحقق من الدخول…</p> : !user ? <section className={styles.panel}><h2>أهلًا بك في مجلسنا</h2><p>سجّل دخولك بحساب الطالب أو الأسرة لقراءة المواضيع وإرسال مشاركتك.</p><Link className={styles.primary} href="/login?returnTo=%2Fdiscussion">دخول الطالب أو الأسرة ←</Link><Link className={styles.secondary} href="/teacher-login">دخول المعلم</Link></section> : <>
