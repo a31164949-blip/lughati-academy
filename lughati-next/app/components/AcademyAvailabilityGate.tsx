@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { usePathname } from "next/navigation";
-import AcademyFriendsBoard from "./AcademyFriendsBoard";
+import AcademyContinuationCard from "./AcademyContinuationCard";
 import AcademyWelcome from "./AcademyWelcome";
 import NationalIdentity from "./NationalIdentity";
 import { ACADEMY_FRIENDS_ACTIVE } from "../lib/academyFriends";
@@ -48,6 +48,6 @@ export default function AcademyAvailabilityGate({ children }: { children: React.
       <a href="https://schools.madrasati.sa/" style={{ display: "block", textAlign: "center", background: "#17674d", color: "white", borderRadius: 14, padding: 16, marginTop: 24, fontSize: 20, fontWeight: 800 }}>الانتقال إلى منصة مدرستي ←</a>
       <button type="button" disabled={busy} onClick={() => void teacherLogin()} style={{ display: "block", margin: "22px auto 0", padding: "10px 18px", color: "#17674d", border: "1px solid #c8dfd2", borderRadius: 12, background: "white", cursor: "pointer", font: "inherit" }}>{busy ? "جارٍ الانتقال…" : "دخول المعلم"}</button>
       {(error || access === "error") && <p role="alert">{error || "تعذر التحقق من الحساب. أعد تحميل الصفحة أو استخدم دخول المعلم."}</p>}
-    </section>{ACADEMY_FRIENDS_ACTIVE && <AcademyFriendsBoard />}<p style={{ textAlign: "center", fontSize: 14, color: "#6f7e6d", marginTop: 28 }}>أكاديمية لغتي الرقمية — لكل جهد أثر، ولكل قارئ حكاية.</p></div>
+    </section>{ACADEMY_FRIENDS_ACTIVE && <AcademyContinuationCard />}<p style={{ textAlign: "center", fontSize: 14, color: "#6f7e6d", marginTop: 28 }}>أكاديمية لغتي الرقمية — لكل جهد أثر، ولكل قارئ حكاية.</p></div>
   </main>;
 }

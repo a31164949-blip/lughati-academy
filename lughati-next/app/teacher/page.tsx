@@ -5,6 +5,7 @@
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 const sections = [
+  { title: "طلبات الاستمرار في الأكاديمية", description: "مراجعة رغبات الطلاب ورسائلهم الخاصة — الطاقة الاستيعابية ٢٠ طالبًا.", href: "/teacher/continuation" },
   { title: "🧠 نتائج أوراق التفكير", description: "متابعة محاولات الطلاب وتفسيراتهم في أوراق التفكير الإلكترونية.", href: "/teacher/thinking-worksheets" },
   { title: "مجلس الأكاديمية", description: "اعتماد مواضيع الأعضاء ونشر مواضيع المعلم وإدارة خصوصية الردود.", href: "/teacher/discussion" },
   { title: "🗳️ تصويت الطلاب", description: "نشر تصويت يظهر أعلى صفحة الطالب ومتابعة النتائج.", href: "/teacher/polls" },
@@ -258,7 +259,7 @@ export default function TeacherDashboardPage() {
               </p>
             </div>
 
-            <a href="/teacher/friends" style={{ display: "block", marginBottom: 14, color: "#17674d", fontWeight: 800 }}>🌿 إدارة لوحة شكر أصدقاء الأكاديمية والردود ←</a><h1 style={styles.title}>
+            <a href="/teacher/continuation" style={{ display: "block", marginBottom: 14, color: "#17674d", fontWeight: 800 }}>مراجعة طلبات الاستمرار ورسائل الطلاب الخاصة ←</a><h1 style={styles.title}>
               لوحة المعلم
             </h1>
 

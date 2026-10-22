@@ -1,6 +1,6 @@
 "use client";
 import AcademyWelcome from "./components/AcademyWelcome";
-import AcademyFriendsBoard from "./components/AcademyFriendsBoard";
+import AcademyContinuationCard from "./components/AcademyContinuationCard";
 import { ACADEMY_FRIENDS_ACTIVE } from "./lib/academyFriends";
 import { auth } from "../firebase";
 
@@ -3318,7 +3318,7 @@ useEffect(() => {
 
 {/* أبطال الأكاديمية في أسبوع */}
 
-{ACADEMY_FRIENDS_ACTIVE ? <AcademyFriendsBoard /> : <section
+{ACADEMY_FRIENDS_ACTIVE ? <AcademyContinuationCard /> : <section
   style={{
     maxWidth: "1180px",
     margin: "10px auto",
