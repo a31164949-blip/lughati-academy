@@ -57,7 +57,7 @@ export default function AcademyCouncil({ teacher = false }: { teacher?: boolean 
     const data = await request(account, { topicId, ...(after ? { cursor: after } : {}) });
     if (version !== generation.current || !data.topic) return;
     setDetail(old => ({ topic: data.topic!, replies: after ? [...(old?.replies ?? []), ...(data.replies ?? []).filter(reply => !old?.replies.some(saved => saved.id === reply.id))] : data.replies ?? [], mine: data.mine ?? null, cursor: data.cursor }));
-    setTopics(old => old.map(topic => topic.id === topicId ? data.topic! : topic).filter(topic => view !== 'pending' || topic.status === 'pending'));
+    setTopics(old => old.map(topic => topic.id === topicId ? data.topic! : topic));
     if (!after) { setReplyText(data.mine?.text ?? ''); setVisibility(data.mine?.visibility ?? 'private'); setDrafts({}); }
   }
   function moderate(action: string, reply?: CouncilReply) {
@@ -65,7 +65,10 @@ export default function AcademyCouncil({ teacher = false }: { teacher?: boolean 
     void run(async (account, version) => {
       await request(account, {}, 'PATCH', { action, topicId: detail.topic.id, topicRevision: detail.topic.revision, ...(reply ? { replyId: reply.id, revision: reply.revision, teacherReply: drafts[reply.id] ?? reply.teacherReply } : {}) });
       await loadTopic(account, detail.topic.id, version);
-      if (version === generation.current) setMessage('تم حفظ التغيير.');
+      if (version === generation.current) {
+        if ((view === 'pending' && ['approveTopic', 'hideTopic'].includes(action)) || (view === 'published' && action === 'hideTopic')) setTopics(old => old.filter(topic => topic.id !== detail.topic.id));
+        setMessage('تم حفظ التغيير.');
+      }
     });
   }
   const topic = detail?.topic;
