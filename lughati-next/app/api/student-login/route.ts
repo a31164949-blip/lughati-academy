@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFirebaseAdmin } from "../../../firebase-admin";
+import { STUDENT_ACADEMY_PAUSED, isStudentPreviewAccount } from "../../lib/academyAvailability";
 
 export const runtime = "nodejs";
 
@@ -360,6 +361,12 @@ await adminDb.runTransaction(
       loginCount:
         previousLoginCount + 1,
     };
+
+    // The owner explicitly reopened this test account for the student preview.
+    // Resume only after its existing login code has been verified.
+    if (STUDENT_ACADEMY_PAUSED && isStudentPreviewAccount(studentSnapshot.id) && ["account", "extras"].includes(latestStudentData.accessControl?.mode)) {
+      updateData.accessControl = { mode: "resume", until: null, resumedAt: loginTimestamp, updatedAt: loginTimestamp, updatedBy: "academy-preview" };
+    }
 
     if (
       !latestStudentData.firstLoginAt

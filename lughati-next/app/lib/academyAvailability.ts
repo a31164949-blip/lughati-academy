@@ -1,5 +1,12 @@
 // Temporary student closure. Teacher access and stored student records stay available.
 export const STUDENT_ACADEMY_PAUSED = true;
+// One existing test account is permitted to preview the student interface.
+// Match its authenticated Firestore document ID, never a name or URL parameter.
+export const STUDENT_PREVIEW_ENABLED = true;
+export const STUDENT_PREVIEW_DOC_ID = "student-040";
+export function isStudentPreviewAccount(studentDocId: unknown) {
+  return STUDENT_PREVIEW_ENABLED && studentDocId === STUDENT_PREVIEW_DOC_ID;
+}
 export const STUDENT_PAUSE_MESSAGE = {
   title: "إغلاق مؤقت لخدمات الأكاديمية للطلاب",
   paragraphs: [

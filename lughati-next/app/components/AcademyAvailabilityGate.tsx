@@ -8,11 +8,11 @@ import FamilyDiscussionCard from "./FamilyDiscussionCard";
 import NationalIdentity from "./NationalIdentity";
 import { ACADEMY_FRIENDS_ACTIVE } from "../lib/academyFriends";
 import { auth } from "../../firebase";
-import { STUDENT_ACADEMY_PAUSED, STUDENT_PAUSE_MESSAGE } from "../lib/academyAvailability";
+import { STUDENT_ACADEMY_PAUSED, STUDENT_PAUSE_MESSAGE, isStudentPreviewAccount } from "../lib/academyAvailability";
 
 export default function AcademyAvailabilityGate({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const [access, setAccess] = useState<"loading" | "teacher" | "guest" | "student" | "error">("loading");
+  const [access, setAccess] = useState<"loading" | "teacher" | "preview" | "guest" | "student" | "error">("loading");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -26,7 +26,8 @@ export default function AcademyAvailabilityGate({ children }: { children: React.
         const token = await user.getIdTokenResult();
         if (current !== version) return;
         const teacher = token.claims.role === "teacher" || token.claims.role === "admin" || token.claims.email === "a31164949@gmail.com";
-        setAccess(teacher ? "teacher" : "student");
+        const preview = token.claims.role === "student" && isStudentPreviewAccount(token.claims.studentDocId);
+        setAccess(teacher ? "teacher" : preview ? "preview" : "student");
       } catch { if (current === version) setAccess("error"); }
     });
     return () => { version++; unsubscribe(); };
@@ -36,7 +37,7 @@ export default function AcademyAvailabilityGate({ children }: { children: React.
     try { await signOut(auth); window.location.assign("/teacher-login"); }
     catch { setError("تعذر تسجيل الخروج. حاول مرة أخرى."); setBusy(false); }
   }
-  if (!STUDENT_ACADEMY_PAUSED || access === "teacher" || (access === "guest" && (path === "/teacher-login" || path === "/login")) || ((access === "guest" || access === "student") && path === "/discussion")) return <>{children}</>;
+  if (!STUDENT_ACADEMY_PAUSED || access === "teacher" || access === "preview" || (access === "guest" && (path === "/teacher-login" || path === "/login")) || ((access === "guest" || access === "student") && path === "/discussion")) return <>{children}</>;
   if (access === "loading") return <main dir="rtl" className="p-8 text-center">جارٍ التحقق من الدخول…</main>;
   return <main dir="rtl" style={{ minHeight: "100vh", padding: "20px 16px 45px", background: "radial-gradient(ellipse at top left,#ece5d4aa,transparent 40%),#f6f6ef", color: "#183f30" }}>
     <div style={{ width: "100%", maxWidth: 1100, margin: "auto" }}><AcademyWelcome paused /><NationalIdentity /><FamilyDiscussionCard />

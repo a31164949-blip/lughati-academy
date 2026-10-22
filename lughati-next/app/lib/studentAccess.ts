@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { getFirebaseAdmin } from "../../firebase-admin";
 import { INACTIVITY_DAYS, evaluateAccess } from "./studentAccessPolicy";
+import { STUDENT_ACADEMY_PAUSED, isStudentPreviewAccount } from "./academyAvailability";
 
 function milliseconds(value: unknown): number | null {
   if (value && typeof value === "object" && "toMillis" in value && typeof value.toMillis === "function") return value.toMillis();
@@ -47,7 +48,8 @@ export async function studentAccess(id: string, supplied?: FirebaseFirestore.Doc
   const control = data.accessControl ?? {};
   const until = milliseconds(control.until);
   const manual = ["extras", "account"].includes(control.mode) && (until === null || until > Date.now());
-  return evaluateAccess({ now: Date.now(), enrolledAt: milliseconds(data.createdAt) ?? milliseconds(data.firstLoginAt), latestActivity: manual ? null : await activity(id), mode: control.mode, until, resumedAt: milliseconds(control.resumedAt) });
+  const preview = STUDENT_ACADEMY_PAUSED && isStudentPreviewAccount(id);
+  return evaluateAccess({ now: Date.now(), enrolledAt: milliseconds(data.createdAt) ?? milliseconds(data.firstLoginAt), latestActivity: manual ? null : preview ? Date.now() : await activity(id), mode: control.mode, until, resumedAt: milliseconds(control.resumedAt) });
 }
 export async function requireStudentExtras(id: string, data?: FirebaseFirestore.DocumentData) {
   if ((await studentAccess(id, data)).extrasSuspended) throw new Error("FORBIDDEN");
