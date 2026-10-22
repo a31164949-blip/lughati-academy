@@ -4479,3 +4479,10 @@ a {
   -webkit-text-fill-color: #065f46 !important;
   transform: translateY(-2px);
 }
+/* Renewed academy surfaces: the official identity remains in its own header. */
+.academy-page{background:radial-gradient(ellipse at top left,#e9e4d4aa,transparent 38%),#f6f6ef}
+.academy-page .academy-gates{border-color:#d4ddcf;border-radius:26px;background:#fffef9;box-shadow:0 12px 40px #173e3907}
+.academy-page .academy-card{border-color:#d7e0d2;border-radius:22px;box-shadow:0 7px 22px #173e3906}
+.academy-page .academy-card:hover{box-shadow:0 14px 32px #173e3910}
+.academy-journey-renewed>header{border-bottom:3px solid #c6ac66}
+@media(max-width:650px){.academy-journey-renewed>header{padding:18px 16px}}

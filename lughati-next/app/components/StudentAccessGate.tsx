@@ -19,6 +19,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
   const loginRoute = path === "/login" || path === "/teacher-login";
+  const councilRoute = path === "/discussion";
   async function leaveAccount() {
     setSigningOut(true); setSignOutError("");
     try { await signOut(auth); window.location.assign("/teacher-login"); }
@@ -26,7 +27,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   }
   useEffect(() => onAuthStateChanged(auth, value => { setUser(value); setAuthReady(true); setState(null); setChecked(false); setError(false); lastFocusCheck.current = 0; }), []);
   useEffect(() => {
-    if (!user) return;
+    if (!user || councilRoute) return;
     let alive = true;
     let unsubscribe: (() => void) | undefined;
     const refresh = (force = false) => {
@@ -53,7 +54,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [user]);
+  }, [user, councilRoute]);
   useEffect(() => {
     if (!state?.accountSuspended || !state.until) return;
     const until = state.until;
@@ -73,7 +74,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     let alive = true;
     // Recheck in the background: replacing children on focus clears file inputs
     // and unsaved forms when Safari returns from its native file picker.
-    if (!user || loginRoute) return;
+    if (!user || loginRoute || councilRoute) return;
     async function check() {
       try {
         const token = await user!.getIdTokenResult();
@@ -87,8 +88,8 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     }
     void check();
     return () => { alive = false; };
-  }, [user, retry, loginRoute]);
-  if (loginRoute) return <>{children}</>;
+  }, [user, retry, loginRoute, councilRoute]);
+  if (loginRoute || councilRoute) return <>{children}</>;
   if (!authReady && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من الدخول…</main>;
   const protectedRoute = extras.some(prefix => path === prefix || path.startsWith(prefix + "/"));
   if (user && !checked && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من حالة الحساب…</main>;

@@ -1,4 +1,6 @@
 "use client";
+import AcademyWelcome from "./components/AcademyWelcome";
+import FamilyDiscussionCard from "./components/FamilyDiscussionCard";
 import AcademyFriendsBoard from "./components/AcademyFriendsBoard";
 import { ACADEMY_FRIENDS_ACTIVE } from "./lib/academyFriends";
 import { auth } from "../firebase";
@@ -1634,6 +1636,9 @@ useEffect(() => {
           </div>
         </div>
       </header>
+
+      <AcademyWelcome />
+      <FamilyDiscussionCard />
 
       {/* الترحيب المختصر الجديد */}
 

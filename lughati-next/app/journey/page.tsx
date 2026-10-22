@@ -1,5 +1,6 @@
 "use client";
 
+import AcademyWelcome from "../components/AcademyWelcome";
 import FamilyDiscussionCard from "../components/FamilyDiscussionCard";
 import TeacherWhatsAppCard from "../components/TeacherWhatsAppCard";
 
@@ -2154,10 +2155,11 @@ try {
   return (
     <main
       dir="rtl"
+      className="academy-journey-renewed"
       style={{
         minHeight: "100vh",
         background:
-          "linear-gradient(180deg, #effbf4 0%, #f7fbff 48%, #fffaf0 100%)",
+          "radial-gradient(ellipse at top left,#ece5d4aa,transparent 40%),#f6f6ef",
         fontFamily:
           "Arial, sans-serif",
         color: "#17352a",
@@ -3540,7 +3542,7 @@ try {
       <header
         style={{
           background:
-            "linear-gradient(135deg, #157347, #239764)",
+            "linear-gradient(135deg,#123f39,#1d5b49)",
           color: "white",
           padding: "22px 18px",
           boxShadow:
@@ -3921,6 +3923,8 @@ try {
         </div>
       </header>
 
+      <AcademyWelcome />
+      <FamilyDiscussionCard />
       <TeacherWhatsAppCard />
 
       {importantClubNotice && (
@@ -3931,7 +3935,6 @@ try {
         </section>
       )}
       <StudentPollCard user={user} />
-      <FamilyDiscussionCard />
       <LiveLessonCard />
 
       <div

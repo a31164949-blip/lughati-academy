@@ -1,2 +1,2 @@
-import FamilyDiscussion from "../components/FamilyDiscussion";
-export default function DiscussionPage() { return <FamilyDiscussion />; }
+import AcademyCouncil from "../components/AcademyCouncil";
+export default function DiscussionPage() { return <AcademyCouncil />; }
