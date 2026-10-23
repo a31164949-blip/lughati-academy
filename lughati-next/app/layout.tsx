@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AcademyAvailabilityGate from "./components/AcademyAvailabilityGate";
 import StudentAccessGate from "./components/StudentAccessGate";
+import StudentLearningPledge from "./components/StudentLearningPledge";
+import { STUDENT_ACADEMY_PAUSED } from "./lib/academyAvailability";
 import ServiceWorkerRegister from "./service-worker-register";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,7 +61,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
   <ServiceWorkerRegister />
-  <AcademyAvailabilityGate><StudentAccessGate>{children}</StudentAccessGate></AcademyAvailabilityGate>
+  <AcademyAvailabilityGate><StudentAccessGate>{STUDENT_ACADEMY_PAUSED ? children : <StudentLearningPledge>{children}</StudentLearningPledge>}</StudentAccessGate></AcademyAvailabilityGate>
 </body>
     </html>
   );
