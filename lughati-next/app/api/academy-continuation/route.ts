@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
-import { CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId } from '../../lib/academyContinuation';
+import { ACADEMY_CAPACITY, CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId } from '../../lib/academyContinuation';
 export const runtime = 'nodejs';
 
 async function identity(req: Request) {
@@ -27,8 +27,9 @@ async function identity(req: Request) {
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } }); }
 function failure(error: unknown) {
   const code = error instanceof Error ? error.message : '';
-  const status = code === 'UNAUTHORIZED' ? 401 : code === 'FORBIDDEN' ? 403 : ['INVALID', 'CONSENT', 'CLOSED', 'PROFILE'].includes(code) || error instanceof SyntaxError ? 400 : code === 'CHANGED' ? 409 : code === 'TOO_FAST' ? 429 : 500;
+  const status = code === 'UNAUTHORIZED' ? 401 : code === 'FORBIDDEN' ? 403 : ['INVALID', 'CONSENT', 'CLOSED', 'PROFILE'].includes(code) || error instanceof SyntaxError ? 400 : ['CHANGED', 'FULL'].includes(code) ? 409 : code === 'TOO_FAST' ? 429 : 500;
   const messages: Record<string, string> = { UNAUTHORIZED: 'سجّل دخولك بحساب الطالب لتأكيد طلبك.', FORBIDDEN: 'هذا الإجراء متاح لصاحب الحساب أو المعلم حسب الصلاحية.', CONSENT: 'أكّد رغبتك في الاستمرار بالتعلّم أولًا.', INVALID: 'تحقق من البيانات، واجعل رسالتك في حدود ١٠٠٠ حرف.', PROFILE: 'تواصل مع المعلم لاستكمال اسم الطالب وصفّه في الحساب.', CLOSED: 'استقبال طلبات الاستمرار متوقف حاليًا.', TOO_FAST: 'انتظر عشر ثوانٍ قبل تعديل طلبك مرة أخرى.', CHANGED: 'تم تحديث هذا الطلب. حدّث القائمة قبل مراجعته.' };
+  if (code === 'FULL') return json({ success: false, code: 'FULL', message: 'اكتمل العدد: أُغلق التسجيل بعد تسجيل ٢٠ طالبًا. نشكر لكم اهتمامكم.' }, status);
   return json({ success: false, message: messages[code] ?? 'تعذر إتمام الطلب. تحقق من الاتصال وحاول مجددًا.' }, status);
 }
 function requests(db: FirebaseFirestore.Firestore) { return db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND).collection('requests'); }
@@ -64,6 +65,15 @@ export async function POST(req: Request) {
     await db.runTransaction(async tx => {
       const old = await tx.get(ref);
       if (now - Number(old.data()?.lastSubmittedAt ?? 0) < 10000) throw Error('TOO_FAST');
+      if (!isTrial && (!old.exists || old.data()?.isTrial !== false)) {
+        const round = db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND);
+        // All new real applicants share this transaction guard. Concurrent attempts
+        // for the last seat conflict and retry against the newly committed requests.
+        await tx.get(round);
+        const occupied = await tx.get(requests(db).where('isTrial', '==', false).limit(ACADEMY_CAPACITY));
+        if (occupied.size >= ACADEMY_CAPACITY) throw Error('FULL');
+        tx.set(round, { capacityRevision: randomUUID() }, { merge: true });
+      }
       tx.set(ref, { ...input, ...profile, studentId: id, isTrial, status: 'new', revision, round: CONTINUATION_ROUND, visibility: 'teacher-only', lastSubmittedAt: now, createdAt: old.data()?.createdAt ?? FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
     });
     // Refresh only the public aggregate after a successful save, not private records.
