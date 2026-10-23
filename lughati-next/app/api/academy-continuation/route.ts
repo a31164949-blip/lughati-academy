@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
-import { CONTINUATION_OPEN, CONTINUATION_ROUND, continuationInput, validContinuationId } from '../../lib/academyContinuation';
+import { CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId } from '../../lib/academyContinuation';
 export const runtime = 'nodejs';
 
 async function identity(req: Request) {
@@ -65,6 +66,8 @@ export async function POST(req: Request) {
       if (now - Number(old.data()?.lastSubmittedAt ?? 0) < 10000) throw Error('TOO_FAST');
       tx.set(ref, { ...input, ...profile, studentId: id, isTrial, status: 'new', revision, round: CONTINUATION_ROUND, visibility: 'teacher-only', lastSubmittedAt: now, createdAt: old.data()?.createdAt ?? FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
     });
+    // Refresh only the public aggregate after a successful save, not private records.
+    revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
     // Return the member's own saved values without an extra read or public exposure.
     return json({ success: true, profile, request: { ...input, ...profile, id, isTrial, status: 'new', revision, updatedAt: new Date(now).toISOString() }, message: 'وصل طلبك ورسالتك للمعلم. القبول بعد مراجعة الطلبات، ولا يتفعّل الدخول تلقائيًا.' });
   } catch (error) { return failure(error); }

@@ -5,6 +5,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { ACADEMY_CAPACITY, CONTINUATION_OPEN, CONTINUATION_MESSAGE_LIMIT, type ContinuationProfile, type ContinuationRequest } from '../lib/academyContinuation';
 import styles from './AcademyContinuation.module.css';
+import AcademySeatCounter from './AcademySeatCounter';
 type Result = { success: boolean; teacher?: boolean; profile: ContinuationProfile | null; request: ContinuationRequest | null; message?: string };
 async function request(user: User, body?: { message: string; wantsToContinue: boolean }) {
   const response = await fetch('/api/academy-continuation', { method: body ? 'POST' : 'GET', cache: 'no-store', headers: { Authorization: `Bearer ${await user.getIdToken()}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -13,6 +14,7 @@ async function request(user: User, body?: { message: string; wantsToContinue: bo
   return data;
 }
 export default function AcademyContinuationCard() {
+  const [seatRefresh, setSeatRefresh] = useState(0);
   const [user, setUser] = useState<User | null>(null), [ready, setReady] = useState(false), [teacher, setTeacher] = useState(false);
   const [profile, setProfile] = useState<ContinuationProfile | null>(null), [saved, setSaved] = useState<ContinuationRequest | null>(null);
   const [wantsToContinue, setWants] = useState(false), [message, setMessage] = useState(''), [status, setStatus] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -42,12 +44,14 @@ export default function AcademyContinuationCard() {
       const data = await request(user, { message, wantsToContinue });
       if (version !== generation.current) return;
       setSaved(data.request); setMessage(data.request?.message ?? ''); setStatus(data.message ?? 'وصل طلبك للمعلم.');
+      setSeatRefresh(value => value + 1);
     } catch (error) { if (version === generation.current) setError(error instanceof Error ? error.message : 'تعذر إرسال الطلب.'); }
     finally { if (version === generation.current) { lock.current = false; setBusy(false); } }
   }
   return <section id="academy-continuation" dir="rtl" className={styles.card} aria-busy={busy}>
     <div className={styles.intro}><span className={styles.eyebrow}>رحلتك مع التعلّم تستحق أن تستمر</span><div className={styles.symbol} aria-hidden="true">✦</div><h2>هل ترغب بالدخول إلى الأكاديمية<br /><span>والاستمرار في التعلّم؟</span></h2><p>يسعدنا أن نسمع رغبتك في مواصلة القراءة والأنشطة والتحديات. أكّد اهتمامك بمساعدة أسرتك، ودع معلمك يتعرّف على خطوتك القادمة.</p></div>
     <aside className={styles.capacity}><strong>{ACADEMY_CAPACITY} طالبًا فقط</strong><p>تقتصر الطاقة الاستيعابية للأكاديمية على ٢٠ طالبًا، ويُعتمد القبول بعد مراجعة المعلم للطلبات. إرسال الرغبة لا يعني القبول النهائي.</p></aside>
+    <AcademySeatCounter refreshKey={seatRefresh} />
     {teacher ? <div className={styles.teacherBox}><h3>طلبات الطلاب ورسائلهم في مساحة خاصة بك</h3><p>يمكنك متابعة الأسماء والصفوف ورغبات الاستمرار والرسائل من لوحة المعلم.</p><Link className={styles.primary} href="/teacher/continuation">مراجعة طلبات الاستمرار ←</Link></div> : <form className={styles.form} onSubmit={event => { event.preventDefault(); void submit(); }}>
       <div className={styles.fields}><label>اسم الطالب<input readOnly value={profile?.studentName ?? ''} placeholder="يظهر من حساب الطالب بعد تسجيل الدخول" aria-readonly="true" /></label><label>الصف<input readOnly value={profile?.classroom ?? ''} placeholder="يظهر الصف المسجّل في الحساب" aria-readonly="true" /></label></div>
       <p className={styles.hint}>يُؤخذ الاسم والصف من حساب الطالب لضمان وصول الطلب بالبيانات الصحيحة.</p>
