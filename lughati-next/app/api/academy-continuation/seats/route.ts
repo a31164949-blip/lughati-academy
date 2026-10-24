@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
 import { getFirebaseAdmin } from '../../../../firebase-admin';
-import { CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationSeats } from '../../../lib/academyContinuation';
+import { CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationSeats, acceptedStudentIds } from '../../../lib/academyContinuation';
 
 export const runtime = 'nodejs';
 // Cache one aggregate number for all visitors; never fetch or expose private letters.
 const getSeats = unstable_cache(async () => {
   const { adminDb } = getFirebaseAdmin({ allowSuspended: true });
-  const result = await adminDb.collection('academyContinuationRounds').doc(CONTINUATION_ROUND)
-    .collection('requests').where('isTrial', '==', false).count().get();
-  return continuationSeats(result.data().count);
-}, ['continuation-seats-v1', CONTINUATION_ROUND], { revalidate: 60, tags: [CONTINUATION_SEATS_TAG] });
+  const round = adminDb.collection('academyContinuationRounds').doc(CONTINUATION_ROUND);
+  const [result, metadata] = await Promise.all([round.collection('requests').where('isTrial', '==', false).count().get(), round.get()]);
+  return continuationSeats(result.data().count, acceptedStudentIds(metadata.data()).length);
+}, ['continuation-seats-teacher-decisions-v2', CONTINUATION_ROUND], { revalidate: 60, tags: [CONTINUATION_SEATS_TAG] });
 
 export async function GET() {
   try {

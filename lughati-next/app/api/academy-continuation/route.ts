@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
-import { ACADEMY_CAPACITY, CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId } from '../../lib/academyContinuation';
+import { ACADEMY_CAPACITY, CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId, acceptedStudentIds, admissionStatus, type AdmissionStatus } from '../../lib/academyContinuation';
 export const runtime = 'nodejs';
 
 async function identity(req: Request) {
@@ -29,13 +29,13 @@ function failure(error: unknown) {
   const code = error instanceof Error ? error.message : '';
   const status = code === 'UNAUTHORIZED' ? 401 : code === 'FORBIDDEN' ? 403 : ['INVALID', 'CONSENT', 'CLOSED', 'PROFILE'].includes(code) || error instanceof SyntaxError ? 400 : ['CHANGED', 'FULL'].includes(code) ? 409 : code === 'TOO_FAST' ? 429 : 500;
   const messages: Record<string, string> = { UNAUTHORIZED: 'سجّل دخولك بحساب الطالب لتأكيد طلبك.', FORBIDDEN: 'هذا الإجراء متاح لصاحب الحساب أو المعلم حسب الصلاحية.', CONSENT: 'أكّد رغبتك في الاستمرار بالتعلّم أولًا.', INVALID: 'تحقق من البيانات، واجعل رسالتك في حدود ١٠٠٠ حرف.', PROFILE: 'تواصل مع المعلم لاستكمال اسم الطالب وصفّه في الحساب.', CLOSED: 'استقبال طلبات الاستمرار متوقف حاليًا.', TOO_FAST: 'انتظر عشر ثوانٍ قبل تعديل طلبك مرة أخرى.', CHANGED: 'تم تحديث هذا الطلب. حدّث القائمة قبل مراجعته.' };
-  if (code === 'FULL') return json({ success: false, code: 'FULL', message: 'اكتمل العدد: أُغلق التسجيل بعد تسجيل ٢٠ طالبًا. نشكر لكم اهتمامكم.' }, status);
+  if (code === 'FULL') return json({ success: false, code: 'FULL', message: 'اكتملت المقاعد العشرون المعتمدة. انقل أحد المقبولين إلى الانتظار قبل قبول طالب آخر، أو ضع هذا الطلب في قائمة الانتظار.' }, status);
   return json({ success: false, message: messages[code] ?? 'تعذر إتمام الطلب. تحقق من الاتصال وحاول مجددًا.' }, status);
 }
 function requests(db: FirebaseFirestore.Firestore) { return db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND).collection('requests'); }
 function dto(id: string, data: FirebaseFirestore.DocumentData) {
   const updatedAt = data.updatedAt?.toDate?.();
-  return { id, studentName: data.studentName, classroom: data.classroom, message: typeof data.message === 'string' ? data.message : '', wantsToContinue: data.wantsToContinue === true, status: data.status === 'reviewed' ? 'reviewed' : 'new', revision: data.revision, isTrial: data.isTrial === true, updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : typeof data.updatedAt === 'string' ? data.updatedAt : '' };
+  return { id, studentName: data.studentName, classroom: data.classroom, message: typeof data.message === 'string' ? data.message : '', wantsToContinue: data.wantsToContinue === true, status: data.status === 'reviewed' ? 'reviewed' : 'new', admissionStatus: admissionStatus(data.admissionStatus), revision: data.revision, isTrial: data.isTrial === true, updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : typeof data.updatedAt === 'string' ? data.updatedAt : '' };
 }
 export async function GET(req: Request) {
   try {
@@ -51,8 +51,9 @@ export async function GET(req: Request) {
     if (cursor && !validContinuationId(cursor)) throw Error('INVALID');
     let query = requests(db).orderBy(FieldPath.documentId()).limit(20);
     if (cursor) query = query.startAfter(cursor);
-    const rows = await query.get();
-    return json({ success: true, requests: rows.docs.map(row => dto(row.id, row.data())), cursor: rows.size === 20 ? rows.docs[19].id : null });
+    const [rows, round] = await Promise.all([query.get(), db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND).get()]);
+    const accepted = acceptedStudentIds(round.data()).length;
+    return json({ success: true, requests: rows.docs.map(row => dto(row.id, row.data())), cursor: rows.size === 20 ? rows.docs[19].id : null, admissions: { accepted, remaining: ACADEMY_CAPACITY - accepted } });
   } catch (error) { return failure(error); }
 }
 export async function POST(req: Request) {
@@ -62,38 +63,54 @@ export async function POST(req: Request) {
     if (!CONTINUATION_OPEN) throw Error('CLOSED');
     const input = continuationInput(await req.json());
     const ref = requests(db).doc(id), now = Date.now(), revision = randomUUID();
-    await db.runTransaction(async tx => {
+    const decision = await db.runTransaction(async tx => {
       const old = await tx.get(ref);
       if (now - Number(old.data()?.lastSubmittedAt ?? 0) < 10000) throw Error('TOO_FAST');
-      if (!isTrial && (!old.exists || old.data()?.isTrial !== false)) {
-        const round = db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND);
-        // All new real applicants share this transaction guard. Concurrent attempts
-        // for the last seat conflict and retry against the newly committed requests.
-        await tx.get(round);
-        const occupied = await tx.get(requests(db).where('isTrial', '==', false).limit(ACADEMY_CAPACITY));
-        if (occupied.size >= ACADEMY_CAPACITY) throw Error('FULL');
-        tx.set(round, { capacityRevision: randomUUID() }, { merge: true });
+      let decision: AdmissionStatus = admissionStatus(old.data()?.admissionStatus);
+      if (!old.exists) {
+        const round = await tx.get(db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND));
+        decision = !isTrial && acceptedStudentIds(round.data()).length >= ACADEMY_CAPACITY ? 'waiting' : 'pending';
       }
-      tx.set(ref, { ...input, ...profile, studentId: id, isTrial, status: 'new', revision, round: CONTINUATION_ROUND, visibility: 'teacher-only', lastSubmittedAt: now, createdAt: old.data()?.createdAt ?? FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      // Editing a letter cannot override the teacher's admission decision.
+      tx.set(ref, { ...input, ...profile, studentId: id, isTrial, status: 'new', admissionStatus: decision, revision, round: CONTINUATION_ROUND, visibility: 'teacher-only', lastSubmittedAt: now, createdAt: old.data()?.createdAt ?? FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      return decision;
     });
     // Refresh only the public aggregate after a successful save, not private records.
     revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
     // Return the member's own saved values without an extra read or public exposure.
-    return json({ success: true, profile, request: { ...input, ...profile, id, isTrial, status: 'new', revision, updatedAt: new Date(now).toISOString() }, message: 'وصل طلبك ورسالتك للمعلم. القبول بعد مراجعة الطلبات، ولا يتفعّل الدخول تلقائيًا.' });
+    return json({ success: true, profile, request: { ...input, ...profile, id, isTrial, status: 'new', admissionStatus: decision, revision, updatedAt: new Date(now).toISOString() }, message: decision === 'waiting' ? 'وصل طلبك إلى قائمة الانتظار. اختيار المقبولين والترقية من الانتظار بقرار المعلم.' : 'حُفظ طلبك ورسالتك. قرار القبول للمعلم، وأسبقية التسجيل لا تحجز مقعدًا ولا تفعّل الدخول تلقائيًا.' });
   } catch (error) { return failure(error); }
 }
 export async function PATCH(req: Request) {
   try {
-    const { db, teacher } = await identity(req);
+    const { db, teacher, id: teacherId } = await identity(req);
     if (!teacher) throw Error('FORBIDDEN');
     const body = await req.json();
-    if (!body || !validContinuationId(body.studentId) || !['new', 'reviewed'].includes(body.status)) throw Error('INVALID');
+    if (!body || !validContinuationId(body.studentId)) throw Error('INVALID');
+    const reviewing = ['new', 'reviewed'].includes(body.status), deciding = ['pending', 'accepted', 'waiting', 'declined'].includes(body.admissionStatus);
+    if (reviewing === deciding) throw Error('INVALID');
     const ref = requests(db).doc(body.studentId), revision = randomUUID();
-    await db.runTransaction(async tx => {
+    const result = await db.runTransaction(async tx => {
       const old = await tx.get(ref);
       if (!old.exists || old.data()?.revision !== body.revision) throw Error('CHANGED');
-      tx.update(ref, { status: body.status, revision, teacherReviewedAt: FieldValue.serverTimestamp() });
+      const round = db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND);
+      const metadata = await tx.get(round);
+      let acceptedIds = acceptedStudentIds(metadata.data());
+      const decision = deciding ? body.admissionStatus as AdmissionStatus : admissionStatus(old.data()?.admissionStatus);
+      if (deciding) {
+        acceptedIds = acceptedIds.filter(id => id !== body.studentId);
+        if (decision === 'accepted' && old.data()?.isTrial !== true) {
+          if (acceptedIds.length >= ACADEMY_CAPACITY) throw Error('FULL');
+          acceptedIds.push(body.studentId);
+        }
+        // A shared round document serializes all teacher decisions for the last seat.
+        tx.set(round, { acceptedStudentIds: acceptedIds }, { merge: true });
+      }
+      const status = reviewing ? body.status : 'reviewed';
+      tx.update(ref, { status, admissionStatus: decision, revision, teacherReviewedAt: FieldValue.serverTimestamp(), ...(deciding ? { teacherDecisionBy: teacherId, teacherDecisionAt: FieldValue.serverTimestamp() } : {}) });
+      return { status, admissionStatus: decision, admissions: { accepted: acceptedIds.length, remaining: ACADEMY_CAPACITY - acceptedIds.length } };
     });
-    return json({ success: true, status: body.status, revision });
+    if (deciding) revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
+    return json({ success: true, ...result, revision });
   } catch (error) { return failure(error); }
 }
