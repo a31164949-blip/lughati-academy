@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { markCouncilTopicSeen } from '../lib/councilNoticeSeen';
 import AcademyLogo from './AcademyLogo';
 import { COUNCIL_TOPIC_LIMIT, COUNCIL_REPLY_LIMIT, type CouncilTopic, type CouncilReply } from '../lib/academyCouncilPolicy';
 import styles from './AcademyCouncil.module.css';
@@ -31,9 +32,11 @@ export default function AcademyCouncil({ teacher = false }: { teacher?: boolean 
       setUser(account); setTeacher(teacher); setReady(true); setDetail(null); setTopics([]); setCursor(null); setTitle(''); setTopicText(''); setReplyText(''); setDrafts({}); setError(''); setMessage(''); setArchive(false); setComposer(false);
       if (!account) { setBusy(false); return; }
       setBusy(true);
-      void request(account, { view: teacher ? 'pending' : 'published' }).then(data => {
+      void request(account, { view: teacher ? 'pending' : 'published' }).then(async data => {
         if (version !== generation.current) return;
         setTeacher(data.teacher); setView(teacher ? 'pending' : 'published'); setTopics(data.topics ?? []); setCursor(data.cursor);
+        const target = new URLSearchParams(window.location.search).get('topicId');
+        if (target && /^[A-Za-z0-9_-]{1,128}$/.test(target)) await loadTopic(account, target, version);
       }).catch(error => { if (version === generation.current) setError(error.message); }).finally(() => { if (version === generation.current) setBusy(false); });
     });
     // Invalidate asynchronous requests when this auth subscription ends.
@@ -56,6 +59,7 @@ export default function AcademyCouncil({ teacher = false }: { teacher?: boolean 
   async function loadTopic(account: User, topicId: string, version: number, after?: string) {
     const data = await request(account, { topicId, ...(after ? { cursor: after } : {}) });
     if (version !== generation.current || !data.topic) return;
+    if (!data.teacher && data.topic.status === 'published') markCouncilTopicSeen(account.uid, topicId);
     setDetail(old => ({ topic: data.topic!, replies: after ? [...(old?.replies ?? []), ...(data.replies ?? []).filter(reply => !old?.replies.some(saved => saved.id === reply.id))] : data.replies ?? [], mine: data.mine ?? null, cursor: data.cursor }));
     setTopics(old => old.map(topic => topic.id === topicId ? data.topic! : topic));
     if (!after) { setReplyText(data.mine?.text ?? ''); setVisibility(data.mine?.visibility ?? 'private'); setDrafts({}); }
