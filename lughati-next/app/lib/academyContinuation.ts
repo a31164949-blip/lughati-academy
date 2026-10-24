@@ -2,6 +2,7 @@ export const CONTINUATION_ROUND = 'reopening-2026-10';
 export const CONTINUATION_OPEN = true;
 export const ACADEMY_CAPACITY = 20;
 export const CONTINUATION_SEATS_TAG = `continuation-seats-${CONTINUATION_ROUND}`;
+export const ADMISSION_ACCESS_TAG = `academy-admission-access-${CONTINUATION_ROUND}`;
 export type AdmissionStatus = 'pending' | 'accepted' | 'waiting' | 'declined';
 export const ADMISSION_LABELS: Record<AdmissionStatus, string> = { pending: 'بانتظار قرار المعلم', accepted: 'مقبول بقرار المعلم', waiting: 'على قائمة الانتظار', declined: 'لم يُقبل الطلب حاليًا' };
 export function admissionStatus(value: unknown): AdmissionStatus {

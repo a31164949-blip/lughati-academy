@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { usePathname } from 'next/navigation';
 import { auth } from '../../firebase';
-import { STUDENT_ACADEMY_PAUSED, isStudentPreviewAccount } from '../lib/academyAvailability';
+import { STUDENT_ACADEMY_PAUSED } from '../lib/academyAvailability';
+import { AcademyStudentAccessContext } from './AcademyStudentAccessContext';
 
 const pledgeVersion = 'learning-integrity-v1';
 const storageKey = (uid: string) => `${pledgeVersion}:${uid}`;
@@ -12,6 +13,7 @@ const storageKey = (uid: string) => `${pledgeVersion}:${uid}`;
 // A device-local acknowledgement; no Firestore reads, polling, or public records.
 export default function StudentLearningPledge({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const studentEnabled = useContext(AcademyStudentAccessContext);
   const [state, setState] = useState<'loading' | 'pass' | 'pledge' | 'error'>('loading');
   const [uid, setUid] = useState('');
   const [confirmed, setConfirmed] = useState(false);
@@ -28,15 +30,14 @@ export default function StudentLearningPledge({ children }: { children: React.Re
       void account.getIdTokenResult().then(token => {
         if (version !== current) return;
         if (token.claims.role !== 'student') { setState('pass'); return; }
-        // During closure, only the already-authorized trial account previews it.
-        if (STUDENT_ACADEMY_PAUSED && !isStudentPreviewAccount(token.claims.studentDocId)) { setState('pass'); return; }
+        if (STUDENT_ACADEMY_PAUSED && !studentEnabled) { setState('pass'); return; }
         let accepted = false;
         try { accepted = localStorage.getItem(storageKey(account.uid)) === 'accepted'; } catch { /* Ask again when browser storage is unavailable. */ }
         setUid(account.uid); setState(accepted ? 'pass' : 'pledge');
       }).catch(() => { if (version === current) setState('error'); });
     });
     return () => { ++version; stop(); };
-  }, [retry]);
+  }, [retry, studentEnabled]);
 
   function accept() {
     if (!confirmed || !uid || auth.currentUser?.uid !== uid) return;

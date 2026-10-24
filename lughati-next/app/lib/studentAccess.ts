@@ -1,6 +1,6 @@
 import "server-only";
 import { unstable_cache, revalidateTag } from "next/cache";
-import { getFirebaseAdmin } from "../../firebase-admin";
+import { getFirebaseAdmin, hasAcademyAdmission } from "../../firebase-admin";
 import { INACTIVITY_DAYS, evaluateAccess } from "./studentAccessPolicy";
 import { STUDENT_ACADEMY_PAUSED, isStudentPreviewAccount } from "./academyAvailability";
 
@@ -48,7 +48,7 @@ export async function studentAccess(id: string, supplied?: FirebaseFirestore.Doc
   const control = data.accessControl ?? {};
   const until = milliseconds(control.until);
   const manual = ["extras", "account"].includes(control.mode) && (until === null || until > Date.now());
-  const preview = STUDENT_ACADEMY_PAUSED && isStudentPreviewAccount(id);
+  const preview = STUDENT_ACADEMY_PAUSED && (isStudentPreviewAccount(id) || await hasAcademyAdmission(id));
   return evaluateAccess({ now: Date.now(), enrolledAt: milliseconds(data.createdAt) ?? milliseconds(data.firstLoginAt), latestActivity: manual ? null : preview ? Date.now() : await activity(id), mode: control.mode, until, resumedAt: milliseconds(control.resumedAt) });
 }
 export async function requireStudentExtras(id: string, data?: FirebaseFirestore.DocumentData) {

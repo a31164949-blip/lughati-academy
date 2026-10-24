@@ -1,5 +1,7 @@
 import { STUDENT_ACADEMY_PAUSED, isStudentPreviewAccount } from "./app/lib/academyAvailability";
 import "server-only";
+import { unstable_cache } from "next/cache";
+import { ADMISSION_ACCESS_TAG, CONTINUATION_ROUND, acceptedStudentIds, validContinuationId } from "./app/lib/academyContinuation";
 
 import {
   cert,
@@ -9,7 +11,7 @@ import {
 } from "firebase-admin/app";
 
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
 let cachedAdminApp: App | null = null;
 
@@ -106,7 +108,7 @@ export function getFirebaseAdmin(options: { allowSuspended?: boolean } = {}) {
     get(target, property) {
       if (property === "verifyIdToken") return async (...args: Parameters<typeof rawAuth.verifyIdToken>) => {
         const token = await rawAuth.verifyIdToken(...args);
-        if (STUDENT_ACADEMY_PAUSED && token.role === "student" && !isStudentPreviewAccount(token.studentDocId)) throw new Error("FORBIDDEN");
+        if (STUDENT_ACADEMY_PAUSED && token.role === "student" && !isStudentPreviewAccount(token.studentDocId) && !await hasAcademyAdmission(token.studentDocId)) throw new Error("FORBIDDEN");
         if (token.role === "student" && typeof token.studentDocId === "string") {
           const student = await adminDb.collection("students").doc(token.studentDocId).get();
           const control = student.data()?.accessControl;
@@ -120,4 +122,30 @@ export function getFirebaseAdmin(options: { allowSuspended?: boolean } = {}) {
     },
   });
   return { adminAuth, adminDb };
+}
+
+const approvedAcademyStudents = unstable_cache(async () => {
+  const round = await getFirestore(getAdminApp()).collection("academyContinuationRounds").doc(CONTINUATION_ROUND).get();
+  return acceptedStudentIds(round.data());
+}, ["academy-approved-access-v1", CONTINUATION_ROUND], { revalidate: 30, tags: [ADMISSION_ACCESS_TAG] });
+
+export async function hasAcademyAdmission(id: unknown) {
+  return validContinuationId(id) && (await approvedAcademyStudents()).includes(id);
+}
+
+// Activate decisions made before admission was linked to access. The metadata is
+// rechecked transactionally; an old client response cannot reopen a revoked seat.
+export async function ensureAcademyAdmissionAccess(id: string) {
+  const db = getFirestore(getAdminApp()), ref = db.collection("students").doc(id);
+  const initial = (await ref.get()).data();
+  if (!initial || initial.deleted === true) return false;
+  if (initial.academyAdmission?.round === CONTINUATION_ROUND && initial.academyAdmission?.status === "accepted") return true;
+  return db.runTransaction(async tx => {
+    const [round, student] = await Promise.all([tx.get(db.collection("academyContinuationRounds").doc(CONTINUATION_ROUND)), tx.get(ref)]);
+    const data = student.data();
+    if (!data || data.deleted === true || !acceptedStudentIds(round.data()).includes(id)) return false;
+    if (data.academyAdmission?.round === CONTINUATION_ROUND && data.academyAdmission?.status === "accepted") return true;
+    tx.update(ref, { academyAdmission: { round: CONTINUATION_ROUND, status: "accepted" }, ...(["account", "extras"].includes(data.accessControl?.mode) ? { accessControl: { mode: "resume", until: null, resumedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(), updatedBy: "academy-admission" } } : {}) });
+    return true;
+  });
 }

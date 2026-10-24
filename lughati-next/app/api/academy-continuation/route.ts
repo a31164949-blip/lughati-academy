@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
-import { ACADEMY_CAPACITY, CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId, acceptedStudentIds, admissionStatus, type AdmissionStatus } from '../../lib/academyContinuation';
+import { ADMISSION_ACCESS_TAG, ACADEMY_CAPACITY, CONTINUATION_OPEN, CONTINUATION_ROUND, CONTINUATION_SEATS_TAG, continuationInput, validContinuationId, acceptedStudentIds, admissionStatus, type AdmissionStatus } from '../../lib/academyContinuation';
 export const runtime = 'nodejs';
 
 async function identity(req: Request) {
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     // Refresh only the public aggregate after a successful save, not private records.
     revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
     // Return the member's own saved values without an extra read or public exposure.
-    return json({ success: true, profile, request: { ...input, ...profile, id, isTrial, status: 'new', admissionStatus: decision, revision, updatedAt: new Date(now).toISOString() }, message: decision === 'waiting' ? 'وصل طلبك إلى قائمة الانتظار. اختيار المقبولين والترقية من الانتظار بقرار المعلم.' : 'حُفظ طلبك ورسالتك. قرار القبول للمعلم، وأسبقية التسجيل لا تحجز مقعدًا ولا تفعّل الدخول تلقائيًا.' });
+    return json({ success: true, profile, request: { ...input, ...profile, id, isTrial, status: 'new', admissionStatus: decision, revision, updatedAt: new Date(now).toISOString() }, message: decision === 'waiting' ? 'وصل طلبك إلى قائمة الانتظار. اختيار المقبولين والترقية من الانتظار بقرار المعلم.' : 'حُفظ طلبك ورسالتك. قرار القبول للمعلم، وأسبقية التسجيل لا تحجز مقعدًا. اعتماد المعلم للقبول يتيح الدخول إلى الأكاديمية.' });
   } catch (error) { return failure(error); }
 }
 export async function PATCH(req: Request) {
@@ -95,6 +95,9 @@ export async function PATCH(req: Request) {
       if (!old.exists || old.data()?.revision !== body.revision) throw Error('CHANGED');
       const round = db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND);
       const metadata = await tx.get(round);
+      const studentRef = db.collection('students').doc(body.studentId);
+      const student = deciding ? await tx.get(studentRef) : null;
+      if (deciding && body.admissionStatus === 'accepted' && (!student?.exists || student.data()?.deleted === true)) throw Error('INVALID');
       let acceptedIds = acceptedStudentIds(metadata.data());
       const decision = deciding ? body.admissionStatus as AdmissionStatus : admissionStatus(old.data()?.admissionStatus);
       if (deciding) {
@@ -105,12 +108,18 @@ export async function PATCH(req: Request) {
         }
         // A shared round document serializes all teacher decisions for the last seat.
         tx.set(round, { acceptedStudentIds: acceptedIds }, { merge: true });
+        if (student?.exists) tx.update(studentRef, {
+          academyAdmission: { round: CONTINUATION_ROUND, status: decision },
+          ...(decision === 'accepted' && ['account', 'extras'].includes(student.data()?.accessControl?.mode) ? {
+            accessControl: { mode: 'resume', until: null, resumedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(), updatedBy: teacherId },
+          } : {}),
+        });
       }
       const status = reviewing ? body.status : 'reviewed';
       tx.update(ref, { status, admissionStatus: decision, revision, teacherReviewedAt: FieldValue.serverTimestamp(), ...(deciding ? { teacherDecisionBy: teacherId, teacherDecisionAt: FieldValue.serverTimestamp() } : {}) });
       return { status, admissionStatus: decision, admissions: { accepted: acceptedIds.length, remaining: ACADEMY_CAPACITY - acceptedIds.length } };
     });
-    if (deciding) revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
+    if (deciding) { revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 }); revalidateTag(ADMISSION_ACCESS_TAG, { expire: 0 }); }
     return json({ success: true, ...result, revision });
   } catch (error) { return failure(error); }
 }
