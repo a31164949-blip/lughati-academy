@@ -35,7 +35,8 @@ function failure(error: unknown) {
 function requests(db: FirebaseFirestore.Firestore) { return db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND).collection('requests'); }
 function dto(id: string, data: FirebaseFirestore.DocumentData) {
   const updatedAt = data.updatedAt?.toDate?.();
-  return { id, studentName: data.studentName, classroom: data.classroom, message: typeof data.message === 'string' ? data.message : '', wantsToContinue: data.wantsToContinue === true, status: data.status === 'reviewed' ? 'reviewed' : 'new', admissionStatus: admissionStatus(data.admissionStatus), revision: data.revision, isTrial: data.isTrial === true, updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : typeof data.updatedAt === 'string' ? data.updatedAt : '' };
+  const replyAt = data.teacherReplyAt?.toDate?.();
+  return { id, teacherReply: typeof data.teacherReply === 'string' ? data.teacherReply : '', teacherReplyAt: replyAt instanceof Date ? replyAt.toISOString() : '', studentName: data.studentName, classroom: data.classroom, message: typeof data.message === 'string' ? data.message : '', wantsToContinue: data.wantsToContinue === true, status: data.status === 'reviewed' ? 'reviewed' : 'new', admissionStatus: admissionStatus(data.admissionStatus), revision: data.revision, isTrial: data.isTrial === true, updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : typeof data.updatedAt === 'string' ? data.updatedAt : '' };
 }
 export async function GET(req: Request) {
   try {
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
     if (!CONTINUATION_OPEN) throw Error('CLOSED');
     const input = continuationInput(await req.json());
     const ref = requests(db).doc(id), now = Date.now(), revision = randomUUID();
-    const decision = await db.runTransaction(async tx => {
+    const saved = await db.runTransaction(async tx => {
       const old = await tx.get(ref);
       if (now - Number(old.data()?.lastSubmittedAt ?? 0) < 10000) throw Error('TOO_FAST');
       let decision: AdmissionStatus = admissionStatus(old.data()?.admissionStatus);
@@ -73,12 +74,13 @@ export async function POST(req: Request) {
       }
       // Editing a letter cannot override the teacher's admission decision.
       tx.set(ref, { ...input, ...profile, studentId: id, isTrial, status: 'new', admissionStatus: decision, revision, round: CONTINUATION_ROUND, visibility: 'teacher-only', lastSubmittedAt: now, createdAt: old.data()?.createdAt ?? FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-      return decision;
+      return { decision, teacherReply: typeof old.data()?.teacherReply === 'string' ? old.data()!.teacherReply : '', teacherReplyAt: old.data()?.teacherReplyAt?.toDate?.()?.toISOString() ?? '' };
     });
+    const { decision, teacherReply, teacherReplyAt } = saved;
     // Refresh only the public aggregate after a successful save, not private records.
     revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
     // Return the member's own saved values without an extra read or public exposure.
-    return json({ success: true, profile, request: { ...input, ...profile, id, isTrial, status: 'new', admissionStatus: decision, revision, updatedAt: new Date(now).toISOString() }, message: decision === 'waiting' ? 'وصل طلبك إلى قائمة الانتظار. اختيار المقبولين والترقية من الانتظار بقرار المعلم.' : 'حُفظ طلبك ورسالتك. قرار القبول للمعلم، وأسبقية التسجيل لا تحجز مقعدًا. اعتماد المعلم للقبول يتيح الدخول إلى الأكاديمية.' });
+    return json({ success: true, profile, request: { ...input, ...profile, teacherReply, teacherReplyAt, id, isTrial, status: 'new', admissionStatus: decision, revision, updatedAt: new Date(now).toISOString() }, message: decision === 'waiting' ? 'وصل طلبك إلى قائمة الانتظار. اختيار المقبولين والترقية من الانتظار بقرار المعلم.' : 'حُفظ طلبك ورسالتك. قرار القبول للمعلم، وأسبقية التسجيل لا تحجز مقعدًا. اعتماد المعلم للقبول يتيح الدخول إلى الأكاديمية.' });
   } catch (error) { return failure(error); }
 }
 export async function PATCH(req: Request) {
@@ -88,7 +90,9 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     if (!body || !validContinuationId(body.studentId)) throw Error('INVALID');
     const reviewing = ['new', 'reviewed'].includes(body.status), deciding = ['pending', 'accepted', 'waiting', 'declined'].includes(body.admissionStatus);
-    if (reviewing === deciding) throw Error('INVALID');
+    const replying = Object.prototype.hasOwnProperty.call(body, 'teacherReply');
+    if (Number(reviewing) + Number(deciding) + Number(replying) !== 1) throw Error('INVALID');
+    if (replying && (typeof body.teacherReply !== 'string' || !body.teacherReply.trim() || body.teacherReply.trim().length > 1000)) throw Error('INVALID');
     const ref = requests(db).doc(body.studentId), revision = randomUUID();
     const result = await db.runTransaction(async tx => {
       const old = await tx.get(ref);
@@ -116,8 +120,8 @@ export async function PATCH(req: Request) {
         });
       }
       const status = reviewing ? body.status : 'reviewed';
-      tx.update(ref, { status, admissionStatus: decision, revision, teacherReviewedAt: FieldValue.serverTimestamp(), ...(deciding ? { teacherDecisionBy: teacherId, teacherDecisionAt: FieldValue.serverTimestamp() } : {}) });
-      return { status, admissionStatus: decision, admissions: { accepted: acceptedIds.length, remaining: ACADEMY_CAPACITY - acceptedIds.length } };
+      tx.update(ref, { status, admissionStatus: decision, revision, teacherReviewedAt: FieldValue.serverTimestamp(), ...(replying ? { teacherReply: body.teacherReply.trim(), teacherReplyAt: FieldValue.serverTimestamp(), teacherReplyBy: teacherId } : {}), ...(deciding ? { teacherDecisionBy: teacherId, teacherDecisionAt: FieldValue.serverTimestamp() } : {}) });
+      return { status, admissionStatus: decision, ...(replying ? { teacherReply: body.teacherReply.trim(), teacherReplyAt: new Date().toISOString() } : {}), admissions: { accepted: acceptedIds.length, remaining: ACADEMY_CAPACITY - acceptedIds.length } };
     });
     if (deciding) { revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 }); revalidateTag(ADMISSION_ACCESS_TAG, { expire: 0 }); }
     return json({ success: true, ...result, revision });

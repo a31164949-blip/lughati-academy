@@ -22,7 +22,7 @@ export function continuationSeats(registered: number, accepted: number) {
 }
 export const CONTINUATION_MESSAGE_LIMIT = 1000;
 export type ContinuationProfile = { studentName: string; classroom: string };
-export type ContinuationRequest = ContinuationProfile & { id: string; message: string; wantsToContinue: boolean; status: 'new' | 'reviewed'; admissionStatus: AdmissionStatus; revision: string; updatedAt: string; isTrial: boolean };
+export type ContinuationRequest = ContinuationProfile & { id: string; message: string; wantsToContinue: boolean; status: 'new' | 'reviewed'; admissionStatus: AdmissionStatus; revision: string; teacherReply?: string; teacherReplyAt?: string; updatedAt: string; isTrial: boolean };
 export const validContinuationId = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 export function continuationInput(body: unknown) {
   if (!body || typeof body !== 'object' || !('wantsToContinue' in body) || body.wantsToContinue !== true) throw Error('CONSENT');
