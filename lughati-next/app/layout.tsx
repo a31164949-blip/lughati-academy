@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import StudentFrontNoticeSlot from "./components/StudentFrontNotice";
 import CouncilTopicNotice from "./components/CouncilTopicNotice";
 import ContinuationReplyNotice from "./components/ContinuationReplyNotice";
 import AcademyAvailabilityGate from "./components/AcademyAvailabilityGate";
@@ -64,7 +65,7 @@ export default function RootLayout({
   <ServiceWorkerRegister />
   <ContinuationReplyNotice />
   <CouncilTopicNotice />
-  <AcademyAvailabilityGate><StudentAccessGate><StudentLearningPledge>{children}</StudentLearningPledge></StudentAccessGate></AcademyAvailabilityGate>
+  <AcademyAvailabilityGate><StudentAccessGate><StudentLearningPledge><StudentFrontNoticeSlot />{children}</StudentLearningPledge></StudentAccessGate></AcademyAvailabilityGate>
 </body>
     </html>
   );
