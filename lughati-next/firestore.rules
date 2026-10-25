@@ -19,7 +19,14 @@ service cloud.firestore {
     function isStudent() {
       return isSignedIn()
         && request.auth.token.role == "student"
+        && studentAdmissionAccepted()
         && studentAccountAvailable();
+    }
+
+    function studentAdmissionAccepted() {
+      // Keep the preview exception aligned with academyAvailability.ts.
+      return request.auth.token.studentDocId == 'student-040'
+        || request.auth.token.studentDocId in get(/databases/$(database)/documents/academyContinuationRounds/reopening-2026-10).data.get('acceptedStudentIds', []);
     }
 
     function studentAccountAvailable() {
@@ -39,7 +46,8 @@ service cloud.firestore {
     }
 
     match /students/{studentDocId} {
-      allow read: if isTeacher() || isOwnStudentDocument(studentDocId);
+      // Own profile remains readable for the return request and account status.
+      allow read: if isTeacher() || (isStudentIdentity() && request.auth.token.studentDocId == studentDocId);
       allow write: if isTeacher();
     }
     

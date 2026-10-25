@@ -48,7 +48,7 @@ export default function AcademyAvailabilityGate({ children }: { children: React.
     try { await signOut(auth); window.location.assign("/teacher-login"); }
     catch { setError("تعذر تسجيل الخروج. حاول مرة أخرى."); setBusy(false); }
   }
-  if (!STUDENT_ACADEMY_PAUSED || access === "teacher" || access === "preview" || access === "approved" || (access === "guest" && (path === "/teacher-login" || path === "/login")) || ((access === "guest" || access === "student") && path === "/discussion")) return <AcademyStudentAccessContext.Provider value={!STUDENT_ACADEMY_PAUSED || access === "approved" || access === "preview"}>{children}</AcademyStudentAccessContext.Provider>;
+  if (!STUDENT_ACADEMY_PAUSED || access === "teacher" || access === "preview" || access === "approved" || (access === "guest" && (path === "/teacher-login" || path === "/login"))) return <AcademyStudentAccessContext.Provider value={!STUDENT_ACADEMY_PAUSED || access === "approved" || access === "preview"}>{children}</AcademyStudentAccessContext.Provider>;
   if (access === "loading") return <main dir="rtl" className="p-8 text-center">جارٍ التحقق من الدخول…</main>;
   return <main dir="rtl" style={{ minHeight: "100vh", padding: "20px 16px 45px", background: "radial-gradient(ellipse at top left,#ece5d4aa,transparent 40%),#f6f6ef", color: "#183f30" }}>
     <div style={{ width: "100%", maxWidth: 1100, margin: "auto" }}><AcademyWelcome paused /><NationalIdentity />

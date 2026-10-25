@@ -8,8 +8,8 @@ export const runtime = 'nodejs';
 async function identity(req: Request) {
   const header = req.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) throw Error('UNAUTHORIZED');
-  // The council is a narrow communication service available during the student pause.
-  const { adminAuth, adminDb: db } = getFirebaseAdmin({ allowSuspended: true });
+  // Council membership requires the same teacher admission as the academy.
+  const { adminAuth, adminDb: db } = getFirebaseAdmin();
   const token = await adminAuth.verifyIdToken(header.slice(7));
   const teacher = token.role === 'teacher' || token.role === 'admin' || token.email?.toLowerCase() === 'a31164949@gmail.com';
   if (teacher) return { db, teacher: true, id: token.uid, name: 'المعلم' };
