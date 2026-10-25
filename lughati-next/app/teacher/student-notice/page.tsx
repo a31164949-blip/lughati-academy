@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../../firebase';
 import { EMPTY_STUDENT_NOTICE, type StudentFrontNotice } from '../../lib/studentFrontNotice';
+import { TeacherNoticeReplies } from '../../components/StudentNoticeReplies';
 import { StudentNoticeBanner } from '../../components/StudentFrontNotice';
 export default function StudentNoticeEditor() {
   const [notice, setNotice] = useState<StudentFrontNotice>(EMPTY_STUDENT_NOTICE);
@@ -39,6 +40,7 @@ export default function StudentNoticeEditor() {
     <p role="status" className="my-3">{message}</p>
     {!ready ? <button onClick={() => setRetry(x => x + 1)}>إعادة التحميل</button> : <form onSubmit={save} className="space-y-5 rounded-2xl border bg-white p-5">
       <fieldset disabled={busy} className="space-y-5"><label className="block font-bold"><input type="checkbox" checked={notice.active} onChange={e => setNotice({ ...notice, active: e.target.checked })} /> إظهار التنبيه للطلاب</label>
+      <label className="block font-bold"><input type="checkbox" checked={notice.allowReplies} onChange={e => setNotice({ ...notice, allowReplies: e.target.checked })} /> السماح للطلاب بالرد بشكل خاص للمعلم</label>
       <label className="block">العنوان<input className="mt-2 block w-full rounded-lg border p-3" maxLength={100} required={notice.active} value={notice.title} onChange={e => setNotice({ ...notice, title: e.target.value })} /></label>
       <label className="block">نص الملاحظة<textarea className="mt-2 block w-full rounded-lg border p-3" rows={5} maxLength={1500} required={notice.active} placeholder="مثال: ننتظر رأيكم في التصويت، ونرحب بمشاركتكم في موضوع المجلس." value={notice.message} onChange={e => setNotice({ ...notice, message: e.target.value })} /><small>{notice.message.length} / ١٥٠٠</small></label>
       <label className="block">رابط داخل الأكاديمية (اختياري)<input dir="ltr" className="mt-2 block w-full rounded-lg border p-3" maxLength={500} placeholder="/discussion" value={notice.href} onChange={e => setNotice({ ...notice, href: e.target.value })} /></label>
@@ -46,6 +48,7 @@ export default function StudentNoticeEditor() {
       <label className="block">نص زر الرابط<input className="mt-2 block w-full rounded-lg border p-3" maxLength={60} required={!!notice.href} value={notice.linkLabel} onChange={e => setNotice({ ...notice, linkLabel: e.target.value })} /></label>
       <button className="rounded-xl bg-emerald-800 px-6 py-3 font-bold text-white" type="submit">{busy ? 'جارٍ الحفظ…' : 'حفظ التنبيه'}</button></fieldset>
     </form>}
+    {ready && notice.noticeId && <TeacherNoticeReplies key={notice.noticeId} noticeId={notice.noticeId} />}
     {ready && <><h2 className="mt-8 font-bold">معاينة الشكل</h2><StudentNoticeBanner notice={notice} /></>}
   </main>;
 }
