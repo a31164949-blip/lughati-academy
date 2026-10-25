@@ -4,10 +4,11 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { usePathname } from 'next/navigation';
 import { auth } from '../../firebase';
 import type { StudentFrontNotice as Notice } from '../lib/studentFrontNotice';
+import StudentNoticeReplies from './StudentNoticeReplies';
 import styles from './StudentFrontNotice.module.css';
-export function StudentNoticeBanner({ notice }: { notice: Notice }) {
+export function StudentNoticeBanner({ notice, children }: { notice: Notice; children?: React.ReactNode }) {
   const safeHref = /^\/[A-Za-z0-9/?#&=_.%+-]*$/.test(notice.href) && !notice.href.startsWith('//') && !/%0[ad]|%5c/i.test(notice.href);
-  return <aside dir="rtl" className={styles.notice} aria-label="رسالة من معلمك"><p className={styles.kicker}>📣 تنبيه من معلمك</p><h2>{notice.title}</h2><p className={styles.message}>{notice.message}</p>{notice.href && safeHref && <a className={styles.link} href={notice.href}>{notice.linkLabel} ←</a>}</aside>;
+  return <aside dir="rtl" className={styles.notice} aria-label="رسالة من معلمك"><p className={styles.kicker}>📣 تنبيه من معلمك</p><h2>{notice.title}</h2><p className={styles.message}>{notice.message}</p>{notice.href && safeHref && <a className={styles.link} href={notice.href}>{notice.linkLabel} ←</a>}{children}</aside>;
 }
 function StudentFrontNotice({ user }: { user: User | null }) {
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -31,7 +32,7 @@ function StudentFrontNotice({ user }: { user: User | null }) {
     window.addEventListener('focus', focus); document.addEventListener('visibilitychange', focus);
     return () => { alive = false; window.removeEventListener('focus', focus); document.removeEventListener('visibilitychange', focus); };
   }, [user]);
-  return user && notice ? <StudentNoticeBanner notice={notice} /> : null;
+  return user && notice ? <StudentNoticeBanner notice={notice}>{notice.noticeId && <StudentNoticeReplies key={notice.noticeId} noticeId={notice.noticeId} allowReplies={notice.allowReplies} />}</StudentNoticeBanner> : null;
 }
 
 export default function StudentFrontNoticeSlot() {
