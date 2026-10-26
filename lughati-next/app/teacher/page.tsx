@@ -5,6 +5,7 @@
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 const sections = [
+  { title: "🏆 أبطال التحدي المباشر", description: "إضافة صورة بطل كل أسبوع وإدارة صور الأبطال في بطاقة الطالب.", href: "/teacher/live-challenge-champions" },
   { title: "📣 رسالة واجهة الطالب", description: "كتابة تنبيه واضح أعلى صفحة الطالب مع رابط للتصويت أو النقاش والتحكم بإظهاره.", href: "/teacher/student-notice" },
   { title: "طلبات الاستمرار في الأكاديمية", description: "مراجعة رغبات الطلاب ورسائلهم الخاصة — الطاقة الاستيعابية ٢٠ طالبًا.", href: "/teacher/continuation" },
   { title: "🧠 نتائج أوراق التفكير", description: "متابعة محاولات الطلاب وتفسيراتهم في أوراق التفكير الإلكترونية.", href: "/teacher/thinking-worksheets" },
