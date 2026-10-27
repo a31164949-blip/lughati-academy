@@ -10,6 +10,9 @@ function config(data: FirebaseFirestore.DocumentData | undefined) {
   if (!Array.isArray(data.items) || data.items.length > HEART_LIMIT || typeof data.revision !== 'string') throw Error('CONFIG');
   const items = data.items.map(heartInput);
   if (new Set(items.map(item => item.id)).size !== items.length) throw Error('CONFIG');
+  // Include the newly received letter in saved galleries, preserving any teacher edits or visibility choice.
+  const newLetter = HEART_SEEDS.find(item => item.id === 'letter-6')!;
+  if (items.length < HEART_LIMIT && !items.some(item => item.id === newLetter.id)) items.push(newLetter);
   return { items, revision: data.revision };
 }
 const cached = unstable_cache(async () => config((await ref().get()).data()), [HEART_TAG], { revalidate: 300, tags: [HEART_TAG] });

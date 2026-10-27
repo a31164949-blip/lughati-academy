@@ -1,7 +1,7 @@
-export const HEART_TAG = 'heart-messages-v1';
+export const HEART_TAG = 'heart-messages-v2';
 export const HEART_LIMIT = 50;
 export type HeartMessage = { id: string; title: string; studentName: string; showName: boolean; imageUrl: string; published: boolean };
-export const HEART_SEEDS: HeartMessage[] = Array.from({ length: 5 }, (_, i) => ({ id: `letter-${i + 1}`, title: ['كلمات صنعت يومي', 'رسمة تحمل محبة', 'من القلب إلى المعلم', 'كلمات نعتز بها', 'محبة بخط صغير'][i], studentName: '', showName: false, imageUrl: `/heart-messages/letter-${i + 1}.webp`, published: true }));
+export const HEART_SEEDS: HeartMessage[] = Array.from({ length: 6 }, (_, i) => ({ id: `letter-${i + 1}`, title: ['كلمات صنعت يومي', 'رسمة تحمل محبة', 'من القلب إلى المعلم', 'كلمات نعتز بها', 'محبة بخط صغير', 'دعوة جميلة من القلب'][i], studentName: '', showName: false, imageUrl: `/heart-messages/letter-${i + 1}.webp`, published: true }));
 export function heartInput(value: unknown): HeartMessage {
   if (!value || typeof value !== 'object') throw Error('INVALID');
   const d = value as Record<string, unknown>;
