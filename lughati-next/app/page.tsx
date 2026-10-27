@@ -1,4 +1,5 @@
 "use client";
+import HeartMessages from "./components/HeartMessages";
 import AcademyWelcome from "./components/AcademyWelcome";
 import AcademyContinuationCard from "./components/AcademyContinuationCard";
 import { ACADEMY_FRIENDS_ACTIVE } from "./lib/academyFriends";
@@ -3690,6 +3691,8 @@ useEffect(() => {
       />
 
       <ClassDiary />
+
+      <HeartMessages />
 
       <WeeklyGames />
 
