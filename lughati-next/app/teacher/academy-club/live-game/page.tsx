@@ -65,7 +65,7 @@ export default function TeacherLiveGamePage() {
       {!room ? <section style={card}>
         <div style={{fontSize:64}}>🏟️</div>
         <h2>أنشئ ساحة منافسة جديدة</h2>
-        <p>٦ أسئلة متدرجة. يجيب الطلاب بتسجيلات صوتية حتى ٣٠ ثانية، وتستمع إليها وتعتمد نقاطها. تستوعب الغرفة ٣٠ طالبًا.</p>
+        <p>٦ أسئلة: سؤالان لقراءة جمل قصيرة، و٤ أسئلة بإجابة صوتية من كلمة واحدة فقط. يسجّل الطلاب أصواتهم حتى ٣٠ ثانية، وتستمع إليها وتعتمد نقاطها. تستوعب الغرفة ٣٠ طالبًا.</p>
         <button style={primary} disabled={!user || busy} onClick={() => void call("create")}>إنشاء غرفة مباشرة</button>
         <p>أو استعد غرفة موجودة برمزها:</p><input aria-label="رمز الغرفة الموجودة" inputMode="numeric" value={resumeCode} onChange={event => setResumeCode(event.target.value.replace(/\D/g, "").slice(0,6))} style={{padding:12,fontSize:22,width:180,textAlign:"center",margin:8}} /><button style={primary} disabled={!user || busy || resumeCode.length!==6} onClick={() => void call()}>فتح الغرفة</button>
       </section> : <>
