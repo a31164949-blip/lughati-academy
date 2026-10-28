@@ -82,6 +82,104 @@ const clubSections = [
   },
 ];
 
+
+// Teacher-approved results for 2026-10-28. Kept with the page to add zero Firestore reads.
+// Display order and the fastest badge are explicitly approved by the teacher.
+const liveChallengeResults = [
+  {
+    "name": "أمير جودالله مرعي عسيري",
+    "points": 55,
+    "fastest": true
+  },
+  {
+    "name": "عزام محمد جابر عسيري",
+    "points": 55,
+    "fastest": false
+  },
+  {
+    "name": "سلمان عيسى زين راجحي",
+    "points": 55,
+    "fastest": false
+  },
+  {
+    "name": "محمد علي زائد عسيري",
+    "points": 50,
+    "fastest": false
+  },
+  {
+    "name": "إلياس حسن زائد عسيري",
+    "points": 50,
+    "fastest": false
+  },
+  {
+    "name": "فواز موسى علي العسيري",
+    "points": 45,
+    "fastest": false
+  },
+  {
+    "name": "علي بن عبده بن عامر بن إبراهيم آل مكاتله",
+    "points": 45,
+    "fastest": false
+  },
+  {
+    "name": "حسان راجح علي عسيري",
+    "points": 45,
+    "fastest": false
+  },
+  {
+    "name": "علي حسن علي البرشاني",
+    "points": 20,
+    "fastest": false
+  }
+] as const;
+
+function LiveChallengeResults() {
+  return (
+    <section aria-labelledby="live-challenge-results-title" style={{ marginTop: 24, padding: "clamp(18px,4vw,30px)", borderRadius: 26, background: "linear-gradient(135deg,#fff9e4,#fff 60%,#edf8f1)", border: "2px solid #e8c75f", color: "#17352a" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h2 id="live-challenge-results-title" style={{ margin: "0 0 8px", color: "#176c46" }}>🏆 لوحة أبطال التحدي المباشر</h2>
+          <p style={{ margin: 0, color: "#52675c", lineHeight: 1.8 }}>نتائج معتمدة من المعلم · <time dateTime="2026-10-28">٢٨ أكتوبر ٢٠٢٦</time></p>
+        </div>
+        <span style={{ padding: "8px 14px", borderRadius: 20, background: "#176c46", color: "#fff", fontWeight: 800 }}>٩ أبطال نعتز بهم</span>
+      </div>
+      <ol aria-label="أصحاب المراكز الثلاثة الأولى حسب اعتماد المعلم" style={{ listStyle: "none", padding: 0, margin: "22px 0 14px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: 12 }}>
+        {liveChallengeResults.slice(0,3).map((student,index) => (
+          <li key={student.name} style={{ padding: "22px 14px", borderRadius: 20, border: "1px solid #dfce93", background: index === 0 ? "#fff1b8" : "#fff", textAlign: "center" }}>
+            <span aria-hidden="true" style={{ display: "block", fontSize: 38 }}>{["🥇","🥈","🥉"][index]}</span>
+            <p style={{ margin: "10px 0 6px", color: "#79560a", fontWeight: 800 }}>{["المركز الأول","المركز الثاني","المركز الثالث"][index]}</p>
+            <h3 style={{ margin: "0 0 12px", fontSize: 19, lineHeight: 1.7, overflowWrap: "anywhere" }}>{student.name}</h3>
+            <strong style={{ display: "block", fontSize: 25, color: "#176c46" }}>{student.points.toLocaleString("ar-SA")} نقطة</strong>
+            {student.fastest && <span style={{ display: "inline-block", marginTop: 12, padding: "6px 12px", borderRadius: 16, background: "#176c46", color: "#fff", fontWeight: 800 }}>⚡ الأسرع وقتًا</span>}
+          </li>
+        ))}
+      </ol>
+      <p style={{ margin: "12px 0 18px", color: "#52675c", lineHeight: 1.8 }}>تساوى أصحاب المراكز الثلاثة الأولى في النقاط، والترتيب معتمد من المعلم.</p>
+      <details>
+        <summary style={{ cursor: "pointer", fontWeight: 900, color: "#176c46", padding: "12px 0" }}>عرض جميع النتائج · ٩ مشاركين</summary>
+        <div style={{ overflowX: "auto", marginTop: 10 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right", lineHeight: 1.8 }}>
+            <caption style={{ textAlign: "right", paddingBottom: 12, color: "#52675c" }}>الترتيب المعتمد ودرجات المشاركين</caption>
+            <thead><tr style={{ background: "#176c46", color: "#fff" }}>
+              <th scope="col" style={{ padding: 12 }}>الترتيب</th>
+              <th scope="col" style={{ padding: 12 }}>الطالب</th>
+              <th scope="col" style={{ padding: 12 }}>النقاط</th>
+            </tr></thead>
+            <tbody>{liveChallengeResults.map((student,index) => (
+              <tr key={student.name} style={{ background: index % 2 === 0 ? "#f1f8f4" : "#fff", borderBottom: "1px solid #d6e9df" }}>
+                <td style={{ padding: 12, fontWeight: 800 }}>{(index+1).toLocaleString("ar-SA")}</td>
+                <th scope="row" style={{ padding: 12, overflowWrap: "anywhere" }}>{student.name}{student.fastest && <small style={{ display: "block", color: "#79560a", marginTop: 4 }}>⚡ الأسرع وقتًا</small>}</th>
+                <td style={{ padding: 12, fontWeight: 800, whiteSpace: "nowrap" }}>{student.points.toLocaleString("ar-SA")}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </details>
+      <p style={{ margin: "18px 0 0", color: "#79560a", fontWeight: 800 }}>🌟 نحتفي بجهد كل مشارك… والبطل القادم قد يكون أنت!</p>
+    </section>
+  );
+}
+
 function formatDate(value?: string) {
   if (!value) {
     return "غير محدد";
@@ -461,6 +559,8 @@ function AcademyClubContent({ teacherPreview = false }: { teacherPreview?: boole
                 ))}
               </div>
             </section>
+
+            <LiveChallengeResults />
 
             <section
               style={{
