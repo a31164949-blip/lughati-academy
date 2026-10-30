@@ -3,6 +3,7 @@
 import AcademyWelcome from "../components/AcademyWelcome";
 import FamilyDiscussionCard from "../components/FamilyDiscussionCard";
 import TeacherWhatsAppCard from "../components/TeacherWhatsAppCard";
+import contactCardsStyles from "../components/JourneyContactCards.module.css";
 
 import DeferredMedia from "../components/DeferredMedia";
 
@@ -3869,8 +3870,10 @@ try {
       </header>
 
       <AcademyWelcome showCouncil />
-      <FamilyDiscussionCard />
-      <TeacherWhatsAppCard />
+      <div className={contactCardsStyles.row}>
+        <FamilyDiscussionCard />
+        <TeacherWhatsAppCard />
+      </div>
 
       {importantClubNotice && (
         <section role="status" aria-live="polite" style={{ maxWidth: 1068, margin: "20px auto", padding: "20px 16px", background: "#fff8dc", border: "2px solid #dcaa35", borderRadius: 20 }}>
