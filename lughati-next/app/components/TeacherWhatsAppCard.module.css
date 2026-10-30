@@ -1,11 +1,11 @@
-.card { box-sizing:border-box; width:calc(100% - 32px); max-width:1068px; margin:20px auto; padding:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:22px; border:2px solid #9cd8b6; border-radius:24px; background:linear-gradient(120deg,#fff 0%,#effbf4 100%); color:#173d2c; box-shadow:0 8px 24px #176c4610; }
-.copy { flex:1 1 360px; min-width:0; }
-.label { display:inline-block; color:#176c46; font-size:15px; font-weight:800; }
-.copy h2 { margin:8px 0; color:#124b33; font-size:clamp(22px,3vw,28px); line-height:1.5; font-weight:900; }
-.copy p { margin:0; font-size:18px; line-height:1.95; font-weight:600; }
-.action { flex:0 1 310px; display:grid; gap:10px; text-align:center; min-width:0; }
-.action a { display:block; padding:16px 20px; border-radius:16px; background:#146c43; color:#fff; font-size:18px; line-height:1.6; font-weight:800; text-decoration:none; box-shadow:0 5px 14px #146c4320; }
+.card { box-sizing:border-box; width:calc(100% - 32px); max-width:820px; margin:12px auto; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; border:1px solid #9cd8b6; border-radius:16px; background:linear-gradient(120deg,#fff 0%,#effbf4 100%); color:#173d2c; box-shadow:0 4px 14px #176c460c; }
+.copy { flex:1 1 300px; min-width:0; }
+.label { display:inline-block; color:#176c46; font-size:12px; font-weight:800; }
+.copy h2 { margin:4px 0; color:#124b33; font-size:clamp(17px,2vw,20px); line-height:1.5; font-weight:900; }
+.copy p { margin:0; font-size:14px; line-height:1.7; font-weight:600; }
+.action { flex:0 1 240px; display:grid; gap:5px; text-align:center; min-width:0; }
+.action a { box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:9px 12px; border-radius:11px; background:#146c43; color:#fff; font-size:14px; line-height:1.6; font-weight:800; text-decoration:none; box-shadow:0 3px 9px #146c4318; }
 .action a:hover { background:#0c5432; }
 .action a:focus-visible { outline:3px solid #9a6b00; outline-offset:4px; }
-.action small { color:#496457; font-size:12px; line-height:1.8; }
-@media(max-width:600px) { .card { padding:20px 16px; gap:18px; } .copy { flex-basis:100%; } .action { flex:1 1 100%; } .copy p { font-size:17px; } }
+.action small { color:#496457; font-size:11px; line-height:1.6; }
+@media(max-width:600px) { .card { padding:12px 14px; gap:10px; } .copy { flex-basis:100%; } .action { flex:1 1 100%; } .copy p { font-size:14px; } }
