@@ -27,8 +27,8 @@ async function identity(req: Request) {
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } }); }
 function failure(error: unknown) {
   const code = error instanceof Error ? error.message : '';
-  const status = code === 'UNAUTHORIZED' ? 401 : code === 'FORBIDDEN' ? 403 : ['INVALID', 'CONSENT', 'CLOSED', 'PROFILE'].includes(code) || error instanceof SyntaxError ? 400 : ['CHANGED', 'FULL'].includes(code) ? 409 : code === 'TOO_FAST' ? 429 : 500;
-  const messages: Record<string, string> = { UNAUTHORIZED: 'سجّل دخولك بحساب الطالب لتأكيد طلبك.', FORBIDDEN: 'هذا الإجراء متاح لصاحب الحساب أو المعلم حسب الصلاحية.', CONSENT: 'أكّد رغبتك في الاستمرار بالتعلّم أولًا.', INVALID: 'تحقق من البيانات، واجعل رسالتك في حدود ١٠٠٠ حرف.', PROFILE: 'تواصل مع المعلم لاستكمال اسم الطالب وصفّه في الحساب.', CLOSED: 'استقبال طلبات الاستمرار متوقف حاليًا.', TOO_FAST: 'انتظر عشر ثوانٍ قبل تعديل طلبك مرة أخرى.', CHANGED: 'تم تحديث هذا الطلب. حدّث القائمة قبل مراجعته.' };
+  const status = code === 'UNAUTHORIZED' ? 401 : code === 'FORBIDDEN' ? 403 : ['INVALID', 'CONSENT', 'CLOSED', 'PROFILE', 'INVALID_REPLACEMENT'].includes(code) || error instanceof SyntaxError ? 400 : ['CHANGED', 'FULL', 'NOT_ACCEPTED', 'TARGET_CHANGED'].includes(code) ? 409 : code === 'TOO_FAST' ? 429 : 500;
+  const messages: Record<string, string> = { UNAUTHORIZED: 'سجّل دخولك بحساب الطالب لتأكيد طلبك.', FORBIDDEN: 'هذا الإجراء متاح لصاحب الحساب أو المعلم حسب الصلاحية.', CONSENT: 'أكّد رغبتك في الاستمرار بالتعلّم أولًا.', INVALID: 'تحقق من البيانات، واجعل رسالتك في حدود ١٠٠٠ حرف.', PROFILE: 'تواصل مع المعلم لاستكمال اسم الطالب وصفّه في الحساب.', CLOSED: 'استقبال طلبات الاستمرار متوقف حاليًا.', TOO_FAST: 'انتظر عشر ثوانٍ قبل تعديل طلبك مرة أخرى.', CHANGED: 'تم تحديث هذا الطلب. حدّث القائمة قبل مراجعته.', NOT_ACCEPTED: 'هذا الطالب لم يعد ضمن المقبولين. حدّث القائمة.', TARGET_CHANGED: 'تغير طلب الطالب البديل. حدّث القائمة واختره مجددًا.', INVALID_REPLACEMENT: 'اختر طالبًا فعليًا من الانتظار أو الطلبات قيد المراجعة، وله حساب قائم ورغبة بالاستمرار.' };
   if (code === 'FULL') return json({ success: false, code: 'FULL', message: 'اكتملت المقاعد العشرون المعتمدة. انقل أحد المقبولين إلى الانتظار قبل قبول طالب آخر، أو ضع هذا الطلب في قائمة الانتظار.' }, status);
   return json({ success: false, message: messages[code] ?? 'تعذر إتمام الطلب. تحقق من الاتصال وحاول مجددًا.' }, status);
 }
@@ -83,12 +83,73 @@ export async function POST(req: Request) {
     return json({ success: true, profile, request: { ...input, ...profile, teacherReply, teacherReplyAt, id, isTrial, status: 'new', admissionStatus: decision, revision, updatedAt: new Date(now).toISOString() }, message: decision === 'waiting' ? 'وصل طلبك إلى قائمة الانتظار. اختيار المقبولين والترقية من الانتظار بقرار المعلم.' : 'حُفظ طلبك ورسالتك. قرار القبول للمعلم، وأسبقية التسجيل لا تحجز مقعدًا. اعتماد المعلم للقبول يتيح الدخول إلى الأكاديمية.' });
   } catch (error) { return failure(error); }
 }
+
+async function changeAcademySeat(db: FirebaseFirestore.Firestore, teacherId: string, body: Record<string, unknown>) {
+  if (!validContinuationId(body.studentId) || typeof body.revision !== 'string') throw Error('INVALID');
+  const replacing = body.action === 'replace';
+  if (replacing && (!validContinuationId(body.replacementStudentId) || body.replacementStudentId === body.studentId || typeof body.replacementRevision !== 'string')) throw Error('INVALID');
+  const sourceId = body.studentId;
+  const targetId = replacing ? body.replacementStudentId as string : null;
+  const sourceRef = requests(db).doc(sourceId);
+  const targetRef = targetId ? requests(db).doc(targetId) : null;
+  const roundRef = db.collection('academyContinuationRounds').doc(CONTINUATION_ROUND);
+  const sourceStudentRef = db.collection('students').doc(sourceId);
+  const targetStudentRef = targetId ? db.collection('students').doc(targetId) : null;
+  const sourceRevision = randomUUID(), targetRevision = randomUUID();
+  const result = await db.runTransaction(async tx => {
+    const [source, metadata, sourceStudent, target, targetStudent] = await Promise.all([
+      tx.get(sourceRef), tx.get(roundRef), tx.get(sourceStudentRef),
+      targetRef ? tx.get(targetRef) : Promise.resolve(null),
+      targetStudentRef ? tx.get(targetStudentRef) : Promise.resolve(null),
+    ]);
+    const old = source.data();
+    if (!source.exists || old?.revision !== body.revision) throw Error('CHANGED');
+    const accepted = acceptedStudentIds(metadata.data());
+    if (admissionStatus(old?.admissionStatus) !== 'accepted' || !accepted.includes(sourceId) || old?.isTrial === true) throw Error('NOT_ACCEPTED');
+    const incoming = target?.data();
+    if (targetId && (!target?.exists || incoming?.revision !== body.replacementRevision)) throw Error('TARGET_CHANGED');
+    if (targetId && (
+      !targetStudent?.exists || targetStudent.data()?.deleted === true ||
+      incoming?.wantsToContinue !== true || incoming?.isTrial === true ||
+      targetStudent.data()?.isTestAccount === true || targetStudent.data()?.isTest === true || targetStudent.data()?.isDemo === true ||
+      !['waiting', 'pending'].includes(admissionStatus(incoming?.admissionStatus)) || accepted.includes(targetId)
+    )) throw Error('INVALID_REPLACEMENT');
+    const next = accepted.filter(studentId => studentId !== sourceId);
+    if (targetId) next.push(targetId);
+    if (next.length > ACADEMY_CAPACITY) throw Error('FULL');
+    tx.set(roundRef, { acceptedStudentIds: next }, { merge: true });
+    const sourceUpdate = { status: 'reviewed', admissionStatus: 'waiting', revision: sourceRevision, teacherDecisionBy: teacherId, teacherDecisionAt: FieldValue.serverTimestamp(), teacherReviewedAt: FieldValue.serverTimestamp() };
+    tx.update(sourceRef, sourceUpdate);
+    if (sourceStudent.exists) tx.update(sourceStudentRef, {
+      academyAdmission: { round: CONTINUATION_ROUND, status: 'waiting' },
+      accessControl: { mode: 'account', until: null, reason: 'academy-seat-released', updatedBy: teacherId, updatedAt: FieldValue.serverTimestamp() },
+    });
+    const updates = [dto(sourceId, { ...old, ...sourceUpdate })];
+    if (targetId && targetRef && targetStudentRef) {
+      const targetUpdate = { status: 'reviewed', admissionStatus: 'accepted', revision: targetRevision, teacherDecisionBy: teacherId, teacherDecisionAt: FieldValue.serverTimestamp(), teacherReviewedAt: FieldValue.serverTimestamp() };
+      tx.update(targetRef, targetUpdate);
+      tx.update(targetStudentRef, {
+        academyAdmission: { round: CONTINUATION_ROUND, status: 'accepted' },
+        accessControl: { mode: 'resume', until: null, resumedAt: FieldValue.serverTimestamp(), updatedBy: teacherId, updatedAt: FieldValue.serverTimestamp() },
+      });
+      updates.push(dto(targetId, { ...incoming, ...targetUpdate }));
+    }
+    return { updates, admissions: { accepted: next.length, remaining: ACADEMY_CAPACITY - next.length } };
+  });
+  revalidateTag(CONTINUATION_SEATS_TAG, { expire: 0 });
+  revalidateTag(ADMISSION_ACCESS_TAG, { expire: 0 });
+  revalidateTag('student-access:' + sourceId, { expire: 0 });
+  if (targetId) revalidateTag('student-access:' + targetId, { expire: 0 });
+  return json({ success: true, ...result, message: targetId ? 'تم إخراج الطالب وقبول البديل في مقعده. حُفظت سجلات الطالبين ودرجاتهما.' : 'تم إيقاف دخول الطالب وإعادته إلى قائمة الانتظار وإتاحة مقعده. حُفظ سجله ودرجاته.' });
+}
+
 export async function PATCH(req: Request) {
   try {
     const { db, teacher, id: teacherId } = await identity(req);
     if (!teacher) throw Error('FORBIDDEN');
     const body = await req.json();
     if (!body || !validContinuationId(body.studentId)) throw Error('INVALID');
+    if (body.action === 'remove' || body.action === 'replace') return await changeAcademySeat(db, teacherId, body);
     const reviewing = ['new', 'reviewed'].includes(body.status), deciding = ['pending', 'accepted', 'waiting', 'declined'].includes(body.admissionStatus);
     const replying = Object.prototype.hasOwnProperty.call(body, 'teacherReply');
     if (Number(reviewing) + Number(deciding) + Number(replying) !== 1) throw Error('INVALID');
