@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LittleTeacherLessonSettings from "../../components/LittleTeacherLessonSettings";
 import { MessageImage, MessageImagePicker } from "../../components/MessageImage";
 import { uploadMessageImage } from "../../lib/uploadMessageImage";
 import { useEffect, useMemo, useState } from "react";
@@ -859,6 +860,8 @@ useEffect(() => {
             {feedback}
           </div>
         )}
+
+        <LittleTeacherLessonSettings />
 
         <div className="mb-5 flex flex-wrap gap-3" aria-label="نوع رسائل الطلاب">
           <button type="button" aria-pressed={messageView === "all"} onClick={() => setMessageView("all")} className="rounded-xl border bg-white px-4 py-3 font-bold text-emerald-800">جميع الرسائل</button>
