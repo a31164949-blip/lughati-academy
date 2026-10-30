@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { getStudentSmartRecordFollowUp } from "../../lib/studentSmartRecord";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../firebase-admin";
@@ -492,6 +493,7 @@ export async function GET(
     const [
       homeworkStatus,
       studentMessagesSnapshot,
+      smartFollowUp,
     ] = await Promise.all([
       getHomeworkStatusForDate(
         studentDocId,
@@ -503,6 +505,7 @@ export async function GET(
         .where("studentViewedReply", "==", false)
         .limit(20)
         .get(),
+      getStudentSmartRecordFollowUp(studentDocId, studentSnapshot.data() ?? {}, dateKey),
     ]);
 
     const unreadMessageCount =
@@ -920,12 +923,7 @@ personalPhotoUrl:
                 (studentData.eliteLibrary as Record<string, unknown>).masteryKey === true,
             }
           : { masteryKey: false },
-      smartFollowUp:
-  studentData.smartFollowUp &&
-  typeof studentData.smartFollowUp ===
-    "object"
-    ? studentData.smartFollowUp
-    : null,
+      smartFollowUp,
     });
   } catch (error) {
     console.error(

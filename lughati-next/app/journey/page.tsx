@@ -4574,244 +4574,7 @@ try {
           </section>
         </Link>
 
-        {/* مستواي اليوم */}
-
-        <section
-          style={{
-            ...cardStyle,
-            border:
-              "2px solid #cfe9dd",
-            background:
-              "linear-gradient(135deg,#ffffff 0%,#effcf6 100%)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems: "center",
-              gap: "12px",
-              flexWrap: "wrap",
-              marginBottom: "18px",
-            }}
-          >
-            <div>
-              <h2
-                style={{
-                  margin: 0,
-                  color: "#126b49",
-                  fontSize: "24px",
-                }}
-              >
-                🌟 مستواي اليوم
-              </h2>
-
-              <p
-                style={{
-                  margin: "7px 0 0",
-                  color: "#64748b",
-                  lineHeight: 1.7,
-                }}
-              >
-                آخر متابعة حفظها المعلم في السجل الذكي.
-              </p>
-            </div>
-
-            {smartFollowUp?.date && (
-              <span
-                style={{
-                  padding:
-                    "7px 12px",
-                  borderRadius:
-                    "999px",
-                  background:
-                    "#dcfce7",
-                  color: "#08734b",
-                  fontWeight: 800,
-                  fontSize: "13px",
-                }}
-              >
-                📅{" "}
-                {smartFollowUp.date} · تاريخ المتابعة
-              </span>
-            )}
-          </div>
-
-          {!smartFollowUp ? (
-            <div
-              style={{
-                padding: "18px",
-                borderRadius:
-                  "18px",
-                background:
-                  "#f8fafc",
-                color: "#64748b",
-                textAlign: "center",
-                fontWeight: 700,
-              }}
-            >
-              ⏳ لم يسجل المعلم تقييمًا جديدًا حتى الآن.
-            </div>
-          ) : (
-            <>
-              <div
-                style={{
-                  padding: "17px",
-                  borderRadius:
-                    "20px",
-                  background:
-                    "#eef8ff",
-                  border:
-                    "1px solid #d4eafb",
-                  marginBottom:
-                    "14px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    alignItems:
-                      "center",
-                    gap: "10px",
-                    flexWrap:
-                      "wrap",
-                    marginBottom:
-                      "14px",
-                  }}
-                >
-                  <strong
-                    style={{
-                      fontSize:
-                        "18px",
-                      color:
-                        "#075985",
-                    }}
-                  >
-                    📖 قراءتي
-                  </strong>
-
-                  <span
-                    style={{
-                      background:
-                        "#ffffff",
-                      borderRadius:
-                        "999px",
-                      padding:
-                        "7px 12px",
-                      fontWeight: 900,
-                      color:
-                        "#075985",
-                    }}
-                  >
-                    {smartFollowUp.readingLevelLabel ||
-                      "لم أُقيّم بعد"}
-                  </span>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(135px,1fr))", gap: "10px" }}>
-                  <div style={studentLevelCardStyle}>
-                    <span>📚 درس القراءة</span>
-                    <strong>{smartFollowUp.readingTitle || "لم يحدد المعلم اسم الدرس"}</strong>
-                  </div>
-                  <div style={studentLevelCardStyle}>
-                    <span>🎯 أخطاء القراءة</span>
-                    <strong>{smartFollowUp.readingErrors === null ? "لم تُسجل أخطاء القراءة بعد" : smartFollowUp.readingErrors === 0 ? "بلا أخطاء 👏" : `عدد الأخطاء: ${smartFollowUp.readingErrors}`}</strong>
-                  </div>
-                  {[
-                    ["🎯 الدقة", smartFollowUp.readingAccuracyLabel],
-                    ["⚡ الطلاقة", smartFollowUp.readingFluencyLabel],
-                    ["🎨 الحركات", smartFollowUp.readingDiacriticsLabel],
-                  ].filter(([, label]) => Boolean(label)).map(([title, label]) => (
-                    <div key={title} style={studentLevelCardStyle}><span>{title}</span><strong>{label}</strong></div>
-                  ))}
-                </div>
-
-                {smartFollowUp.readingNote && (
-                  <div
-                    style={{
-                      marginTop:
-                        "12px",
-                      padding:
-                        "13px",
-                      background:
-                        "#ffffff",
-                      borderRadius:
-                        "15px",
-                      color:
-                        "#475569",
-                      lineHeight: 1.8,
-                      fontWeight: 700,
-                    }}
-                  >
-                    💬 معلمي يقول:{" "}
-                    {
-                      smartFollowUp.readingNote
-                    }
-                  </div>
-                )}
-              </div>
-
-              <div
-                style={{
-                  padding: "17px",
-                  borderRadius:
-                    "20px",
-                  background:
-                    "#fff8e7",
-                  border:
-                    "1px solid #f0dfae",
-                }}
-              >
-                <strong
-                  style={{
-                    display: "block",
-                    color:
-                      "#8a5b00",
-                    marginBottom:
-                      "8px",
-                    fontSize:
-                      "18px",
-                  }}
-                >
-                  📝 إنجاز واجبي
-                </strong>
-
-                <div
-                  style={{
-                    fontWeight: 900,
-                    color:
-                      "#735316",
-                    lineHeight: 1.8,
-                  }}
-                >
-                  {smartFollowUp.homeworkLabel ||
-                    "لم تُسجل متابعة الواجب بعد"}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  marginTop: "14px",
-                  padding: "15px",
-                  borderRadius:
-                    "18px",
-                  background:
-                    "linear-gradient(135deg,#eaf9f1,#ffffff)",
-                  border:
-                    "1px solid #cfead9",
-                  color: "#176c46",
-                  lineHeight: 1.8,
-                  fontWeight: 800,
-                }}
-              >
-                🦸 فارس يقول: استمر يا بطل! كل تدريب صغير اليوم يجعلك قارئًا أقوى غدًا. 🌟
-              </div>
-            </>
-          )}
-        </section>
+        <SmartRecordFollowUpCard followUp={smartFollowUp} />
 
         {errorMessage && (
           <section
@@ -5970,6 +5733,46 @@ try {
       </div>
     </main>
   );
+}
+
+
+function SmartRecordFollowUpCard({ followUp }: { followUp: StudentSmartFollowUp | null }) {
+  const errorLabel = (errors: number | null) => errors === null ? "— لم يُقيّم" : errors === 0 ? "بلا أخطاء 👏" : `عدد الأخطاء: ${errors}`;
+  return <section style={{ ...cardStyle, border: "2px solid #cfe9dd", background: "linear-gradient(135deg,#ffffff,#effcf6)" }} aria-labelledby="smart-record-follow-up-heading">
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+      <div><h2 id="smart-record-follow-up-heading" style={{ margin: 0, color: "#126b49", fontSize: 24 }}>📋 متابعتي في السجل الذكي</h2>
+        <p style={{ margin: "7px 0 0", color: "#64748b", lineHeight: 1.7 }}>نفس متابعة المعلم المحفوظة في السجل الذكي.</p></div>
+      {followUp && <time dateTime={followUp.date} style={{ padding: "7px 12px", borderRadius: 20, background: "#dcfce7", color: "#08734b", fontWeight: 800 }}>📅 {followUp.date} · تاريخ المتابعة</time>}
+    </div>
+    {!followUp ? <p style={{ padding: 18, background: "#f8fafc", borderRadius: 18, color: "#64748b", textAlign: "center" }}>لم يُحفظ سجل متابعة لهذا الطالب بعد.</p> : <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: 12, marginBottom: 14 }}>
+        <div style={{ ...studentLevelCardStyle, background: "#f0faf4", border: "1px solid #cfe9dd" }}><strong>🏫 الحضور</strong><span>{followUp.attendanceLabel}</span></div>
+        <div style={{ ...studentLevelCardStyle, background: "#fff8e7", border: "1px solid #f0dfae" }}><strong>📝 الواجب</strong><span>{followUp.homeworkLabel}</span></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))", gap: 14 }}>
+        <div style={{ padding: 17, borderRadius: 20, background: "#eef8ff", border: "1px solid #d4eafb" }}>
+          <h3 style={{ margin: "0 0 12px", color: "#075985", fontSize: 18 }}>📖 القراءة</h3>
+          <p style={{ margin: "0 0 12px", fontWeight: 900, color: "#075985" }}>{followUp.readingLevelLabel}</p>
+          <dl style={{ margin: 0, display: "grid", gap: 10 }}>
+            <div style={studentLevelCardStyle}><dt>اسم درس القراءة</dt><dd style={{ margin: 0, fontWeight: 800 }}>{followUp.readingTitle || "لم يُحدد"}</dd></div>
+            <div style={studentLevelCardStyle}><dt>أخطاء القراءة</dt><dd style={{ margin: 0, fontWeight: 800 }}>{errorLabel(followUp.readingErrors)}</dd></div>
+          </dl>
+        </div>
+        <div style={{ padding: 17, borderRadius: 20, background: "#f5f0ff", border: "1px solid #ddd0f5" }}>
+          <h3 style={{ margin: "0 0 12px", color: "#6b3e9c", fontSize: 18 }}>✍️ الإملاء</h3>
+          <p style={{ margin: "0 0 12px", fontWeight: 900, color: "#6b3e9c" }}>{followUp.spellingLevelLabel}</p>
+          <dl style={{ margin: 0, display: "grid", gap: 10 }}>
+            <div style={studentLevelCardStyle}><dt>اسم نص الإملاء</dt><dd style={{ margin: 0, fontWeight: 800 }}>{followUp.spellingTitle || "لم يُحدد"}</dd></div>
+            <div style={studentLevelCardStyle}><dt>أخطاء الإملاء</dt><dd style={{ margin: 0, fontWeight: 800 }}>{errorLabel(followUp.spellingErrors)}</dd></div>
+            <div style={studentLevelCardStyle}><dt>عدد كلمات الإملاء</dt><dd style={{ margin: 0, fontWeight: 800 }}>{followUp.spellingWordCount ?? "لم يُحدد"}</dd></div>
+          </dl>
+        </div>
+      </div>
+      <div style={{ padding: 15, border: "1px solid #cfead9", borderRadius: 18, marginTop: 14, background: "#fff", lineHeight: 1.8 }}>
+        <strong>💬 ملاحظة المعلم</strong><p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{followUp.note || "لا توجد ملاحظة مسجلة."}</p>
+      </div>
+    </>}
+  </section>;
 }
 
 function StatCard({

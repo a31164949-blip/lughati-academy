@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc, runTransaction } from "firebase/firestore";
 import { isTrialStudent } from "../../lib/smartStudentReport";
 import StudentReportPanel from "./StudentReportPanel";
 import MonthlyClassReportPanel from "./MonthlyClassReportPanel";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
+import { getSmartRecordAwardLevel as levelFromErrors, getSmartRecordAwardLabel as awardLabel, oldSmartRecordErrors as oldReadingToErrors } from "../../lib/studentSmartFollowUp";
 
 type ClassroomKey = "second-a" | "second-b";
 type AttendanceStatus = "present" | "absent" | "late";
@@ -87,30 +88,11 @@ function getWeekRange(dateKey: string) {
   return { start: key(sunday), end: key(wednesday) };
 }
 
-function levelFromErrors(errors: number | null): AwardLevel {
-  if (errors === null) return "not-evaluated";
-  if (errors === 0) return "prince";
-  if (errors <= 2) return "hero";
-  if (errors === 3) return "star";
-  return "diligent";
-}
 
-function awardLabel(level: AwardLevel, kind: "reading" | "spelling") {
-  const subject = kind === "reading" ? "القراءة" : "الإملاء";
-  if (level === "prince") return `🌟 أمير ${subject}`;
-  if (level === "hero") return `🏅 بطل ${subject}`;
-  if (level === "star") return `⭐ نجم ${subject}`;
-  if (level === "diligent") return `🌱 مجتهد ${subject}`;
-  return "— لم يُقيّم";
-}
 
-function oldReadingToErrors(level: unknown): number | null {
-  if (level === "mastered") return 0;
-  if (level === "very-good") return 1;
-  if (level === "good") return 3;
-  if (level === "needs-practice" || level === "intensive-support") return 4;
-  return null;
-}
+
+
+
 
 function oldSpellingToErrors(saved: Record<string, unknown>): number | null {
   if (typeof saved.spellingErrors === "number") return Math.max(0, Math.round(saved.spellingErrors));
@@ -339,7 +321,10 @@ export default function SmartRecordPage() {
       setIsSaving(true);
       setStatusMessage("");
       const ref = doc(db, "smartRecords", `${selectedDate}_${selectedClassroom}`);
-      await setDoc(ref, {
+      const latestRef = doc(db, "smartRecords", `latest_${selectedClassroom}`);
+      await runTransaction(db, async transaction => {
+        const latest = await transaction.get(latestRef);
+        transaction.set(ref, {
         date: selectedDate,
         classroomKey: selectedClassroom,
         classroom: currentClassroom.label,
@@ -356,6 +341,24 @@ export default function SmartRecordPage() {
         records,
         updatedAt: serverTimestamp(),
       }, { merge: true });
+        const latestDate = latest.data()?.latestSmartRecordDate;
+        if (typeof latestDate !== "string" || selectedDate >= latestDate) {
+          // No date/classroomKey/records: aggregate reports skip this metadata document.
+          transaction.set(latestRef, { latestSmartRecordDate: selectedDate }, { merge: true });
+        }
+      });
+      let refreshDelayed = false;
+      try {
+        const account = auth.currentUser;
+        if (!account) throw Error("UNAUTHORIZED");
+        const response = await fetch("/api/teacher/smart-record/refresh", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${await account.getIdToken()}` },
+          body: JSON.stringify({ classroom: selectedClassroom }),
+        });
+        if (!response.ok) throw Error("REFRESH_FAILED");
+      } catch {
+        refreshDelayed = true;
+      }
 
       setReportRevision(value => value + 1);
       for (const student of records) {
@@ -422,7 +425,7 @@ export default function SmartRecordPage() {
           updatedAt: serverTimestamp(),
         }, { merge: true });
       }
-      setStatusMessage(`✅ تم حفظ سجل ${currentClassroom.label} وتحديث متابعة الطلاب بنجاح.`);
+      setStatusMessage(`✅ تم حفظ سجل ${currentClassroom.label} وتحديث متابعة الطلاب بنجاح.${refreshDelayed ? " قد تتأخر بطاقة الطالب في التحديث؛ اضغط حفظ السجل مجددًا عند عودة الاتصال." : ""}`);
     } catch (error) {
       console.error("تعذر حفظ السجل الذكي:", error);
       setStatusMessage("تعذر حفظ السجل. تحقق من الاتصال وصلاحيات Firebase.");
