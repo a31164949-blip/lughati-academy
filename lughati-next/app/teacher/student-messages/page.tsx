@@ -25,6 +25,7 @@ type StudentMessage = {
   studentName: string;
   classroom?: string;
   category: string;
+  source?: string;
   categoryLabel?: string;
   message: string;
   teacherReply?: string;
@@ -49,8 +50,10 @@ type StudentOption = {
 };
 
 export default function TeacherStudentMessagesPage() {
+  const [messageView, setMessageView] = useState<"all" | "little-teacher">("all");
   const [messages, setMessages] =
     useState<StudentMessage[]>([]);
+  const visibleMessages = messageView === "little-teacher" ? messages.filter(item => item.source === "little-teacher-spelling") : messages;
 
   const [loading, setLoading] =
     useState(true);
@@ -857,20 +860,25 @@ useEffect(() => {
           </div>
         )}
 
+        <div className="mb-5 flex flex-wrap gap-3" aria-label="نوع رسائل الطلاب">
+          <button type="button" aria-pressed={messageView === "all"} onClick={() => setMessageView("all")} className="rounded-xl border bg-white px-4 py-3 font-bold text-emerald-800">جميع الرسائل</button>
+          <button type="button" aria-pressed={messageView === "little-teacher"} onClick={() => setMessageView("little-teacher")} className="rounded-xl border bg-emerald-50 px-4 py-3 font-bold text-emerald-800">🧑‍🏫 اقتراحات المعلم الصغير ({messages.filter(item => item.source === "little-teacher-spelling").length})</button>
+        </div>
+
         {/* الرسائل */}
 
         {loading ? (
           <div className="rounded-3xl bg-white p-10 text-center font-black text-slate-500 shadow">
             ⏳ جاري تحميل رسائل الطلاب...
           </div>
-        ) : messages.length === 0 ? (
+        ) : visibleMessages.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-emerald-200 bg-white p-10 text-center shadow">
             <div className="text-6xl">
               📨
             </div>
 
             <h2 className="mt-4 text-xl font-black text-slate-700">
-              لا توجد رسائل حاليًا
+              لا توجد رسائل في هذا العرض
             </h2>
 
             <p className="mt-2 font-bold text-slate-400">
@@ -880,7 +888,7 @@ useEffect(() => {
           </div>
         ) : (
           <div className="grid gap-5">
-            {messages.map(
+            {visibleMessages.map(
               (item) => {
                 const replied =
                   Boolean(
