@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { getLittleTeacherLesson } from "../../lib/littleTeacherLesson";
 import { getStudentSmartRecordFollowUp } from "../../lib/studentSmartRecord";
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
@@ -494,6 +495,7 @@ export async function GET(
       homeworkStatus,
       studentMessagesSnapshot,
       smartFollowUp,
+      littleTeacherLesson,
     ] = await Promise.all([
       getHomeworkStatusForDate(
         studentDocId,
@@ -506,6 +508,7 @@ export async function GET(
         .limit(20)
         .get(),
       getStudentSmartRecordFollowUp(studentDocId, studentSnapshot.data() ?? {}, dateKey),
+      getLittleTeacherLesson(),
     ]);
 
     const unreadMessageCount =
@@ -913,6 +916,7 @@ personalPhotoUrl:
       homeworkStatus,
       tomorrowSpellingDay,
       tomorrowSpellingWords,
+      littleTeacherLesson,
       unreadMessageCount,
       academyClubMembership,
       eliteLibrary:

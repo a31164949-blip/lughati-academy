@@ -4,6 +4,7 @@ import AcademyWelcome from "../components/AcademyWelcome";
 import FamilyDiscussionCard from "../components/FamilyDiscussionCard";
 import TeacherWhatsAppCard from "../components/TeacherWhatsAppCard";
 import SpellingPracticeCards from "../components/SpellingPracticeCards";
+import { readLittleTeacherLesson, type LittleTeacherLesson } from "../lib/littleTeacherSpelling";
 import contactCardsStyles from "../components/JourneyContactCards.module.css";
 
 import DeferredMedia from "../components/DeferredMedia";
@@ -225,6 +226,7 @@ type JourneyData = {
     | "approved"
     | "rejected";
   smartFollowUp?: StudentSmartFollowUp | null;
+  littleTeacherLesson?: LittleTeacherLesson | null;
   tomorrowSpellingDay?: string;
   tomorrowSpellingWords?: string[];
   unreadMessageCount?: number;
@@ -516,6 +518,8 @@ const [
     tomorrowSpellingDay,
     setTomorrowSpellingDay,
   ] = useState("");
+
+  const [littleTeacherLesson, setLittleTeacherLesson] = useState<LittleTeacherLesson | null>(null);
 
   const [
     tomorrowSpellingWords,
@@ -1061,6 +1065,8 @@ try {
             ? data.tomorrowSpellingDay
             : ""
         );
+
+        setLittleTeacherLesson(data.littleTeacherLesson ? readLittleTeacherLesson(data.littleTeacherLesson) : null);
 
         setTomorrowSpellingWords(
           Array.isArray(data.tomorrowSpellingWords)
@@ -4203,7 +4209,7 @@ try {
             </div>
         </section>
 
-        <SpellingPracticeCards words={tomorrowSpellingWords} day={tomorrowSpellingDay} user={user} />
+        <SpellingPracticeCards words={tomorrowSpellingWords} day={tomorrowSpellingDay} user={user} lesson={littleTeacherLesson} loading={loading} />
 
         {/* مستوى الإملاء الظاهر مباشرة للطالب */}
         <section
