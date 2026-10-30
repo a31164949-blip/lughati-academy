@@ -12,6 +12,7 @@ import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
 import AcademyStories from "../components/AcademyStories";
 import Link from "next/link";
+import { normalizeStudentSmartFollowUp, type StudentSmartFollowUp } from "../lib/studentSmartFollowUp";
 import {
   useEffect,
   useMemo,
@@ -174,18 +175,7 @@ const dailyTasks = [
   },
 ];
 
-type StudentSmartFollowUp = {
-  date: string;
 
-  homeworkLabel: string;
-
-  readingLevelLabel: string;
-  readingAccuracyLabel: string;
-  readingFluencyLabel: string;
-  readingDiacriticsLabel: string;
-
-  readingNote: string;
-};
 
 type LatestSpelling = {
   textName: string;
@@ -1151,53 +1141,8 @@ try {
             "none"
         );
 
-        const savedFollowUp =
-          data.smartFollowUp;
+        setSmartFollowUp(normalizeStudentSmartFollowUp(data.smartFollowUp));
 
-        if (
-          savedFollowUp &&
-          typeof savedFollowUp === "object"
-        ) {
-          setSmartFollowUp({
-            date:
-              typeof savedFollowUp.date ===
-              "string"
-                ? savedFollowUp.date
-                : "",
-            homeworkLabel:
-              typeof savedFollowUp.homeworkLabel ===
-              "string"
-                ? savedFollowUp.homeworkLabel
-                : "",
-            readingLevelLabel:
-              typeof savedFollowUp.readingLevelLabel ===
-              "string"
-                ? savedFollowUp.readingLevelLabel
-                : "",
-            readingAccuracyLabel:
-              typeof savedFollowUp.readingAccuracyLabel ===
-              "string"
-                ? savedFollowUp.readingAccuracyLabel
-                : "",
-            readingFluencyLabel:
-              typeof savedFollowUp.readingFluencyLabel ===
-              "string"
-                ? savedFollowUp.readingFluencyLabel
-                : "",
-            readingDiacriticsLabel:
-              typeof savedFollowUp.readingDiacriticsLabel ===
-              "string"
-                ? savedFollowUp.readingDiacriticsLabel
-                : "",
-            readingNote:
-              typeof savedFollowUp.readingNote ===
-              "string"
-                ? savedFollowUp.readingNote
-                : "",
-          });
-        } else {
-          setSmartFollowUp(null);
-        }
       } catch (error) {
         console.error(
           "تعذر تحميل رحلة الطالب:",
@@ -4669,7 +4614,7 @@ try {
                   lineHeight: 1.7,
                 }}
               >
-                شاهد ما أتقنته وما يمكنني تحسينه.
+                آخر متابعة حفظها المعلم في السجل الذكي.
               </p>
             </div>
 
@@ -4688,7 +4633,7 @@ try {
                 }}
               >
                 📅{" "}
-                {smartFollowUp.date}
+                {smartFollowUp.date} · تاريخ المتابعة
               </span>
             )}
           </div>
@@ -4766,58 +4711,22 @@ try {
                   </span>
                 </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fit,minmax(135px,1fr))",
-                    gap: "10px",
-                  }}
-                >
-                  <div
-                    style={
-                      studentLevelCardStyle
-                    }
-                  >
-                    <span>
-                      🎯 الدقة
-                    </span>
-
-                    <strong>
-                      {smartFollowUp.readingAccuracyLabel ||
-                        "لم أُقيّم"}
-                    </strong>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(135px,1fr))", gap: "10px" }}>
+                  <div style={studentLevelCardStyle}>
+                    <span>📚 درس القراءة</span>
+                    <strong>{smartFollowUp.readingTitle || "لم يحدد المعلم اسم الدرس"}</strong>
                   </div>
-
-                  <div
-                    style={
-                      studentLevelCardStyle
-                    }
-                  >
-                    <span>
-                      ⚡ الطلاقة
-                    </span>
-
-                    <strong>
-                      {smartFollowUp.readingFluencyLabel ||
-                        "لم أُقيّم"}
-                    </strong>
+                  <div style={studentLevelCardStyle}>
+                    <span>🎯 أخطاء القراءة</span>
+                    <strong>{smartFollowUp.readingErrors === null ? "لم تُسجل أخطاء القراءة بعد" : smartFollowUp.readingErrors === 0 ? "بلا أخطاء 👏" : `عدد الأخطاء: ${smartFollowUp.readingErrors}`}</strong>
                   </div>
-
-                  <div
-                    style={
-                      studentLevelCardStyle
-                    }
-                  >
-                    <span>
-                      🎨 الحركات
-                    </span>
-
-                    <strong>
-                      {smartFollowUp.readingDiacriticsLabel ||
-                        "لم أُقيّم"}
-                    </strong>
-                  </div>
+                  {[
+                    ["🎯 الدقة", smartFollowUp.readingAccuracyLabel],
+                    ["⚡ الطلاقة", smartFollowUp.readingFluencyLabel],
+                    ["🎨 الحركات", smartFollowUp.readingDiacriticsLabel],
+                  ].filter(([, label]) => Boolean(label)).map(([title, label]) => (
+                    <div key={title} style={studentLevelCardStyle}><span>{title}</span><strong>{label}</strong></div>
+                  ))}
                 </div>
 
                 {smartFollowUp.readingNote && (
