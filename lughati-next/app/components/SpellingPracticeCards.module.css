@@ -1,0 +1,20 @@
+.row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:16px 0 20px; color:#17352a; }
+.row[data-has-words="false"] { grid-template-columns:minmax(0,1fr); }
+.words,.suggestion { box-sizing:border-box; min-width:0; padding:16px; border-radius:18px; border:1px solid #e8ce79; background:linear-gradient(135deg,#fff9e6,#fff); }
+.suggestion { border-color:#bcdcc8; background:linear-gradient(135deg,#effaf3,#fffdf1); }
+.header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.row h2 { margin:0; color:#176c46; font-size:19px; line-height:1.6; }
+.day,.hint { margin:5px 0 0; color:#63766a; font-size:12px; line-height:1.8; }
+.plan { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 10px; border:1px solid #dfce93; border-radius:12px; text-decoration:none; color:#176c46; background:#fff; font-size:13px; font-weight:800; }
+.list { display:flex; flex-wrap:wrap; gap:7px; list-style:none; margin:12px 0 0; padding:0; }
+.list li { max-width:100%; overflow-wrap:anywhere; padding:6px 10px; border-radius:10px; background:#fff; border:1px solid #eadb9e; color:#174c36; font-size:16px; font-weight:800; line-height:1.7; }
+.prompt { margin:7px 0 12px; font-size:15px; line-height:1.8; }
+.form label { display:block; font-size:13px; font-weight:800; margin-bottom:7px; }
+.inputRow { display:flex; align-items:stretch; flex-wrap:wrap; gap:8px; }
+.inputRow input { box-sizing:border-box; flex:1 1 160px; min-width:0; width:100%; padding:10px 12px; border:1px solid #bbd4c3; border-radius:11px; background:#fff; color:#17352a; font:inherit; font-size:17px; min-height:44px; }
+.inputRow button { box-sizing:border-box; min-height:44px; padding:10px 14px; border:0; border-radius:11px; color:#fff; background:#176c46; font:inherit; font-size:14px; font-weight:800; cursor:pointer; }
+.inputRow button:disabled { opacity:.6; cursor:default; }
+.inputRow input:focus-visible,.inputRow button:focus-visible,.plan:focus-visible { outline:3px solid #bd9b3e; outline-offset:3px; }
+.feedback { margin:10px 0 0; padding:10px 12px; border-radius:11px; background:#e0f5e7; color:#175a39; line-height:1.8; font-size:14px; overflow-wrap:anywhere; }
+.error { background:#fff0ec; color:#8e3029; }
+@media(max-width:639px) { .row { grid-template-columns:minmax(0,1fr); gap:12px; } .words,.suggestion { padding:14px; } }
