@@ -18,3 +18,5 @@
 .feedback { margin:10px 0 0; padding:10px 12px; border-radius:11px; background:#e0f5e7; color:#175a39; line-height:1.8; font-size:14px; overflow-wrap:anywhere; }
 .error { background:#fff0ec; color:#8e3029; }
 @media(max-width:639px) { .row { grid-template-columns:minmax(0,1fr); gap:12px; } .words,.suggestion { padding:14px; } }
+
+.tasks { margin:0 0 12px; padding-inline-start:22px; font-size:14px; line-height:1.9; }

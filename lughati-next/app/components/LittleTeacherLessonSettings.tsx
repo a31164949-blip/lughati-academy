@@ -47,7 +47,7 @@ export default function LittleTeacherLessonSettings() {
   }
   return <section className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5" aria-labelledby="little-teacher-settings-heading">
     <h2 id="little-teacher-settings-heading" className="text-lg font-black text-emerald-800">🧑‍🏫 عنوان درس المعلم الصغير</h2>
-    <p className="mt-2 text-sm leading-7 text-slate-600">غيّر اسم الدرس الذي يقترح الطلاب منه كلمة إملاء. عند حفظ عنوان مختلف، يفتح اقتراح جديد لكل طالب وتبقى الاقتراحات السابقة محفوظة.</p>
+    <p className="mt-2 text-sm leading-7 text-slate-600">غيّر عنوان الدرس الذي يترشّح الطلاب لتدريسه. عند حفظ عنوان مختلف، يُفتح تسجيل الرغبة للدرس الجديد وتبقى الطلبات والاقتراحات السابقة محفوظة.</p>
     <form onSubmit={event => void save(event)} className="mt-4">
       <label htmlFor="little-teacher-lesson-title" className="mb-2 block font-bold text-emerald-900">عنوان الدرس</label>
       <div className="flex flex-wrap gap-3"><input id="little-teacher-lesson-title" value={title} maxLength={80} required disabled={!user || busy || !lesson} onChange={event => setTitle(event.target.value)} placeholder="مثال: علم بلادي" className="min-h-11 min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-3" /><button type="submit" disabled={busy || !user || !lesson || !title.trim() || title.trim() === lesson.title} className="min-h-11 rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white disabled:opacity-50">{busy ? "جارٍ الإتمام…" : "حفظ عنوان الدرس"}</button><button type="button" disabled={!user || busy} onClick={() => void load()} className="min-h-11 rounded-xl border border-emerald-200 bg-white px-4 py-3 font-bold text-emerald-800">إعادة تحميل الإعداد</button></div>
