@@ -24,3 +24,11 @@ export function readLittleTeacherLesson(value: unknown): LittleTeacherLesson {
   } catch { /* Fall back for the initial, unconfigured lesson only. */ }
   return { title: LITTLE_TEACHER_LESSON, lessonId: "alam-biladi", revision: "default" };
 }
+
+export const LITTLE_TEACHER_APPLICATION_SOURCE = "little-teacher-application";
+export function littleTeacherApplicantName(value: unknown): string {
+  if (typeof value !== "string" || /[\u0000-\u001F\u007F<>]/.test(value)) throw Error("INVALID_NAME");
+  const name = value.normalize("NFC").trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 80 || !/^[\p{L}\p{M} .'-]+$/u.test(name)) throw Error("INVALID_NAME");
+  return name;
+}
