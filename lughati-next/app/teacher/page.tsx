@@ -4,11 +4,12 @@
 
 import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
+import { ACADEMY_CAPACITY } from "../lib/academyContinuation";
 const sections = [
   { title: "💚 رسائل من القلب", description: "إضافة رسائل الطلاب وصورهم المكتوبة وإدارة نشرها على الواجهة الرئيسية.", href: "/teacher/heart-messages" },
   { title: "🏆 أبطال التحدي المباشر", description: "إضافة صورة بطل كل أسبوع وإدارة صور الأبطال في بطاقة الطالب.", href: "/teacher/live-challenge-champions" },
   { title: "📣 رسالة واجهة الطالب", description: "كتابة تنبيه واضح أعلى صفحة الطالب مع رابط للتصويت أو النقاش والتحكم بإظهاره.", href: "/teacher/student-notice" },
-  { title: "طلبات الاستمرار في الأكاديمية", description: "مراجعة رغبات الطلاب ورسائلهم الخاصة — الطاقة الاستيعابية ٢٠ طالبًا.", href: "/teacher/continuation" },
+  { title: "طلبات الاستمرار في الأكاديمية", description: `مراجعة رغبات الطلاب ورسائلهم الخاصة — الطاقة الاستيعابية ${ACADEMY_CAPACITY} طالبًا.`, href: "/teacher/continuation" },
   { title: "🧠 نتائج أوراق التفكير", description: "متابعة محاولات الطلاب وتفسيراتهم في أوراق التفكير الإلكترونية.", href: "/teacher/thinking-worksheets" },
   { title: "مجلس الأكاديمية", description: "اعتماد مواضيع الأعضاء ونشر مواضيع المعلم وإدارة خصوصية الردود.", href: "/teacher/discussion" },
   { title: "🗳️ تصويت الطلاب", description: "نشر تصويت يظهر أعلى صفحة الطالب ومتابعة النتائج.", href: "/teacher/polls" },
