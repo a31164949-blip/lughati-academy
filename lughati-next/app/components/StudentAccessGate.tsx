@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "../../firebase";
 import type { AccessState } from "../lib/studentAccessPolicy";
+import TemporaryQuizResults from "./TemporaryQuizResults";
+import { isResultsViewingOpen } from "../lib/resultsViewingWindow";
 const extras = ["/academy-club", "/weekly-challenge", "/notebook-excellence", "/student-avatar"];
 export default function StudentAccessGate({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -94,6 +96,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const protectedRoute = extras.some(prefix => path === prefix || path.startsWith(prefix + "/"));
   if (user && !checked && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من حالة الحساب…</main>;
   if (error) return <main className="p-8 text-center">تعذر التحقق من المزايا. <button onClick={() => setRetry(value => value + 1)}>إعادة المحاولة</button></main>;
+  if (state?.accountSuspended && isResultsViewingOpen()) return <TemporaryQuizResults />;
   const blocked = (state?.accountSuspended && path !== "/student-contact") || (state?.extrasSuspended && protectedRoute);
   return <>
     {state?.extrasSuspended && <section role="alert" className="m-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 leading-8">
