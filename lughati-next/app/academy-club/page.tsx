@@ -154,11 +154,11 @@ function LiveChallengeResults() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h2 id="live-challenge-results-title" style={{ margin: "0 0 8px", color: "#176c46" }}>🏆 لوحة أبطال التحدي المباشر</h2>
-          <p style={{ margin: 0, color: "#52675c", lineHeight: 1.8 }}>نتائج معتمدة من المعلم · <time dateTime="2026-11-03">٣ نوفمبر ٢٠٢٦</time></p>
+          <p style={{ margin: 0, color: "#52675c", lineHeight: 1.8 }}>نتائج التحدي المباشر · <time dateTime="2026-11-03">٣ نوفمبر ٢٠٢٦</time></p>
         </div>
         <span style={{ padding: "8px 14px", borderRadius: 20, background: "#176c46", color: "#fff", fontWeight: 800 }}>١٢ بطلًا نعتز بهم</span>
       </div>
-      <ol aria-label="أصحاب المراكز الثلاثة الأولى حسب اعتماد المعلم" style={{ listStyle: "none", padding: 0, margin: "22px 0 14px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: 12 }}>
+      <ol aria-label="أصحاب المراكز الثلاثة الأولى" style={{ listStyle: "none", padding: 0, margin: "22px 0 14px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: 12 }}>
         {liveChallengeResults.slice(0,3).map((student,index) => (
           <li key={student.name} style={{ padding: "22px 14px", borderRadius: 20, border: "1px solid #dfce93", background: index === 0 ? "#fff1b8" : "#fff", textAlign: "center" }}>
             <span aria-hidden="true" style={{ display: "block", fontSize: 38 }}>{["🥇","🥈","🥉"][index]}</span>
@@ -169,12 +169,12 @@ function LiveChallengeResults() {
           </li>
         ))}
       </ol>
-      <p style={{ margin: "12px 0 18px", color: "#52675c", lineHeight: 1.8 }}>تساوى إلياس وعلي محمد زايد في النقاط، وحسم إلياس المركز الأول بفارق ١٢ ثانية؛ فهو الأسرع وقتًا. الترتيب معتمد من المعلم.</p>
+      <p style={{ margin: "12px 0 18px", color: "#52675c", lineHeight: 1.8 }}>تساوى إلياس وعلي محمد زايد في النقاط، وحسم إلياس المركز الأول بفارق ١٢ ثانية؛ فهو الأسرع وقتًا.</p>
       <details>
         <summary style={{ cursor: "pointer", fontWeight: 900, color: "#176c46", padding: "12px 0" }}>عرض جميع النتائج · ١٢ مشاركًا</summary>
         <div style={{ overflowX: "auto", marginTop: 10 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "right", lineHeight: 1.8 }}>
-            <caption style={{ textAlign: "right", paddingBottom: 12, color: "#52675c" }}>الترتيب المعتمد ودرجات المشاركين</caption>
+            <caption style={{ textAlign: "right", paddingBottom: 12, color: "#52675c" }}>الترتيب ودرجات المشاركين</caption>
             <thead><tr style={{ background: "#176c46", color: "#fff" }}>
               <th scope="col" style={{ padding: 12 }}>الترتيب</th>
               <th scope="col" style={{ padding: 12 }}>الطالب</th>
