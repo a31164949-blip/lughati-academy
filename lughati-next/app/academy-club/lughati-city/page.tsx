@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "../../../firebase";
 
@@ -23,7 +23,13 @@ const missions: Mission[] = [
   { title: "حارس القلعة", mode: "التحدي النهائي", icon: "🏰", rival: "تنين الحروف 🐲", question: "ما عكس كلمة «كبير»؟", choices: [{ text: "طويل" }, { text: "جميل" }, { text: "صغير", correct: true }] },
 ];
 
+const questionBank = [[["أَكْمِلْ: أَرْفَعُ ... بِلَادِي.","عَلَمَ","قَلَمَ","كِتَابَ"],["أَكْمِلْ: أَكْتُبُ بِـ ...","الْقَلَمِ","الْبَابِ","الْكُرْسِيِّ"],["أَكْمِلْ: أَقْرَأُ ...","كِتَابًا","مَاءً","طَعَامًا"]],[["أَيُّ كَلِمَةٍ فِيهَا تَنْوِينُ فَتْحٍ؟","كِتَابًا","كِتَابٌ","كِتَابٍ"],["أَيُّ كَلِمَةٍ فِيهَا تَنْوِينُ كَسْرٍ؟","قَلَمٍ","قَلَمٌ","قَلَمًا"],["أَيُّ كَلِمَةٍ فِيهَا مَدٌّ بِالْيَاءِ؟","فِيلٌ","بَابٌ","نُورٌ"]],[["اخْتَرِ الْكِتَابَةَ الصَّحِيحَةَ:","هَذِهِ","هَاذِهِ","هَذِهِي"],["اخْتَرْ تَنْوِينَ الْفَتْحِ الصَّحِيحَ لِـ «قَلَم»:","قَلَمًا","قَلَمً","قَلَمَا"],["اخْتَرِ الْكِتَابَةَ الصَّحِيحَةَ:","مَدْرَسَةٌ","مَدْرَسَتٌ","مَدْرَسَهٌ"]],[["مَا مُفْرَدُ «أَعْلَام»؟","عَلَمٌ","عِلْمٌ","عَالَمٌ"],["مَا ضِدُّ «قَرِيب»؟","بَعِيدٌ","سَرِيعٌ","جَمِيلٌ"],["مَا جَمْعُ «كِتَاب»؟","كُتُبٌ","كَاتِبٌ","مَكْتَبٌ"]]];
 export default function LughatiCityPage() {
+  const [roundMissions,setRoundMissions]=useState(missions);
+  const [roundId,setRoundId]=useState("");
+  const [saveStatus,setSaveStatus]=useState("");
+  const [saving,setSaving]=useState(false);
+  const saveLock=useRef(false);
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [member, setMember] = useState(false);
@@ -104,11 +110,13 @@ export default function LughatiCityPage() {
   }, [started, finished, answerLocked, stage]);
 
   const hero = heroes.find((item) => item.id === heroId) ?? heroes[0];
-  const mission = missions[stage];
+  const mission = roundMissions[stage];
   const progress = useMemo(() => finished ? 100 : (stage / missions.length) * 100, [stage, finished]);
 
   function begin() {
     if (!heroId) { setMessage("اختر أحد أبطال مدينة لغتي أولًا."); return; }
+    setRoundMissions(missions.map((m,i)=>{const q=questionBank[i][Math.floor(Math.random()*questionBank[i].length)];return {...m,question:q[0],choices:q.slice(1).map((text,j)=>({text,correct:j===0})).sort(()=>Math.random()-.5)};}));
+    setRoundId(crypto.randomUUID());setSaveStatus("");
     setStarted(true); setTimeLeft(20); setMessage("بدأ السباق! أجب قبل انتهاء الوقت.");
   }
 
@@ -138,6 +146,20 @@ export default function LughatiCityPage() {
       setAnswerLocked(false);
     }, 850);
   }
+
+
+  async function saveResult() {
+    if (!user || teacherPreview || saveLock.current) return;
+    saveLock.current=true;setSaving(true);setSaveStatus("جارٍ إرسال نتيجتك إلى المعلم…");
+    try {
+      const token=await user.getIdToken();
+      const response=await fetch("/api/academy-club/lughati-city",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({stars,hero:heroId,roundId})});
+      const data=await response.json();if(!response.ok||!data.success)throw Error();
+      setSaveStatus("✓ وصلت نتيجتك إلى المعلم.");
+    } catch {setSaveStatus("تعذر إرسال النتيجة. اضغط إعادة الإرسال.");}
+    finally {saveLock.current=false;setSaving(false);}
+  }
+  useEffect(()=>{if(finished&&!teacherPreview)void saveResult();},[finished]);
 
   function restart() {
     setStage(0); setStars(0); setCombo(0); setTimeLeft(20); setFinished(false); setAnswerLocked(false); setStarted(false);
@@ -205,12 +227,13 @@ export default function LughatiCityPage() {
           <div className="trophy">🏆</div><h2>فاز {hero.name} بكأس مدينة لغتي!</h2>
           <p>أنهيت أربع مسابقات وجمعت {stars} نجمة تدريبية.</p>
           <span>🏅 وسام بطل تحديات مدينة لغتي</span>
-          <button onClick={restart}>اختيار بطل وجولة جديدة</button>
+          <p role="status">{teacherPreview?"معاينة المعلم — لا تُرسل نتيجة.":saveStatus}</p>{saveStatus.startsWith("تعذر")&&<button disabled={saving} onClick={()=>void saveResult()}>إعادة الإرسال</button>}
+          <button disabled={saving || (!teacherPreview && !saveStatus.startsWith("✓"))} onClick={restart}>اختيار بطل وجولة جديدة</button>
         </div>}
         <div className="message">{message}</div>
       </section>
     </>}
-    <p className="note">نسخة تجريبية — النجوم تدريبية، وسيتم ربطها برصيد الأكاديمية بعد اعتماد المراحل.</p>
+    <p className="note">تصل نتيجة الجولة المكتملة إلى المعلم. النجوم تدريبية ولا تضاف إلى بنك النقاط.</p>
   </main>;
 }
 
