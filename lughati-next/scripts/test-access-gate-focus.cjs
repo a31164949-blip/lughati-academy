@@ -7,12 +7,14 @@ let snapshot, denied, index = 0;
 const user = { getIdTokenResult: async () => ({ claims: { role: 'student', studentDocId: 'own' }, token: 'token' }) };
 const initial = [true, user, null, true, false, 0, false, ''];
 const mocks = {
-  react: { useState: () => { const slot = index++; return [initial[slot], value => updates.push([slot, value])]; }, useEffect: fn => effects.push(fn) },
+  react: { useRef: value => ({ current: value }), useState: () => { const slot = index++; return [initial[slot], value => updates.push([slot, value])]; }, useEffect: fn => effects.push(fn) },
   'react/jsx-runtime': { jsx: () => ({}), jsxs: () => ({}), Fragment: 'fragment' },
   'firebase/auth': { onAuthStateChanged: () => () => {}, signOut: async () => {} },
   'firebase/firestore': { doc: () => ({}), onSnapshot: (_, next, error) => { snapshot = next; denied = error; return () => {}; } },
   'next/navigation': { usePathname: () => '/teacher/quizzes' },
   'next/link': { default: () => ({}) },
+  './TemporaryQuizResults': { default: () => ({}) },
+  '../lib/resultsViewingWindow': { isResultsViewingOpen: () => false },
   '../../firebase': { auth: {}, db: {} },
 };
 const exportsObject = {};
