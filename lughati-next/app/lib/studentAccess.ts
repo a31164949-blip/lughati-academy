@@ -1,4 +1,5 @@
 import "server-only";
+import { isTemporaryAcademyOpen } from "./resultsViewingWindow";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { getFirebaseAdmin, hasAcademyAdmission } from "../../firebase-admin";
 import { INACTIVITY_DAYS, evaluateAccess } from "./studentAccessPolicy";
@@ -45,6 +46,7 @@ async function activity(id: string) {
 export async function studentAccess(id: string, supplied?: FirebaseFirestore.DocumentData) {
   const data = supplied ?? (await getFirebaseAdmin().adminDb.collection("students").doc(id).get()).data();
   if (!data) throw new Error("STUDENT_NOT_FOUND");
+  if (isTemporaryAcademyOpen()) return { extrasSuspended: false, accountSuspended: false, automatic: false, until: null, message: "" };
   const control = data.accessControl ?? {};
   const until = milliseconds(control.until);
   const manual = ["extras", "account"].includes(control.mode) && (until === null || until > Date.now());

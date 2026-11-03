@@ -1,5 +1,6 @@
 import { STUDENT_ACADEMY_PAUSED, isStudentPreviewAccount } from "./app/lib/academyAvailability";
 import "server-only";
+import { isTemporaryAcademyOpen } from "./app/lib/resultsViewingWindow";
 import { unstable_cache } from "next/cache";
 import { ADMISSION_ACCESS_TAG, CONTINUATION_ROUND, acceptedStudentIds, validContinuationId } from "./app/lib/academyContinuation";
 
@@ -108,12 +109,12 @@ export function getFirebaseAdmin(options: { allowSuspended?: boolean } = {}) {
     get(target, property) {
       if (property === "verifyIdToken") return async (...args: Parameters<typeof rawAuth.verifyIdToken>) => {
         const token = await rawAuth.verifyIdToken(...args);
-        if (STUDENT_ACADEMY_PAUSED && token.role === "student" && !isStudentPreviewAccount(token.studentDocId) && !await hasAcademyAdmission(token.studentDocId)) throw new Error("FORBIDDEN");
+        if (!isTemporaryAcademyOpen() && STUDENT_ACADEMY_PAUSED && token.role === "student" && !isStudentPreviewAccount(token.studentDocId) && !await hasAcademyAdmission(token.studentDocId)) throw new Error("FORBIDDEN");
         if (token.role === "student" && typeof token.studentDocId === "string") {
           const student = await adminDb.collection("students").doc(token.studentDocId).get();
           const control = student.data()?.accessControl;
           const until = control?.until?.toMillis?.();
-          if (control?.mode === "account" && (until == null || until > Date.now())) throw new Error("FORBIDDEN");
+          if (!isTemporaryAcademyOpen() && control?.mode === "account" && (until == null || until > Date.now())) throw new Error("FORBIDDEN");
         }
         return token;
       };

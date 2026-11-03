@@ -6,12 +6,13 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "../../firebase";
 import type { AccessState } from "../lib/studentAccessPolicy";
-import TemporaryQuizResults from "./TemporaryQuizResults";
-import { isResultsViewingOpen } from "../lib/resultsViewingWindow";
+import { RESULTS_VIEW_END, isTemporaryAcademyOpen } from "../lib/resultsViewingWindow";
 const extras = ["/academy-club", "/weekly-challenge", "/notebook-excellence", "/student-avatar"];
 export default function StudentAccessGate({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const lastFocusCheck = useRef(0);
+  const [temporaryOpen, setTemporaryOpen] = useState(false);
+
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AccessState | null>(null);
@@ -20,6 +21,14 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const [retry, setRetry] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
+  useEffect(() => {
+    const refresh = () => { setTemporaryOpen(isTemporaryAcademyOpen()); if (!isTemporaryAcademyOpen()) { setChecked(false); setRetry(v => v + 1); } };
+    refresh();
+    const timer = window.setTimeout(refresh, Math.max(0, RESULTS_VIEW_END - Date.now()));
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.clearTimeout(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, []);
   const loginRoute = path === "/login" || path === "/teacher-login";
   const councilRoute = path === "/discussion";
   async function leaveAccount() {
@@ -96,7 +105,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const protectedRoute = extras.some(prefix => path === prefix || path.startsWith(prefix + "/"));
   if (user && !checked && path !== "/login") return <main className="p-8 text-center">جارٍ التحقق من حالة الحساب…</main>;
   if (error) return <main className="p-8 text-center">تعذر التحقق من المزايا. <button onClick={() => setRetry(value => value + 1)}>إعادة المحاولة</button></main>;
-  if (state?.accountSuspended && isResultsViewingOpen()) return <TemporaryQuizResults />;
+  if (user && temporaryOpen) return <>{children}</>;
   const blocked = (state?.accountSuspended && path !== "/student-contact") || (state?.extrasSuspended && protectedRoute);
   return <>
     {state?.extrasSuspended && <section role="alert" className="m-4 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 leading-8">

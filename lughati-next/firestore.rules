@@ -19,8 +19,13 @@ service cloud.firestore {
     function isStudent() {
       return isSignedIn()
         && request.auth.token.role == "student"
-        && studentAdmissionAccepted()
-        && studentAccountAvailable();
+        && (temporaryAcademyOpen() || (studentAdmissionAccepted()
+        && studentAccountAvailable()));
+    }
+
+    function temporaryAcademyOpen() {
+      return request.time >= timestamp.date(2026, 11, 2) + duration.value(21, 'h')
+        && request.time < timestamp.date(2026, 11, 3) + duration.value(21, 'h');
     }
 
     function studentAdmissionAccepted() {
