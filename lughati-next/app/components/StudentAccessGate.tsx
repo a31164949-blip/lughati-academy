@@ -22,7 +22,14 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState("");
   useEffect(() => {
-    const refresh = () => { setTemporaryOpen(isTemporaryAcademyOpen()); if (!isTemporaryAcademyOpen()) { setChecked(false); setRetry(v => v + 1); } };
+    let wasOpen = isTemporaryAcademyOpen();
+    const refresh = () => {
+      const open = isTemporaryAcademyOpen();
+      setTemporaryOpen(open);
+      // Only expiry requires a new blocking check; focus must preserve forms.
+      if (wasOpen && !open) { setChecked(false); setRetry(v => v + 1); }
+      wasOpen = open;
+    };
     refresh();
     const timer = window.setTimeout(refresh, Math.max(0, RESULTS_VIEW_END - Date.now()));
     window.addEventListener("focus", refresh);

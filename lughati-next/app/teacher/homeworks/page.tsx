@@ -42,6 +42,7 @@ const emptyForm = {
   resourceUrl: "",
 attachmentName: "",
 };
+const DRAFT_KEY = "lughati:teacher:homework-draft:v1";
 
 export default function TeacherHomeworksPage() {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
@@ -55,6 +56,41 @@ export default function TeacherHomeworksPage() {
 const [selectedFile, setSelectedFile] = useState<File | null>(null);
 const [uploadingFile, setUploadingFile] = useState(false);
 const fileInputRef = useRef<HTMLInputElement>(null);
+const [draftReady, setDraftReady] = useState(false);
+useEffect(() => {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      const draft = JSON.parse(raw);
+      const saved = draft?.form;
+      if (saved && Object.entries(emptyForm).every(([key, value]) =>
+        typeof saved[key] === typeof value
+      ) && ["standard", "creative", "madrasati"].includes(saved.homeworkType)
+        && ["الثاني أ", "الثاني ب", "الفصلان"].includes(saved.targetClass)) {
+        setForm(Object.fromEntries(Object.keys(emptyForm).map(key => [key, saved[key]])) as typeof emptyForm);
+        setEditingId(typeof draft.editingId === "string" ? draft.editingId : "");
+        setMessage(draft.pendingFile
+          ? "تمت استعادة بيانات الواجب. أعد اختيار المرفق لإكمال الحفظ."
+          : "تمت استعادة مسودة الواجب.");
+      }
+    }
+  } catch { /* Unavailable storage must not prevent creating homework. */ }
+  setDraftReady(true);
+}, []);
+useEffect(() => {
+  if (!draftReady) return;
+  try {
+    if (!editingId && !form.title && !form.instructions && !form.resourceUrl && !form.dueDate && !selectedFile) {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } else {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        form: selectedFile ? { ...form, attachmentName: "" } : form,
+        editingId,
+        pendingFile: Boolean(selectedFile),
+      }));
+    }
+  } catch { /* Keep the form usable when browser storage is unavailable. */ }
+}, [draftReady, form, editingId, selectedFile]);
 async function fetchHomeworks() {
   const homeworksQuery = query(
     collection(db, "homeworks"),

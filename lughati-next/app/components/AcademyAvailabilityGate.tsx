@@ -22,7 +22,14 @@ export default function AcademyAvailabilityGate({ children }: { children: React.
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
-    const refresh = () => { setTemporaryOpen(isTemporaryAcademyOpen()); if (!isTemporaryAcademyOpen()) setRetry(v => v + 1); };
+    let wasOpen = isTemporaryAcademyOpen();
+    const refresh = () => {
+      const open = isTemporaryAcademyOpen();
+      setTemporaryOpen(open);
+      // Recheck admission on expiry, not every return from the file picker.
+      if (wasOpen && !open) setRetry(v => v + 1);
+      wasOpen = open;
+    };
     refresh();
     const timer = window.setTimeout(refresh, Math.max(0, RESULTS_VIEW_END - Date.now()));
     window.addEventListener("focus", refresh);
