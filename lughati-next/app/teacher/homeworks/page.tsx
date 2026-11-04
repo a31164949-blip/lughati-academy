@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -54,6 +54,7 @@ export default function TeacherHomeworksPage() {
   const [error, setError] = useState("");
 const [selectedFile, setSelectedFile] = useState<File | null>(null);
 const [uploadingFile, setUploadingFile] = useState(false);
+const fileInputRef = useRef<HTMLInputElement>(null);
 async function fetchHomeworks() {
   const homeworksQuery = query(
     collection(db, "homeworks"),
@@ -325,6 +326,7 @@ async function createHomeworkNotifications(
   function resetForm() {
     setForm(emptyForm);
     setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setEditingId("");
     setMessage("");
     setError("");
@@ -436,11 +438,15 @@ attachmentName,
 
       setForm(emptyForm);
       setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setEditingId("");
       await loadHomeworks();
     } catch (saveError) {
       console.error(saveError);
-      setError("تعذر حفظ الواجب. تحقق من الاتصال وحاول مرة أخرى.");
+      setMessage("");
+      setError(saveError instanceof Error
+        ? saveError.message
+        : "تعذر حفظ الواجب. تحقق من الاتصال وحاول مرة أخرى.");
     } finally {
       setSaving(false);
     }
@@ -448,6 +454,8 @@ attachmentName,
 
   function startEditing(homework: Homework) {
     setEditingId(homework.id);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     setForm({
       title: homework.title,
@@ -683,6 +691,7 @@ attachmentName: homework.attachmentName,
                 ...styles.textarea,
               }}
             />
+          </label>
           <label style={styles.label}>
   نوع الواجب
 
@@ -725,13 +734,16 @@ attachmentName: homework.attachmentName,
   />
 </label>
 
-<label style={styles.label}>
-  ملف مرفق (اختياري)
+<div style={styles.label}>
+  <label htmlFor="homework-attachment">ملف مرفق (اختياري)</label>
   <input
+    id="homework-attachment"
+    ref={fileInputRef}
     type="file"
     accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
     onChange={(event) => {
-      const file = event.target.files?.[0] ?? null;
+      const file = event.target.files?.[0];
+      if (!file) return;
       setSelectedFile(file);
 
       if (file) {
@@ -741,20 +753,23 @@ attachmentName: homework.attachmentName,
     disabled={saving || uploadingFile}
     style={styles.input}
   />
+  <small style={{ color: "#637d73", fontWeight: 400 }}>
+    اختر صورة أو PDF أو Word حتى 10 ميجابايت. يبدأ رفع المرفق عند إنشاء الواجب أو حفظ التعديلات.
+  </small>
 
   {(selectedFile || form.attachmentName) && (
     <span
+      role="status"
       style={{
         marginTop: "8px",
         color: "#475569",
         fontWeight: 700,
       }}
     >
-      📎 {selectedFile?.name || form.attachmentName}
+      📎 {selectedFile ? `تم اختيار: ${selectedFile.name} — جاهز للرفع عند الحفظ` : form.attachmentName}
     </span>
   )}
-  </label>
-</label>
+</div>
           <div style={styles.twoColumns}>
             <label style={styles.label}>
               الفصل المستهدف
