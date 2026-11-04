@@ -13,8 +13,8 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { db, storage } from "../../../firebase";
+import { db } from "../../../firebase";
+import { uploadHomeworkAttachment } from "../../lib/uploadHomeworkAttachment";
 
 type TargetClass = "الثاني أ" | "الثاني ب" | "الفصلان";
 
@@ -222,45 +222,10 @@ async function uploadSelectedFile() {
     return null;
   }
 
-  const allowedTypes = [
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ];
-
-  if (!allowedTypes.includes(selectedFile.type)) {
-    throw new Error("نوع الملف غير مدعوم. اختر PDF أو صورة أو ملف Word.");
-  }
-
-  const maximumFileSize = 10 * 1024 * 1024;
-
-  if (selectedFile.size > maximumFileSize) {
-    throw new Error("حجم الملف أكبر من 10 ميجابايت.");
-  }
-
   setUploadingFile(true);
 
   try {
-    const safeFileName = selectedFile.name.replace(
-      /[^a-zA-Z0-9.\-_\u0600-\u06FF]/g,
-      "-"
-    );
-
-    const fileReference = ref(
-      storage,
-      `homework-attachments/${Date.now()}-${safeFileName}`
-    );
-
-    await uploadBytes(fileReference, selectedFile);
-    const downloadUrl = await getDownloadURL(fileReference);
-
-    return {
-      downloadUrl,
-      fileName: selectedFile.name,
-    };
+    return await uploadHomeworkAttachment(selectedFile);
   } finally {
     setUploadingFile(false);
   }
