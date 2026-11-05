@@ -37,7 +37,7 @@ export default function StudentAccessGate({ children }: { children: React.ReactN
     return () => { window.clearTimeout(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, []);
   const loginRoute = path === "/login" || path === "/teacher-login";
-  const councilRoute = path === "/discussion";
+  const councilRoute = path === "/discussion" || path === "/learning-dialogue";
   async function leaveAccount() {
     setSigningOut(true); setSignOutError("");
     try { await signOut(auth); window.location.assign("/teacher-login"); }

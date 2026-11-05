@@ -49,7 +49,7 @@ export default function StudentLearningPledge({ children }: { children: React.Re
     try { await signOut(auth); window.location.assign('/'); }
     catch { setLeaving(false); setError('تعذر تسجيل الخروج. حاول مرة أخرى.'); }
   }
-  if (path === '/login' || path === '/teacher-login' || path.startsWith('/teacher/') || path === '/teacher') return <>{children}</>;
+  if (path === '/learning-dialogue' || path === '/login' || path === '/teacher-login' || path.startsWith('/teacher/') || path === '/teacher') return <>{children}</>;
   if (state === 'pass') return <>{children}</>;
   if (state === 'loading') return <main dir="rtl" className="p-8 text-center" role="status">جارٍ التحقق من الدخول…</main>;
   if (state === 'error') return <main dir="rtl" className="p-8 text-center"><p role="alert">تعذر التحقق من الحساب.</p><button type="button" onClick={() => setRetry(value => value + 1)}>إعادة المحاولة</button></main>;

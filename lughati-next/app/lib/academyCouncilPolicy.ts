@@ -26,3 +26,16 @@ export function canReadCouncilTopic(topic: Record<string, unknown>, teacher: boo
 export function canReadCouncilReply(topic: Record<string, unknown>, reply: Record<string, unknown>, teacher: boolean, userId: string) {
   return teacher || reply.studentId === userId || (topic.status === 'published' && topic.replyPolicy !== 'teacher' && reply.visibility === 'public' && reply.status === 'published');
 }
+
+export const LEARNING_DIALOGUE_ID = 'learning-dialogue-2026-11';
+export const LEARNING_DIALOGUE_TOPIC = {
+  title: 'نتحاور من أجل تقدّم أبنائنا',
+  text: 'أبنائي الطلاب وأولياء الأمور الكرام، نرحّب بكم جميعًا في هذا الحوار، بمن فيكم أصحاب الحسابات المجمّدة.\n\nنريد أن نستمع إلى تجاربكم ومقترحاتكم لبناء خطوات عملية ترفع مستوى أبنائنا في القراءة والإملاء وتزيد ثقتهم بأنفسهم.\n\n١. ما أبرز صعوبة تواجه الطالب في القراءة أو الإملاء؟\n٢. ما الأسلوب الذي لاحظتم أنه يساعده على الفهم والتعلّم؟\n٣. كيف نجعل التدريب المنزلي قصيرًا ومنتظمًا وممتعًا؟\n٤. ما النشاط أو الدعم الذي تقترحونه داخل الفصل أو الأكاديمية؟\n\nشاركنا اقتراحًا عمليًا يمكننا تطبيقه معًا. ويمكن للطالب التعبير عن رأيه بمساعدة أسرته.\n\nيرجى تجنّب أسماء الطلاب والتفاصيل الشخصية في الردود العامة. اختر «المعلم فقط» إن أردت مناقشة وضع ابنك بشكل خاص. شكرًا لشراكتكم وحرصكم.',
+  authorId: 'learning-dialogue-teacher',
+  authorName: 'الأستاذ إبراهيم أحمد',
+  authorRole: 'teacher',
+  replyPolicy: 'choice',
+  status: 'published',
+  active: true,
+  revision: 'learning-dialogue-initial-v1',
+};

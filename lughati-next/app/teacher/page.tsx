@@ -6,6 +6,7 @@ import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 import { ACADEMY_CAPACITY } from "../lib/academyContinuation";
 const sections = [
+  { title: "💬 حوار تطوير مستوى الطلاب", description: "حوار مفتوح للطلاب وأسرهم حتى مع تجميد الحساب: مراجعة المقترحات والرد عليها واعتماد المشاركات العامة.", href: "/teacher/learning-dialogue" },
   {title:"🏙️ نتائج مدينة لغتي",description:"آخر نتيجة وأفضل نتيجة وعدد الجولات المكتملة لكل طالب.",href:"/teacher/lughati-city-results"},
   { title: "💚 رسائل من القلب", description: "إضافة رسائل الطلاب وصورهم المكتوبة وإدارة نشرها على الواجهة الرئيسية.", href: "/teacher/heart-messages" },
   { title: "🏆 أبطال التحدي المباشر", description: "إضافة صورة بطل كل أسبوع وإدارة صور الأبطال في بطاقة الطالب.", href: "/teacher/live-challenge-champions" },
