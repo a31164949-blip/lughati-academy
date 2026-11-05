@@ -2,25 +2,26 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
-import { canReadCouncilTopic, canReadCouncilReply, councilTopicInput, councilReplyVisibility, validCouncilId, COUNCIL_REPLY_LIMIT } from '../../lib/academyCouncilPolicy';
+import { canReadCouncilTopic, canReadCouncilReply, councilTopicInput, councilReplyVisibility, validCouncilId, COUNCIL_REPLY_LIMIT, LEARNING_DIALOGUE_ID, LEARNING_DIALOGUE_TOPIC } from '../../lib/academyCouncilPolicy';
 export const runtime = 'nodejs';
 
 async function identity(req: Request) {
   const header = req.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) throw Error('UNAUTHORIZED');
-  // Council membership requires the same teacher admission as the academy.
-  const { adminAuth, adminDb: db } = getFirebaseAdmin();
+  // Only the fixed learning dialogue is available during account suspension.
+  const outreach = new URL(req.url).searchParams.get('outreach') === '1';
+  const { adminAuth, adminDb: db } = getFirebaseAdmin({ allowSuspended: outreach });
   const token = await adminAuth.verifyIdToken(header.slice(7));
   const teacher = token.role === 'teacher' || token.role === 'admin' || token.email?.toLowerCase() === 'a31164949@gmail.com';
-  if (teacher) return { db, teacher: true, id: token.uid, name: 'المعلم' };
+  if (teacher) return { db, teacher: true, outreach, id: token.uid, name: 'المعلم' };
   if (token.role !== 'student' || !validCouncilId(token.studentDocId)) throw Error('FORBIDDEN');
   const snapshot = await db.collection('students').doc(token.studentDocId).get();
   const student = snapshot.data();
   if (!student || student.active === false || student.deleted === true) throw Error('FORBIDDEN');
   const control = student.accessControl;
   const until = control?.until?.toMillis?.();
-  if (control?.mode === 'account' && (until == null || until > Date.now())) throw Error('FORBIDDEN');
-  return { db, teacher: false, id: token.studentDocId, name: String(student.studentName ?? student.name ?? 'عضو').slice(0, 150) };
+  if (!outreach && control?.mode === 'account' && (until == null || until > Date.now())) throw Error('FORBIDDEN');
+  return { db, teacher: false, outreach, id: token.studentDocId, name: String(student.studentName ?? student.name ?? 'عضو').slice(0, 150) };
 }
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { 'Cache-Control': 'private, no-store' } }); }
 function failure(error: unknown) {
@@ -39,16 +40,18 @@ function replyDto(id: string, data: Record<string, unknown>, teacher: boolean, u
 
 export async function GET(req: Request) {
   try {
-    const { db, teacher, id } = await identity(req);
+    const { db, teacher, id, outreach } = await identity(req);
     const url = new URL(req.url);
-    const topicId = url.searchParams.get('topicId');
+    const requestedTopicId = url.searchParams.get('topicId');
+    if (outreach && requestedTopicId && requestedTopicId !== LEARNING_DIALOGUE_ID) throw Error('FORBIDDEN');
+    const topicId = outreach ? LEARNING_DIALOGUE_ID : requestedTopicId;
     const cursor = url.searchParams.get('cursor');
     if (cursor && !validCouncilId(cursor)) throw Error('INVALID');
     const topics = db.collection('academyCouncilTopics');
     if (topicId) {
       if (!validCouncilId(topicId)) throw Error('INVALID');
       const saved = await topics.doc(topicId).get();
-      const topic = saved.data();
+      const topic = saved.data() ?? (outreach ? LEARNING_DIALOGUE_TOPIC : undefined);
       if (!topic || !canReadCouncilTopic(topic, teacher, id)) throw Error('FORBIDDEN');
       const replies = saved.ref.collection('replies');
       let query = (teacher ? replies : replies.where('status', '==', 'published')).orderBy(FieldPath.documentId()).limit(10);
@@ -69,9 +72,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { db, teacher, id, name } = await identity(req);
+    const { db, teacher, id, name, outreach } = await identity(req);
     const body = await req.json();
     if (!body || typeof body !== 'object') throw Error('INVALID');
+    if (outreach && (body.action !== 'reply' || body.topicId !== LEARNING_DIALOGUE_ID)) throw Error('FORBIDDEN');
     if (body.action === 'createTopic') {
       const input = councilTopicInput(body, teacher);
       const topicId = `${9999999999999 - Date.now()}_${randomUUID()}`;
@@ -91,7 +95,7 @@ export async function POST(req: Request) {
     if (!text || text.length > COUNCIL_REPLY_LIMIT) throw Error('INVALID');
     await db.runTransaction(async tx => {
       const topic = await tx.get(db.collection('academyCouncilTopics').doc(body.topicId));
-      const data = topic.data();
+      const data = topic.data() ?? (outreach ? LEARNING_DIALOGUE_TOPIC : undefined);
       if (!data || data.status !== 'published' || data.active !== true) throw Error('CLOSED');
       const visibility = councilReplyVisibility(data, body.visibility);
       const ref = topic.ref.collection('replies').doc(id);
@@ -106,26 +110,27 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { db, teacher, id } = await identity(req);
+    const { db, teacher, id, outreach } = await identity(req);
     if (!teacher) throw Error('FORBIDDEN');
     const body = await req.json();
     if (!body || !validCouncilId(body.topicId)) throw Error('INVALID');
+    if (outreach && body.topicId !== LEARNING_DIALOGUE_ID) throw Error('FORBIDDEN');
     await db.runTransaction(async tx => {
       const ref = db.collection('academyCouncilTopics').doc(body.topicId);
       const snapshot = await tx.get(ref);
-      const topic = snapshot.data();
+      const topic = snapshot.data() ?? (outreach ? LEARNING_DIALOGUE_TOPIC : undefined);
       if (!topic || topic.revision !== body.topicRevision) throw Error('CHANGED');
       if (['approveTopic', 'restoreTopic', 'hideTopic', 'toggleTopic'].includes(body.action)) {
         const authorRef = db.collection('academyCouncilAuthors').doc(String(topic.authorId));
         const author = topic.authorRole === 'student' ? await tx.get(authorRef) : null;
         if (body.action === 'toggleTopic') {
           if (topic.status !== 'published') throw Error('INVALID');
-          tx.update(ref, { active: !topic.active, revision: randomUUID() });
+          tx.set(ref, { ...topic, active: !topic.active, revision: randomUUID() }, { merge: true });
         } else {
           if (body.action === 'approveTopic' && topic.status !== 'pending') throw Error('INVALID');
           if (body.action === 'restoreTopic' && topic.status !== 'hidden') throw Error('INVALID');
           const published = body.action !== 'hideTopic';
-          tx.update(ref, { status: published ? 'published' : 'hidden', active: published, revision: randomUUID(), reviewedAt: FieldValue.serverTimestamp(), reviewedBy: id });
+          tx.set(ref, { ...topic, status: published ? 'published' : 'hidden', active: published, revision: randomUUID(), reviewedAt: FieldValue.serverTimestamp(), reviewedBy: id }, { merge: true });
           if (author?.data()?.pendingTopicId === snapshot.id) tx.set(authorRef, { pendingTopicId: null }, { merge: true });
         }
         return;
