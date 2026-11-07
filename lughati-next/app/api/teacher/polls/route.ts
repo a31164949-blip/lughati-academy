@@ -6,7 +6,8 @@ export const runtime="nodejs"; const EMAIL="a31164949@gmail.com";
 async function teacher(req:Request){const h=req.headers.get("authorization");if(!h?.startsWith("Bearer "))throw new Error("UNAUTHORIZED");const {adminAuth,adminDb}=getFirebaseAdmin();const t=await adminAuth.verifyIdToken(h.slice(7));const email=typeof t.email==="string"?t.email.toLowerCase():"";if(t.role!=="teacher"&&t.role!=="admin"&&email!==EMAIL)throw new Error("FORBIDDEN");return {uid:t.uid,db:adminDb};}
 function iso(v:unknown){return v instanceof Timestamp?v.toDate().toISOString():"";}
 export async function GET(req:Request){try{const {db}=await teacher(req);const p=await db.collection("studentPolls").doc("current").get();const d=p.exists?p.data()??{}:null;
-const pollId=String(d?.pollId??"");
+const details=new URL(req.url).searchParams.get("voters")==="1";
+const pollId=details?String(d?.pollId??""):"";
 const votes=pollId?await db.collection("studentPollVotes").where("pollId","==",pollId).get():null;
 const voteRows=votes?.docs??[];
 const studentDocs=await Promise.all(voteRows.map(v=>db.collection("students").doc(String(v.data().studentId??"")).get()));
