@@ -9,6 +9,22 @@ type Poll={closesAt:string;question:string;options:string[];active:boolean;showR
 export default function TeacherCouncil(){
   const [user,setUser]=useState<User|null>(null),[q,setQ]=useState(""),[opts,setOpts]=useState(["",""]),[hours,setHours]=useState("24"),[show,setShow]=useState(false),[poll,setPoll]=useState<Poll|null>(null),[msg,setMsg]=useState("");
   const [busy,setBusy]=useState(false);
+  const [voters,setVoters]=useState<Array<{studentId:string;name:string;classroom:string;optionIndex:number;votedAt:string}>>([]);
+  const [showVoters,setShowVoters]=useState(false);
+  const [loadingVoters,setLoadingVoters]=useState(false);
+  async function viewVoters(){
+    if(!user)return;
+    if(showVoters){setShowVoters(false);return;}
+    setLoadingVoters(true);
+    try{
+      const token=await user.getIdToken();
+      const r=await fetch("/api/teacher/polls?voters=1",{headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+      const d=await r.json();
+      if(!r.ok||!d.success)throw new Error(d.message||"تعذر تحميل المشاركين");
+      setVoters(d.voters??[]);setShowVoters(true);
+    }catch(e){setMsg(e instanceof Error?e.message:"تعذر تحميل المشاركين");}
+    finally{setLoadingVoters(false);}
+  }
   const pending=useRef(false);
   useEffect(()=>onAuthStateChanged(auth,u=>{setUser(u);if(u)void load(u).catch(()=>setMsg("تعذر تحميل التصويت. حاول تحديث الصفحة."))}),[]);
   async function load(u:User){const t=await u.getIdToken();const r=await fetch("/api/teacher/polls",{headers:{Authorization:`Bearer ${t}`},cache:"no-store"});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.message||"تعذر تحميل التصويت.");setPoll(d.poll)}
@@ -22,6 +38,7 @@ export default function TeacherCouncil(){
       if(!r.ok||!d.success)throw new Error(d.message||"تعذر حفظ التصويت.");
       setMsg(method==="POST"?"تم نشر التصويت للطلاب 🗳️":"تم تحديث التصويت ✅");
       if(method==="POST"){setQ("");setOpts(["",""]);}
+      setShowVoters(false);setVoters([]);
       await load(user);
     }catch(error){setMsg(error instanceof Error?error.message:"تعذر حفظ التصويت. حاول مرة أخرى.");}
     finally{pending.current=false;setBusy(false);}
@@ -53,6 +70,8 @@ export default function TeacherCouncil(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><div><div style={{fontSize:14,color:"#6b7e75",fontWeight:800}}>التصويت الحالي</div><h2 style={{margin:"5px 0",color:"#176c46"}}>{poll.question}</h2></div><span style={{background:open?"#e9f8ef":"#f1f3f2",padding:"7px 12px",borderRadius:999,fontWeight:900}}>{open?"🟢 مفتوح":"🔒 مغلق"}</span></div>
         <div style={{display:"grid",gap:8,marginTop:13}}>{poll.options.map((o,i)=><div key={i} style={{padding:"12px 14px",borderRadius:13,background:"#f7fbf9",display:"flex",justifyContent:"space-between",gap:12}}><span>{o}</span><b>{poll.counts?.[String(i)]??0} صوت</b></div>)}</div>
         <p style={{fontWeight:900}}>إجمالي المشاركين: {poll.totalVotes??0}</p>
+        <button type="button" disabled={loadingVoters} onClick={()=>void viewVoters()} style={{...smallButton,marginBottom:12,color:"#176c46"}}>{loadingVoters?"جارٍ التحميل...":showVoters?"إخفاء سجل المشاركين":"📋 عرض أسماء المصوّتين (للمعلم فقط)"}</button>
+        {showVoters&&<div style={{overflowX:"auto",marginBottom:16}}><p style={{fontSize:13,color:"#64748b"}}>سجل خاص بالمعلم؛ لا تظهر الأسماء للطلاب. يمكن للمعلم الاطلاع على اختيارات المشاركين.</p><table style={{width:"100%",borderCollapse:"collapse",textAlign:"right"}}><thead><tr>{["اسم الطالب","الفصل","الاختيار","آخر تصويت"].map(h=><th key={h} style={{padding:9,borderBottom:"1px solid #c9ddd3"}}>{h}</th>)}</tr></thead><tbody>{voters.map((v,i)=><tr key={v.studentId||i}><td style={{padding:9}}>{v.name}</td><td style={{padding:9}}>{v.classroom}</td><td style={{padding:9}}>{poll.options[v.optionIndex]??"غير معروف"}</td><td style={{padding:9}}>{v.votedAt?new Date(v.votedAt).toLocaleString("ar-SA",{timeZone:"Asia/Riyadh"}):"غير متوفر"}</td></tr>)}</tbody></table>{voters.length===0&&<p>لا توجد أصوات مسجلة لهذا التصويت.</p>}</div>}
         <div style={{display:"flex",gap:9,flexWrap:"wrap"}}><button disabled={busy} style={smallButton} onClick={()=>void patch({showResults:!poll.showResults})}>{poll.showResults?"🙈 إخفاء النتائج":"👁️ إظهار النتائج"}</button><button disabled={busy} style={smallButton} onClick={()=>void patch({active:!open})}>{open?"🔒 إغلاق التصويت":"🔓 إعادة فتح التصويت"}</button><Link href="/polls?teacherPreview=1" target="_blank" style={{...smallButton,textDecoration:"none",color:"#176c46"}}>معاينة الغرفة ↗</Link></div>
       </section>}
     </div>
