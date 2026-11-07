@@ -1,10 +1,32 @@
-// Explicit release step for the owner's November 3 all-services opening.
+// Synchronize the owner's academy opening decision with live student access rules.
 // Credentials stay in the deployment environment; never log tokens or private keys.
-const fs = require('node:fs');
+const opening = require('../app/lib/academyOpening.json');
 const { initializeApp, cert } = require('firebase-admin/app');
+const datedFunction = `    function temporaryAcademyOpen() {
+      return request.time >= timestamp.date(2026, 11, 2) + duration.value(21, 'h')
+        && request.time < timestamp.date(2026, 11, 3) + duration.value(21, 'h');
+    }`;
+const openFunction = `    function temporaryAcademyOpen() {
+      // All authenticated students may enter; teacher and ownership rules remain.
+      return true;
+    }`;
+function patchOpeningRules(source, openToAll) {
+  const target = openToAll ? openFunction : datedFunction;
+  const matches = [...source.matchAll(/^    function temporaryAcademyOpen\(\) \{[^{}]*\}/gm)];
+  if (matches.length === 1) {
+    const normalize = value => value.replace(/\/\/[^\n]*/g, '').replace(/\s+/g, '');
+    if (![datedFunction, openFunction].some(known => normalize(known) === normalize(matches[0][0]))) {
+      throw Error('Unknown live opening policy; refusing overwrite');
+    }
+    return source.replace(matches[0][0], target);
+  }
+  if (matches.length || source.includes('function temporaryAcademyOpen')) throw Error('Unexpected live opening rules');
+  const original = '&& studentAdmissionAccepted()\n        && studentAccountAvailable();';
+  if (!source.includes(original) || !source.includes('    function studentAdmissionAccepted()')) throw Error('Live access rules differ; refusing overwrite');
+  return source.replace(original, '&& (temporaryAcademyOpen() || (studentAdmissionAccepted()\n        && studentAccountAvailable()));')
+    .replace('    function studentAdmissionAccepted()', target + '\n\n    function studentAdmissionAccepted()');
+}
 async function main() {
-  const now = Date.now();
-  if (now < Date.parse('2026-11-03T00:00:00+03:00') || now >= Date.parse('2026-11-04T00:00:00+03:00')) return;
   let account = {};
   if (process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT) account = JSON.parse(process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT);
   const clean = v => typeof v === 'string' ? v.trim().replace(/^['"]|['"]$/g, '') : '';
@@ -28,15 +50,14 @@ async function main() {
   const file = files.find(f=>f.content.includes('function isStudent()'));
   if(!file)throw Error('Cannot locate student access rules');
   const source = file.content;
-  if(!source.includes('function temporaryAcademyOpen()')) {
-    const original = '&& studentAdmissionAccepted()\n        && studentAccountAvailable();';
-    if(!source.includes(original))throw Error('Live access rules differ; refusing overwrite');
-    file.content = source.replace(original,'&& (temporaryAcademyOpen() || (studentAdmissionAccepted()\n        && studentAccountAvailable()));').replace('    function studentAdmissionAccepted()',"    function temporaryAcademyOpen() {\n      return request.time >= timestamp.date(2026, 11, 2) + duration.value(21, 'h')\n        && request.time < timestamp.date(2026, 11, 3) + duration.value(21, 'h');\n    }\n\n    function studentAdmissionAccepted()");
+  file.content = patchOpeningRules(source, opening.openToAllStudents);
+  if (source !== file.content) {
     const created = await call('/rulesets','POST',{source:{files}});
     const current = await call('/releases/cloud.firestore','GET');
     if(current.rulesetName !== release.rulesetName)throw Error('Live rules changed during release; refusing overwrite');
     await call('/releases/cloud.firestore','PATCH',{release:{name:release.name,rulesetName:created.name},updateMask:'ruleset_name'});
   }
-  console.log('Temporary student services rules deployed; expiry 2026-11-04 00:00 Asia/Riyadh.');
+  console.log(opening.openToAllStudents ? 'All-student academy access rules synchronized; no automatic expiry.' : 'Restricted academy access rules synchronized.');
 }
-main().catch(e=>{console.error(e.message);process.exit(1)});
+module.exports = { patchOpeningRules };
+if (require.main === module) main().catch(e=>{console.error(e.message);process.exit(1)});

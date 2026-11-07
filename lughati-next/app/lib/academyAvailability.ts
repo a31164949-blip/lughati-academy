@@ -1,5 +1,6 @@
-// Temporary student closure. Teacher access and stored student records stay available.
-export const STUDENT_ACADEMY_PAUSED = true;
+import opening from "./academyOpening.json";
+// The teacher reopened access to all students without an automatic expiry.
+export const STUDENT_ACADEMY_PAUSED = !opening.openToAllStudents;
 // One existing test account is permitted to preview the student interface.
 // Match its authenticated Firestore document ID, never a name or URL parameter.
 export const STUDENT_PREVIEW_ENABLED = true;
