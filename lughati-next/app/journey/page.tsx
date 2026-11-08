@@ -1,6 +1,7 @@
 "use client";
 
 import AcademyWelcome from "../components/AcademyWelcome";
+import ReadingPracticeCard from "../components/ReadingPracticeCard";
 import FamilyDiscussionCard from "../components/FamilyDiscussionCard";
 import TeacherWhatsAppCard from "../components/TeacherWhatsAppCard";
 import SpellingPracticeCards from "../components/SpellingPracticeCards";
@@ -4443,6 +4444,8 @@ try {
         </Link>
 
         <SmartRecordFollowUpCard followUp={smartFollowUp} />
+
+        <ReadingPracticeCard />
 
         {errorMessage && (
           <section
