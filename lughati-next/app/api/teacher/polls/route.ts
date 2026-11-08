@@ -1,11 +1,12 @@
+import { canViewPollVoters } from "./voter-access";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 export const runtime="nodejs"; const EMAIL="a31164949@gmail.com";
-async function teacher(req:Request){const h=req.headers.get("authorization");if(!h?.startsWith("Bearer "))throw new Error("UNAUTHORIZED");const {adminAuth,adminDb}=getFirebaseAdmin();const t=await adminAuth.verifyIdToken(h.slice(7));const email=typeof t.email==="string"?t.email.toLowerCase():"";if(t.role!=="teacher"&&t.role!=="admin"&&email!==EMAIL)throw new Error("FORBIDDEN");return {uid:t.uid,db:adminDb,email};}
+async function teacher(req:Request){const h=req.headers.get("authorization");if(!h?.startsWith("Bearer "))throw new Error("UNAUTHORIZED");const {adminAuth,adminDb}=getFirebaseAdmin();const t=await adminAuth.verifyIdToken(h.slice(7));const email=typeof t.email==="string"?t.email.toLowerCase():"";if(t.role!=="teacher"&&t.role!=="admin"&&email!==EMAIL)throw new Error("FORBIDDEN");return {uid:t.uid,db:adminDb,claims:t};}
 function iso(v:unknown){return v instanceof Timestamp?v.toDate().toISOString():"";}
-export async function GET(req:Request){try{const {db,email}=await teacher(req);const details=new URL(req.url).searchParams.get("voters")==="1";if(details&&email!==EMAIL)throw new Error("FORBIDDEN");const p=await db.collection("studentPolls").doc("current").get();const d=p.exists?p.data()??{}:null;
+export async function GET(req:Request){try{const {db,claims}=await teacher(req);const details=new URL(req.url).searchParams.get("voters")==="1";if(details&&!canViewPollVoters(claims,EMAIL))throw new Error("FORBIDDEN");const p=await db.collection("studentPolls").doc("current").get();const d=p.exists?p.data()??{}:null;
 const pollId=details?String(d?.pollId??""):"";
 const votes=pollId?await db.collection("studentPollVotes").where("pollId","==",pollId).get():null;
 const voteRows=votes?.docs??[];
