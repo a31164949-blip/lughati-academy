@@ -51,10 +51,10 @@ type StudentOption = {
 };
 
 export default function TeacherStudentMessagesPage() {
-  const [messageView, setMessageView] = useState<"all" | "little-teacher">("all");
+  const [messageView, setMessageView] = useState<"all" | "little-teacher" | "friend-riddle">("all");
   const [messages, setMessages] =
     useState<StudentMessage[]>([]);
-  const visibleMessages = messageView === "little-teacher" ? messages.filter(item => (item.source === "little-teacher-spelling" || item.source === "little-teacher-application")) : messages;
+  const visibleMessages = messageView === "little-teacher" ? messages.filter(item => (item.source === "little-teacher-spelling" || item.source === "little-teacher-application")) : messageView === "friend-riddle" ? messages.filter(item => item.source === "friend-riddle-application") : messages;
 
   const [loading, setLoading] =
     useState(true);
@@ -866,6 +866,7 @@ useEffect(() => {
         <div className="mb-5 flex flex-wrap gap-3" aria-label="نوع رسائل الطلاب">
           <button type="button" aria-pressed={messageView === "all"} onClick={() => setMessageView("all")} className="rounded-xl border bg-white px-4 py-3 font-bold text-emerald-800">جميع الرسائل</button>
           <button type="button" aria-pressed={messageView === "little-teacher"} onClick={() => setMessageView("little-teacher")} className="rounded-xl border bg-emerald-50 px-4 py-3 font-bold text-emerald-800">🧑‍🏫 طلبات المعلم الصغير ({messages.filter(item => (item.source === "little-teacher-spelling" || item.source === "little-teacher-application")).length})</button>
+          <button type="button" aria-pressed={messageView === "friend-riddle"} onClick={() => setMessageView("friend-riddle")} className="rounded-xl border bg-amber-50 px-4 py-3 font-bold text-emerald-800">🧩 طلبات طرح الألغاز ({messages.filter(item => item.source === "friend-riddle-application").length})</button>
         </div>
 
         {/* الرسائل */}
