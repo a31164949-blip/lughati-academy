@@ -28,7 +28,7 @@ async function identify(request: Request) {
     const { adminDb } = getFirebaseAdmin();
     const room = await adminDb.collection("academyClubLiveRooms").doc(code).get();
     const invite = room.data()?.guestInvites?.[guestId];
-    if (!invite || invite.active !== true || typeof invite.hash !== "string") throw new Error("FORBIDDEN");
+    if (!invite || invite.active !== true || typeof invite.hash !== "string" || !/^[a-f0-9]{64}$/.test(invite.hash) || typeof invite.name !== "string") throw new Error("FORBIDDEN");
     const received = createHash("sha256").update(secret).digest();
     const expected = Buffer.from(invite.hash, "hex");
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw new Error("FORBIDDEN");
@@ -161,6 +161,7 @@ export async function POST(request: Request) {
         const roster = await transactionRoster(tx, roomRef, data);
         // Rejoining must preserve both the score and the answered question.
         if (existing.exists) {
+          if (actor.kind === "guest" && existing.data()?.name !== actor.name) throw new Error("FORBIDDEN");
           if (!Array.isArray(data.leaderboard)) tx.update(roomRef, { leaderboard: roster });
           return;
         }
