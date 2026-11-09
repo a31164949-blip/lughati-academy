@@ -11,7 +11,7 @@ type Room = {
   status: "waiting" | "active" | "finished";
   question: { index: number; total: number; prompt: string; options: string[]; guide?: string } | null;
   voiceAnswers?: Array<{ studentId: string; name: string; question: number; audioUrl: string; points: number | null }>;
-  participants: Array<{ id: string; name: string; score: number; answered: boolean }>;
+  participants: Array<{ id: string; name: string; score: number; answered: boolean; guest?: boolean }>;
 };
 
 export default function TeacherLiveGamePage() {
@@ -20,6 +20,8 @@ export default function TeacherLiveGamePage() {
   const [message, setMessage] = useState("أنشئ غرفة ثم اعرض رمزها للطلاب.");
   const [resumeCode, setResumeCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [guestNames, setGuestNames] = useState(["", ""]);
+  const [guestLinks, setGuestLinks] = useState<Record<number,string>>({});
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -47,6 +49,7 @@ export default function TeacherLiveGamePage() {
       if (version !== requestVersion.current) return;
       if (!response.ok || !data.success) throw new Error(data.message || "تعذر تنفيذ العملية.");
       setRoom(data.room);
+      if (action === "registerGuest" && typeof data.guestLink === "string") setGuestLinks(old => ({ ...old, [Number(extra.slot)]: new URL(data.guestLink, window.location.origin).toString() }));
       if (action === "review") setMessage("تم اعتماد النقاط وتحديث الترتيب.");
       if (action === "create") setMessage("الغرفة جاهزة؛ اطلب من الطلاب إدخال الرمز.");
     } catch (error) {
@@ -78,6 +81,15 @@ export default function TeacherLiveGamePage() {
             {room.status === "finished" && <b style={{color:"#9a6b08"}}>🏆 انتهت المسابقة</b>}
           </div>
         </section>
+        {room.status === "waiting" && <section style={card}>
+          <h2>🏅 ضيفا التحدي – الصف الثالث</h2>
+          <p>أدخل اسم كل ضيف، ثم أنشئ رابطًا خاصًا له. لا تشارك الرابط إلا مع أسرته؛ إعادة إصدار الرابط تُلغي الرابط السابق.</p>
+          {[1,2].map(slot => <div key={slot} style={{margin:12}}>
+            <input aria-label={"اسم الضيف " + slot} placeholder={"اسم الضيف " + slot} value={guestNames[slot-1]} onChange={e=>setGuestNames(old=>old.map((n,i)=>i===slot-1?e.target.value:n))} style={{padding:12,borderRadius:10,maxWidth:"100%"}} />
+            <button style={primary} disabled={busy || guestNames[slot-1].trim().length<3} onClick={()=>void call("registerGuest",{slot,name:guestNames[slot-1]})}>إنشاء رابط الضيف {slot}</button>
+            {guestLinks[slot] && <p><a href={guestLinks[slot]}>رابط دخول الضيف {slot}</a> <button onClick={()=>void navigator.clipboard.writeText(guestLinks[slot])}>نسخ الرابط</button></p>}
+          </div>)}
+        </section>}
         {room.question && <section style={card}>
           <small>السؤال {room.question.index + 1} من {room.question.total}</small>
           <h2>{room.question.prompt}</h2>
@@ -96,7 +108,7 @@ export default function TeacherLiveGamePage() {
         </section>
         <section style={card}><h2>لوحة المتصدرين المباشرة</h2>
           <div style={{display:"grid",gap:9}}>{room.participants.map((student,index) =>
-            <div key={student.id} style={row}><b>{index + 1}. {student.name}</b><span>{student.answered ? "✅" : "⏳"} ⭐ {student.score}</span></div>
+            <div key={student.id} style={row}><b>{index + 1}. {student.name}{student.guest ? " (ضيف التحدي – الثالث)" : ""}</b><span>{student.answered ? "✅" : "⏳"} ⭐ {student.score}</span></div>
           )}</div>
         </section>
       </>}
