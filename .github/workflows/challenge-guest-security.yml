@@ -1,0 +1,25 @@
+name: Guest challenge security checks
+
+on:
+  pull_request:
+    paths:
+      - "lughati-next/app/lib/challengeGuestToken.ts"
+      - "lughati-next/app/lib/challengeGuestToken.test.ts"
+      - "lughati-next/app/api/academy-club/live-game/route.ts"
+      - ".github/workflows/challenge-guest-security.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guest-token-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+      - name: Run guest token validation tests
+        run: node --experimental-strip-types --test lughati-next/app/lib/challengeGuestToken.test.ts
