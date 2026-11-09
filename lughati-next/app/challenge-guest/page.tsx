@@ -10,7 +10,7 @@ export default function ChallengeGuestPage(){
  const [message,setMessage]=useState("مرحبًا بضيف التحدي! افتح الرابط الذي أرسله لك المعلم.");
  const [busy,setBusy]=useState(false);
  const inFlight=useRef(false);
- useEffect(()=>{const value=new URLSearchParams(window.location.search).get("ticket")??"";if(/^\d{6}\.guest-[12]\.[a-f0-9]{64}$/.test(value))setTicket(value);},[]);
+ useEffect(()=>{const value=new URLSearchParams(window.location.search).get("ticket")??"";if(/^\d{6}\.guest-[12]\.[a-f0-9]{64}$/.test(value)){setTicket(value);window.history.replaceState(null,"",window.location.pathname);}},[]);
  const code=ticket.split(".")[0]??"";
  async function call(action?:string,audioUrl?:string,question?:number){
   if(!ticket || inFlight.current)return;
