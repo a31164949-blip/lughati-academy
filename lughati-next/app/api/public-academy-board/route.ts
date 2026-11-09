@@ -107,7 +107,7 @@ function jsonWithCache(
     headers: {
       // اللوحة عامة؛ يسمح هذا لكاش CDN بتقليل استدعاءات الـ API في الإنتاج.
       "Cache-Control":
-        "no-store",
+        "public, s-maxage=60, stale-while-revalidate=300",
       "X-Academy-Board-Cache": cacheState,
     },
   });
