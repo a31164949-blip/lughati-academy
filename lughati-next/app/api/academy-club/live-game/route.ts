@@ -1,7 +1,7 @@
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { requireStudentExtras } from "../../../lib/studentAccess";
 import { NextResponse } from "next/server";
-import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData, type DocumentSnapshot } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 
 export const runtime = "nodejs";
@@ -32,7 +32,7 @@ async function identify(request: Request) {
     const received = createHash("sha256").update(secret).digest();
     const expected = Buffer.from(invite.hash, "hex");
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw new Error("FORBIDDEN");
-    return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code };
+    return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code, roomSnapshot: room };
   }
 
   const authorization = request.headers.get("authorization");
@@ -67,10 +67,10 @@ function cleanCode(value: unknown) {
   return typeof value === "string" ? value.replace(/\D/g, "").slice(0, 6) : "";
 }
 
-async function roomPayload(code: string, actorId?: string, teacher = false) {
+async function roomPayload(code: string, actorId?: string, teacher = false, existingSnapshot?: DocumentSnapshot) {
   const { adminDb } = getFirebaseAdmin();
   const ref = adminDb.collection("academyClubLiveRooms").doc(code);
-  const snap = await ref.get();
+  const snap = existingSnapshot ?? await ref.get();
   if (!snap.exists) throw new Error("ROOM_NOT_FOUND");
   const data = snap.data() ?? {};
   // New rooms keep their small scoreboard in one document, avoiding a query per poll.
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     const code = cleanCode(new URL(request.url).searchParams.get("code"));
     if (actor.kind === "guest" && actor.roomCode !== code) throw new Error("FORBIDDEN");
     if (!code) return NextResponse.json({ success: false, message: "أدخل رمز الغرفة." }, { status: 400 });
-    return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
+    return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher", actor.kind === "guest" ? actor.roomSnapshot : undefined) });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     return NextResponse.json(
