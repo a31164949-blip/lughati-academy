@@ -144,10 +144,20 @@ export async function POST(request: Request) {
       const slot = body.slot;
       const name = typeof body.name === "string" ? body.name.trim().slice(0, 70) : "";
       if ((slot !== 1 && slot !== 2) || name.length < 3) throw new Error("INVALID_GUEST");
-      if ((await roomRef.collection("participants").doc("guest-" + slot).get()).exists) throw new Error("GUEST_ALREADY_JOINED");
       const guestId = "guest-" + slot;
       const secret = randomBytes(32).toString("hex");
-      await roomRef.update({ ["guestInvites." + guestId]: { name, hash: createHash("sha256").update(secret).digest("hex"), active: true }, updatedAt: FieldValue.serverTimestamp() });
+      await adminDb.runTransaction(async (tx) => {
+        const [freshRoom, joinedGuest] = await Promise.all([
+          tx.get(roomRef),
+          tx.get(roomRef.collection("participants").doc(guestId)),
+        ]);
+        if (!freshRoom.exists || freshRoom.data()?.createdBy !== actor.id || freshRoom.data()?.status !== "waiting") throw new Error("FORBIDDEN");
+        if (joinedGuest.exists) throw new Error("GUEST_ALREADY_JOINED");
+        tx.update(roomRef, {
+          ["guestInvites." + guestId]: { name, hash: createHash("sha256").update(secret).digest("hex"), active: true },
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
       return NextResponse.json({ success: true, guestLink: "/challenge-guest?ticket=" + code + "." + guestId + "." + secret, room: await roomPayload(code, actor.id, true) });
     }
 
