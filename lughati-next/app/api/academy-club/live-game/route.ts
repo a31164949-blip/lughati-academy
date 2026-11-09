@@ -1,12 +1,14 @@
+import { randomBytes, createHash } from "node:crypto";
+import { parseChallengeGuestToken, verifyChallengeGuestInvite } from "../../../lib/challengeGuestToken";
 import { requireStudentExtras } from "../../../lib/studentAccess";
 import { NextResponse } from "next/server";
-import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData, type DocumentSnapshot } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
 
 export const runtime = "nodejs";
 const TEACHER_EMAIL = "a31164949@gmail.com";
 const MAX_PARTICIPANTS = 30;
-type Player = { id: string; name: string; score: number; answeredQuestion: number };
+type Player = { id: string; name: string; score: number; answeredQuestion: number; guest?: boolean };
 type VoiceAnswer = { studentId: string; name: string; question: number; audioUrl: string; points: number | null };
 const QUESTIONS = [
   { prompt: "اِقْرَأِ الْجُمْلَةَ بِصَوْتِكَ: يُحِبُّ فَهْدٌ وَطَنَهُ.", guide: "قِرَاءَةُ الْجُمْلَةِ بِوُضُوحٍ: يُحِبُّ فَهْدٌ وَطَنَهُ." },
@@ -20,6 +22,18 @@ const QUESTIONS = [
 ];
 
 async function identify(request: Request) {
+  const guestHeader = request.headers.get("x-challenge-guest");
+  if (guestHeader) {
+    const parsed = parseChallengeGuestToken(guestHeader);
+    if (!parsed) throw new Error("FORBIDDEN");
+    const { code, guestId, secret } = parsed;
+    const { adminDb } = getFirebaseAdmin();
+    const room = await adminDb.collection("academyClubLiveRooms").doc(code).get();
+    const invite = room.data()?.guestInvites?.[guestId];
+    if (!verifyChallengeGuestInvite(secret, invite)) throw new Error("FORBIDDEN");
+    return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code, roomSnapshot: room, inviteHash: invite.hash };
+  }
+
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
   const { adminAuth, adminDb } = getFirebaseAdmin();
@@ -52,10 +66,10 @@ function cleanCode(value: unknown) {
   return typeof value === "string" ? value.replace(/\D/g, "").slice(0, 6) : "";
 }
 
-async function roomPayload(code: string, actorId?: string, teacher = false) {
+async function roomPayload(code: string, actorId?: string, teacher = false, existingSnapshot?: DocumentSnapshot) {
   const { adminDb } = getFirebaseAdmin();
   const ref = adminDb.collection("academyClubLiveRooms").doc(code);
-  const snap = await ref.get();
+  const snap = existingSnapshot ?? await ref.get();
   if (!snap.exists) throw new Error("ROOM_NOT_FOUND");
   const data = snap.data() ?? {};
   // New rooms keep their small scoreboard in one document, avoiding a query per poll.
@@ -64,7 +78,7 @@ async function roomPayload(code: string, actorId?: string, teacher = false) {
     : (await ref.collection("participants").orderBy("score", "desc").limit(MAX_PARTICIPANTS).get())
         .docs.map((doc) => ({ id: doc.id, ...doc.data() } as Player));
   const participants = [...roster].sort((a, b) => b.score - a.score).map((row) => ({
-    id: row.id, name: row.name, score: row.score,
+    id: row.id, name: row.name, score: row.score, guest: row.guest === true,
     answered: row.answeredQuestion === data.currentQuestion,
   }));
   const index = typeof data.currentQuestion === "number" ? data.currentQuestion : -1;
@@ -88,8 +102,9 @@ export async function GET(request: Request) {
   try {
     const actor = await identify(request);
     const code = cleanCode(new URL(request.url).searchParams.get("code"));
+    if (actor.kind === "guest" && actor.roomCode !== code) throw new Error("FORBIDDEN");
     if (!code) return NextResponse.json({ success: false, message: "أدخل رمز الغرفة." }, { status: 400 });
-    return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
+    return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher", actor.kind === "guest" ? actor.roomSnapshot : undefined) });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     return NextResponse.json(
@@ -117,27 +132,52 @@ export async function POST(request: Request) {
     }
 
     const code = cleanCode(body.code);
+    if (actor.kind === "guest" && actor.roomCode !== code) throw new Error("FORBIDDEN");
     if (!code) return NextResponse.json({ success: false, message: "رمز الغرفة غير صحيح." }, { status: 400 });
     const roomRef = adminDb.collection("academyClubLiveRooms").doc(code);
     const roomSnap = await roomRef.get();
     if (!roomSnap.exists) throw new Error("ROOM_NOT_FOUND");
 
+    if (action === "registerGuest") {
+      if (actor.kind !== "teacher" || roomSnap.data()?.createdBy !== actor.id || roomSnap.data()?.status !== "waiting") throw new Error("FORBIDDEN");
+      const slot = body.slot;
+      const name = typeof body.name === "string" ? body.name.trim().slice(0, 70) : "";
+      if ((slot !== 1 && slot !== 2) || name.length < 3) throw new Error("INVALID_GUEST");
+      const guestId = "guest-" + slot;
+      const secret = randomBytes(32).toString("hex");
+      await adminDb.runTransaction(async (tx) => {
+        const [freshRoom, joinedGuest] = await Promise.all([
+          tx.get(roomRef),
+          tx.get(roomRef.collection("participants").doc(guestId)),
+        ]);
+        if (!freshRoom.exists || freshRoom.data()?.createdBy !== actor.id || freshRoom.data()?.status !== "waiting") throw new Error("FORBIDDEN");
+        if (joinedGuest.exists) throw new Error("GUEST_ALREADY_JOINED");
+        tx.update(roomRef, {
+          ["guestInvites." + guestId]: { name, hash: createHash("sha256").update(secret).digest("hex"), active: true },
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      });
+      return NextResponse.json({ success: true, guestLink: "/challenge-guest?ticket=" + code + "." + guestId + "." + secret, room: await roomPayload(code, actor.id, true) });
+    }
+
     if (action === "join") {
-      if (actor.kind !== "student") throw new Error("FORBIDDEN");
+      if (actor.kind !== "student" && actor.kind !== "guest") throw new Error("FORBIDDEN");
       const participantRef = roomRef.collection("participants").doc(actor.id);
       await adminDb.runTransaction(async (tx) => {
         const [freshRoom, existing] = await Promise.all([tx.get(roomRef), tx.get(participantRef)]);
         if (!freshRoom.exists) throw new Error("ROOM_NOT_FOUND");
         const data = freshRoom.data() ?? {};
+        if (actor.kind === "guest" && (data.guestInvites?.[actor.id]?.hash !== actor.inviteHash || data.guestInvites?.[actor.id]?.active !== true)) throw new Error("FORBIDDEN");
         const roster = await transactionRoster(tx, roomRef, data);
         // Rejoining must preserve both the score and the answered question.
         if (existing.exists) {
+          if (actor.kind === "guest" && existing.data()?.name !== actor.name) throw new Error("FORBIDDEN");
           if (!Array.isArray(data.leaderboard)) tx.update(roomRef, { leaderboard: roster });
           return;
         }
         if (data.status === "finished") throw new Error("ROOM_FINISHED");
         if (roster.length >= MAX_PARTICIPANTS) throw new Error("ROOM_FULL");
-        const player = { id: actor.id, name: actor.name, score: 0, answeredQuestion: -1 };
+        const player = { id: actor.id, name: actor.name, score: 0, answeredQuestion: -1, ...(actor.kind === "guest" ? { guest: true } : {}) };
         tx.create(participantRef, {
           name: player.name, score: 0, answeredQuestion: -1, joinedAt: FieldValue.serverTimestamp(),
         });
@@ -147,7 +187,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "start" || action === "next") {
-      if (actor.kind !== "teacher") throw new Error("FORBIDDEN");
+      if (actor.kind !== "teacher" || roomSnap.data()?.createdBy !== actor.id) throw new Error("FORBIDDEN");
       const current = Number(roomSnap.data()?.currentQuestion ?? -1);
       const next = action === "start" ? 0 : current + 1;
       await roomRef.update({
@@ -187,7 +227,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "answer") {
-      if (actor.kind !== "student") throw new Error("FORBIDDEN");
+      if (actor.kind !== "student" && actor.kind !== "guest") throw new Error("FORBIDDEN");
       const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl : "";
       let validAudio = false;
       try {
@@ -201,6 +241,7 @@ export async function POST(request: Request) {
         const [freshRoom, participantSnap] = await Promise.all([tx.get(roomRef), tx.get(participantRef)]);
         const data = freshRoom.data() ?? {};
         const index = Number(data.currentQuestion ?? -1);
+        if (actor.kind === "guest" && (data.guestInvites?.[actor.id]?.hash !== actor.inviteHash || data.guestInvites?.[actor.id]?.active !== true)) throw new Error("FORBIDDEN");
         if (!freshRoom.exists || data.status !== "active" || !QUESTIONS[index]) throw new Error("NOT_ACTIVE");
         if (body.question !== index) throw new Error("QUESTION_CHANGED");
         if (!participantSnap.exists) throw new Error("JOIN_REQUIRED");
@@ -224,6 +265,8 @@ export async function POST(request: Request) {
     const code = error instanceof Error ? error.message : "";
     const messages: Record<string,string> = {
       ROOM_NOT_FOUND: "الغرفة غير موجودة.",
+      INVALID_GUEST: "أدخل اسم الضيف الصحيح.",
+      GUEST_ALREADY_JOINED: "انضم هذا الضيف بالفعل؛ لا يمكن تغيير رابط دخوله أثناء المسابقة.",
       ROOM_FULL: "اكتملت الغرفة؛ الحد الأعلى 30 طالبًا.",
       ROOM_FINISHED: "انتهت هذه المسابقة؛ انتظر غرفة جديدة.",
       JOIN_REQUIRED: "انضم إلى الغرفة أولًا.",
