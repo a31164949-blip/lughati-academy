@@ -176,7 +176,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "start" || action === "next") {
-      if (actor.kind !== "teacher") throw new Error("FORBIDDEN");
+      if (actor.kind !== "teacher" || roomSnap.data()?.createdBy !== actor.id) throw new Error("FORBIDDEN");
       const current = Number(roomSnap.data()?.currentQuestion ?? -1);
       const next = action === "start" ? 0 : current + 1;
       await roomRef.update({
