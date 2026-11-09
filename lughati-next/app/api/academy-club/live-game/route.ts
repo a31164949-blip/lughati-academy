@@ -24,7 +24,7 @@ async function identify(request: Request) {
   const guestHeader = request.headers.get("x-challenge-guest");
   if (guestHeader) {
     const [code, guestId, secret] = guestHeader.split(".");
-    if (!/^\\d{6}$/.test(code ?? "") || !/^guest-[12]$/.test(guestId ?? "") || !/^[a-f0-9]{64}$/.test(secret ?? "")) throw new Error("FORBIDDEN");
+    if (!/^\d{6}$/.test(code ?? "") || !/^guest-[12]$/.test(guestId ?? "") || !/^[a-f0-9]{64}$/.test(secret ?? "")) throw new Error("FORBIDDEN");
     const { adminDb } = getFirebaseAdmin();
     const room = await adminDb.collection("academyClubLiveRooms").doc(code).get();
     const invite = room.data()?.guestInvites?.[guestId];
@@ -32,7 +32,6 @@ async function identify(request: Request) {
     const received = createHash("sha256").update(secret).digest();
     const expected = Buffer.from(invite.hash, "hex");
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw new Error("FORBIDDEN");
-    if (room.data()?.status === "finished") throw new Error("ROOM_FINISHED");
     return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code };
   }
 
@@ -145,6 +144,7 @@ export async function POST(request: Request) {
       const slot = body.slot;
       const name = typeof body.name === "string" ? body.name.trim().slice(0, 70) : "";
       if ((slot !== 1 && slot !== 2) || name.length < 3) throw new Error("INVALID_GUEST");
+      if ((await roomRef.collection("participants").doc("guest-" + slot).get()).exists) throw new Error("GUEST_ALREADY_JOINED");
       const guestId = "guest-" + slot;
       const secret = randomBytes(32).toString("hex");
       await roomRef.update({ ["guestInvites." + guestId]: { name, hash: createHash("sha256").update(secret).digest("hex"), active: true }, updatedAt: FieldValue.serverTimestamp() });
@@ -254,6 +254,7 @@ export async function POST(request: Request) {
     const messages: Record<string,string> = {
       ROOM_NOT_FOUND: "الغرفة غير موجودة.",
       INVALID_GUEST: "أدخل اسم الضيف الصحيح.",
+      GUEST_ALREADY_JOINED: "انضم هذا الضيف بالفعل؛ لا يمكن تغيير رابط دخوله أثناء المسابقة.",
       ROOM_FULL: "اكتملت الغرفة؛ الحد الأعلى 30 طالبًا.",
       ROOM_FINISHED: "انتهت هذه المسابقة؛ انتظر غرفة جديدة.",
       JOIN_REQUIRED: "انضم إلى الغرفة أولًا.",
