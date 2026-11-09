@@ -1,4 +1,5 @@
-import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
+import { parseChallengeGuestToken, verifyChallengeGuestInvite } from "../../../lib/challengeGuestToken";
 import { requireStudentExtras } from "../../../lib/studentAccess";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData, type DocumentSnapshot } from "firebase-admin/firestore";
@@ -23,15 +24,13 @@ const QUESTIONS = [
 async function identify(request: Request) {
   const guestHeader = request.headers.get("x-challenge-guest");
   if (guestHeader) {
-    const [code, guestId, secret] = guestHeader.split(".");
-    if (!/^\d{6}$/.test(code ?? "") || !/^guest-[12]$/.test(guestId ?? "") || !/^[a-f0-9]{64}$/.test(secret ?? "")) throw new Error("FORBIDDEN");
+    const parsed = parseChallengeGuestToken(guestHeader);
+    if (!parsed) throw new Error("FORBIDDEN");
+    const { code, guestId, secret } = parsed;
     const { adminDb } = getFirebaseAdmin();
     const room = await adminDb.collection("academyClubLiveRooms").doc(code).get();
     const invite = room.data()?.guestInvites?.[guestId];
-    if (!invite || invite.active !== true || typeof invite.hash !== "string" || !/^[a-f0-9]{64}$/.test(invite.hash) || typeof invite.name !== "string") throw new Error("FORBIDDEN");
-    const received = createHash("sha256").update(secret).digest();
-    const expected = Buffer.from(invite.hash, "hex");
-    if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw new Error("FORBIDDEN");
+    if (!verifyChallengeGuestInvite(secret, invite)) throw new Error("FORBIDDEN");
     return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code, roomSnapshot: room, inviteHash: invite.hash };
   }
 
