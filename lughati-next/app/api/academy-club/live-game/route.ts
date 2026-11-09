@@ -32,7 +32,7 @@ async function identify(request: Request) {
     const received = createHash("sha256").update(secret).digest();
     const expected = Buffer.from(invite.hash, "hex");
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw new Error("FORBIDDEN");
-    return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code, roomSnapshot: room };
+    return { kind: "guest" as const, id: guestId, name: String(invite.name), roomCode: code, roomSnapshot: room, inviteHash: invite.hash };
   }
 
   const authorization = request.headers.get("authorization");
@@ -168,6 +168,7 @@ export async function POST(request: Request) {
         const [freshRoom, existing] = await Promise.all([tx.get(roomRef), tx.get(participantRef)]);
         if (!freshRoom.exists) throw new Error("ROOM_NOT_FOUND");
         const data = freshRoom.data() ?? {};
+        if (actor.kind === "guest" && (data.guestInvites?.[actor.id]?.hash !== actor.inviteHash || data.guestInvites?.[actor.id]?.active !== true)) throw new Error("FORBIDDEN");
         const roster = await transactionRoster(tx, roomRef, data);
         // Rejoining must preserve both the score and the answered question.
         if (existing.exists) {
@@ -241,6 +242,7 @@ export async function POST(request: Request) {
         const [freshRoom, participantSnap] = await Promise.all([tx.get(roomRef), tx.get(participantRef)]);
         const data = freshRoom.data() ?? {};
         const index = Number(data.currentQuestion ?? -1);
+        if (actor.kind === "guest" && (data.guestInvites?.[actor.id]?.hash !== actor.inviteHash || data.guestInvites?.[actor.id]?.active !== true)) throw new Error("FORBIDDEN");
         if (!freshRoom.exists || data.status !== "active" || !QUESTIONS[index]) throw new Error("NOT_ACTIVE");
         if (body.question !== index) throw new Error("QUESTION_CHANGED");
         if (!participantSnap.exists) throw new Error("JOIN_REQUIRED");
