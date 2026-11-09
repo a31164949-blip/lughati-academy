@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/deploy-temporary-access-rules.cjs && next build",
+    "build": "next build",
+    "sync:academy-access-rules": "node scripts/deploy-temporary-access-rules.cjs",
     "start": "next start",
     "lint": "eslint"
   },
