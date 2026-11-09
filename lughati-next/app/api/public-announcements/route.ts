@@ -46,7 +46,7 @@ function jsonWithCache(
     status: 200,
     headers: {
       "Cache-Control":
-        "no-store",
+        "public, s-maxage=60, stale-while-revalidate=300",
       "X-Announcements-Cache": cacheState,
     },
   });
