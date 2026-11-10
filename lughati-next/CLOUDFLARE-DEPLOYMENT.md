@@ -10,7 +10,7 @@ This branch prepares OpenNext for a Next.js 16 app, but **has not been built or 
 - Check OpenNext behavior with Firestore caching, uploads, R2 or image routes; preserve all student records.
 - Deploy only to an isolated preview after review, not to the student-facing production domain.
 
-## Once tests pass
+Run `node scripts/check-cloudflare-readiness.cjs` first. It intentionally fails until both OpenNext and Wrangler are added to the package manifest and lockfile. Passing this static check does **not** mean the application is safe to deploy.\n\n## Once tests pass
 Cloudflare repository path: `lughati-next`.
 Build command: `npx opennextjs-cloudflare build`.
 Deploy command: `npx wrangler deploy`.
