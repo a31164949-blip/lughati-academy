@@ -23,3 +23,20 @@ Do not deploy with this configuration until the dependency lockfile and compatib
 - Cloudflare's `nodejs_compat` flag is **not proof** that Firebase Admin's underlying Firestore transport and Node-specific dependencies will work in Workers. Test these routes on a non-production Worker with test credentials and test students, or design a secure supported alternative. Do not relax Firestore rules to work around a failed Admin SDK.
 - The GitHub Actions workflow has been committed but no successful build or test run has been verified. The dependency lockfile is still missing the Cloudflare packages as of this review.
 - Protect the teacher-only access-control POST route and verify student/teacher isolation before any production release.
+
+## Free-only fallback approved (2026-11-10)
+
+GitHub Actions could not start because the GitHub account is locked due to a billing issue; this is not a build failure. Do not retry repeatedly or enable paid Actions.
+
+Use a free local development environment to generate and validate the lockfile and Worker bundle, or Cloudflare's included build pipeline **only after** dependency and runtime compatibility are reviewed. Never assume Cloudflare's free plan can support this app without checking CPU, memory and request limits.
+
+Suggested local commands (Node.js 22, from `lughati-next`):
+
+```sh
+npm install --save-dev @opennextjs/cloudflare wrangler
+npm run cloudflare:preflight
+npx tsc --noEmit
+npx opennextjs-cloudflare build
+```
+
+Commit both `package.json` and `package-lock.json` to this branch. Do **not** deploy until Firebase Admin routes have been verified on an isolated test environment. Do not put service-account secrets in GitHub or command logs. Cloudflare Workers deployment may require a different Firebase Admin architecture; a successful build alone is insufficient.
