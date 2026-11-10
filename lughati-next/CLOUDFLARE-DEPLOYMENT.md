@@ -15,3 +15,11 @@ Cloudflare repository path: `lughati-next`.
 Build command: `npx opennextjs-cloudflare build`.
 Deploy command: `npx wrangler deploy`.
 Do not deploy with this configuration until the dependency lockfile and compatibility tests are complete.
+
+## Verified source-level compatibility risk (2026-11-10)
+
+- `firebase-admin.ts` initializes `firebase-admin/app` with a service-account certificate and uses `firebase-admin/auth` and `firebase-admin/firestore`.
+- `app/api/student-access/route.ts` explicitly declares `runtime = "nodejs"`, verifies Firebase ID tokens, reads student documents and updates access controls through the Admin SDK.
+- Cloudflare's `nodejs_compat` flag is **not proof** that Firebase Admin's underlying Firestore transport and Node-specific dependencies will work in Workers. Test these routes on a non-production Worker with test credentials and test students, or design a secure supported alternative. Do not relax Firestore rules to work around a failed Admin SDK.
+- The GitHub Actions workflow has been committed but no successful build or test run has been verified. The dependency lockfile is still missing the Cloudflare packages as of this review.
+- Protect the teacher-only access-control POST route and verify student/teacher isolation before any production release.
