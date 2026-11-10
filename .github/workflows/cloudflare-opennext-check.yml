@@ -1,0 +1,51 @@
+name: Prepare and validate Cloudflare OpenNext
+on:
+  push:
+    branches:
+      - feature/cloudflare-opennext-preparation
+    paths:
+      - 'lughati-next/package.json'
+      - '.github/workflows/cloudflare-opennext-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cloudflare-preflight:
+    if: github.repository == 'a31164949-blip/lughati-academy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - name: Resolve OpenNext and Wrangler into lockfile without running install scripts
+        working-directory: lughati-next
+        run: npm install --save-dev --package-lock-only --ignore-scripts @opennextjs/cloudflare wrangler
+      - name: Commit dependency lockfile on the preparation branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lughati-next/package.json lughati-next/package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: lock Cloudflare OpenNext dependencies"
+            git push origin HEAD:feature/cloudflare-opennext-preparation
+          fi
+      - name: Install locked dependencies
+        working-directory: lughati-next
+        run: npm ci
+      - name: Check Cloudflare configuration
+        working-directory: lughati-next
+        run: npm run cloudflare:preflight
+      - name: Typecheck
+        working-directory: lughati-next
+        run: npx tsc --noEmit
+      - name: Build OpenNext (no deployment, no production secrets)
+        working-directory: lughati-next
+        run: npx opennextjs-cloudflare build
