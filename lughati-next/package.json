@@ -7,7 +7,10 @@
     "build": "next build",
     "sync:academy-access-rules": "node scripts/deploy-temporary-access-rules.cjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cloudflare:preflight": "node scripts/check-cloudflare-readiness.cjs",
+    "cloudflare:build": "npm run cloudflare:preflight && opennextjs-cloudflare build",
+    "cloudflare:deploy": "npm run cloudflare:preflight && wrangler deploy"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",
