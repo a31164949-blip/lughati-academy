@@ -452,6 +452,12 @@ export async function POST(
             studentSnapshot.data() ??
             {};
 
+          if (studentData.active !== true) {
+            throw new Error("FORBIDDEN");
+          }
+
+          const competitionOnly = studentData.accessTier === "competition";
+
           const studentName =
             typeof studentData.studentName ===
               "string" &&
@@ -549,7 +555,19 @@ export async function POST(
 
           if (
             isCorrect &&
-            pointsAwarded > 0
+            pointsAwarded > 0 &&
+            competitionOnly
+          ) {
+            transaction.update(studentRef, {
+              competitionPoints: FieldValue.increment(pointsAwarded),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
+
+          if (
+            isCorrect &&
+            pointsAwarded > 0 &&
+            !competitionOnly
           ) {
             const pointsHistoryEntry = {
               reason:
