@@ -35,11 +35,16 @@ async function identify(request: Request) {
   const snap = await adminDb.collection("students").doc(studentId).get();
   if (!snap.exists) throw new Error("FORBIDDEN");
   const data = snap.data() ?? {};
-  await requireStudentExtras(studentId, data);
-  const membership = data.academyClubMembership;
-  const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
-  if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
-    throw new Error("MEMBERSHIP_REQUIRED");
+  if (data.active !== true) throw new Error("FORBIDDEN");
+  // Competition-only members can join live challenges without full club membership.
+  // Other club routes continue to enforce their own membership checks.
+  if (data.accessTier !== "competition") {
+    await requireStudentExtras(studentId, data);
+    const membership = data.academyClubMembership;
+    const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
+    if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
+      throw new Error("MEMBERSHIP_REQUIRED");
+    }
   }
   return {
     kind: "student" as const,
