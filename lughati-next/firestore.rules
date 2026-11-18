@@ -581,8 +581,10 @@ match /surpriseChallenges/{challengeId} {
 
 match /surpriseChallengeAnswers/{answerId} {
 
-  // الطالب المسجل يستطيع إرسال إجابته
-  allow create: if request.auth != null;
+  // All answers must go through the authenticated server route, which
+  // verifies student identity, target audience, one submission per challenge,
+  // and calculates points server-side. Admin SDK bypasses client rules.
+  allow create: if false;
 
   // المعلم يستطيع مشاهدة جميع الإجابات
   allow read: if request.auth != null
