@@ -2,23 +2,13 @@ name: Check competition guest feature
 on:
   pull_request:
     paths:
-      - 'lughati-next/app/api/competition-guest-login/**'
-      - 'lughati-next/app/api/external-grade-join/**'
-      - 'lughati-next/app/api/guest-competition/**'
-      - 'lughati-next/app/api/academy-club/live-game/**'
-      - 'lughati-next/app/components/ExternalGradeJoinCard.tsx'
-      - 'lughati-next/app/components/GuestLiveChallenge.tsx'
-      - 'lughati-next/app/guest-competitions/**'
-      - 'lughati-next/app/teacher/external-join/**'
-      - 'lughati-next/app/lib/competitionGuestSession.ts'
+      - 'lughati-next/**'
       - '.github/workflows/competition-guests-check.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  verify:
+  typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -29,14 +19,39 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: 'lughati-next/package-lock.json'
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Type check
-        run: npx tsc --noEmit
-      - name: Lint touched files
-        run: |
-          npx eslint             app/api/competition-guest-login/route.ts             app/api/external-grade-join/route.ts             app/api/guest-competition/route.ts             app/api/academy-club/live-game/route.ts             app/components/ExternalGradeJoinCard.tsx             app/components/GuestLiveChallenge.tsx             app/guest-competitions/page.tsx             app/teacher/external-join/page.tsx
-      - name: Build Next.js without running Firebase rules sync
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: lughati-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: |
+          npx eslint app/api/competition-guest-login/route.ts app/api/external-grade-join/route.ts app/api/guest-competition/route.ts app/api/academy-club/live-game/route.ts app/components/ExternalGradeJoinCard.tsx app/components/GuestLiveChallenge.tsx app/guest-competitions/page.tsx app/teacher/external-join/page.tsx
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: lughati-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Next.js build without Firebase rules synchronization
         run: npx next build
