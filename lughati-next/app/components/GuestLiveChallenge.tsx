@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LiveVoiceAnswer from './LiveVoiceAnswer';
 import { useLiveGamePolling } from '../hooks/useLiveGamePolling';
 
@@ -18,6 +18,7 @@ export default function GuestLiveChallenge({ session }: { session: string }) {
   const [message, setMessage] = useState('أدخل رمز غرفة التحدي المباشر الذي يرسله المعلم.');
   const mutation = useRef(false);
   const isMounted = useRef(true);
+  useEffect(() => { isMounted.current = true; return () => { isMounted.current = false; }; }, []);
   async function request(action?: 'join' | 'answer', audioUrl?: string, question?: number) {
     if (!session || mutation.current) return;
     if (action) mutation.current = true;
