@@ -48,7 +48,7 @@ export default function ExternalJoinRequestsPage() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر تحميل النتائج.'); }
     finally { setBusy(false); }
   }
-  const invitationText = invite ? 'أهلًا بك في مسابقات أكاديمية لغتي!\nالرابط: ' + 'https://lughati-academy.duckdns.org/guest-competitions?requestId=' + encodeURIComponent(invite.id) + '\nرمز الدعوة: ' + invite.code + '\nهذه العضوية للتحديات والمسابقات فقط.' : '';
+  const invitationText = invite ? ['أهلًا بك في مسابقات أكاديمية لغتي!', 'الرابط: https://lughati-academy.duckdns.org/guest-competitions?requestId=' + encodeURIComponent(invite.id), 'رمز الدعوة: ' + invite.code, 'هذه العضوية للتحديات والمسابقات والتحدي المباشر فقط.'].join(String.fromCharCode(10)) : '';
   return <main dir="rtl" style={{ minHeight: '100vh', background: '#f0fdf4', color: '#14532d', padding: 24 }}>
     <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات عضوية التحديات والمسابقات</h1><p>العضوية المطلوبة مقتصرة على التحديات والمسابقات. الطلبات لا تنشئ حسابات؛ ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يصدر رمز دعوة خاص بالدخول إلى مساحة المسابقات فقط.</p>
       <button disabled={!user || busy} onClick={() => void load()} style={button}>عرض / تحديث آخر 30 طلبًا</button>
