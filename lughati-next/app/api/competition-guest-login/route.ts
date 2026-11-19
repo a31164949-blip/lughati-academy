@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const raw = await request.text();
-    if (raw.length > 1000) return NextResponse.json({ message: 'بيانات غير صالحة.' }, { status: 400 });
+    if (raw.length > 4096) return NextResponse.json({ message: 'بيانات غير صالحة.' }, { status: 400 });
     const { id, code, turnstileToken } = JSON.parse(raw) as Record<string, unknown>;
     const secret = process.env.TURNSTILE_SECRET_KEY;
     if (!secret) return NextResponse.json({ message: 'الدخول متوقف لحين تفعيل الحماية.' }, { status: 503 });
