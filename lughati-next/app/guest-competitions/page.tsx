@@ -1,9 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
+
+declare global { interface Window { onContestGuestTurnstile?: (token: string) => void; onContestGuestTurnstileExpired?: () => void; turnstile?: { reset: () => void } } }
 type Question = { prompt: string; options: string[] };
 type Quiz = { success: boolean; title: string; questions: Question[]; submitted: boolean; score: number | null; message?: string };
 
 export default function GuestCompetitionsPage() {
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [requestId, setRequestId] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
   const [session, setSession] = useState('');
@@ -15,6 +19,9 @@ export default function GuestCompetitionsPage() {
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('requestId');
     if (id && /^[0-9a-f-]{36}$/.test(id)) setRequestId(id);
+    window.onContestGuestTurnstile = setTurnstileToken;
+    window.onContestGuestTurnstileExpired = () => setTurnstileToken('');
+    return () => { delete window.onContestGuestTurnstile; delete window.onContestGuestTurnstileExpired; };
   }, []);
 
   async function load(token: string) {
@@ -25,12 +32,12 @@ export default function GuestCompetitionsPage() {
   }
   async function enter(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !siteKey || !turnstileToken) return;
     setBusy(true); setError(''); setNotice('');
     try {
       const response = await fetch('/api/competition-guest-login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: requestId.trim(), code: invitationCode.trim() }),
+        body: JSON.stringify({ id: requestId.trim(), code: invitationCode.trim(), turnstileToken }),
       });
       const data = await response.json();
       if (!response.ok || !data.success || !data.token) throw Error(data.message || 'تعذر الدخول.');
@@ -39,7 +46,7 @@ export default function GuestCompetitionsPage() {
       setInvitationCode('');
       setNotice('مرحبًا بك في مساحة التحديات والمسابقات!');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر تسجيل الدخول.'); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setTurnstileToken(''); window.turnstile?.reset(); }
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,7 +73,8 @@ export default function GuestCompetitionsPage() {
       {!quiz ? <form onSubmit={enter} style={{ display: 'grid', gap: 12 }}>
         <label>معرّف طلب العضوية<input required value={requestId} onChange={event => setRequestId(event.target.value)} placeholder="المعرّف المرسل من المعلم" style={field}/></label>
         <label>رمز الدعوة الخاص بك<input required type="password" autoComplete="off" value={invitationCode} onChange={event => setInvitationCode(event.target.value)} placeholder="أدخل رمز الدعوة" style={field}/></label>
-        <button type="submit" disabled={busy} style={button}>{busy ? 'جارٍ التحقق…' : 'الدخول إلى المسابقات'}</button>
+        {siteKey ? <><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer /><div className="cf-turnstile" data-sitekey={siteKey} data-callback="onContestGuestTurnstile" data-expired-callback="onContestGuestTurnstileExpired" /></> : <p>الدخول متوقف حتى تكتمل الحماية الأمنية.</p>}
+        <button type="submit" disabled={busy || !siteKey || !turnstileToken} style={button}>{busy ? 'جارٍ التحقق…' : 'الدخول إلى المسابقات'}</button>
       </form> : <>
         <h2>{quiz.title}</h2>
         {quiz.submitted ? <p role="status" style={{ fontWeight: 800, color: '#047857' }}>أحسنت! درجتك: {quiz.score} من {quiz.questions.length}.</p> :
