@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
@@ -65,12 +65,27 @@ export async function PATCH(req: Request) {
     const db = await teacherDb(req);
     if (!db) return reply({ message: 'غير مصرح.' }, 403);
     const input = await req.json();
-    if (typeof input?.id !== 'string' || !/^[0-9a-f-]{36}$/.test(input.id) || !['reviewed', 'waiting', 'declined'].includes(input.status))
+    if (typeof input?.id !== 'string' || !/^[0-9a-f-]{36}$/.test(input.id) || !['approved', 'reviewed', 'waiting', 'declined'].includes(input.status))
       return reply({ message: 'طلب غير صالح.' }, 400);
     const ref = db.collection(collection).doc(input.id);
-    const old = await ref.get();
-    if (!old.exists) return reply({ message: 'الطلب غير موجود.' }, 404);
-    await ref.update({ status: input.status, reviewedAt: FieldValue.serverTimestamp() });
-    return reply({ success: true });
-  } catch { return reply({ message: 'تعذر تحديث الطلب.' }, 500); }
+    const invite = input.status === 'approved' ? randomBytes(24).toString('base64url') : null;
+    const result = await db.runTransaction(async tx => {
+      const old = await tx.get(ref);
+      if (!old.exists) throw Error('NOT_FOUND');
+      if (old.data()?.membershipScope !== 'competitions-only') throw Error('FORBIDDEN');
+      const isApproved = old.data()?.status === 'approved';
+      if (isApproved && input.status === 'approved') throw Error('ALREADY_APPROVED');
+      if (invite) {
+        tx.update(ref, {
+          status: 'approved',
+          inviteHash: createHash('sha256').update(invite).digest('hex'),
+          reviewedAt: FieldValue.serverTimestamp(),
+        });
+      } else {
+        tx.update(ref, { status: input.status, inviteHash: FieldValue.delete(), reviewedAt: FieldValue.serverTimestamp() });
+      }
+      return { success: true, ...(invite ? { invitationCode: invite, id: input.id } : {}) };
+    });
+    return reply(result);
+  } catch (error) { return reply({ message: error instanceof Error && error.message === 'ALREADY_APPROVED' ? 'الطالب مقبول مسبقًا. لإصدار رمز جديد، انقله إلى الانتظار ثم أعد قبوله.' : 'تعذر تحديث الطلب.' }, error instanceof Error && error.message === 'ALREADY_APPROVED' ? 409 : 500); }
 }
