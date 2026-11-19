@@ -11,7 +11,7 @@ const sections = [
   { title: "💚 رسائل من القلب", description: "إضافة رسائل الطلاب وصورهم المكتوبة وإدارة نشرها على الواجهة الرئيسية.", href: "/teacher/heart-messages" },
   { title: "🏆 أبطال التحدي المباشر", description: "إضافة صورة بطل كل أسبوع وإدارة صور الأبطال في بطاقة الطالب.", href: "/teacher/live-challenge-champions" },
   { title: "📣 رسالة واجهة الطالب", description: "كتابة تنبيه واضح أعلى صفحة الطالب مع رابط للتصويت أو النقاش والتحكم بإظهاره.", href: "/teacher/student-notice" },
-  { title: "🌱 طلبات انضمام الصفوف الأخرى", description: "مراجعة طلبات الانضمام الجديدة دون منح دخول تلقائي.", href: "/teacher/external-join" },
+  { title: "🏆 طلبات عضوية المسابقات", description: "طلبات طلاب الصفوف الأخرى للتحديات والمسابقات فقط، دون دخول تلقائي.", href: "/teacher/external-join" },
   { title: "طلبات الاستمرار في الأكاديمية", description: `مراجعة رغبات الطلاب ورسائلهم الخاصة — الطاقة الاستيعابية ${ACADEMY_CAPACITY} طالبًا.`, href: "/teacher/continuation" },
   { title: "🧠 نتائج أوراق التفكير", description: "متابعة محاولات الطلاب وتفسيراتهم في أوراق التفكير الإلكترونية.", href: "/teacher/thinking-worksheets" },
   { title: "مجلس الأكاديمية", description: "اعتماد مواضيع الأعضاء ونشر مواضيع المعلم وإدارة خصوصية الردود.", href: "/teacher/discussion" },
