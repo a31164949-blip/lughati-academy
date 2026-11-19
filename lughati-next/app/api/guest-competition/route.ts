@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdmin } from '../../../firebase-admin';
+import { verifyCompetitionSession } from '../../lib/competitionGuestSession';
 export const runtime = 'nodejs';
 const challengeId = 'linguistic-contest-01';
 const questions = [
@@ -15,15 +16,21 @@ const json = (data: unknown, status = 200) => NextResponse.json(data, { status, 
 async function identity(request: Request) {
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) throw Error('UNAUTHORIZED');
-  const { adminAuth, adminDb } = getFirebaseAdmin({ allowCompetitionGuest: true });
-  const token = await adminAuth.verifyIdToken(header.slice(7));
-  const isTeacher = token.role === 'teacher' || token.role === 'admin' || token.email?.toLowerCase() === 'a31164949@gmail.com';
-  if (isTeacher) return { kind: 'teacher' as const, db: adminDb };
-  if (token.role !== 'competition_guest' || typeof token.competitionRequestId !== 'string' || token.uid !== 'contest-' + token.competitionRequestId || !/^[0-9a-f-]{36}$/.test(token.competitionRequestId)) throw Error('FORBIDDEN');
-  const snap = await adminDb.collection('externalGradeJoinRequests').doc(token.competitionRequestId).get();
-  if (!snap.exists || snap.data()?.status !== 'approved' || snap.data()?.membershipScope !== 'competitions-only') throw Error('FORBIDDEN');
-  return { kind: 'guest' as const, db: adminDb, id: token.competitionRequestId, name: String(snap.data()?.studentName ?? '') };
+  const { adminAuth, adminDb } = getFirebaseAdmin({ allowSuspended: true });
+  const raw = header.slice(7);
+  // Guest sessions are never Firebase credentials and have no Firestore client privileges.
+  if (raw.startsWith('guest.')) {
+    const id = verifyCompetitionSession(raw.slice(6));
+    const snap = await adminDb.collection('externalGradeJoinRequests').doc(id).get();
+    if (!snap.exists || snap.data()?.status !== 'approved' || snap.data()?.membershipScope !== 'competitions-only') throw Error('FORBIDDEN');
+    return { kind: 'guest' as const, db: adminDb, id, name: String(snap.data()?.studentName ?? '') };
+  }
+  const firebaseToken = await adminAuth.verifyIdToken(raw);
+  const isTeacher = firebaseToken.role === 'teacher' || firebaseToken.role === 'admin' || firebaseToken.email?.toLowerCase() === 'a31164949@gmail.com';
+  if (!isTeacher) throw Error('FORBIDDEN');
+  return { kind: 'teacher' as const, db: adminDb };
 }
+
 export async function GET(request: Request) {
   try {
     const actor = await identity(request);
