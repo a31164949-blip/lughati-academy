@@ -47,7 +47,9 @@ export async function POST(request: Request) {
   try {
     const actor = await identity(request);
     if (actor.kind !== 'guest') throw Error('FORBIDDEN');
-    const body = await request.json();
+    const raw = await request.text();
+    if (raw.length > 2000) return json({ message: 'طلب كبير جدًا.' }, 413);
+    const body = JSON.parse(raw);
     const answers = body?.answers;
     if (!Array.isArray(answers) || answers.length !== questions.length || !answers.every((n: unknown) => Number.isInteger(n) && Number(n) >= 0 && Number(n) <= 2))
       return json({ message: 'أجب عن جميع الأسئلة.' }, 400);
