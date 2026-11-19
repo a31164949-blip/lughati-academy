@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import GuestLiveChallenge from '../components/GuestLiveChallenge';
 
 declare global { interface Window { onContestGuestTurnstile?: (token: string) => void; onContestGuestTurnstileExpired?: () => void; turnstile?: { reset: () => void } } }
 type Question = { prompt: string; options: string[] };
@@ -86,6 +87,7 @@ export default function GuestCompetitionsPage() {
           <button type="submit" disabled={busy || Object.keys(answers).length !== quiz.questions.length} style={button}>{busy ? 'جارٍ الإرسال…' : 'تسليم إجابتي'}</button>
         </form>}
       </>}
+      {session && <GuestLiveChallenge session={session} />}
       {notice && <p role="status" style={{ color: '#047857' }}>{notice}</p>}
       {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
     </section>
