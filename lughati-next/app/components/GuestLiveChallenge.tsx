@@ -40,7 +40,7 @@ export default function GuestLiveChallenge({ session }: { session: string }) {
       if (action === 'answer') throw error;
     } finally { if (isMounted.current) setBusy(false); if (action) mutation.current = false; }
   }
-  useLiveGamePolling(() => request(), Boolean(session && room && room.status !== 'finished'), room?.code);
+  useLiveGamePolling(() => request(), Boolean(session && room && room.status !== 'finished'), room?.code, 25000);
   return <section dir="rtl" style={{ marginTop: 25, padding: 18, border: '1px solid #bbdccb', borderRadius: 18, background: '#f0fdf4' }}>
     <h2>🔴 التحدي المباشر</h2>
     {!room ? <><p>أدخل رمز الغرفة المكوّن من ستة أرقام، ثم انضم مع أبطال الأكاديمية.</p>
