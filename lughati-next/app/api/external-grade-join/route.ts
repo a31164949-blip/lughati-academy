@@ -41,11 +41,11 @@ export async function POST(req: Request) {
       return reply({ message: 'تحقق من الاسم والصف والموافقة على إرسال الطلب.' }, 400);
     const { adminDb } = getFirebaseAdmin({ allowSuspended: true });
     await adminDb.collection(collection).doc(randomUUID()).create({
-      studentName: name, grade, classroom, note, status: 'pending',
+      studentName: name, grade, classroom, note, status: 'pending', membershipScope: 'competitions-only',
       createdAt: FieldValue.serverTimestamp(), reviewedAt: null,
       source: 'external-grades', visibility: 'teacher-only'
     });
-    return reply({ success: true, message: 'وصل طلب الانضمام للمراجعة. إرسال الطلب لا يعني قبول الطالب أو إنشاء حساب له.' });
+    return reply({ success: true, message: 'وصل طلب عضوية التحديات والمسابقات للمراجعة. لا تُمنح أي صلاحية تلقائيًا، وهذه العضوية لا تشمل بقية خدمات الأكاديمية.' });
   } catch { return reply({ message: 'تعذر إرسال الطلب حاليًا.' }, 500); }
 }
 export async function GET(req: Request) {
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
     return reply({ success: true, requests: snapshot.docs.map(doc => {
       const data = doc.data();
       return { id: doc.id, studentName: data.studentName, grade: data.grade, classroom: data.classroom,
-        note: data.note, status: data.status, createdAt: data.createdAt?.toDate?.()?.toISOString() ?? '' };
+        note: data.note, status: data.status, membershipScope: data.membershipScope ?? 'competitions-only', createdAt: data.createdAt?.toDate?.()?.toISOString() ?? '' };
     }) });
   } catch { return reply({ message: 'تعذر عرض الطلبات.' }, 500); }
 }
