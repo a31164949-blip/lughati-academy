@@ -1,4 +1,5 @@
 import { requireStudentExtras } from "../../../lib/studentAccess";
+import { verifyCompetitionSession } from "../../../lib/competitionGuestSession";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
@@ -23,7 +24,16 @@ async function identify(request: Request) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
   const { adminAuth, adminDb } = getFirebaseAdmin();
-  const token = await adminAuth.verifyIdToken(authorization.slice(7));
+  const rawToken = authorization.slice(7);
+  if (rawToken.startsWith("guest.")) {
+    // Guest sessions are NOT Firebase student credentials; only this live game API accepts them.
+    const requestId = verifyCompetitionSession(rawToken.slice(6));
+    const snapshot = await adminDb.collection("externalGradeJoinRequests").doc(requestId).get();
+    const member = snapshot.data();
+    if (!snapshot.exists || member?.status !== "approved" || member?.membershipScope !== "competitions-only") throw new Error("FORBIDDEN");
+    return { kind: "student" as const, id: "guest-" + requestId, name: String(member.studentName ?? "ضيف الأكاديمية") };
+  }
+  const token = await adminAuth.verifyIdToken(rawToken);
   const email = typeof token.email === "string" ? token.email.toLowerCase() : "";
   const role = typeof token.role === "string" ? token.role : "";
   if (role === "teacher" || role === "admin" || email === TEACHER_EMAIL) {
