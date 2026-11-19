@@ -7,9 +7,14 @@ export async function POST(request: Request) {
   try {
     const raw = await request.text();
     if (raw.length > 1000) return NextResponse.json({ message: 'بيانات غير صالحة.' }, { status: 400 });
-    const { id, code } = JSON.parse(raw) as Record<string, unknown>;
+    const { id, code, turnstileToken } = JSON.parse(raw) as Record<string, unknown>;
+    const secret = process.env.TURNSTILE_SECRET_KEY;
+    if (!secret) return NextResponse.json({ message: 'الدخول متوقف لحين تفعيل الحماية.' }, { status: 503 });
+    if (typeof turnstileToken !== 'string' || !turnstileToken || turnstileToken.length > 2048) return NextResponse.json({ message: 'أكمل التحقق الأمني.' }, { status: 400 });
     if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/.test(id) || typeof code !== 'string' || !/^[A-Za-z0-9_-]{32}$/.test(code))
       return NextResponse.json({ message: 'رمز الدعوة غير صحيح.' }, { status: 401 });
+    const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: new URLSearchParams({ secret, response: turnstileToken }), signal: AbortSignal.timeout(8000) });
+    if (!result.ok || (await result.json()).success !== true) return NextResponse.json({ message: 'تعذر التحقق الأمني.' }, { status: 403 });
     const { adminDb } = getFirebaseAdmin({ allowSuspended: true });
     const snap = await adminDb.collection('externalGradeJoinRequests').doc(id).get();
     const data = snap.data();
