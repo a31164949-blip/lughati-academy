@@ -100,15 +100,18 @@ function getAdminApp(): App {
 }
 
 // Status checks must remain accessible so a suspended student can see the family notice.
-export function getFirebaseAdmin(options: { allowSuspended?: boolean } = {}) {
+export function getFirebaseAdmin(options: { allowSuspended?: boolean; allowCompetitionGuest?: boolean } = {}) {
   const adminApp = getAdminApp();
 
   const adminDb = getFirestore(adminApp);
   const rawAuth = getAuth(adminApp);
-  const adminAuth = options.allowSuspended ? rawAuth : new Proxy(rawAuth, {
+  const adminAuth = new Proxy(rawAuth, {
     get(target, property) {
       if (property === "verifyIdToken") return async (...args: Parameters<typeof rawAuth.verifyIdToken>) => {
         const token = await rawAuth.verifyIdToken(...args);
+        // Competition guests must use their dedicated endpoints only.
+        if (token.role === "competition_guest" && !options.allowCompetitionGuest) throw new Error("FORBIDDEN");
+        if (options.allowSuspended) return token;
         if (!isTemporaryAcademyOpen() && STUDENT_ACADEMY_PAUSED && token.role === "student" && !isStudentPreviewAccount(token.studentDocId) && !await hasAcademyAdmission(token.studentDocId)) throw new Error("FORBIDDEN");
         if (token.role === "student" && typeof token.studentDocId === "string") {
           const student = await adminDb.collection("students").doc(token.studentDocId).get();
