@@ -2,6 +2,7 @@
 import HeartMessages from "./components/HeartMessages";
 import AcademyWelcome from "./components/AcademyWelcome";
 import AcademyContinuationCard from "./components/AcademyContinuationCard";
+import ExternalGradeJoinCard from "./components/ExternalGradeJoinCard";
 import { ACADEMY_FRIENDS_ACTIVE } from "./lib/academyFriends";
 import { auth } from "../firebase";
 
@@ -3318,6 +3319,8 @@ useEffect(() => {
   })()}
 
 {/* أبطال الأكاديمية في أسبوع */}
+
+<ExternalGradeJoinCard />
 
 {ACADEMY_FRIENDS_ACTIVE ? <AcademyContinuationCard /> : <section
   style={{

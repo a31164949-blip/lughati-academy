@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { startVisiblePolling } from "../lib/visiblePolling";
 
-export function useLiveGamePolling(refresh: () => Promise<void>, enabled: boolean, roomCode?: string) {
+export function useLiveGamePolling(refresh: () => Promise<void>, enabled: boolean, roomCode?: string, delay = 10000) {
   const latest = useRef(refresh);
   useEffect(() => { latest.current = refresh; });
   useEffect(() => {
@@ -11,6 +11,6 @@ export function useLiveGamePolling(refresh: () => Promise<void>, enabled: boolea
     return startVisiblePolling(() => latest.current(), document, {
       setTimeout: (callback, delay) => window.setTimeout(callback, delay),
       clearTimeout: (timer) => window.clearTimeout(timer),
-    });
-  }, [enabled, roomCode]);
+    }, delay);
+  }, [enabled, roomCode, delay]);
 }

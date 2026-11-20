@@ -1,0 +1,57 @@
+name: Check competition guest feature
+on:
+  pull_request:
+    paths:
+      - 'lughati-next/**'
+      - '.github/workflows/competition-guests-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: lughati-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: lughati-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: |
+          npx eslint app/api/guest-worksheets/route.ts app/components/GuestWorksheets.tsx app/components/TeacherGuestWorksheets.tsx app/api/competition-guest-login/route.ts app/api/external-grade-join/route.ts app/api/guest-competition/route.ts app/api/academy-club/live-game/route.ts app/components/ExternalGradeJoinCard.tsx app/components/GuestLiveChallenge.tsx app/guest-competitions/page.tsx app/teacher/external-join/page.tsx
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: lughati-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lughati-next/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Next.js build without Firebase rules synchronization
+        run: npx next build

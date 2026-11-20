@@ -19,6 +19,11 @@ export async function requireClubMember(request: Request) {
   if (!studentSnapshot.exists) throw new Error("STUDENT_NOT_FOUND");
 
   const studentData = studentSnapshot.data() ?? {};
+  // The club membership gate must never grant full club access to
+  // inactive or competition-only accounts, even with an old membership.
+  if (studentData.active !== true || studentData.accessTier === "competition") {
+    throw new Error("FORBIDDEN");
+  }
   await requireStudentExtras(studentId, studentData);
   const membership = studentData.academyClubMembership;
   const expiry = membership?.expiresAt instanceof Timestamp
