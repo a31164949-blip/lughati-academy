@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '../../../firebase';
+import TeacherGuestWorksheets from '../../components/TeacherGuestWorksheets';
 
 type Entry = { id: string; studentName: string; grade: string; classroom: string; note: string; status: string; createdAt: string };
 export default function ExternalJoinRequestsPage() {
@@ -48,7 +49,7 @@ export default function ExternalJoinRequestsPage() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر تحميل النتائج.'); }
     finally { setBusy(false); }
   }
-  const invitationText = invite ? ['أهلًا بك في مسابقات أكاديمية لغتي!', 'الرابط: https://lughati-academy.duckdns.org/guest-competitions?requestId=' + encodeURIComponent(invite.id), 'رمز الدعوة: ' + invite.code, 'هذه العضوية للتحديات والمسابقات والتحدي المباشر فقط.'].join(String.fromCharCode(10)) : '';
+  const invitationText = invite ? ['أهلًا بك في مسابقات أكاديمية لغتي!', 'الرابط: https://lughati-academy.duckdns.org/guest-competitions?requestId=' + encodeURIComponent(invite.id), 'رمز الدعوة: ' + invite.code, 'هذه العضوية لأوراق العمل والمسابقات والتحدي المباشر فقط.'].join(String.fromCharCode(10)) : '';
   return <main dir="rtl" style={{ minHeight: '100vh', background: '#f0fdf4', color: '#14532d', padding: 24 }}>
     <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات عضوية التحديات والمسابقات</h1><p>العضوية المطلوبة مقتصرة على التحديات والمسابقات. الطلبات لا تنشئ حسابات؛ ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يصدر رمز دعوة خاص بالدخول إلى مساحة المسابقات فقط.</p>
       <button disabled={!user || busy} onClick={() => void load()} style={button}>عرض / تحديث آخر 30 طلبًا</button>
@@ -60,6 +61,7 @@ export default function ExternalJoinRequestsPage() {
       </aside>}
       {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
       {rows.map(row => <article key={row.id} style={{ padding: 18, marginTop: 14, background: 'white', borderRadius: 16, border: '1px solid #c6e7d2' }}><h2>{row.studentName}</h2><p>{row.grade}{row.classroom ? ' — ' + row.classroom : ''}</p><p>الحالة: {row.status === 'pending' ? 'بانتظار المراجعة' : row.status === 'reviewed' ? 'تم الاطلاع' : row.status === 'waiting' ? 'قائمة انتظار' : row.status === 'approved' ? 'مقبول للمسابقات فقط' : 'لم يقبل الطلب'}</p><p>{row.note || 'لا توجد رسالة.'}</p><small>{row.createdAt ? new Date(row.createdAt).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' }) : ''}</small><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{([{ status: 'approved', label: 'قبول عضوية المسابقات وإصدار دعوة' }, { status: 'reviewed', label: 'تم الاطلاع' }, { status: 'waiting', label: 'قائمة الانتظار' }, { status: 'declined', label: 'عدم القبول' }] as const).map(item => <button key={item.status} disabled={busy || row.status === item.status} onClick={() => void change(row, item.status)} style={button}>{item.label}</button>)}</div></article>)}
+      <TeacherGuestWorksheets user={user} />
       <section style={{ marginTop: 28 }}>
         <h2>نتائج مسابقة الضيوف</h2>
         <button type="button" disabled={!user || busy} onClick={() => void loadResults()} style={button}>تحميل آخر نتائج المسابقة</button>
