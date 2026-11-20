@@ -16,15 +16,16 @@ const json = (data: unknown, status = 200) => NextResponse.json(data, { status, 
 async function identity(request: Request) {
   const header = request.headers.get('authorization');
   if (!header?.startsWith('Bearer ')) throw Error('UNAUTHORIZED');
-  const { adminAuth, adminDb } = getFirebaseAdmin({ allowSuspended: true });
   const raw = header.slice(7);
   // Guest sessions are never Firebase credentials and have no Firestore client privileges.
   if (raw.startsWith('guest.')) {
     const id = verifyCompetitionSession(raw.slice(6));
+    const { adminDb } = getFirebaseAdmin({ allowSuspended: true });
     const snap = await adminDb.collection('externalGradeJoinRequests').doc(id).get();
     if (!snap.exists || snap.data()?.status !== 'approved' || snap.data()?.membershipScope !== 'competitions-only') throw Error('FORBIDDEN');
     return { kind: 'guest' as const, db: adminDb, id, name: String(snap.data()?.studentName ?? '') };
   }
+  const { adminAuth, adminDb } = getFirebaseAdmin({ allowSuspended: true });
   const firebaseToken = await adminAuth.verifyIdToken(raw);
   const isTeacher = firebaseToken.role === 'teacher' || firebaseToken.role === 'admin' || firebaseToken.email?.toLowerCase() === 'a31164949@gmail.com';
   if (!isTeacher) throw Error('FORBIDDEN');
