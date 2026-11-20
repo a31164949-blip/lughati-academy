@@ -28,6 +28,6 @@ export function verifyCompetitionSession(token: string) {
   } catch {
     throw Error('FORBIDDEN');
   }
-  if (typeof data?.id !== 'string' || !/^[0-9a-f-]{36}$/.test(data.id) || !Number.isInteger(data.exp) || data.exp <= Math.floor(Date.now() / 1000)) throw Error('FORBIDDEN');
+  if (typeof data?.id !== 'string' || !/^[0-9a-f-]{36}$/.test(data.id) || typeof data.exp !== 'number' || !Number.isInteger(data.exp) || data.exp <= Math.floor(Date.now() / 1000)) throw Error('FORBIDDEN');
   return data.id as string;
 }
