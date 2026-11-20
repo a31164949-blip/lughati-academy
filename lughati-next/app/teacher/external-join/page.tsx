@@ -51,7 +51,7 @@ export default function ExternalJoinRequestsPage() {
   }
   const invitationText = invite ? ['أهلًا بك في مسابقات أكاديمية لغتي!', 'الرابط: https://lughati-academy.duckdns.org/guest-competitions?requestId=' + encodeURIComponent(invite.id), 'رمز الدعوة: ' + invite.code, 'هذه العضوية لأوراق العمل والمسابقات والتحدي المباشر فقط.'].join(String.fromCharCode(10)) : '';
   return <main dir="rtl" style={{ minHeight: '100vh', background: '#f0fdf4', color: '#14532d', padding: 24 }}>
-    <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات عضوية التحديات والمسابقات</h1><p>العضوية المطلوبة مقتصرة على التحديات والمسابقات. الطلبات لا تنشئ حسابات؛ ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يصدر رمز دعوة خاص بالدخول إلى مساحة المسابقات فقط.</p>
+    <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات ركن ضيوف الأكاديمية</h1><p>العضوية المطلوبة مقتصرة على أوراق العمل والمسابقات والتحدي المباشر. الطلبات لا تنشئ حسابات طلاب عادية، ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يصدر رمز دعوة خاص بالدخول إلى مساحة المسابقات فقط.</p>
       <button disabled={!user || busy} onClick={() => void load()} style={button}>عرض / تحديث آخر 30 طلبًا</button>
       {invite && <aside style={{ padding: 18, marginTop: 14, background: '#dcfce7', borderRadius: 14, border: '1px solid #86efac' }}>
         <strong>رمز الدعوة للطالب: {invite.studentName}</strong>
