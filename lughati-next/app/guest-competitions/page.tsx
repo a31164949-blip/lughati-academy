@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import GuestWorksheets from '../components/GuestWorksheets';
 import GuestLiveChallenge from '../components/GuestLiveChallenge';
 
 declare global { interface Window { onContestGuestTurnstile?: (token: string) => void; onContestGuestTurnstileExpired?: () => void; turnstile?: { reset: () => void } } }
@@ -17,9 +19,10 @@ export default function GuestCompetitionsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [section, setSection] = useState<'worksheets' | 'quiz' | 'live'>('worksheets');
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('requestId');
-    if (id && /^[0-9a-f-]{36}$/.test(id)) setRequestId(id);
+    if (id && /^[0-9a-f-]{36}$/.test(id)) queueMicrotask(() => setRequestId(id));
     window.onContestGuestTurnstile = setTurnstileToken;
     window.onContestGuestTurnstileExpired = () => setTurnstileToken('');
     return () => { delete window.onContestGuestTurnstile; delete window.onContestGuestTurnstileExpired; };
@@ -68,15 +71,20 @@ export default function GuestCompetitionsPage() {
   const field: React.CSSProperties = { padding: 12, borderRadius: 12, border: '1px solid #c9e2d2', width: '100%', font: 'inherit' };
   return <main dir="rtl" style={{ minHeight: '100vh', padding: '30px 16px', background: '#f0fdf4', color: '#154734' }}>
     <section style={{ maxWidth: 780, margin: 'auto', background: '#fff', borderRadius: 24, padding: 24, boxShadow: '0 12px 32px #14532d15' }}>
-      <a href="/" style={{ color: '#047857' }}>العودة إلى الأكاديمية</a>
-      <h1>🏆 مساحة التحديات والمسابقات</h1>
-      <p>هذه المساحة خاصة بالطلاب المقبولين من الصفوف الأخرى، ولا تتيح دخول الواجبات أو بقية الخدمات.</p>
-      {!quiz ? <form onSubmit={enter} style={{ display: 'grid', gap: 12 }}>
+      <Link href="/" style={{ color: '#047857' }}>العودة إلى الأكاديمية</Link>
+      <h1>🌟 ركن ضيوف أكاديمية لغتي</h1>
+      <p>صفحتك المختصرة: أوراق عمل تناسب صفك، مسابقات لغوية، والتحدي المباشر. لا تتيح هذه العضوية بقية خدمات الأكاديمية.</p>
+      {!session ? <form onSubmit={enter} style={{ display: 'grid', gap: 12 }}>
         <label>معرّف طلب العضوية<input required value={requestId} onChange={event => setRequestId(event.target.value)} placeholder="المعرّف المرسل من المعلم" style={field}/></label>
         <label>رمز الدعوة الخاص بك<input required type="password" autoComplete="off" value={invitationCode} onChange={event => setInvitationCode(event.target.value)} placeholder="أدخل رمز الدعوة" style={field}/></label>
         {siteKey ? <><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer /><div className="cf-turnstile" data-sitekey={siteKey} data-callback="onContestGuestTurnstile" data-expired-callback="onContestGuestTurnstileExpired" /></> : <p>الدخول متوقف حتى تكتمل الحماية الأمنية.</p>}
         <button type="submit" disabled={busy || !siteKey || !turnstileToken} style={button}>{busy ? 'جارٍ التحقق…' : 'الدخول إلى المسابقات'}</button>
       </form> : <>
+        <nav aria-label="أقسام ركن الضيوف" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 20 }}>
+          {([{ id: 'worksheets', label: '📚 أوراق العمل' }, { id: 'quiz', label: '📝 المسابقات' }, { id: 'live', label: '🔴 التحدي المباشر' }] as const).map(item => <button key={item.id} type="button" onClick={() => setSection(item.id)} aria-pressed={section === item.id} style={{ ...button, background: section === item.id ? '#047857' : '#e4f5eb', color: section === item.id ? '#fff' : '#14532d' }}>{item.label}</button>)}
+        </nav>
+        {section === 'worksheets' && <GuestWorksheets session={session} />}
+        {section === 'quiz' && quiz && <>
         <h2>{quiz.title}</h2>
         {quiz.submitted ? <p role="status" style={{ fontWeight: 800, color: '#047857' }}>أحسنت! درجتك: {quiz.score} من {quiz.questions.length}.</p> :
         <form onSubmit={submit} style={{ display: 'grid', gap: 20 }}>
@@ -86,8 +94,9 @@ export default function GuestCompetitionsPage() {
           </fieldset>)}
           <button type="submit" disabled={busy || Object.keys(answers).length !== quiz.questions.length} style={button}>{busy ? 'جارٍ الإرسال…' : 'تسليم إجابتي'}</button>
         </form>}
+        </>}
+        {section === 'live' && <GuestLiveChallenge session={session} />}
       </>}
-      {session && <GuestLiveChallenge session={session} />}
       {notice && <p role="status" style={{ color: '#047857' }}>{notice}</p>}
       {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
     </section>
