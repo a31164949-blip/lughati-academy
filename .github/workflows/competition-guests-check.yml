@@ -38,7 +38,7 @@ jobs:
           cache-dependency-path: lughati-next/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: |
-          npx eslint app/api/competition-guest-login/route.ts app/api/external-grade-join/route.ts app/api/guest-competition/route.ts app/api/academy-club/live-game/route.ts app/components/ExternalGradeJoinCard.tsx app/components/GuestLiveChallenge.tsx app/guest-competitions/page.tsx app/teacher/external-join/page.tsx
+          npx eslint app/api/guest-worksheets/route.ts app/components/GuestWorksheets.tsx app/components/TeacherGuestWorksheets.tsx app/api/competition-guest-login/route.ts app/api/external-grade-join/route.ts app/api/guest-competition/route.ts app/api/academy-club/live-game/route.ts app/components/ExternalGradeJoinCard.tsx app/components/GuestLiveChallenge.tsx app/guest-competitions/page.tsx app/teacher/external-join/page.tsx
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
