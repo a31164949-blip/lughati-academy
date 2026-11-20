@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/deploy-temporary-access-rules.cjs && next build",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:firestore-rules": "node scripts/deploy-temporary-access-rules.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",
