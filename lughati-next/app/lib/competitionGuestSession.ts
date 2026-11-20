@@ -22,7 +22,12 @@ export function verifyCompetitionSession(token: string) {
   const expected = Buffer.from(signature(payload));
   const actual = Buffer.from(mac);
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw Error('FORBIDDEN');
-  const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  let data: { id?: unknown; exp?: unknown };
+  try {
+    data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { id?: unknown; exp?: unknown };
+  } catch {
+    throw Error('FORBIDDEN');
+  }
   if (typeof data?.id !== 'string' || !/^[0-9a-f-]{36}$/.test(data.id) || !Number.isInteger(data.exp) || data.exp <= Math.floor(Date.now() / 1000)) throw Error('FORBIDDEN');
   return data.id as string;
 }
