@@ -23,16 +23,17 @@ const QUESTIONS = [
 async function identify(request: Request) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
-  const { adminAuth, adminDb } = getFirebaseAdmin();
   const rawToken = authorization.slice(7);
   if (rawToken.startsWith("guest.")) {
     // Guest sessions are NOT Firebase student credentials; only this live game API accepts them.
     const requestId = verifyCompetitionSession(rawToken.slice(6));
+    const { adminDb } = getFirebaseAdmin();
     const snapshot = await adminDb.collection("externalGradeJoinRequests").doc(requestId).get();
     const member = snapshot.data();
     if (!snapshot.exists || member?.status !== "approved" || member?.membershipScope !== "competitions-only") throw new Error("FORBIDDEN");
     return { kind: "student" as const, id: "guest-" + requestId, name: String(member.studentName ?? "ضيف الأكاديمية") };
   }
+  const { adminAuth, adminDb } = getFirebaseAdmin();
   const token = await adminAuth.verifyIdToken(rawToken);
   const email = typeof token.email === "string" ? token.email.toLowerCase() : "";
   const role = typeof token.role === "string" ? token.role : "";
@@ -45,11 +46,16 @@ async function identify(request: Request) {
   const snap = await adminDb.collection("students").doc(studentId).get();
   if (!snap.exists) throw new Error("FORBIDDEN");
   const data = snap.data() ?? {};
-  await requireStudentExtras(studentId, data);
-  const membership = data.academyClubMembership;
-  const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
-  if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
-    throw new Error("MEMBERSHIP_REQUIRED");
+  if (data.active !== true) throw new Error("FORBIDDEN");
+  // Competition-only members can join live challenges without full club membership.
+  // Other club routes continue to enforce their own membership checks.
+  if (data.accessTier !== "competition") {
+    await requireStudentExtras(studentId, data);
+    const membership = data.academyClubMembership;
+    const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
+    if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
+      throw new Error("MEMBERSHIP_REQUIRED");
+    }
   }
   return {
     kind: "student" as const,
@@ -242,6 +248,7 @@ export async function POST(request: Request) {
       QUESTION_CHANGED: "انتقل المعلم إلى سؤال آخر؛ لم تُحتسب هذه الإجابة للسؤال الجديد.",
       ALREADY_REVIEWED: "سبق اعتماد نقاط هذه الإجابة.",
       MEMBERSHIP_REQUIRED: "المشاركة خاصة بأعضاء النادي.",
+      GUEST_SESSION_NOT_CONFIGURED: "دخول الضيوف غير مهيأ.",
       ALREADY_ANSWERED: "تم تسجيل إجابتك لهذه الجولة.",
       NOT_ACTIVE: "السؤال غير متاح الآن.",
       FORBIDDEN: "غير مصرح بهذا الإجراء.",
