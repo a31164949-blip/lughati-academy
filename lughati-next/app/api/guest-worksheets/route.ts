@@ -80,5 +80,11 @@ export async function PUT(request: Request) {
     if (new Set(items.map(item => item.id)).size !== items.length) return json({ message: 'معرّفات مكررة.' }, 400);
     await actor.db.collection(collection).doc(documentId).set({ items, updatedAt: FieldValue.serverTimestamp() });
     return json({ success: true, worksheets: items });
-  } catch { return json({ message: 'تعذر حفظ أوراق العمل.' }, 500); }
+  } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') {
+      return json({ message: 'غير مصرح بتعديل أوراق العمل.' }, code === 'UNAUTHORIZED' ? 401 : 403);
+    }
+    return json({ message: 'تعذر حفظ أوراق العمل.' }, 500);
+  }
 }
