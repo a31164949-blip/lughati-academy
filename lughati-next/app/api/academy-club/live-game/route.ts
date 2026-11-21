@@ -47,10 +47,10 @@ async function identify(request: Request) {
   if (!snap.exists) throw new Error("FORBIDDEN");
   const data = snap.data() ?? {};
   if (data.active !== true) throw new Error("FORBIDDEN");
-  // Competition-only members can join live challenges without full club membership.
-  // Other club routes continue to enforce their own membership checks.
+  // Keep the production access guard for every standard student,
+  // including competition-only accounts. Guest invitations are checked separately.
+  await requireStudentExtras(studentId, data);
   if (data.accessTier !== "competition") {
-    await requireStudentExtras(studentId, data);
     const membership = data.academyClubMembership;
     const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
     if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
