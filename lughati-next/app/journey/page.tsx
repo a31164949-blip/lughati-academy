@@ -65,11 +65,19 @@ const journeyCards = [
   },
   {
     icon: "🎙️",
-    title: "رحلة القراءة",
+    title: "رحلة القراءة 🏆",
     description:
-      "سجّل دقيقة قراءة يومية وواصل سلسلة إنجازك",
+      "سجّل قراءتك وتنافس على النقاط بعد اعتماد المعلم",
     href: "/reading-journey",
     background: "#ecfdf5",
+  },
+  {
+    icon: "📖",
+    title: "قراءة المنهج",
+    description:
+      "اقرأ نصوص لغتي في المنزل مع دعم أسرتك دون نقاط",
+    href: "/curriculum-reading",
+    background: "#edf6ff",
   },
   {
     icon: "🗓️",
