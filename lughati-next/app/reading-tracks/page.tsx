@@ -32,7 +32,7 @@ export default function ReadingTracksPage() {
               <h2 className="text-2xl font-extrabold">{track.title}</h2>
               <p className="mt-1 font-bold" style={{ color: track.color }}>{track.label}</p>
               <p className="my-5 min-h-28 leading-8 text-slate-600">{track.description}</p>
-              <Link className="block rounded-2xl px-4 py-4 text-center font-extrabold text-white" style={{ background: track.color }} href={track.href}>{track.action}</Link>
+              <Link className="block rounded-2xl px-4 py-4 text-center font-extrabold text-white" style={{ background: track.color, color: "#ffffff" }} href={track.href}>{track.action}</Link>
             </section>
           ))}
         </div>
