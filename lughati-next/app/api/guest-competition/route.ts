@@ -5,7 +5,7 @@ import { verifyCompetitionSession } from '../../lib/competitionGuestSession';
 export const runtime = 'nodejs';
 const challengeId = 'linguistic-contest-01';
 const questions = [
-  { prompt: 'ما الكلمة التي تحتوي على مقطع ساكن؟', options: ['كَتَبَ', 'مَدْرَسَةٌ', 'رَسَمَ'], correct: 1 },
+  { prompt: 'ما الكلمة التي تحتوي على مقطع ساكن؟', options: ['كَتَبَ', 'مَكْتَبٌ', 'رَسَمَ'], correct: 1 },
   { prompt: 'اختر الكلمة التي تنتهي بتنوين الضم.', options: ['قَلَمٌ', 'قَلَمًا', 'قَلَمٍ'], correct: 0 },
   { prompt: 'ما ضد كلمة «قريب»؟', options: ['سريع', 'بعيد', 'جميل'], correct: 1 },
   { prompt: 'ما جمع كلمة «كتاب»؟', options: ['كاتب', 'كتب', 'مكتبة'], correct: 1 },
