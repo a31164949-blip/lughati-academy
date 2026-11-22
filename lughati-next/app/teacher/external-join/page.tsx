@@ -63,10 +63,10 @@ export default function ExternalJoinRequestsPage() {
     'العضوية لأوراق العمل والمسابقات والتحدي المباشر فقط.'
   ].join(String.fromCharCode(10)) : '';
   return <main dir="rtl" style={{ minHeight: '100vh', background: '#f0fdf4', color: '#14532d', padding: 24 }}>
-    <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات ركن ضيوف الأكاديمية</h1><p>العضوية المطلوبة مقتصرة على أوراق العمل والمسابقات والتحدي المباشر. الطلبات لا تنشئ حسابات طلاب عادية، ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يصدر رمز دعوة خاص بالدخول إلى مساحة المسابقات فقط.</p>
+    <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات ركن ضيوف الأكاديمية</h1><p>العضوية المطلوبة مقتصرة على أوراق العمل والمسابقات والتحدي المباشر. الطلبات لا تنشئ حسابات طلاب عادية، ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يُنشأ رابط دخول خاص تلقائيًا، يرسله المعلم إلى ولي الأمر. لا يحتاج الطالب إلى كتابة رموز.</p>
       <button disabled={!user || busy} onClick={() => void load()} style={button}>عرض / تحديث آخر 30 طلبًا</button>
       {invite && <aside style={{ padding: 18, marginTop: 14, background: '#dcfce7', borderRadius: 14, border: '1px solid #86efac' }}>
-        <strong>رمز الدعوة للطالب: {invite.studentName}</strong>
+        <strong>رابط الدخول المباشر للطالب: {invite.studentName}</strong>
         <p>يُنشأ رابط دخول خاص تلقائيًا. أرسله لولي الأمر برسالة خاصة؛ لا يحتاج الطالب إلى كتابة أي رموز، ولا يُشارك الرابط في المجموعات العامة.</p>
         <p style={{ fontWeight: 700 }}>🔗 رابط الدخول جاهز. انسخ الرسالة وأرسلها لولي الأمر بصورة خاصة.</p>
         <button type="button" onClick={() => void navigator.clipboard.writeText(invitationText)} style={button}>نسخ رسالة الدخول المباشر</button>
