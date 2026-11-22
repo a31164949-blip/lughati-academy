@@ -49,18 +49,30 @@ export default function ExternalJoinRequestsPage() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'تعذر تحميل النتائج.'); }
     finally { setBusy(false); }
   }
-  const invitationText = invite ? ['أهلًا بك في مسابقات أكاديمية لغتي!', 'الرابط: https://lughati-academy.duckdns.org/guest-competitions?requestId=' + encodeURIComponent(invite.id), 'رمز الدعوة: ' + invite.code, 'هذه العضوية لأوراق العمل والمسابقات والتحدي المباشر فقط.'].join(String.fromCharCode(10)) : '';
+  // Keep the invitation secret in the URL fragment; fragments are not sent in HTTP requests.
+  // The guest page immediately removes the fragment from browser history after reading it.
+  const invitationLink = invite
+    ? 'https://lughati-academy.duckdns.org/guest-competitions#' +
+      new URLSearchParams({ requestId: invite.id, inviteCode: invite.code }).toString()
+    : '';
+  const invitationText = invite ? [
+    'أهلًا بك في ركن ضيوف أكاديمية لغتي!',
+    'تم قبول طلب الانضمام. افتح الرابط الخاص التالي للدخول دون كتابة رموز:',
+    invitationLink,
+    'الرابط خاص بك؛ لا تشاركه مع الآخرين.',
+    'العضوية لأوراق العمل والمسابقات والتحدي المباشر فقط.'
+  ].join(String.fromCharCode(10)) : '';
   return <main dir="rtl" style={{ minHeight: '100vh', background: '#f0fdf4', color: '#14532d', padding: 24 }}>
     <div style={{ maxWidth: 850, margin: 'auto' }}><Link href="/teacher">العودة إلى لوحة المعلم</Link><h1>طلبات ركن ضيوف الأكاديمية</h1><p>العضوية المطلوبة مقتصرة على أوراق العمل والمسابقات والتحدي المباشر. الطلبات لا تنشئ حسابات طلاب عادية، ولا تتيح الواجبات أو الخدمات الأخرى. عند القبول يصدر رمز دعوة خاص بالدخول إلى مساحة المسابقات فقط.</p>
       <button disabled={!user || busy} onClick={() => void load()} style={button}>عرض / تحديث آخر 30 طلبًا</button>
       {invite && <aside style={{ padding: 18, marginTop: 14, background: '#dcfce7', borderRadius: 14, border: '1px solid #86efac' }}>
         <strong>رمز الدعوة للطالب: {invite.studentName}</strong>
-        <p>يظهر الرمز عند القبول فقط. انسخه وأرسله إلى ولي الأمر بوسيلة خاصة. لا تشاركه في مجموعة عامة.</p>
+        <p>يُنشأ رابط دخول خاص تلقائيًا. أرسله لولي الأمر برسالة خاصة؛ لا يحتاج الطالب إلى كتابة أي رموز، ولا يُشارك الرابط في المجموعات العامة.</p>
         <code dir="ltr" style={{ display: 'block', overflowWrap: 'anywhere', padding: 10 }}>{invite.code}</code>
-        <button type="button" onClick={() => void navigator.clipboard.writeText(invitationText)} style={button}>نسخ رسالة الدعوة</button>
+        <button type="button" onClick={() => void navigator.clipboard.writeText(invitationText)} style={button}>نسخ رسالة الدخول المباشر</button>
       </aside>}
       {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
-      {rows.map(row => <article key={row.id} style={{ padding: 18, marginTop: 14, background: 'white', borderRadius: 16, border: '1px solid #c6e7d2' }}><h2>{row.studentName}</h2><p>{row.grade}{row.classroom ? ' — ' + row.classroom : ''}</p><p>الحالة: {row.status === 'pending' ? 'بانتظار المراجعة' : row.status === 'reviewed' ? 'تم الاطلاع' : row.status === 'waiting' ? 'قائمة انتظار' : row.status === 'approved' ? 'مقبول للمسابقات فقط' : 'لم يقبل الطلب'}</p><p>{row.note || 'لا توجد رسالة.'}</p><small>{row.createdAt ? new Date(row.createdAt).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' }) : ''}</small><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{([{ status: 'approved', label: 'قبول عضوية المسابقات وإصدار دعوة' }, { status: 'reviewed', label: 'تم الاطلاع' }, { status: 'waiting', label: 'قائمة الانتظار' }, { status: 'declined', label: 'عدم القبول' }] as const).map(item => <button key={item.status} disabled={busy || row.status === item.status} onClick={() => void change(row, item.status)} style={button}>{item.label}</button>)}</div></article>)}
+      {rows.map(row => <article key={row.id} style={{ padding: 18, marginTop: 14, background: 'white', borderRadius: 16, border: '1px solid #c6e7d2' }}><h2>{row.studentName}</h2><p>{row.grade}{row.classroom ? ' — ' + row.classroom : ''}</p><p>الحالة: {row.status === 'pending' ? 'بانتظار المراجعة' : row.status === 'reviewed' ? 'تم الاطلاع' : row.status === 'waiting' ? 'قائمة انتظار' : row.status === 'approved' ? 'مقبول للمسابقات فقط' : 'لم يقبل الطلب'}</p><p>{row.note || 'لا توجد رسالة.'}</p><small>{row.createdAt ? new Date(row.createdAt).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' }) : ''}</small><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>{([{ status: 'approved', label: 'قبول الطالب وتفعيل الدخول' }, { status: 'reviewed', label: 'تم الاطلاع' }, { status: 'waiting', label: 'قائمة الانتظار' }, { status: 'declined', label: 'عدم القبول' }] as const).map(item => <button key={item.status} disabled={busy || row.status === item.status} onClick={() => void change(row, item.status)} style={button}>{item.label}</button>)}</div></article>)}
       <TeacherGuestWorksheets user={user} />
       <section style={{ marginTop: 28 }}>
         <h2>نتائج مسابقة الضيوف</h2>
