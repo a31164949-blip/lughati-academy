@@ -103,7 +103,22 @@ async function transactionRoster(tx: Transaction, ref: DocumentReference, data: 
 export async function GET(request: Request) {
   try {
     const actor = await identify(request);
-    const code = cleanCode(new URL(request.url).searchParams.get("code"));
+    const search = new URL(request.url).searchParams;
+    // A single on-demand lookup: guests can find the latest teacher-created room
+    // without a six-digit code. No listener and no background Firestore polling.
+    if (search.get("mode") === "current") {
+      if (actor.kind !== "student") throw new Error("FORBIDDEN");
+      const { adminDb } = getFirebaseAdmin();
+      const current = await adminDb.collection("academyClubLiveControl").doc("current").get();
+      const currentCode = cleanCode(current.data()?.code);
+      if (currentCode.length !== 6) return NextResponse.json({ success: true, code: null });
+      const live = await adminDb.collection("academyClubLiveRooms").doc(currentCode).get();
+      if (!live.exists || !["waiting", "active"].includes(String(live.data()?.status ?? ""))) {
+        return NextResponse.json({ success: true, code: null });
+      }
+      return NextResponse.json({ success: true, code: currentCode });
+    }
+    const code = cleanCode(search.get("code"));
     if (!code) return NextResponse.json({ success: false, message: "أدخل رمز الغرفة." }, { status: 400 });
     return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
   } catch (error) {
@@ -128,6 +143,11 @@ export async function POST(request: Request) {
       await adminDb.collection("academyClubLiveRooms").doc(code).set({
         status: "waiting", currentQuestion: -1, createdBy: actor.id, leaderboard: [],
         createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+      });
+      // Only a one-document pointer. Existing rooms and participant records remain
+      // unchanged; a guest will read this document only when opening the live tab.
+      await adminDb.collection("academyClubLiveControl").doc("current").set({
+        code, updatedAt: FieldValue.serverTimestamp(),
       });
       return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
     }
