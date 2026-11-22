@@ -14,7 +14,6 @@ import InstallAppButton from "../components/InstallAppButton";
 import StudentPollCard from "../components/StudentPollCard";
 import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
-import AcademyStories from "../components/AcademyStories";
 import Link from "next/link";
 import { normalizeStudentSmartFollowUp, type StudentSmartFollowUp } from "../lib/studentSmartFollowUp";
 import {
@@ -30,15 +29,6 @@ import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import { auth } from "../../firebase";
 
 const journeyCards = [
-  { icon: "🧠", title: "أوراق التفكير", description: "ألاحظ وأرتّب وأستنتج… وأحل أوراقي إلكترونيًا", href: "/thinking-worksheets", background: "#f0f7df" },
-  {
-    icon: "🏡",
-    title: "مدينة الإنجاز",
-    description:
-      "ابنِ مدينتك مع كل تقدم جديد",
-    href: "/journey/city",
-    background: "#fff7d6",
-  },
   {
   icon: "👦🏻",
   title: "شخصيتي",
@@ -47,14 +37,6 @@ const journeyCards = [
   href: "/student-avatar",
   background: "#eefbf6",
 },
-  {
-    icon: "📚",
-    title: "الدروس",
-    description:
-      "تعلّم واقرأ واستمتع",
-    href: "/lessons",
-    background: "#e8f2ff",
-  },
   {
     icon: "📝",
     title: "واجباتي",
@@ -96,44 +78,12 @@ const journeyCards = [
     background: "#eef8f2",
   },
   {
-    icon: "🌱",
-    title: "رحلة الدعم",
-    description:
-      "تدريبات تساعدني على التقدم",
-    href: "/support",
-    background: "#f2ebff",
-  },
-  {
-    icon: "🏆",
-    title: "لوحة الشرف",
-    description:
-      "شاهد أوسمتك وألقابك وإنجازاتك المميزة",
-    href: "/honor-board",
-    background: "#fff8d8",
-  },
-  {
-    icon: "🌟",
-    title: "أبطال الأكاديمية",
-    description:
-      "شاهد أبطال القراءة والإملاء والإنجاز",
-    href: "/heroes",
-    background: "#fff6dc",
-  },
-  {
     icon: "📝",
     title: "نتائج اختباراتي",
     description:
       "شاهد درجاتك ونتائج اختباراتك وتابع تقدمك",
     href: "/quizzes",
     background: "#eef4ff",
-  },
-  {
-    icon: "🎨",
-    title: "معرض الطلاب",
-    description:
-      "شاهد إبداعاتك وإبداعات زملائك ✨",
-    href: "/gallery",
-    background: "#fff3e8",
   },
   {
     icon: "✍️",
@@ -149,14 +99,6 @@ const journeyCards = [
       "أرسل صوتًا أو صورة أو فيديو",
     href: "/upload",
     background: "#e9fbff",
-  },
-  {
-    icon: "🤝",
-    title: "نتعاون من أجل تقدّمي",
-    description:
-      "تتعاون أسرتي مع معلمي لتحديد الصعوبة واختيار خطوة تساعدني هذا الأسبوع",
-    href: "/parent/support",
-    background: "#eaf8f1",
   },
   {
     icon: "💬",
@@ -4712,7 +4654,7 @@ try {
           </div>
         </section>
 
-        <AcademyStories />
+
 
         {/* الإحصاءات */}
 
