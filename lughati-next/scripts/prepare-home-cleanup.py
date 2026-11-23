@@ -33,16 +33,30 @@ def between(s, begin, end, title):
 
 def card(s, title, href, collection_header):
     collection = s.find(collection_header)
-    index = s.find('href: "' + href + '"', collection)
-    if collection < 0 or index < 0:
-        raise ValueError(f"{title}: missing")
+    if collection < 0:
+        raise ValueError(f"{title}: missing card collection")
+    # Look ONLY in the actual cards array. Previous deployments may already
+    # have removed individual cards, and re-removal must be harmless.
+    collection_end = s.find("];", collection)
+    if collection_end < 0:
+        raise ValueError(f"{title}: unterminated card collection")
+    section = s[collection:collection_end]
+    title_marker = 'title: "' + title + '"'
+    href_marker = 'href: "' + href + '"'
+    if title_marker not in section and href_marker not in section:
+        print(f"ALREADY_ABSENT: {title}")
+        return s
+    if title_marker not in section or href_marker not in section:
+        raise ValueError(f"{title}: partial/unexpected card, stopping")
+    index = s.find(href_marker, collection, collection_end)
     start = s.rfind("  {", collection, index)
-    end = s.find("  },", index)
+    end = s.find("  },", index, collection_end)
     if start < collection or end < 0:
         raise ValueError(f"{title}: bad boundaries")
     snippet = s[start:end + 5]
-    if 'title: "' + title + '"' not in snippet:
-        raise ValueError(f"{title}: wrong section")
+    if title_marker not in snippet:
+        raise ValueError(f"{title}: wrong card boundaries")
+    print(f"REMOVED: {title}")
     return s[:start] + s[end + 5:]
 
 # Homepage: remove the old display widgets, not their data or protected pages.
@@ -119,6 +133,17 @@ for required in (
 ):
     if required not in home:
         raise ValueError(f"Homepage element lost: {required}")
+# Verify all requested student cards are absent, including those already
+# removed in prior releases. Do not remove their stored data.
+student_cards = journey[journey.index("const journeyCards ="):journey.index("const dailyTasks")]
+for forbidden_title in (
+    "مدينة الإنجاز", "أوراق التفكير", "الدروس", "رحلة الدعم",
+    "لوحة الشرف", "أبطال الأكاديمية", "معرض الطلاب",
+    "نتعاون من أجل تقدّمي",
+):
+    if 'title: "' + forbidden_title + '"' in student_cards:
+        raise ValueError(f"Student card remains: {forbidden_title}")
+
 for required in (
     'href: "/homeworks"', 'href: "/reading-journey"',
     'href: "/curriculum-reading"', 'href: "/quizzes/take"',
