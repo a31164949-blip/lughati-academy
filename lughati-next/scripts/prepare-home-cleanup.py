@@ -121,7 +121,11 @@ for title, href in (
     ("نتعاون من أجل تقدّمي", "/parent/support"),
 ):
     journey = card(journey, title, href, "const journeyCards =")
-journey = remove_exact(journey, '        <AcademyStories />', "student pulse stories")
+# The pulse widget can already be missing in an earlier local release.
+if '        <AcademyStories />' in journey:
+    journey = remove_exact(journey, '        <AcademyStories />', "student pulse stories")
+else:
+    print("ALREADY_ABSENT: student pulse stories")
 journey = journey.replace('import AcademyStories from "../components/AcademyStories";\n', "", 1)
 if 'title: "مدينة الإنجاز"' in journey:
     raise ValueError("City of Achievement card remains")
