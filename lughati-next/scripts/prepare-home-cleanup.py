@@ -50,14 +50,17 @@ def card(s, title, href, collection_header):
         raise ValueError(f"{title}: partial/unexpected card, stopping")
     index = s.find(href_marker, collection, collection_end)
     start = s.rfind("  {", collection, index)
-    end = s.find("  },", index, collection_end)
-    if start < collection or end < 0:
+    # Some cards are single-line objects ending "}," while others are
+    # multi-line objects ending "  },". Find the immediate matching close,
+    # never the close of a subsequent card (which could delete "شخصيتي").
+    end = s.find("}", index, collection_end)
+    if start < collection or end < 0 or s[end + 1:end + 2] != ",":
         raise ValueError(f"{title}: bad boundaries")
-    snippet = s[start:end + 5]
-    if title_marker not in snippet:
+    snippet = s[start:end + 2]
+    if title_marker not in snippet or href_marker not in snippet:
         raise ValueError(f"{title}: wrong card boundaries")
     print(f"REMOVED: {title}")
-    return s[:start] + s[end + 5:]
+    return s[:start] + s[end + 2:]
 
 # Homepage: remove the old display widgets, not their data or protected pages.
 for title, href in (
@@ -147,6 +150,9 @@ for forbidden_title in (
 ):
     if 'title: "' + forbidden_title + '"' in student_cards:
         raise ValueError(f"Student card remains: {forbidden_title}")
+
+if 'title: "شخصيتي"' not in student_cards or 'href: "/student-avatar"' not in student_cards:
+    raise ValueError("Preserved student avatar card unexpectedly removed")
 
 for required in (
     'href: "/homeworks"', 'href: "/reading-journey"',
