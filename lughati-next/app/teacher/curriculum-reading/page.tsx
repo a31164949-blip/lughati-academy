@@ -7,6 +7,7 @@ import { auth } from "../../../firebase";
 import { uploadCloudinary } from "../../lib/uploadCloudinary";
 
 type Lesson = { title: string; imageUrl: string };
+type Submission = { id: string; studentName: string; studentClassroom: string; lessonTitle: string; audioUrl: string; durationSeconds: number; submittedDate: string; status: string };
 const field = "w-full rounded-xl border border-emerald-200 bg-white p-3";
 export default function ManageCurriculumReading() {
   const [ready, setReady] = useState(false);
@@ -16,6 +17,9 @@ export default function ManageCurriculumReading() {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [inboxMessage, setInboxMessage] = useState("");
+  const [inboxLoading, setInboxLoading] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, async user => {
     if (!user) { setAuthorized(false); setReady(true); return; }
@@ -32,6 +36,23 @@ export default function ManageCurriculumReading() {
     } catch { setMessage("تعذر تحميل الصورة الحالية."); }
     finally { setReady(true); }
   }), []);
+
+  async function loadInbox() {
+    const user = auth.currentUser;
+    if (!user) return;
+    setInboxLoading(true);
+    setInboxMessage("");
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/curriculum-reading/submissions", {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      const body = await response.json();
+      if (!response.ok) throw Error(body.message || "تعذر تحميل تسجيلات الطلاب.");
+      setSubmissions(Array.isArray(body.submissions) ? body.submissions : []);
+    } catch (e) { setInboxMessage(e instanceof Error ? e.message : "تعذر تحميل التسجيلات."); }
+    finally { setInboxLoading(false); }
+  }
 
   async function publish() {
     const user = auth.currentUser;
@@ -102,6 +123,24 @@ export default function ManageCurriculumReading() {
               <button onClick={() => void unpublish()} disabled={busy} className="mt-4 rounded-xl border border-red-200 px-5 py-3 font-bold text-red-800">إلغاء نشر الصورة</button>
             </div>}
           </section>}
+      {authorized && <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="text-xl font-extrabold">🎙️ تسجيلات قراءة المنهج</h2>
+            <p className="mt-2 text-sm text-slate-600">آخر 40 تسجيلًا مرسلًا من الطلاب؛ منفصلة عن رحلة القراءة ولا تمنح نقاطًا تلقائيًا.</p></div>
+          <button type="button" onClick={() => void loadInbox()} disabled={inboxLoading} className="rounded-xl bg-sky-800 px-5 py-3 font-bold text-white disabled:opacity-50">
+            {inboxLoading ? "جارٍ التحميل…" : "🔄 عرض وتحديث التسجيلات"}
+          </button>
+        </div>
+        {inboxMessage && <p role="alert" className="mt-4 text-red-800">{inboxMessage}</p>}
+        <div className="mt-5 grid gap-3">
+          {submissions.map(item => <article key={item.id} className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+            <h3 className="font-extrabold">{item.studentName} {item.studentClassroom ? `— ${item.studentClassroom}` : ""}</h3>
+            <p className="my-2 text-sm">📖 {item.lessonTitle} | 📅 {item.submittedDate} | ⏱️ {item.durationSeconds} ثانية</p>
+            {item.audioUrl ? <audio controls preload="none" src={item.audioUrl} className="max-w-full" aria-label={`تسجيل قراءة ${item.studentName}`} /> : <p>تعذر عرض الملف الصوتي.</p>}
+          </article>)}
+          {submissions.length === 0 && <p className="rounded-xl bg-slate-50 p-4 text-slate-600">اضغط «عرض وتحديث التسجيلات» لعرض ما وصل من الطلاب.</p>}
+        </div>
+      </section>}
       {message && <p role="status" className="mt-4 rounded-xl bg-amber-50 p-4">{message}</p>}
       <Link href="/curriculum-reading" className="mt-5 inline-block font-bold text-emerald-800 underline">معاينة صفحة الطالب</Link>
     </div>
