@@ -97,6 +97,7 @@ for import_line in (
 # Student dashboard: remove cards only, preserve the reading, quiz, homework,
 # upload, teacher-contact, points and existing authentication flows.
 for title, href in (
+    ("مدينة الإنجاز", "/journey/city"),
     ("أوراق التفكير", "/thinking-worksheets"),
     ("الدروس", "/lessons"),
     ("رحلة الدعم", "/support"),
@@ -108,6 +109,8 @@ for title, href in (
     journey = card(journey, title, href, "const journeyCards =")
 journey = remove_exact(journey, '        <AcademyStories />', "student pulse stories")
 journey = journey.replace('import AcademyStories from "../components/AcademyStories";\n', "", 1)
+if 'title: "مدينة الإنجاز"' in journey:
+    raise ValueError("City of Achievement card remains")
 
 for required in (
     "<ExternalGradeJoinCard />", "<AcademyStories />",
