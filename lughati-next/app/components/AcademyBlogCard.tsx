@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const BLOG_URL = "https://exquisite-moxie-f87356.netlify.app/";
+const BLOG_URL = "https://a31164949.blogspot.com/";
 
 export default function AcademyBlogCard({ compact = false }: { compact?: boolean }) {
   return (
