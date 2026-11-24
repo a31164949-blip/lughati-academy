@@ -95,7 +95,8 @@ for path in / /journey /teacher /teacher/achievement-prize /curriculum-reading /
   curl -fsS --max-time 15 "http://127.0.0.1:3118$path" -o /dev/null
   echo "PREVIEW_PASS: $path"
 done
-if ! curl -fsS --max-time 15 http://127.0.0.1:3118/ | grep -q 'exquisite-moxie-f87356.netlify.app'; then
+curl -fsS --max-time 15 http://127.0.0.1:3118/ -o /tmp/lughati-blog-cards-home-preview.html
+if ! grep -q 'exquisite-moxie-f87356.netlify.app' /tmp/lughati-blog-cards-home-preview.html; then
   echo "HOME_BLOG_LINK_MISSING"; exit 1;
 fi
 echo "HOME_BLOG_LINK=PASS"
