@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Isolated release: blog navigation cards only. Never mutates student data.
 set -Eeuo pipefail
-echo "BLOG_DEPLOY_BLOCKED: Correct blog URL has not been confirmed." >&2
-exit 1
 SRC=/opt/lughati-release-prize-layout/lughati-next
 STAGE=/opt/lughati-release-blog-cards/lughati-next
 REPO=/opt/lughati-guest-test/lughati-next
@@ -98,7 +96,7 @@ for path in / /journey /teacher /teacher/achievement-prize /curriculum-reading /
   echo "PREVIEW_PASS: $path"
 done
 curl -fsS --max-time 15 http://127.0.0.1:3118/ -o /tmp/lughati-blog-cards-home-preview.html
-if ! grep -q 'exquisite-moxie-f87356.netlify.app' /tmp/lughati-blog-cards-home-preview.html; then
+if ! grep -q 'a31164949.blogspot.com' /tmp/lughati-blog-cards-home-preview.html; then
   echo "HOME_BLOG_LINK_MISSING"; exit 1;
 fi
 echo "HOME_BLOG_LINK=PASS"
