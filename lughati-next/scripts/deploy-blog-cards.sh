@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Isolated release: blog navigation cards only. Never mutates student data.
 set -Eeuo pipefail
+echo "BLOG_DEPLOY_BLOCKED: Correct blog URL has not been confirmed." >&2
+exit 1
 SRC=/opt/lughati-release-prize-layout/lughati-next
 STAGE=/opt/lughati-release-blog-cards/lughati-next
 REPO=/opt/lughati-guest-test/lughati-next
