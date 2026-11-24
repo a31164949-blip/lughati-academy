@@ -14,10 +14,46 @@ export default function AchievementGrandPrizeImage() {
       .catch(() => {});
     return () => { active = false; };
   }, []);
-  return <div style={{ width: "min(100%,200px)", minHeight: "135px", flex: "0 1 200px", borderRadius: "15px", background: "#e9f7ff", display: "grid", placeItems: "center", overflow: "hidden", border: "1px solid #b9e2f2" }}>
-    {imageUrl ?
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={imageUrl} alt="السيارة الزرقاء ذات العجلات الكبيرة وجهاز التحكم عن بُعد، الجائزة الكبرى" loading="lazy" style={{ width: "100%", height: "100%", maxHeight: "175px", objectFit: "contain" }} /> :
-      <div style={{ padding: "18px", textAlign: "center", color: "#155a8d" }}><span aria-hidden="true" style={{ fontSize: 50 }}>🏎️🎮</span><div style={{ fontSize: 12, fontWeight: 800 }}>الجائزة الكبرى</div></div>}
-  </div>;
+  return (
+    <div
+      className="achievement-prize-image"
+      style={{
+        width: "100%",
+        height: "100%",
+        minHeight: "220px",
+        borderRadius: "21px",
+        background: "linear-gradient(145deg,#f5fbff,#e9f9ff 58%,#effbef)",
+        border: "2px solid #a6dabc",
+        padding: "10px",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 6px 16px rgba(21,100,76,.08)",
+      }}
+    >
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt="السيارة الزرقاء ذات العجلات الكبيرة وجهاز التحكم عن بُعد، الجائزة الكبرى"
+          loading="lazy"
+          style={{
+            display: "block",
+            width: "100%",
+            height: "auto",
+            maxHeight: "325px",
+            objectFit: "contain",
+            objectPosition: "center center",
+            borderRadius: "15px",
+          }}
+        />
+      ) : (
+        <div style={{ textAlign: "center", color: "#155a8d", padding: 24 }}>
+          <div aria-hidden="true" style={{ fontSize: 64 }}>🏎️🎮</div>
+          <strong>الجائزة الكبرى</strong>
+        </div>
+      )}
+    </div>
+  );
 }
