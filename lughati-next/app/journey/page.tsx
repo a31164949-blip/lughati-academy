@@ -14,7 +14,6 @@ import InstallAppButton from "../components/InstallAppButton";
 import StudentPollCard from "../components/StudentPollCard";
 import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
-import AcademyStories from "../components/AcademyStories";
 import Link from "next/link";
 import { normalizeStudentSmartFollowUp, type StudentSmartFollowUp } from "../lib/studentSmartFollowUp";
 import {
@@ -30,15 +29,6 @@ import { cloudinaryVideoUrl } from "../lib/cloudinaryDelivery";
 import { auth } from "../../firebase";
 
 const journeyCards = [
-  { icon: "🧠", title: "أوراق التفكير", description: "ألاحظ وأرتّب وأستنتج… وأحل أوراقي إلكترونيًا", href: "/thinking-worksheets", background: "#f0f7df" },
-  {
-    icon: "🏡",
-    title: "مدينة الإنجاز",
-    description:
-      "ابنِ مدينتك مع كل تقدم جديد",
-    href: "/journey/city",
-    background: "#fff7d6",
-  },
   {
   icon: "👦🏻",
   title: "شخصيتي",
@@ -47,14 +37,6 @@ const journeyCards = [
   href: "/student-avatar",
   background: "#eefbf6",
 },
-  {
-    icon: "📚",
-    title: "الدروس",
-    description:
-      "تعلّم واقرأ واستمتع",
-    href: "/lessons",
-    background: "#e8f2ff",
-  },
   {
     icon: "📝",
     title: "واجباتي",
@@ -65,11 +47,19 @@ const journeyCards = [
   },
   {
     icon: "🎙️",
-    title: "رحلة القراءة",
+    title: "رحلة القراءة 🏆",
     description:
-      "سجّل دقيقة قراءة يومية وواصل سلسلة إنجازك",
+      "سجّل قراءتك وتنافس على النقاط بعد اعتماد المعلم",
     href: "/reading-journey",
     background: "#ecfdf5",
+  },
+  {
+    icon: "📖",
+    title: "قراءة المنهج",
+    description:
+      "اقرأ نصوص لغتي في المنزل مع دعم أسرتك دون نقاط",
+    href: "/curriculum-reading",
+    background: "#edf6ff",
   },
   {
     icon: "🗓️",
@@ -88,44 +78,12 @@ const journeyCards = [
     background: "#eef8f2",
   },
   {
-    icon: "🌱",
-    title: "رحلة الدعم",
-    description:
-      "تدريبات تساعدني على التقدم",
-    href: "/support",
-    background: "#f2ebff",
-  },
-  {
-    icon: "🏆",
-    title: "لوحة الشرف",
-    description:
-      "شاهد أوسمتك وألقابك وإنجازاتك المميزة",
-    href: "/honor-board",
-    background: "#fff8d8",
-  },
-  {
-    icon: "🌟",
-    title: "أبطال الأكاديمية",
-    description:
-      "شاهد أبطال القراءة والإملاء والإنجاز",
-    href: "/heroes",
-    background: "#fff6dc",
-  },
-  {
     icon: "📝",
     title: "نتائج اختباراتي",
     description:
       "شاهد درجاتك ونتائج اختباراتك وتابع تقدمك",
     href: "/quizzes",
     background: "#eef4ff",
-  },
-  {
-    icon: "🎨",
-    title: "معرض الطلاب",
-    description:
-      "شاهد إبداعاتك وإبداعات زملائك ✨",
-    href: "/gallery",
-    background: "#fff3e8",
   },
   {
     icon: "✍️",
@@ -141,14 +99,6 @@ const journeyCards = [
       "أرسل صوتًا أو صورة أو فيديو",
     href: "/upload",
     background: "#e9fbff",
-  },
-  {
-    icon: "🤝",
-    title: "نتعاون من أجل تقدّمي",
-    description:
-      "تتعاون أسرتي مع معلمي لتحديد الصعوبة واختيار خطوة تساعدني هذا الأسبوع",
-    href: "/parent/support",
-    background: "#eaf8f1",
   },
   {
     icon: "💬",
@@ -3973,13 +3923,13 @@ try {
 
         {/* مدينة الإنجاز - بطاقة مصغرة أعلى صفحة الطالب */}
         {(() => {
-          const bankMilestones = [50, 150, 300, 500, 750, 1000];
-          const nextGoal =
-            bankMilestones.find((goal) => goal > points) ??
-            Math.ceil((points + 1) / 500) * 500;
+          // End-of-first-semester grand-prize threshold (display only).
+          // Student balances and award approval are never changed here.
+          const semesterGrandPrizeGoal = 1200;
+          const nextGoal = semesterGrandPrizeGoal;
           const goalProgress = Math.min(
             100,
-            Math.max(0, (points / Math.max(1, nextGoal)) * 100)
+            Math.max(0, (points / semesterGrandPrizeGoal) * 100)
           );
 
           return (
@@ -4041,7 +3991,7 @@ try {
 
               <div style={{ margin: "0 0 9px", padding: "8px 10px", borderRadius: "13px", background: "rgba(255,255,255,.72)", border: "1px solid #ead47b" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", color: "#725800", fontSize: "11px", fontWeight: 900 }}>
-                  <span>⭐ الهدف القادم</span>
+                  <span>🏁 الهدف النهائي للفصل الدراسي الأول</span>
                   <span dir="ltr">{points} / {nextGoal}</span>
                 </div>
                 <div dir="ltr" aria-label={`تقدمك نحو الهدف القادم: ${Math.round(goalProgress)}٪`} style={{ position: "relative", height: "30px", marginTop: "5px", direction: "ltr" }}>
@@ -4050,6 +4000,15 @@ try {
                   </div>
                   <span aria-hidden="true" style={{ position: "absolute", left: `${goalProgress}%`, transform: "translateX(-50%) scaleX(-1)", bottom: "4px", fontSize: "28px", lineHeight: 1, filter: "drop-shadow(0 2px 2px rgba(0,0,0,.12))" }}>🏎️</span>
                   <span aria-hidden="true" style={{ position: "absolute", right: "-1px", bottom: "7px", fontSize: "18px", lineHeight: 1 }}>🏁</span>
+                </div>
+              </div>
+
+              <div style={{ margin: "10px 0", padding: "12px", borderRadius: "16px", background: "#ffffff", border: "1px solid #c9e7e0", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <div style={{ flex: "0 0 auto", borderRadius: "12px", background: "#e3f6ff", padding: "10px", fontSize: "38px" }} aria-hidden="true">🏎️🎮</div>
+                <div style={{ flex: "1 1 200px", color: "#155e43" }}>
+                  <strong style={{ display: "block", fontSize: "15px" }}>🎁 الجائزة الكبرى: سيارة زرقاء بالريموت</strong>
+                  <span style={{ display: "block", marginTop: "3px", fontSize: "12px" }}>اجمع 1200 نقطة مع نهاية الفصل الدراسي الأول لتبلغ الهدف. تُسلَّم الجائزة بعد التحقق من الرصيد واعتماد المعلم.</span>
+                  <span style={{ display: "block", marginTop: "5px", fontSize: "12px", fontWeight: 900 }}>تبقّى لك {Math.max(0, semesterGrandPrizeGoal - points)} نقطة</span>
                 </div>
               </div>
 
@@ -4704,7 +4663,7 @@ try {
           </div>
         </section>
 
-        <AcademyStories />
+
 
         {/* الإحصاءات */}
 

@@ -6,11 +6,13 @@ import Link from "next/link";
 import AcademyLogo from "../components/AcademyLogo";
 import { ACADEMY_CAPACITY } from "../lib/academyContinuation";
 const sections = [
+  { title: "📖 إدارة قراءة المنهج", description: "رفع صورة صفحة المنهج ونشرها للطلاب ليتدربوا على القراءة وتسجيل أصواتهم.", href: "/teacher/curriculum-reading" },
   { title: "💬 حوار تطوير مستوى الطلاب", description: "حوار مفتوح للطلاب وأسرهم حتى مع تجميد الحساب: مراجعة المقترحات والرد عليها واعتماد المشاركات العامة.", href: "/teacher/learning-dialogue" },
   {title:"🏙️ نتائج مدينة لغتي",description:"آخر نتيجة وأفضل نتيجة وعدد الجولات المكتملة لكل طالب.",href:"/teacher/lughati-city-results"},
   { title: "💚 رسائل من القلب", description: "إضافة رسائل الطلاب وصورهم المكتوبة وإدارة نشرها على الواجهة الرئيسية.", href: "/teacher/heart-messages" },
   { title: "🏆 أبطال التحدي المباشر", description: "إضافة صورة بطل كل أسبوع وإدارة صور الأبطال في بطاقة الطالب.", href: "/teacher/live-challenge-champions" },
   { title: "📣 رسالة واجهة الطالب", description: "كتابة تنبيه واضح أعلى صفحة الطالب مع رابط للتصويت أو النقاش والتحكم بإظهاره.", href: "/teacher/student-notice" },
+  { title: "🏆 طلبات عضوية المسابقات", description: "طلبات طلاب الصفوف الأخرى للتحديات والمسابقات فقط، دون دخول تلقائي.", href: "/teacher/external-join" },
   { title: "طلبات الاستمرار في الأكاديمية", description: `مراجعة رغبات الطلاب ورسائلهم الخاصة — الطاقة الاستيعابية ${ACADEMY_CAPACITY} طالبًا.`, href: "/teacher/continuation" },
   { title: "🧠 نتائج أوراق التفكير", description: "متابعة محاولات الطلاب وتفسيراتهم في أوراق التفكير الإلكترونية.", href: "/teacher/thinking-worksheets" },
   { title: "مجلس الأكاديمية", description: "اعتماد مواضيع الأعضاء ونشر مواضيع المعلم وإدارة خصوصية الردود.", href: "/teacher/discussion" },

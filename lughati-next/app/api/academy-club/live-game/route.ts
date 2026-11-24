@@ -1,4 +1,5 @@
 import { requireStudentExtras } from "../../../lib/studentAccess";
+import { verifyCompetitionSession } from "../../../lib/competitionGuestSession";
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp, type Transaction, type DocumentReference, type DocumentData } from "firebase-admin/firestore";
 import { getFirebaseAdmin } from "../../../../firebase-admin";
@@ -22,8 +23,18 @@ const QUESTIONS = [
 async function identify(request: Request) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
+  const rawToken = authorization.slice(7);
+  if (rawToken.startsWith("guest.")) {
+    // Guest sessions are NOT Firebase student credentials; only this live game API accepts them.
+    const requestId = verifyCompetitionSession(rawToken.slice(6));
+    const { adminDb } = getFirebaseAdmin();
+    const snapshot = await adminDb.collection("externalGradeJoinRequests").doc(requestId).get();
+    const member = snapshot.data();
+    if (!snapshot.exists || member?.status !== "approved" || member?.membershipScope !== "competitions-only") throw new Error("FORBIDDEN");
+    return { kind: "student" as const, id: "guest-" + requestId, name: String(member.studentName ?? "ضيف الأكاديمية") };
+  }
   const { adminAuth, adminDb } = getFirebaseAdmin();
-  const token = await adminAuth.verifyIdToken(authorization.slice(7));
+  const token = await adminAuth.verifyIdToken(rawToken);
   const email = typeof token.email === "string" ? token.email.toLowerCase() : "";
   const role = typeof token.role === "string" ? token.role : "";
   if (role === "teacher" || role === "admin" || email === TEACHER_EMAIL) {
@@ -35,11 +46,16 @@ async function identify(request: Request) {
   const snap = await adminDb.collection("students").doc(studentId).get();
   if (!snap.exists) throw new Error("FORBIDDEN");
   const data = snap.data() ?? {};
+  if (data.active !== true) throw new Error("FORBIDDEN");
+  // Keep the production access guard for every standard student,
+  // including competition-only accounts. Guest invitations are checked separately.
   await requireStudentExtras(studentId, data);
-  const membership = data.academyClubMembership;
-  const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
-  if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
-    throw new Error("MEMBERSHIP_REQUIRED");
+  if (data.accessTier !== "competition") {
+    const membership = data.academyClubMembership;
+    const expiry = membership?.expiresAt instanceof Timestamp ? membership.expiresAt.toDate() : null;
+    if (!membership || membership.active !== true || (expiry && expiry.getTime() < Date.now())) {
+      throw new Error("MEMBERSHIP_REQUIRED");
+    }
   }
   return {
     kind: "student" as const,
@@ -87,7 +103,22 @@ async function transactionRoster(tx: Transaction, ref: DocumentReference, data: 
 export async function GET(request: Request) {
   try {
     const actor = await identify(request);
-    const code = cleanCode(new URL(request.url).searchParams.get("code"));
+    const search = new URL(request.url).searchParams;
+    // A single on-demand lookup: guests can find the latest teacher-created room
+    // without a six-digit code. No listener and no background Firestore polling.
+    if (search.get("mode") === "current") {
+      if (actor.kind !== "student") throw new Error("FORBIDDEN");
+      const { adminDb } = getFirebaseAdmin();
+      const current = await adminDb.collection("academyClubLiveControl").doc("current").get();
+      const currentCode = cleanCode(current.data()?.code);
+      if (currentCode.length !== 6) return NextResponse.json({ success: true, code: null });
+      const live = await adminDb.collection("academyClubLiveRooms").doc(currentCode).get();
+      if (!live.exists || !["waiting", "active"].includes(String(live.data()?.status ?? ""))) {
+        return NextResponse.json({ success: true, code: null });
+      }
+      return NextResponse.json({ success: true, code: currentCode });
+    }
+    const code = cleanCode(search.get("code"));
     if (!code) return NextResponse.json({ success: false, message: "أدخل رمز الغرفة." }, { status: 400 });
     return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
   } catch (error) {
@@ -112,6 +143,11 @@ export async function POST(request: Request) {
       await adminDb.collection("academyClubLiveRooms").doc(code).set({
         status: "waiting", currentQuestion: -1, createdBy: actor.id, leaderboard: [],
         createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
+      });
+      // Only a one-document pointer. Existing rooms and participant records remain
+      // unchanged; a guest will read this document only when opening the live tab.
+      await adminDb.collection("academyClubLiveControl").doc("current").set({
+        code, updatedAt: FieldValue.serverTimestamp(),
       });
       return NextResponse.json({ success: true, room: await roomPayload(code, actor.id, actor.kind === "teacher") });
     }
@@ -232,6 +268,7 @@ export async function POST(request: Request) {
       QUESTION_CHANGED: "انتقل المعلم إلى سؤال آخر؛ لم تُحتسب هذه الإجابة للسؤال الجديد.",
       ALREADY_REVIEWED: "سبق اعتماد نقاط هذه الإجابة.",
       MEMBERSHIP_REQUIRED: "المشاركة خاصة بأعضاء النادي.",
+      GUEST_SESSION_NOT_CONFIGURED: "دخول الضيوف غير مهيأ.",
       ALREADY_ANSWERED: "تم تسجيل إجابتك لهذه الجولة.",
       NOT_ACTIVE: "السؤال غير متاح الآن.",
       FORBIDDEN: "غير مصرح بهذا الإجراء.",
