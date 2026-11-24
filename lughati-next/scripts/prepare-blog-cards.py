@@ -29,9 +29,12 @@ if student.count('import Link from "next/link";') != 1:
 student = student.replace('import Link from "next/link";', 'import Link from "next/link";\n' + student_import, 1)
 student = student.replace(student_anchor, '      <AcademyBlogCard compact />\n\n' + student_anchor, 1)
 
-for page in (home, student):
-    if page.count('AcademyBlogCard') != 2:
-        raise SystemExit("BLOG_CARD_INVARIANT_FAILED")
+# The identifier appears twice on the import line (symbol + file path),
+# plus once as the rendered JSX component. Check exact imports and placements.
+if home.count(home_import) != 1 or home.count('<AcademyBlogCard />') != 1:
+    raise SystemExit("HOME_BLOG_CARD_INVARIANT_FAILED")
+if student.count(student_import) != 1 or student.count('<AcademyBlogCard compact />') != 1:
+    raise SystemExit("STUDENT_BLOG_CARD_INVARIANT_FAILED")
 if 'semesterGrandPrizeGoal = 1200' not in student:
     raise SystemExit("STUDENT_POINTS_GOAL_CHANGED")
 home_path.write_text(home, encoding="utf-8")
