@@ -853,7 +853,7 @@ export default function ReadingJourneyPage() {
                     fontSize: "26px",
                   }}
                 >
-                  قمة الطلاقة
+                  تحدي القراءة
                 </h2>
 
                 <p

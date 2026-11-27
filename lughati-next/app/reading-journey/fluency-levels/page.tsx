@@ -56,7 +56,7 @@ type PromotionResponse = {
 
 /*
  * =====================================================
- * مستويات قمة الطلاقة
+ * مستويات تحدي القراءة
  * =====================================================
  *
  * requirement:
@@ -131,7 +131,7 @@ const LEVELS: Level[] = [
     title: "سفير القراءة",
     requirement: 37,
     description:
-      "قمة الطلاقة: دقة وطلاقة وتعبير وفهم.",
+      "تحدي القراءة: دقة وطلاقة وتعبير وفهم.",
   },
 ];
 
@@ -606,7 +606,7 @@ export default function FluencyLevelsPage() {
         );
       } catch (error) {
         console.error(
-          "تعذر تحميل تقدم قمة الطلاقة:",
+          "تعذر تحميل تقدم تحدي القراءة:",
           error
         );
       } finally {
@@ -1407,7 +1407,7 @@ export default function FluencyLevelsPage() {
                 900,
             }}
           >
-            قمة الطلاقة
+            تحدي القراءة
           </h1>
 
           <p
@@ -1614,7 +1614,7 @@ export default function FluencyLevelsPage() {
                 }}
               >
                 {!nextLevel
-                  ? "💎 وصلت إلى المستوى الثامن — قمة الطلاقة!"
+                  ? "💎 وصلت إلى المستوى الثامن — تحدي القراءة!"
                   : readingsNeeded >
                       0
                     ? `بقيت ${readingsNeeded} قراءة منزلية معتمدة لفتح بوابة اختبار المستوى ${nextLevel.number}.`
@@ -2380,7 +2380,7 @@ export default function FluencyLevelsPage() {
                     "10px 0",
                 }}
               >
-                وصلت إلى قمة الطلاقة
+                أكملت تحدي القراءة
               </h2>
 
               <p
@@ -2396,7 +2396,7 @@ export default function FluencyLevelsPage() {
                 }}
               >
                 أحسنت! اجتزت جميع
-                مستويات قمة الطلاقة.
+                مستويات تحدي القراءة.
               </p>
             </section>
           )}

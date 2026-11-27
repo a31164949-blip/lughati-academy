@@ -796,7 +796,7 @@ export default function FluencyPromotionsPage() {
                 "clamp(30px,5vw,44px)",
             }}
           >
-            مراجعة اختبارات قمة الطلاقة
+            مراجعة اختبارات تحدي القراءة
           </h1>
 
           <p

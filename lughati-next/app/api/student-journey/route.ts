@@ -875,7 +875,7 @@ export async function GET(
       readingWeekCompleted:
         currentWeekApprovedDates.length >= 5,
 
-// المستوى الرسمي في قمة الطلاقة.
+// المستوى الرسمي في تحدي القراءة.
 // لا يعتمد على عدد القراءات.
 // لا يتغير إلا بعد اعتماد المعلم لاختبار الترقية.
 fluencyLevel:

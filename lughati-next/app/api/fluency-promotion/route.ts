@@ -487,7 +487,7 @@ export async function POST(
           success: false,
 
           message:
-            `المستوى التالي المتاح لك هو المستوى ${expectedTargetLevel}. لا يمكن تخطي مستويات قمة الطلاقة.`,
+            `المستوى التالي المتاح لك هو المستوى ${expectedTargetLevel}. لا يمكن تخطي مستويات تحدي القراءة.`,
         },
         {
           status: 409,
