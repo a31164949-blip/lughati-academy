@@ -23,6 +23,20 @@ export const readingChallengeRequestPrefix = readingChallengeStartDate
   ? readingChallengeStartDate + "__"
   : "";
 
+const fluencyMilestonePrefix = "fluency-level-";
+
+export function getReadingChallengeMilestoneId(level: number): string {
+  return fluencyMilestonePrefix + readingChallengeRequestPrefix + level;
+}
+
+// Older promotions remain in notification history, but should not pop up as
+// new achievements after restarting the challenge.
+export function canCelebrateReadingChallengeMilestone(milestoneId?: string): boolean {
+  return !readingChallengeRequestPrefix ||
+    !milestoneId?.startsWith(fluencyMilestonePrefix) ||
+    milestoneId.startsWith(fluencyMilestonePrefix + readingChallengeRequestPrefix);
+}
+
 type ReadingProgress = {
   approvedDates?: unknown;
   totalApprovedDays?: unknown;

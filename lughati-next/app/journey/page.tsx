@@ -15,6 +15,7 @@ import StudentPollCard from "../components/StudentPollCard";
 import LiveLessonCard from "../components/LiveLessonCard";
 import WeeklyRewardWheel from "../components/WeeklyRewardWheel";
 import Link from "next/link";
+import { canCelebrateReadingChallengeMilestone } from "../lib/readingChallengeSeason";
 import { normalizeStudentSmartFollowUp, type StudentSmartFollowUp } from "../lib/studentSmartFollowUp";
 import {
   useEffect,
@@ -795,7 +796,8 @@ const [
             (notification: StudentNotification) =>
               notification.type ===
                 "academy-milestone" &&
-              !notification.read
+              !notification.read &&
+              canCelebrateReadingChallengeMilestone(notification.milestoneId)
           );
 
         if (latestUnopenedGift) {

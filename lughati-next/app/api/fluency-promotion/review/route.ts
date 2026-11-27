@@ -1,4 +1,4 @@
-import { getChallengeLevel, readingChallengePromotionPath, readingChallengeRequestPrefix, readingChallengeStartDate } from "../../../lib/readingChallengeSeason";
+import { getReadingChallengeMilestoneId, getChallengeLevel, readingChallengePromotionPath, readingChallengeRequestPrefix, readingChallengeStartDate } from "../../../lib/readingChallengeSeason";
 import { NextResponse } from "next/server";
 import {
   FieldValue,
@@ -809,7 +809,7 @@ export async function POST(
               false,
 
             milestoneId:
-              `fluency-level-${readingChallengeRequestPrefix}${targetLevel}`,
+              getReadingChallengeMilestoneId(targetLevel),
 
             badgeTitle:
               `المستوى ${targetLevel} — ${levelTitle}`,

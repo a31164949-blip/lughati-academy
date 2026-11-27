@@ -20,6 +20,9 @@ Use `node scripts/check-reading-challenge.cjs` then
 `./node_modules/.bin/next build` on that copy (not `npm run build`, which in
 some checkouts also synchronizes Firestore access rules). Before changing live
 routing, verify the challenge under a permitted test student account and its
-promotion list under the teacher account. Check that reading history and the
+promotion list under the teacher account. Verify that an unread promotion from a
+past edition is still in notification history but does not pop up; verify that
+a new promotion and unrelated milestones can still be celebrated and unopened
+teacher gifts retain priority. Check that reading history and the
 existing guest portal are unaffected and keep the current release available for
 rollback. No guest changes are included in this release.
