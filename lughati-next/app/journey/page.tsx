@@ -163,6 +163,7 @@ type JourneyData = {
   stars?: number;
   streak?: number;
   readingDays?: number;
+  readingChallengeDays?: number;
   weeklyReadingDays?: number;
   latestSpelling?: LatestSpelling | null;
   spellingTrend?: "improved" | "stable" | "declined" | null;
@@ -510,6 +511,8 @@ const [
 
   const [readingDays, setReadingDays] =
     useState(0);
+
+  const [readingChallengeDays, setReadingChallengeDays] = useState(0);
 
   const [weeklyReadingDays, setWeeklyReadingDays] =
     useState(0);
@@ -975,6 +978,10 @@ try {
             "number"
             ? data.readingDays
             : 0
+        );
+
+        setReadingChallengeDays(
+          typeof data.readingChallengeDays === "number" ? data.readingChallengeDays : 0
         );
 
         setWeeklyReadingDays(
@@ -1834,7 +1841,7 @@ try {
       ? Math.max(
           0,
           fluencyNextLevel.requirement -
-            readingDays
+            readingChallengeDays
         )
       : 0;
 
@@ -5248,7 +5255,7 @@ try {
                   }}
                 >
                   📖 قراءاتي المعتمدة:{" "}
-                  <strong>{readingDays}</strong>
+                  <strong>{readingChallengeDays}</strong>
                 </div>
 
                 <div
@@ -5261,9 +5268,11 @@ try {
                     fontWeight: 900,
                   }}
                 >
-                  {fluencyReadyForTest
-                    ? "🎉 أصبحت جاهزًا لاختبار المستوى 2"
-                    : `بقيت ${fluencyReadingsNeeded} قراءة معتمدة لفتح اختبار المستوى 2`}
+                  {!fluencyNextLevel
+                    ? "💎 أكملت تحدي القراءة"
+                    : fluencyReadyForTest
+                      ? `🎉 أصبحت جاهزًا لاختبار المستوى ${fluencyNextLevel.number}`
+                      : `بقيت ${fluencyReadingsNeeded} قراءة معتمدة لفتح اختبار المستوى ${fluencyNextLevel.number}`}
                 </div>
               </div>
 

@@ -1,3 +1,4 @@
+import { getChallengeApprovedDays, getChallengeLevel, readingChallengePromotionPath, readingChallengeRequestPrefix, readingChallengeStartDate } from "../../lib/readingChallengeSeason";
 import { NextResponse } from "next/server";
 import {
   FieldValue,
@@ -169,6 +170,7 @@ async function getStudentFromRequest(
 }
 
 type PromotionPayload = {
+  season?: string;
   targetLevel?: number;
   textId?: string;
   audioUrl?: string;
@@ -195,6 +197,13 @@ export async function POST(
     const body =
       (await request.json()) as
         PromotionPayload;
+
+    if (readingChallengeStartDate && body.season !== readingChallengeStartDate) {
+      return NextResponse.json(
+        { success: false, message: "بدأ تحدٍّ جديد. حدّث الصفحة قبل إرسال اختبارك." },
+        { status: 409 }
+      );
+    }
 
     const targetLevel =
       typeof body.targetLevel ===
@@ -399,12 +408,12 @@ export async function POST(
         );
 
     const requestId =
-      `${studentDocId}__level-${targetLevel}`;
+      `${readingChallengeRequestPrefix}${studentDocId}__level-${targetLevel}`;
 
     const promotionRef =
       adminDb
         .collection(
-          "fluencyPromotionRequests"
+          readingChallengePromotionPath
         )
         .doc(
           requestId
@@ -433,41 +442,8 @@ export async function POST(
           {}
         : {};
 
-    const approvedReadings =
-      typeof progressData
-        .totalApprovedDays ===
-      "number"
-        ? Math.max(
-            0,
-            Math.round(
-              progressData
-                .totalApprovedDays
-            )
-          )
-        : 0;
-
-    /*
-     * المستوى الرسمي الحقيقي.
-     *
-     * إذا لم يوجد الحقل:
-     * الطالب في المستوى 1.
-     */
-
-    const currentFluencyLevel =
-      typeof progressData
-        .fluencyLevel ===
-      "number"
-        ? Math.max(
-            1,
-            Math.min(
-              8,
-              Math.round(
-                progressData
-                  .fluencyLevel
-              )
-            )
-          )
-        : 1;
+    const approvedReadings = getChallengeApprovedDays(progressData);
+    const currentFluencyLevel = getChallengeLevel(progressData);
 
     /*
      * =================================================

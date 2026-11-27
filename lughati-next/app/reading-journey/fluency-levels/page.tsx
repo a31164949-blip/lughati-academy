@@ -1,5 +1,6 @@
 "use client";
 
+import { getChallengeApprovedDays, getChallengeLevel, readingChallengeStartDate } from "../../lib/readingChallengeSeason";
 import { uploadCloudinary } from "@/app/lib/uploadCloudinary";
 
 import { createSpeechRecorder } from "../../lib/speechRecording";
@@ -45,6 +46,8 @@ type ChallengeText = {
 type ProgressData = {
   totalApprovedDays?: number;
   fluencyLevel?: number;
+  approvedDates?: unknown;
+  readingChallengeLevels?: unknown;
 };
 
 type PromotionResponse = {
@@ -568,34 +571,8 @@ export default function FluencyLevelsPage() {
           snapshot.data() as
             ProgressData;
 
-        const loadedApprovedReadings =
-          typeof data.totalApprovedDays ===
-          "number"
-            ? Math.max(
-                0,
-                Math.round(
-                  data.totalApprovedDays
-                )
-              )
-            : 0;
-
-        /*
-         * fluencyLevel هو المصدر
-         * الرسمي الوحيد للمستوى.
-         */
-        const loadedFluencyLevel =
-          typeof data.fluencyLevel ===
-          "number"
-            ? Math.max(
-                1,
-                Math.min(
-                  8,
-                  Math.round(
-                    data.fluencyLevel
-                  )
-                )
-              )
-            : 1;
+        const loadedApprovedReadings = getChallengeApprovedDays(data);
+        const loadedFluencyLevel = getChallengeLevel(data);
 
         setApprovedReadings(
           loadedApprovedReadings
@@ -1181,6 +1158,7 @@ export default function FluencyLevelsPage() {
 
            body:
   JSON.stringify({
+    season: readingChallengeStartDate,
     targetLevel:
       nextLevel.number,
 

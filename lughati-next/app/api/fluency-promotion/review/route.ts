@@ -1,3 +1,4 @@
+import { getChallengeLevel, readingChallengePromotionPath, readingChallengeRequestPrefix, readingChallengeStartDate } from "../../../lib/readingChallengeSeason";
 import { NextResponse } from "next/server";
 import {
   FieldValue,
@@ -135,7 +136,7 @@ export async function GET(
     const snapshot =
       await adminDb
         .collection(
-          "fluencyPromotionRequests"
+          readingChallengePromotionPath
         )
         .orderBy(
           "submittedAt",
@@ -412,6 +413,13 @@ export async function POST(
       );
     }
 
+    if (requestId.includes("/") || !requestId.startsWith(readingChallengeRequestPrefix)) {
+      return NextResponse.json(
+        { success: false, message: "هذا الطلب لا ينتمي إلى التحدي الحالي. حدّث الصفحة." },
+        { status: 409 }
+      );
+    }
+
     if (
       action !== "approve" &&
       action !== "reject"
@@ -436,7 +444,7 @@ export async function POST(
     const promotionRef =
       adminDb
         .collection(
-          "fluencyPromotionRequests"
+          readingChallengePromotionPath
         )
         .doc(
           requestId
@@ -664,25 +672,7 @@ export async function POST(
               {}
             : {};
 
-        /*
-         * إذا لم يوجد fluencyLevel
-         * نعتبر المستوى الرسمي = 1.
-         */
-        const currentFluencyLevel =
-          typeof progressData
-            .fluencyLevel ===
-          "number"
-            ? Math.max(
-                1,
-                Math.min(
-                  8,
-                  Math.round(
-                    progressData
-                      .fluencyLevel
-                  )
-                )
-              )
-            : 1;
+        const currentFluencyLevel = getChallengeLevel(progressData);
 
         /*
          * منع اعتماد نفس المستوى
@@ -738,27 +728,16 @@ export async function POST(
          */
         transaction.set(
           progressRef,
-          {
-            fluencyLevel:
-              targetLevel,
-
-            fluencyLevelUpdatedAt:
-              FieldValue
-                .serverTimestamp(),
-
-            lastPromotionRequestId:
-              requestId,
-
-            lastPromotedFromLevel:
-              currentFluencyLevel,
-
-            lastPromotedToLevel:
-              targetLevel,
-
-            updatedAt:
-              FieldValue
-                .serverTimestamp(),
-          },
+          readingChallengeStartDate
+            ? { readingChallengeLevels: { [readingChallengeStartDate]: targetLevel } }
+            : {
+                fluencyLevel: targetLevel,
+                fluencyLevelUpdatedAt: FieldValue.serverTimestamp(),
+                lastPromotionRequestId: requestId,
+                lastPromotedFromLevel: currentFluencyLevel,
+                lastPromotedToLevel: targetLevel,
+                updatedAt: FieldValue.serverTimestamp(),
+              },
           {
             merge: true,
           }
@@ -830,7 +809,7 @@ export async function POST(
               false,
 
             milestoneId:
-              `fluency-level-${targetLevel}`,
+              `fluency-level-${readingChallengeRequestPrefix}${targetLevel}`,
 
             badgeTitle:
               `المستوى ${targetLevel} — ${levelTitle}`,

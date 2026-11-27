@@ -1,3 +1,4 @@
+import { getChallengeApprovedDays, getChallengeLevel } from "../../lib/readingChallengeSeason";
 import { unstable_cache } from "next/cache";
 import { getLittleTeacherLesson } from "../../lib/littleTeacherLesson";
 import { getStudentSmartRecordFollowUp } from "../../lib/studentSmartRecord";
@@ -875,24 +876,10 @@ export async function GET(
       readingWeekCompleted:
         currentWeekApprovedDates.length >= 5,
 
-// المستوى الرسمي في تحدي القراءة.
-// لا يعتمد على عدد القراءات.
-// لا يتغير إلا بعد اعتماد المعلم لاختبار الترقية.
-fluencyLevel:
-  typeof readingProgressData.fluencyLevel ===
-    "number"
-    ? Math.max(
-        1,
-        Math.min(
-          8,
-          Math.round(
-            readingProgressData.fluencyLevel
-          )
-        )
-      )
-    : 1,
+      fluencyLevel: getChallengeLevel(readingProgressData),
+      readingChallengeDays: getChallengeApprovedDays(readingProgressData),
 
-personalPhotoUrl:
+      personalPhotoUrl:
         studentData
           .personalPhotoStatus ===
           "approved" &&
