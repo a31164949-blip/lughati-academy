@@ -47,20 +47,11 @@ const journeyCards = [
     background: "#fff3df",
   },
   {
-    icon: "🎙️",
-    title: "رحلة القراءة 🏆",
-    description:
-      "سجّل قراءتك وتنافس على النقاط بعد اعتماد المعلم",
-    href: "/reading-journey",
-    background: "#ecfdf5",
-  },
-  {
-    icon: "📖",
-    title: "قراءة المنهج",
-    description:
-      "اقرأ نصوص لغتي في المنزل مع دعم أسرتك دون نقاط",
-    href: "/curriculum-reading",
-    background: "#edf6ff",
+    icon: "📚",
+    title: "عالم القراءة",
+    description: "قراءة المنهج، رحلة القراءة، وتحدي القراءة في مكان واحد",
+    href: "/reading-world",
+    background: "#e5f5dc",
   },
   {
     icon: "🗓️",
@@ -5451,6 +5442,7 @@ try {
                 <Link
                   key={card.title}
                   href={card.href}
+                  prefetch={card.href === "/reading-world" ? false : undefined}
                   style={{
                     textDecoration:
                       "none",
@@ -5495,7 +5487,7 @@ try {
                     </h3>
 
                     {card.href ===
-                      "/reading-journey" && (
+                      "/reading-world" && (
                       <div
                         style={{
                           width: "fit-content",
@@ -5540,14 +5532,7 @@ try {
                           1.7,
                       }}
                     >
-                      {card.href ===
-                      "/reading-journey"
-                        ? loading
-                          ? "جارٍ تحميل تقدمك في القراءة..."
-                          : readingDays === 0
-                            ? "ابدأ أول قراءة وواصل سلسلة إنجازك"
-                            : "واصل القراءة اليومية لتنمية مهاراتك"
-                        : card.description}
+                      {card.description}
                     </p>
                   </div>
                 </Link>
